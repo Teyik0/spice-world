@@ -1,0 +1,207 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator prismabox {
+  provider                    = "prismabox"
+  output                      = "../src/prismabox"
+  typeboxImportVariableName   = "t"
+  typeboxImportDependencyName = "elysia"
+  inputModel                  = true
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  Comments      Comment[]
+  Order         Order[]
+  role          ROLE      @default(USER)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum ROLE {
+  USER
+  ADMIN
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  text      String
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+//PRODUCTS
+model Category {
+  id      String @id @default(uuid())
+  /// @prismabox.options{ pattern: "^[A-Z][a-zA-Z ]*$" }
+  name    String @unique
+  image   Image  @relation(fields: [imageId], references: [id])
+  imageId String @unique
+
+  products   Product[]
+  attributes Attribute[]
+}
+
+model Attribute {
+  id   String @id @default(uuid())
+  name String
+
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId String
+
+  values AttributeValue[]
+
+  @@unique([categoryId, name])
+}
+
+model AttributeValue {
+  id    String @id @default(uuid())
+  value String
+
+  attribute   Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+  attributeId String
+
+  productVariants ProductVariant[]
+
+  @@unique([attributeId, value])
+}
+
+model Image {
+  id          String  @id @default(uuid())
+  key         String  @unique
+  /// @prismabox.options{ format: "uri" }
+  url         String
+  altText     String?
+  isThumbnail Boolean @default(false)
+
+  product   Product? @relation(fields: [productId], references: [id])
+  productId String?
+
+  category Category?
+}
+
+model Product {
+  id          String @id @default(uuid())
+  name        String @unique
+  slug        String @unique
+  description String
+
+  status   ProductStatus @default(DRAFT)
+  images   Image[]
+  tags     Tag[]
+  comments Comment[]
+
+  variants ProductVariant[]
+  orders   Order[]
+
+  category   Category? @relation(fields: [categoryId], references: [id])
+  categoryId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProductVariant {
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  attributeValues AttributeValue[]
+
+  sku      String? @unique // Stock Keeping Unit
+  price    Float
+  currency String  @default("EUR")
+
+  stock Int @default(0) // Available stock
+
+  // Additional fields like weight, dimensions, etc. can be added here
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Tag {
+  id         String    @id @default(uuid())
+  name       String    @unique
+  /// @prismabox.options{ pattern: "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$" }
+  badgeColor String
+  Product    Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  paymentIntent String      @unique
+  stripeSession String
+  status        OrderStatus
+  user          User        @relation(fields: [userId], references: [id])
+  userId        String
+  products      Product[]
+  totalPrice    Float
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+enum OrderStatus {
+  PENDING
+  FULLFILLED
+  CANCELLED
+  DECLINED
+}
