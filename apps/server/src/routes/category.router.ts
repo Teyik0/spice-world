@@ -2,12 +2,15 @@ import { Elysia, t } from "elysia";
 import type { UploadedFileData } from "uploadthing/types";
 import { deleteFiles, uploadFile } from "../libs/images";
 import prisma from "../libs/prisma";
+import { tryCatch } from "../libs/trycatch";
+import { prismaErrorPlugin } from "../plugins/prisma-error";
 
 export const categoryRouter = new Elysia({
   name: "categories",
   prefix: "/categories",
   tags: ["Categories"],
 })
+  .use(prismaErrorPlugin("Category"))
   .get(
     "/",
     async ({ query: { skip, take, name } }) =>
@@ -19,201 +22,165 @@ export const categoryRouter = new Elysia({
             contains: name,
           },
         },
+        include: {
+          image: {
+            select: {
+              url: true,
+            },
+          },
+        },
       }),
     {
       query: t.Object({
-        skip: t.Optional(t.Number({ default: 0 })),
-        take: t.Optional(t.Number({ default: 25 })),
+        skip: t.Optional(t.Number({ default: 0, minimum: 0 })),
+        take: t.Optional(t.Number({ default: 25, minimum: 1, maximum: 100 })),
         name: t.Optional(t.String()),
       }),
     },
   )
   .post(
     "/",
-    async ({ body: { name, file, attributes }, error, set }) => {
-      const { data, error: err } = await uploadFile(name, file);
-      if (err) error("Precondition Failed", err);
-      if (data) {
-        set.status = "Created";
-        return await prisma.category.create({
+    async ({ body: { name, file }, error, set }) => {
+      const { data: image, error: fileError } = await uploadFile(name, file);
+      if (fileError || !image) {
+        return error(
+          "Precondition Failed",
+          fileError || "File upload succeeded but not data was returned",
+        );
+      }
+
+      const { data: category, error: prismaError } = await tryCatch(
+        prisma.category.create({
           data: {
             name,
             image: {
               create: {
-                key: data.key,
-                url: data.ufsUrl,
+                key: image.key,
+                url: image.ufsUrl,
                 altText: name,
                 isThumbnail: true,
               },
             },
-            attributes: attributes
-              ? {
-                  create: attributes.map((attr) => ({
-                    name: attr.name,
-                    values: {
-                      create: attr.values.map((value) => ({ value })),
-                    },
-                  })),
-                }
-              : undefined,
           },
           select: {
             id: true,
             name: true,
             image: true,
-            attributes: {
-              include: {
-                values: true,
-              },
-            },
           },
-        });
+        }),
+      );
+      if (prismaError) {
+        await deleteFiles(image.key); // Cleanup uploaded file
+        throw prismaError;
       }
+
+      set.status = "Created";
+      return category;
     },
     {
       body: t.Object({
         name: t.String({ pattern: "^[A-Z][a-zA-Z ]*$" }),
         file: t.File({ type: "image/webp" }),
-        attributes: t.Optional(
-          t.Array(
-            t.Object({
-              name: t.String({ pattern: "^[A-Z][a-zA-Z ]*$" }),
-              values: t.Array(t.String(), { minItems: 1 }),
-            }),
-          ),
-        ),
       }),
+      beforeHandle: async ({ body: { name }, error }) => {
+        const category = await prisma.category.findUnique({
+          where: { name },
+        });
+        if (category) {
+          return error("Conflict", "Category already exists");
+        }
+      },
     },
   )
   .get("/count", async () => prisma.category.count())
   .guard({ params: t.Object({ id: t.String({ format: "uuid" }) }) })
-  .get("/:id", async ({ params: { id } }) =>
-    prisma.category.findUnique({
+  .resolve(async ({ params: { id } }) => {
+    const category = await prisma.category.findUniqueOrThrow({
       where: { id },
       include: {
-        attributes: {
-          include: {
-            values: true,
-          },
-        },
-        image: true,
-        products: true,
-      },
-    }),
-  )
-  .delete("/:id", async ({ params: { id }, error }) => {
-    const category = await prisma.category.findUnique({
-      where: { id },
-      select: {
         image: {
           select: {
-            id: true,
             key: true,
+            url: true,
           },
         },
       },
     });
-    if (!category) error("Not Found", "Category not found");
-    if (!category?.image?.key) error("Precondition Failed", "No images found");
-
-    const { success } = await deleteFiles(category!.image.key);
-
-    if (!success) {
-      error(
-        "Precondition Failed",
-        "Failed to delete associated image of the Category",
-      );
-    }
-
-    return await prisma.$transaction([
-      prisma.category.delete({ where: { id } }),
-      prisma.image.delete({ where: { id: category!.image.id } }),
-    ]);
+    return { category };
   })
-  .state({
-    categoryKey: null as string | null,
-  })
+  .get("/:id", async ({ category }) => category)
+  .delete(
+    "/:id",
+    async ({ category }) => {
+      const deletedCategory = await prisma.$transaction(async (tx) => {
+        await tx.category.delete({ where: { id: category.id } });
+        const deletedImage = await tx.image.delete({
+          where: { id: category.imageId },
+        });
+        return { id: category.id, name: category.name, image: deletedImage };
+      });
+
+      return deletedCategory;
+    },
+    {
+      afterResponse: async ({ category }) => {
+        if (!category) return;
+        const { success } = await deleteFiles(category.image.key);
+        if (!success) {
+          console.warn(`Failed to delete image ${category.image.key}`);
+        }
+      },
+    },
+  )
   .patch(
     "/:id",
-    async ({
-      params: { id },
-      body: { name, file, attributes },
-      error,
-      store,
-    }) => {
+    async ({ category, body: { name, file }, error }) => {
       let newFile: UploadedFileData | null = null;
 
       if (file) {
-        const category = await prisma.category.findUnique({
-          where: { id },
-          include: { image: { select: { id: true, key: true } } },
-        });
-        if (!category) {
-          error("Not Found", "Category not found for provided id");
-        }
-
         const { data, error: err } = await uploadFile(
-          name || category!.name,
+          name || category.name,
           file,
         );
-        if (!data) {
-          error("Precondition Failed", err);
+        if (!data || err) {
+          return error("Precondition Failed", err);
         }
         newFile = data;
-        store.categoryKey = category!.image.key;
       }
 
-      return await prisma.category.update({
-        where: { id },
-        data: {
-          name,
-          ...(newFile && {
-            image: {
-              update: {
-                key: newFile.key,
-                url: newFile.ufsUrl,
-              },
-            },
-          }),
-          ...(attributes && {
-            attributes: {
-              deleteMany: {},
-              create: attributes.map((attr) => ({
-                name: attr.name,
-                values: {
-                  create: attr.values.map((value) => ({ value })),
+      const { data, error: prismaError } = await tryCatch(
+        prisma.category.update({
+          where: { id: category.id },
+          data: {
+            name,
+            ...(newFile && {
+              image: {
+                update: {
+                  key: newFile.key,
+                  url: newFile.ufsUrl,
                 },
-              })),
-            },
-          }),
-        },
-        include: { image: true },
-      });
+              },
+            }),
+          },
+          include: { image: true },
+        }),
+      );
+      if (prismaError) {
+        newFile && (await deleteFiles(newFile.key));
+        throw prismaError;
+      }
+      return data;
     },
     {
-      body: t.Partial(
-        t.Object({
-          name: t.String({ pattern: "^[A-Z][a-zA-Z ]*$" }),
-          file: t.File({ type: "image/webp" }),
-          attributes: t.Array(
-            t.Object({
-              name: t.String(),
-              values: t.Array(t.String(), { minItems: 1 }),
-            }),
-          ),
-        }),
-      ),
-      afterResponse: async ({ store: { categoryKey } }) => {
-        if (categoryKey) {
-          const { success } = await deleteFiles(categoryKey);
-          if (!success) {
-            console.warn(
-              success
-                ? "Image deleted successfully"
-                : ` Failed to delete image ${categoryKey}`,
-            );
-          }
-          categoryKey = null;
+      body: t.Object({
+        name: t.Optional(t.String({ pattern: "^[A-Z][a-zA-Z ]*$" })),
+        file: t.Optional(t.File({ type: "image/webp" })),
+      }),
+      afterResponse: async ({ category, body: { file } }) => {
+        if (!file || !category) return;
+        const { success } = await deleteFiles(category.image.key);
+        if (!success) {
+          console.warn(`Failed to delete image ${category.image.key}`);
         }
       },
     },

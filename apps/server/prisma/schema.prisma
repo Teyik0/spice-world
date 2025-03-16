@@ -177,6 +177,7 @@ enum ProductStatus {
 
 model Tag {
   id         String    @id @default(uuid())
+  /// @prismabox.options{ pattern: "^[a-z][a-z ]*$" }
   name       String    @unique
   /// @prismabox.options{ pattern: "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$" }
   badgeColor String

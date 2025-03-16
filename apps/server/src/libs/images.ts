@@ -4,7 +4,6 @@ import { UTApi } from "uploadthing/server";
 
 export const utapi = new UTApi({
   token: process.env.UPLOADTHING_TOKEN!,
-  logLevel: "Error",
 });
 
 export const uploadFile = async (filename: string, file: File) => {

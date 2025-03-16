@@ -1,5 +1,6 @@
 import { treaty } from "@elysiajs/eden";
 import type { Category } from "@prisma/client";
+import type { BunFile } from "bun";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { deleteFiles } from "../src/libs/images";
 import prisma from "../src/libs/prisma";
@@ -9,7 +10,7 @@ import {
   deleteDummyCategory,
 } from "./utils/dummy-category";
 
-const api = treaty<typeof categoryRouter>("localhost:3000");
+const api = treaty(categoryRouter);
 
 describe("Category routes test", () => {
   let categories: Category[];
@@ -29,25 +30,52 @@ describe("Category routes test", () => {
     await deleteDummyCategory();
   });
 
+  const postCategory = async (name: string, file: BunFile) => {
+    const data = await api.categories.index.post({
+      name,
+      file,
+    });
+
+    expect(data.data).not.toBeNull();
+    expect(data).not.toBeUndefined();
+    expect(data.status).toBe(201);
+    expect(data.data).toHaveProperty("id");
+    expect(data.data).toHaveProperty("name", name);
+
+    return data;
+  };
+
   describe("Create new category - POST/", () => {
     it("should create a new category", async () => {
       const filePath = `${import.meta.dir}/public/cumin.webp`;
       const file = Bun.file(filePath);
-      const response = await api.categories.index.post({
-        name: "Test Category",
-        file: file,
+      const { data } = await postCategory("Test Category", file);
+
+      await deleteFiles(data!.image.key);
+      await prisma.$transaction([
+        prisma.category.delete({ where: { id: data!.id } }),
+        prisma.image.delete({ where: { id: data!.image.id } }),
+      ]);
+    });
+
+    it("should error if name is already taken", async () => {
+      const filePath = `${import.meta.dir}/public/cumin.webp`;
+      const file = Bun.file(filePath);
+      const { data } = await postCategory("Other Category", file);
+
+      const { error, status } = await api.categories.index.post({
+        name: "Other Category",
+        file,
       });
 
-      expect(response.data).not.toBeNull();
-      expect(response.data).not.toBeUndefined();
-      expect(response.status).toBe(201);
-      expect(response.data).toHaveProperty("id");
-      expect(response.data).toHaveProperty("name", "Test Category");
+      expect(status).toBe(409);
+      expect(error).not.toBeUndefined();
+      expect(error).not.toBeNull();
 
-      await deleteFiles(response.data!.image.key);
+      await deleteFiles(data!.image.key);
       await prisma.$transaction([
-        prisma.category.delete({ where: { id: response.data!.id } }),
-        prisma.image.delete({ where: { id: response.data!.image.id } }),
+        prisma.category.delete({ where: { id: data!.id } }),
+        prisma.image.delete({ where: { id: data!.image.id } }),
       ]);
     });
 
@@ -122,7 +150,7 @@ describe("Category routes test", () => {
       expect(response.data).not.toBeNull();
       expect(response.data).not.toBeUndefined();
       expect(response.status).toBe(200);
-      expect(response.data).toHaveLength(10);
+      expect(response.data).toHaveLength(await prisma.category.count());
     });
 
     it("should return one category", async () => {
@@ -138,12 +166,13 @@ describe("Category routes test", () => {
 
   describe("Count the number of categories - GET/count", async () => {
     it("should return the count of categories", async () => {
-      const response = await api.categories.count.get();
+      const count = await prisma.category.count();
+      const { data, status } = await api.categories.count.get();
 
-      expect(response.data).not.toBeNull();
-      expect(response.data).not.toBeUndefined();
-      expect(response.status).toBe(200);
-      expect(response.data).toBe(10);
+      expect(data).not.toBeNull();
+      expect(data).not.toBeUndefined();
+      expect(status).toBe(200);
+      expect(data).toBe(count);
     });
   });
 
@@ -151,30 +180,26 @@ describe("Category routes test", () => {
     it("should post and delete category", async () => {
       const filePath = `${import.meta.dir}/public/cumin.webp`;
       const file = Bun.file(filePath);
-      const response = await api.categories.index.post({
-        name: "Test Category",
+      const { status, data: oldCategory } = await api.categories.index.post({
+        name: "Hello Category",
         file: file,
       });
 
-      expect(response.data).not.toBeNull();
-      expect(response.data).not.toBeUndefined();
-      expect(response.status).toBe(201);
-      expect(response.data).toHaveProperty("id");
-      expect(response.data).toHaveProperty("name", "Test Category");
+      expect(status).toBe(201);
+      expect(oldCategory).not.toBeNull();
+      expect(oldCategory).not.toBeUndefined();
+      expect(oldCategory).toHaveProperty("id");
+      expect(oldCategory).toHaveProperty("name", "Hello Category");
 
-      const resp = await api.categories({ id: response.data!.id }).delete();
-      expect(resp.data).not.toBeNull();
-      expect(resp.data).not.toBeUndefined();
-      expect(resp.status).toBe(200);
-      expect(resp.data![0]).toHaveProperty("id");
-      expect(resp.data![0]).toHaveProperty("name", "Test Category");
-      expect(resp.data![0]).toHaveProperty("imageId");
-      expect(resp.data![1]).toHaveProperty("id");
-      expect(resp.data![1]).toHaveProperty("key");
-      expect(resp.data![1]).toHaveProperty("url");
-      expect(resp.data![1]).toHaveProperty("altText", "Test Category");
-      expect(resp.data![1]).toHaveProperty("isThumbnail", true);
-      expect(resp.data![1]).toHaveProperty("productId", null);
+      const { data: category, status: newStatus } = await api
+        .categories({ id: oldCategory!.id })
+        .delete();
+      expect(newStatus).toBe(200);
+      expect(category).not.toBeNull();
+      expect(category).not.toBeUndefined();
+      expect(category).toHaveProperty("id");
+      expect(category).toHaveProperty("name", "Hello Category");
+      expect(category).toHaveProperty("image");
     });
   });
 
