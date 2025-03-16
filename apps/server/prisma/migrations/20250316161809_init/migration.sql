@@ -79,7 +79,7 @@ CREATE TABLE "Category" (
 CREATE TABLE "Attribute" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "categoryId" TEXT,
+    "categoryId" TEXT NOT NULL,
 
     CONSTRAINT "Attribute_pkey" PRIMARY KEY ("id")
 );
@@ -204,9 +204,6 @@ CREATE UNIQUE INDEX "Category_name_key" ON "Category"("name");
 CREATE UNIQUE INDEX "Category_imageId_key" ON "Category"("imageId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Attribute_name_key" ON "Attribute"("name");
-
--- CreateIndex
 CREATE UNIQUE INDEX "Attribute_categoryId_name_key" ON "Attribute"("categoryId", "name");
 
 -- CreateIndex
@@ -255,10 +252,10 @@ ALTER TABLE "Comment" ADD CONSTRAINT "Comment_userId_fkey" FOREIGN KEY ("userId"
 ALTER TABLE "Category" ADD CONSTRAINT "Category_imageId_fkey" FOREIGN KEY ("imageId") REFERENCES "Image"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Attribute" ADD CONSTRAINT "Attribute_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Attribute" ADD CONSTRAINT "Attribute_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AttributeValue" ADD CONSTRAINT "AttributeValue_attributeId_fkey" FOREIGN KEY ("attributeId") REFERENCES "Attribute"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "AttributeValue" ADD CONSTRAINT "AttributeValue_attributeId_fkey" FOREIGN KEY ("attributeId") REFERENCES "Attribute"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Image" ADD CONSTRAINT "Image_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE SET NULL ON UPDATE CASCADE;

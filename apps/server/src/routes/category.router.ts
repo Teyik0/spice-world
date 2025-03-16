@@ -3,7 +3,7 @@ import type { UploadedFileData } from "uploadthing/types";
 import { deleteFiles, uploadFile } from "../libs/images";
 import prisma from "../libs/prisma";
 import { tryCatch } from "../libs/trycatch";
-import { prismaErrorPlugin } from "../plugins/prisma-error";
+import { prismaErrorPlugin } from "../plugins/prisma.plugin";
 
 export const categoryRouter = new Elysia({
   name: "categories",

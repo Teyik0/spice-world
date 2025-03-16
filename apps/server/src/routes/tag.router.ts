@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import prisma from "../libs/prisma";
-import { prismaErrorPlugin } from "../plugins/prisma-error";
+import { prismaErrorPlugin } from "../plugins/prisma.plugin";
 import { TagPlainInputCreate, TagPlainInputUpdate } from "../prismabox/Tag";
 
 export const tagRouter = new Elysia({

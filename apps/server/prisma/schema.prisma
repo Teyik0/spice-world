@@ -93,6 +93,7 @@ model Category {
 
 model Attribute {
   id   String @id @default(uuid())
+  /// @prismabox.options{ pattern: "^[a-z][a-z ]*$" }
   name String
 
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -105,6 +106,7 @@ model Attribute {
 
 model AttributeValue {
   id    String @id @default(uuid())
+  /// @prismabox.options{ pattern: "^[a-z][a-z ]*$" }
   value String
 
   attribute   Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)

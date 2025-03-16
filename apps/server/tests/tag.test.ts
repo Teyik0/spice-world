@@ -22,15 +22,16 @@ describe("Tags routes test", () => {
   describe("Create new tag - POST/", () => {
     it("should create a tag", async () => {
       for (let i = 0; i < 25; i++) {
+        const char = String.fromCharCode(97 + i);
         const { data, status } = await api.tags.index.post({
-          name: `other${i}`,
-          badgeColor: `#FF03${i > 9 ? i : `2${i}`}`,
+          name: `tag ${char}`,
+          badgeColor: `#FF032F`,
         });
 
         expect(status).toBe(201);
         expect(data?.id).toBeDefined();
-        expect(data?.name).toBe(`other${i}`);
-        expect(data?.badgeColor).toBe(`#FF03${i > 9 ? i : `2${i}`}`);
+        expect(data?.name).toBe(`tag ${char}`);
+        expect(data?.badgeColor).toBe(`#FF032F`);
         expect(data?.createdAt).toBeDefined();
         expect(data?.updatedAt).toBeDefined();
       }
@@ -189,18 +190,18 @@ describe("Tags routes test", () => {
         query: {
           skip: 0,
           take: 40,
-          name: "other",
+          name: "tag",
         },
       });
       if (!data) throw new Error("No data found");
-      expect(data.length).toBe(25);
+      expect(data.length).toBe((await prisma.tag.count()) - 1);
     });
   });
 
   describe("Delete tags - DELETE/:id", () => {
     it("should delete a tag", async () => {
       const { data: createdTag } = await api.tags.index.post({
-        name: "tag-to-delete",
+        name: "tag to delete",
         badgeColor: "#FF0323",
       });
 
@@ -221,7 +222,7 @@ describe("Tags routes test", () => {
   describe("Update tags - PATCH/:id", () => {
     it("should update a tag", async () => {
       const { data: createdTag } = await api.tags.index.post({
-        name: "original-name",
+        name: "original name",
         badgeColor: "#FF0323",
       });
       expect(createdTag).toBeDefined();
@@ -229,13 +230,13 @@ describe("Tags routes test", () => {
       const { data: updatedTag } = await api
         .tags({ id: createdTag!.id })
         .patch({
-          name: "updated-name",
+          name: "updated name",
           badgeColor: "#00FF00",
         });
 
       expect(updatedTag).toBeDefined();
       expect(updatedTag!.id).toBe(createdTag!.id);
-      expect(updatedTag!.name).toBe("updated-name");
+      expect(updatedTag!.name).toBe("updated name");
       expect(updatedTag!.badgeColor).toBe("#00FF00");
     });
   });

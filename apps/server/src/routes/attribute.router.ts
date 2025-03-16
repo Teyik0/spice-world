@@ -1,11 +1,16 @@
 import { Elysia, t } from "elysia";
 import prisma from "../libs/prisma";
+import { prismaErrorPlugin } from "../plugins/prisma.plugin";
+
+const nameType = t.String({ pattern: "^[a-z][a-z ]*$" });
 
 export const attributeRouter = new Elysia({
   name: "attributes",
   prefix: "/attributes",
   tags: ["Attributes"],
 })
+  .use(prismaErrorPlugin("Attribute"))
+  .model({ name: t.String({ pattern: "^[a-z][a-z ]*$" }) })
   .get(
     "/",
     async ({ query: { categoryId } }) =>
@@ -38,33 +43,36 @@ export const attributeRouter = new Elysia({
     },
     {
       body: t.Object({
-        name: t.String(),
+        name: nameType,
         categoryId: t.String({ format: "uuid" }),
-        values: t.Array(t.String(), { minItems: 1 }),
+        values: t.Array(nameType, {
+          minItems: 1,
+        }),
       }),
     },
   )
-  // Additional routes for managing single attributes
   .guard({ params: t.Object({ id: t.String({ format: "uuid" }) }) })
-  .get("/:id", async ({ params: { id } }) =>
-    prisma.attribute.findUnique({
+  .get("/:id", async ({ params: { id }, error }) => {
+    const attribute = await prisma.attribute.findUnique({
       where: { id },
       include: { values: true, category: true },
-    }),
-  )
+    });
+
+    return attribute ?? error("Not Found", "Attribute not found");
+  })
   .patch(
     "/:id",
-    async ({ params: { id }, body }) =>
+    async ({ params: { id }, body: { name } }) =>
       prisma.attribute.update({
         where: { id },
         data: {
-          name: body.name,
+          name: name,
         },
         include: { values: true },
       }),
     {
       body: t.Object({
-        name: t.String(),
+        name: nameType,
       }),
     },
   )
@@ -73,42 +81,40 @@ export const attributeRouter = new Elysia({
       where: { id },
     }),
   )
-  // Add a separate route group for attribute values
+  .post(
+    "/:id/values",
+    async ({ body, set, params: { id } }) => {
+      set.status = "Created";
+      return await prisma.attributeValue.create({
+        data: {
+          value: body.value,
+          attributeId: id,
+        },
+      });
+    },
+    {
+      body: t.Object({
+        value: nameType,
+      }),
+    },
+  )
   .group("/values", (app) =>
     app
-      .post(
-        "/",
-        async ({ body, set }) => {
-          set.status = "Created";
-          return await prisma.attributeValue.create({
-            data: {
-              value: body.value,
-              attributeId: body.attributeId,
-            },
-          });
-        },
-        {
-          body: t.Object({
-            value: t.String(),
-            attributeId: t.String({ format: "uuid" }),
-          }),
-        },
-      )
       .guard({ params: t.Object({ id: t.String({ format: "uuid" }) }) })
       .patch(
-        "/values/:id",
-        async ({ params: { id }, body }) =>
+        "/:id",
+        async ({ params: { id }, body: { value } }) =>
           prisma.attributeValue.update({
             where: { id },
-            data: { value: body.value },
+            data: { value },
           }),
         {
           body: t.Object({
-            value: t.String(),
+            value: nameType,
           }),
         },
       )
-      .delete("/values/:id", async ({ params: { id } }) =>
+      .delete("/:id", async ({ params: { id } }) =>
         prisma.attributeValue.delete({
           where: { id },
         }),

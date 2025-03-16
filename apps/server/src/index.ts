@@ -29,8 +29,8 @@ const app = new Elysia()
   .all("/api/auth/*", "TO-DO AUTH HANDLER")
   .use(tagRouter)
   .use(categoryRouter)
-  .use(productsRouter)
   .use(attributeRouter)
+  .use(productsRouter)
   .listen(3000);
 
 export type App = typeof app;

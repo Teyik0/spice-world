@@ -1,10 +1,11 @@
 import prisma from "../../src/libs/prisma";
 
-const data = await prisma.$transaction([
-  prisma.category.deleteMany(),
-  prisma.tag.deleteMany(),
-  prisma.product.deleteMany(),
-  prisma.image.deleteMany(),
-]);
-
-console.log(data);
+export const resetDb = async () =>
+  await prisma.$transaction([
+    prisma.attributeValue.deleteMany(),
+    prisma.attribute.deleteMany(),
+    prisma.category.deleteMany(),
+    prisma.product.deleteMany(),
+    prisma.image.deleteMany(),
+    prisma.tag.deleteMany(),
+  ]);

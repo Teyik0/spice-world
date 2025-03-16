@@ -1,4 +1,7 @@
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+import {
+    PrismaClientKnownRequestError,
+    PrismaClientUnknownRequestError,
+} from "@prisma/client/runtime/library";
 import { Elysia } from "elysia";
 
 export type Entity =
@@ -15,7 +18,18 @@ export const prismaErrorPlugin = (entity: Entity) =>
   new Elysia({
     name: "prisma-error-handler",
   }).onError({ as: "scoped" }, ({ error, set }) => {
+    if (error instanceof PrismaClientUnknownRequestError) {
+      set.status = "Internal Server Error";
+      console.error(error);
+      return {
+        error: set.status,
+        message: error.message,
+        cause: error.cause,
+      };
+    }
+
     if (!(error instanceof PrismaClientKnownRequestError)) {
+      // Let elysia handle the error if it's not a Prisma error
       return;
     }
 
