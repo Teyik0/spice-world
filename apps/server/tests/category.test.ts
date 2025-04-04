@@ -2,7 +2,7 @@ import { treaty } from "@elysiajs/eden";
 import type { Category } from "@prisma/client";
 import type { BunFile } from "bun";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { deleteFiles } from "../src/libs/images";
+import { utapi } from "../src/libs/images";
 import prisma from "../src/libs/prisma";
 import { categoryRouter } from "../src/routes/category.router";
 import {
@@ -51,7 +51,7 @@ describe("Category routes test", () => {
       const file = Bun.file(filePath);
       const { data } = await postCategory("Test Category", file);
 
-      await deleteFiles(data!.image.key);
+      await utapi.deleteFiles(data!.image.key);
       await prisma.$transaction([
         prisma.category.delete({ where: { id: data!.id } }),
         prisma.image.delete({ where: { id: data!.image.id } }),
@@ -72,7 +72,7 @@ describe("Category routes test", () => {
       expect(error).not.toBeUndefined();
       expect(error).not.toBeNull();
 
-      await deleteFiles(data!.image.key);
+      await utapi.deleteFiles(data!.image.key);
       await prisma.$transaction([
         prisma.category.delete({ where: { id: data!.id } }),
         prisma.image.delete({ where: { id: data!.image.id } }),
@@ -274,7 +274,7 @@ describe("Category routes test", () => {
       expect(resp.data).toHaveProperty("name", "New Category");
       expect(resp.data?.image).not.toBe(dummyCategory?.image);
 
-      await deleteFiles(resp.data!.image.key);
+      await utapi.deleteFiles(resp.data!.image.key);
       await prisma.$transaction([
         prisma.category.delete({ where: { id: dummyCategory!.id } }),
         prisma.image.delete({ where: { id: dummyCategory!.image.id } }),

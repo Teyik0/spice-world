@@ -2,7 +2,7 @@ import { Elysia, t } from "elysia";
 import prisma from "../libs/prisma";
 import { prismaErrorPlugin } from "../plugins/prisma.plugin";
 
-const nameType = t.String({ pattern: "^[a-z][a-z ]*$" });
+export const nameType = t.String({ pattern: "^[a-zà-ÿ][a-zà-ÿ ]*$" });
 
 export const attributeRouter = new Elysia({
   name: "attributes",

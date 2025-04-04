@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import type { UploadedFileData } from "uploadthing/types";
-import { deleteFiles, uploadFile } from "../libs/images";
+import { uploadFile, utapi } from "../libs/images";
 import prisma from "../libs/prisma";
 import { tryCatch } from "../libs/trycatch";
 import { prismaErrorPlugin } from "../plugins/prisma.plugin";
@@ -70,7 +70,7 @@ export const categoryRouter = new Elysia({
         }),
       );
       if (prismaError) {
-        await deleteFiles(image.key); // Cleanup uploaded file
+        await utapi.deleteFiles(image.key); // Cleanup uploaded file
         throw prismaError;
       }
 
@@ -125,7 +125,7 @@ export const categoryRouter = new Elysia({
     {
       afterResponse: async ({ category }) => {
         if (!category) return;
-        const { success } = await deleteFiles(category.image.key);
+        const { success } = await utapi.deleteFiles(category.image.key);
         if (!success) {
           console.warn(`Failed to delete image ${category.image.key}`);
         }
@@ -166,7 +166,7 @@ export const categoryRouter = new Elysia({
         }),
       );
       if (prismaError) {
-        newFile && (await deleteFiles(newFile.key));
+        newFile && (await utapi.deleteFiles(newFile.key));
         throw prismaError;
       }
       return data;
@@ -178,7 +178,7 @@ export const categoryRouter = new Elysia({
       }),
       afterResponse: async ({ category, body: { file } }) => {
         if (!file || !category) return;
-        const { success } = await deleteFiles(category.image.key);
+        const { success } = await utapi.deleteFiles(category.image.key);
         if (!success) {
           console.warn(`Failed to delete image ${category.image.key}`);
         }

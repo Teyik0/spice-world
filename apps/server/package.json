@@ -18,14 +18,20 @@
     "@elysiajs/opentelemetry": "^1.2.0",
     "@elysiajs/swagger": "^1.2.2",
     "@prisma/client": "^6.5.0",
-    "better-auth": "^1.2.4",
+    "better-auth": "^1.2.5",
     "elysia": "^1.2.25",
     "sharp": "^0.33.5",
-    "uploadthing": "^7.5.2"
+    "uploadthing": "^7.6.0"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.5",
+    "@types/bun": "^1.2.8",
     "prisma": "^6.5.0",
     "prismabox": "^1.1.24"
+  },
+  "prettier": {
+    "semi": true,
+    "tabWidth": 1,
+    "singleQuote": true,
+    "trailingComma": "none"
   }
 }
