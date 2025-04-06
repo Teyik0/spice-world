@@ -145,7 +145,7 @@ export const productsRouter = new Elysia({
       error
     }) => {
       const { data: uploadedImages, error: uploadError } = await uploadFiles(
-        name.toLowerCase(),
+        name,
         images
       );
       if (uploadError || !uploadedImages) {
@@ -496,134 +496,80 @@ export const productsRouter = new Elysia({
     }
   )
   // Special endpoints for image management
-  .group('/:id/images', (app) =>
-    app
-      .post(
-        '/',
-        async ({ product, body: { images }, set, error }) => {
-          // Upload new images
-          const { data: uploadedImgs, error: uploadError } = await uploadFiles(
-            product.name,
-            images
-          );
+  .post(
+    '/:id/images',
+    async ({ product, body: { images }, set, error }) => {
+      const { data: uploadedImgs, error: uploadError } = await uploadFiles(
+        product.name,
+        images
+      );
 
-          if (uploadError || !uploadedImgs) {
-            return error('Precondition Failed', uploadError || 'Upload failed');
-          }
+      if (uploadError || !uploadedImgs) {
+        return error('Precondition Failed', uploadError || 'Upload failed');
+      }
 
+      const { data: updatedImgs, error: prismaError } = await tryCatch(
+        prisma.$transaction(async (tx) => {
           // Create the new image records
-          const { data: updatedImgs, error: prismaError } = await tryCatch(
-            prisma.$transaction(
-              uploadedImgs.map((img) =>
-                prisma.image.create({
-                  data: {
-                    key: img.key,
-                    url: img.ufsUrl,
-                    altText: `${product.name} image`,
-                    isThumbnail: false,
-                    productId: product.id
-                  }
-                })
-              )
+          const newImages = await Promise.all(
+            uploadedImgs.map((img) =>
+              tx.image.create({
+                data: {
+                  key: img.key,
+                  url: img.ufsUrl,
+                  altText: `${product.name} image`,
+                  isThumbnail: false,
+                  productId: product.id
+                }
+              })
             )
           );
 
-          if (prismaError) {
-            // Clean up uploaded files
-            await Promise.all(
-              uploadedImgs.map((img) => utapi.deleteFiles(img.key))
-            );
-            throw prismaError;
-          }
-
-          set.status = 'Created';
-          return updatedImgs;
-        },
-        {
-          body: t.Object({
-            images: t.Array(t.File({ type: 'image' }), {
-              minItems: 1
-            })
-          }),
-          beforeHandle: ({ product, body: { images }, error }) => {
-            if (images && images.length > 0) {
-              const totalImageCount = product.images.length + images.length;
-              if (totalImageCount > MAX_IMAGES_PER_PRODUCT) {
-                return error(
-                  'Precondition Failed',
-                  'Maximum number of images exceeded'
-                );
-              }
-            }
-          }
-        }
-      )
-      .guard({
-        params: t.Object({ imageId: t.String({ format: 'uuid' }) })
-      })
-      .resolve(async ({ params: { imageId }, product, error }) => {
-        // Ensure the image exists and belongs to the product
-        const image = await prisma.image.findFirst({
-          where: {
-            id: imageId,
-            productId: product.id
-          }
-        });
-
-        if (!image) {
-          return error('Not Found', 'Image not found for this product');
-        }
-
-        return { image };
-      })
-      .patch(
-        '/:imageId',
-        async ({ image, body }) => {
-          return prisma.image.update({
-            where: { id: image.id },
+          // Update the product's image array
+          const updatedProduct = await tx.product.update({
+            where: { id: product.id },
             data: {
-              altText: body.altText,
-              isThumbnail: body.isThumbnail
+              images: {
+                connect: newImages.map((img) => ({ id: img.id }))
+              }
+            },
+            include: {
+              images: true
             }
           });
-        },
-        {
-          body: t.Object({
-            altText: t.Optional(t.String()),
-            isThumbnail: t.Optional(t.Boolean())
-          }),
-          afterHandle: async ({ body, image, product }) => {
-            // If setting this image as thumbnail, unset all others
-            if (body.isThumbnail) {
-              await prisma.image.updateMany({
-                where: {
-                  productId: product.id,
-                  id: { not: image.id }
-                },
-                data: {
-                  isThumbnail: false
-                }
-              });
-            }
-          }
-        }
-      )
-      .delete(
-        '/:imageId',
-        async ({ image }) => {
-          return prisma.image.delete({
-            where: { id: image.id }
-          });
-        },
-        {
-          afterResponse: async ({ image }) => {
-            if (!image) return;
 
-            const { success } = await deleteFiles(image.key);
-            if (!success) {
-              console.warn(`Failed to delete image ${image.key}`);
-            }
+          return updatedProduct.images;
+        })
+      );
+
+      if (prismaError) {
+        // Clean up uploaded files
+        await Promise.all(
+          uploadedImgs.map((img) => utapi.deleteFiles(img.key))
+        );
+        throw prismaError;
+      }
+
+      set.status = 'Created';
+      return updatedImgs;
+    },
+    {
+      body: t.Object({
+        images: t.Array(t.File({ type: 'image' }), {
+          minItems: 1,
+          maxItems: MAX_IMAGES_PER_PRODUCT
+        })
+      }),
+      beforeHandle: ({ product, body: { images }, error }) => {
+        if (images && images.length > 0) {
+          const totalImageCount = product.images.length + images.length;
+          if (totalImageCount > MAX_IMAGES_PER_PRODUCT) {
+            return error(
+              'Precondition Failed',
+              'Maximum number of images exceeded'
+            );
           }
         }
-      )
+      }
+    }
   );

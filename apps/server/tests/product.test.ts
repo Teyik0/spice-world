@@ -345,7 +345,7 @@ describe('Product routes test', () => {
 
   describe('DELETE /products/:id', () => {
     it('should delete a product successfully', async () => {
-      const productToDelete = testProducts[0];
+      const productToDelete = testProducts[7];
 
       const { data, status } = await api
         .products({ id: productToDelete.id })
@@ -372,6 +372,54 @@ describe('Product routes test', () => {
         .delete();
 
       expect(status).toBe(404);
+      expect(error).not.toBeNull();
+    });
+  });
+
+  describe('POST /products/:id/images', () => {
+    it('should upload new images successfully', async () => {
+      const productToUpdate = testProducts[1];
+      const filePath1 = `${import.meta.dir}/public/cumin.webp`;
+      const filePath2 = `${import.meta.dir}/public/curcuma.jpg`;
+
+      const { data, status } = await api
+        .products({ id: productToUpdate.id })
+        .images.post({
+          images: [Bun.file(filePath1), Bun.file(filePath2)]
+        });
+
+      expect(status).toBe(201);
+      expect(data).not.toBeNull();
+      expect(Array.isArray(data)).toBe(true);
+      expect(data?.length).toBe(productToUpdate.images.length + 2);
+
+      for (const image of data!) {
+        expect(image.productId).toBe(productToUpdate.id);
+        expect(image.url).toBeDefined();
+        expect(image.key).toBeDefined();
+        const { success } = await utapi.deleteFiles(image.key);
+        expect(success).toBe(true);
+      }
+    });
+
+    it('should return an error if the maximum number of images is exceeded', async () => {
+      const productToUpdate = testProducts[1];
+      const filePath1 = `${import.meta.dir}/public/cumin.webp`;
+      const filePath2 = `${import.meta.dir}/public/feculents.jpeg`;
+      const filePath3 = `${import.meta.dir}/public/garlic.webp`;
+
+      // Upload initial images to reach the limit
+      const { error, status } = await api
+        .products({ id: productToUpdate.id })
+        .images.post({
+          images: [
+            Bun.file(filePath1),
+            Bun.file(filePath2),
+            Bun.file(filePath3)
+          ]
+        });
+
+      expect(status).toBe(412); // Precondition Failed
       expect(error).not.toBeNull();
     });
   });
