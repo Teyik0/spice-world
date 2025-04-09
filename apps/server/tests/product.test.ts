@@ -15,7 +15,7 @@ import {
 } from './utils/dummy-attributes';
 import { createDummyTags } from './utils/dummy-tags';
 import { resetDb } from './utils/reset-db';
-import { utapi } from '../src/libs/images';
+import { utapi } from '../src/lib/images';
 
 const api = treaty(productsRouter);
 

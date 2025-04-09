@@ -2,13 +2,13 @@ import { treaty } from "@elysiajs/eden";
 import type { Category } from "@prisma/client";
 import type { BunFile } from "bun";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { utapi } from "../src/libs/images";
-import prisma from "../src/libs/prisma";
+import { utapi } from "../src/lib/images";
+import prisma from "../src/lib/prisma";
 import { categoryRouter } from "../src/routes/category.router";
 import {
   createDummyCategory,
   deleteDummyCategory,
-} from "./utils/dummy-category";
+} from "./utils/dummy-categories";
 
 const api = treaty(categoryRouter);
 

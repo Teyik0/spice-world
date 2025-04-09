@@ -1,4 +1,4 @@
-import prisma from '../../src/libs/prisma';
+import prisma from '../../src/lib/prisma';
 
 export const createDummyTags = async () => {
   const tag1 = await prisma.tag.create({

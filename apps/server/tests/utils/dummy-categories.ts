@@ -1,4 +1,4 @@
-import prisma from "../../src/libs/prisma";
+import prisma from "../../src/lib/prisma";
 
 export const createDummyCategory = async () => {
   const images = await prisma.image.createManyAndReturn({

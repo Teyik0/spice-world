@@ -1,7 +1,7 @@
 import { treaty } from "@elysiajs/eden";
 import type { Attribute, AttributeValue, Category } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import prisma from "../src/libs/prisma";
+import prisma from "../src/lib/prisma";
 import { attributeRouter } from "../src/routes/attribute.router";
 import { resetDb } from "./utils/reset-db";
 

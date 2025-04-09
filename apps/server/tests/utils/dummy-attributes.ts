@@ -1,5 +1,5 @@
 import type { Attribute, AttributeValue } from '@prisma/client';
-import prisma from '../../src/libs/prisma';
+import prisma from '../../src/lib/prisma';
 
 export type AttributeWithValues = Attribute & {
   values: AttributeValue[];

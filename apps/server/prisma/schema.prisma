@@ -1,5 +1,8 @@
+
 generator client {
-  provider = "prisma-client-js"
+  provider     = "prisma-client"
+  output       = "../src/prisma"
+  moduleFormat = "esm"
 }
 
 generator prismabox {
@@ -16,30 +19,50 @@ datasource db {
 }
 
 model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
+  id                    String    @id @default(cuid())
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  idToken               String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("account")
+}
 
-  @@unique([provider, providerAccountId])
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
 }
 
 model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime
+  updatedAt DateTime
+
+  impersonatedBy String?
+
+  @@unique([token])
+  @@map("session")
 }
 
 model User {
@@ -53,6 +76,14 @@ model User {
   Comments      Comment[]
   Order         Order[]
   role          ROLE      @default(USER)
+  createdAt     DateTime
+  updatedAt     DateTime
+
+  banned     Boolean?
+  banReason  String?
+  banExpires DateTime?
+
+  @@map("user")
 }
 
 model VerificationToken {
@@ -80,6 +111,7 @@ model Comment {
 }
 
 //PRODUCTS
+
 model Category {
   id      String @id @default(uuid())
   /// @prismabox.options{ pattern: "^[A-Z][a-zA-Z ]*$" }

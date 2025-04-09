@@ -1,5 +1,5 @@
 import type { Category, Image, Product, ProductVariant } from '@prisma/client';
-import prisma from '../../src/libs/prisma';
+import prisma from '../../src/lib/prisma';
 
 const categoriesData = [
   {

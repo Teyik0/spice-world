@@ -3,9 +3,9 @@ import type {
   ProductStatus as PrismaProductStatus
 } from '@prisma/client';
 import { Elysia, t } from 'elysia';
-import { uploadFiles, utapi } from '../libs/images';
-import prisma from '../libs/prisma';
-import { tryCatch } from '../libs/trycatch';
+import { uploadFiles, utapi } from '../lib/images';
+import prisma from '../lib/prisma';
+import { tryCatch } from '../lib/trycatch';
 import { prismaErrorPlugin } from '../plugins/prisma.plugin';
 import { ProductStatus } from '../prismabox/ProductStatus';
 import type { UploadedFileData } from 'uploadthing/types';
@@ -52,12 +52,12 @@ export const productsRouter = new Elysia({
           },
           ...(categories && categories.length > 0
             ? {
-                category: {
-                  name: {
-                    in: categories
-                  }
+              category: {
+                name: {
+                  in: categories
                 }
               }
+            }
             : {})
         },
         include: {
@@ -162,12 +162,12 @@ export const productsRouter = new Elysia({
             categoryId,
             ...(tags &&
               tags.length > 0 && {
-                tags: {
-                  connect: tags.map((tagId) => ({
-                    id: tagId
-                  }))
-                }
-              }),
+              tags: {
+                connect: tags.map((tagId) => ({
+                  id: tagId
+                }))
+              }
+            }),
             ...(uploadedImages.length > 0 && {
               images: {
                 createMany: {

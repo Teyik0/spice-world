@@ -1,8 +1,8 @@
 import { Elysia, t } from "elysia";
 import type { UploadedFileData } from "uploadthing/types";
-import { uploadFile, utapi } from "../libs/images";
-import prisma from "../libs/prisma";
-import { tryCatch } from "../libs/trycatch";
+import { uploadFile, utapi } from "../lib/images";
+import prisma from "../lib/prisma";
+import { tryCatch } from "../lib/trycatch";
 import { prismaErrorPlugin } from "../plugins/prisma.plugin";
 
 export const categoryRouter = new Elysia({
