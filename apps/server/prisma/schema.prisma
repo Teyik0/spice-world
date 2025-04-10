@@ -1,4 +1,3 @@
-
 generator client {
   provider     = "prisma-client"
   output       = "../src/prisma"
@@ -56,8 +55,8 @@ model Session {
   expiresAt DateTime
   ipAddress String?
   userAgent String?
-  createdAt DateTime
-  updatedAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   impersonatedBy String?
 
@@ -69,15 +68,15 @@ model User {
   id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
-  emailVerified DateTime?
+  emailVerified Boolean   @default(false)
   image         String?
   accounts      Account[]
   sessions      Session[]
   Comments      Comment[]
   Order         Order[]
-  role          ROLE      @default(USER)
-  createdAt     DateTime
-  updatedAt     DateTime
+  role          String    @default("user")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   banned     Boolean?
   banReason  String?
@@ -92,11 +91,6 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
-}
-
-enum ROLE {
-  USER
-  ADMIN
 }
 
 model Comment {
