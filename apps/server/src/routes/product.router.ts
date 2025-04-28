@@ -1,42 +1,32 @@
-import type {
-  Prisma,
-  ProductStatus as PrismaProductStatus
-} from '@prisma/client';
-import { Elysia, t } from 'elysia';
-import { uploadFiles, utapi } from '../lib/images';
-import prisma from '../lib/prisma';
-import { tryCatch } from '../lib/trycatch';
-import { prismaErrorPlugin } from '../plugins/prisma.plugin';
-import { ProductStatus } from '../prismabox/ProductStatus';
-import type { UploadedFileData } from 'uploadthing/types';
+import { Elysia, t } from 'elysia'
+import type { UploadedFileData } from 'uploadthing/types'
+import { uploadFiles, utapi } from '../lib/images'
+import { prisma } from '../lib/prisma'
+import { tryCatch } from '../lib/trycatch'
+import { prismaErrorPlugin } from '../plugins/prisma.plugin'
+import type { Prisma, ProductStatus as PrismaProductStatus } from '../prisma/client'
+import { ProductStatus } from '../prismabox/ProductStatus'
 
-const SortField = t.Union([
-  t.Literal('name'),
-  t.Literal('createdAt'),
-  t.Literal('updatedAt'),
-  t.Literal('price')
-]);
-const SortDirection = t.Union([t.Literal('asc'), t.Literal('desc')]);
+const SortField = t.Union([t.Literal('name'), t.Literal('createdAt'), t.Literal('updatedAt'), t.Literal('price')])
+const SortDirection = t.Union([t.Literal('asc'), t.Literal('desc')])
 export const nameType = t.String({
   pattern: '^[A-ZÀ-Ý][a-zà-ÿ ]*$',
-  default: 'Hello world'
-});
+  default: 'Hello world',
+})
 
-const MAX_IMAGES_PER_PRODUCT = 5;
+const MAX_IMAGES_PER_PRODUCT = 5
 
 export const productsRouter = new Elysia({
   name: 'products',
   prefix: '/products',
-  tags: ['Products']
+  tags: ['Products'],
 })
   .use(prismaErrorPlugin('Product'))
   .get(
     '/',
-    async ({
-      query: { skip, take, name, status, categories, sortBy, sortDir }
-    }) => {
-      const direction = sortDir || 'asc';
-      const orderByField = sortBy || 'name';
+    async ({ query: { skip, take, name, status, categories, sortBy, sortDir } }) => {
+      const direction = sortDir || 'asc'
+      const orderByField = sortBy || 'name'
 
       // Base query
       const baseQuery: Prisma.ProductFindManyArgs = {
@@ -45,72 +35,68 @@ export const productsRouter = new Elysia({
         distinct: ['id'],
         where: {
           status: {
-            equals: status
+            equals: status,
           },
           name: {
-            contains: name
+            contains: name,
           },
           ...(categories && categories.length > 0
             ? {
-              category: {
-                name: {
-                  in: categories
-                }
+                category: {
+                  name: {
+                    in: categories,
+                  },
+                },
               }
-            }
-            : {})
+            : {}),
         },
         include: {
           category: true,
           images: true,
           variants: {
             orderBy: {
-              price: direction
+              price: direction,
             },
             include: {
-              attributeValues: true
-            }
+              attributeValues: true,
+            },
           },
-          tags: true
-        }
-      };
+          tags: true,
+        },
+      }
 
       // Add sorting
       if (sortBy === 'price') {
         // Fetch products with variants ordered by price
         const products = (await prisma.product.findMany(baseQuery)) as Array<{
-          id: string;
-          name: string;
-          slug: string;
-          description: string;
-          status: PrismaProductStatus;
-          categoryId: string | null;
-          createdAt: Date;
-          updatedAt: Date;
+          id: string
+          name: string
+          slug: string
+          description: string
+          status: PrismaProductStatus
+          categoryId: string | null
+          createdAt: Date
+          updatedAt: Date
           variants: Array<{
-            price: number;
-          }>;
-        }>;
+            price: number
+          }>
+        }>
 
         // Sort products by the price of the first variant
         products.sort((a, b) => {
-          const aMinPrice =
-            a.variants.length > 0 ? a.variants[0].price : Infinity;
-          const bMinPrice =
-            b.variants.length > 0 ? b.variants[0].price : Infinity;
-          return direction === 'asc'
-            ? aMinPrice - bMinPrice
-            : bMinPrice - aMinPrice;
-        });
+          const aMinPrice = a.variants.length > 0 ? a.variants[0].price : Infinity
+          const bMinPrice = b.variants.length > 0 ? b.variants[0].price : Infinity
+          return direction === 'asc' ? aMinPrice - bMinPrice : bMinPrice - aMinPrice
+        })
 
-        return products;
+        return products
       } else {
         return prisma.product.findMany({
           ...baseQuery,
           orderBy: {
-            [orderByField]: direction
-          }
-        });
+            [orderByField]: direction,
+          },
+        })
       }
     },
     {
@@ -121,35 +107,28 @@ export const productsRouter = new Elysia({
         status: t.Optional(ProductStatus),
         categories: t.Optional(t.Array(t.String())),
         sortBy: t.Optional(SortField),
-        sortDir: t.Optional(SortDirection)
-      })
-    }
+        sortDir: t.Optional(SortDirection),
+      }),
+    },
   )
   .get(
     '/count',
     async ({ query: { status } }) => {
-      const where = status ? { status } : {};
-      return prisma.product.count({ where });
+      const where = status ? { status } : {}
+      return prisma.product.count({ where })
     },
     {
       query: t.Object({
-        status: t.Optional(ProductStatus)
-      })
-    }
+        status: t.Optional(ProductStatus),
+      }),
+    },
   )
   .post(
     '/',
-    async ({
-      body: { name, description, categoryId, status, tags, variants, images },
-      set,
-      error
-    }) => {
-      const { data: uploadedImages, error: uploadError } = await uploadFiles(
-        name,
-        images
-      );
+    async ({ body: { name, description, categoryId, status, tags, variants, images }, set, error }) => {
+      const { data: uploadedImages, error: uploadError } = await uploadFiles(name, images)
       if (uploadError || !uploadedImages) {
-        return error('Precondition Failed', uploadError);
+        return error('Precondition Failed', uploadError)
       }
 
       const product = await prisma.$transaction(async (tx) => {
@@ -162,12 +141,12 @@ export const productsRouter = new Elysia({
             categoryId,
             ...(tags &&
               tags.length > 0 && {
-              tags: {
-                connect: tags.map((tagId) => ({
-                  id: tagId
-                }))
-              }
-            }),
+                tags: {
+                  connect: tags.map((tagId) => ({
+                    id: tagId,
+                  })),
+                },
+              }),
             ...(uploadedImages.length > 0 && {
               images: {
                 createMany: {
@@ -175,18 +154,18 @@ export const productsRouter = new Elysia({
                     key: img.key,
                     url: img.ufsUrl,
                     altText: `${name} image ${index + 1}`,
-                    isThumbnail: index === 0 // First image is thumbnail by default
-                  }))
-                }
-              }
-            })
+                    isThumbnail: index === 0, // First image is thumbnail by default
+                  })),
+                },
+              },
+            }),
           },
           include: {
             category: true,
             tags: true,
-            images: true
-          }
-        });
+            images: true,
+          },
+        })
 
         if (variants && variants.length > 0) {
           await Promise.all(
@@ -199,12 +178,12 @@ export const productsRouter = new Elysia({
                   stock: variant.stock || 0,
                   currency: variant.currency || 'EUR',
                   attributeValues: {
-                    connect: variant.attributeValueIds.map((id) => ({ id }))
-                  }
-                }
-              })
-            )
-          );
+                    connect: variant.attributeValueIds.map((id) => ({ id })),
+                  },
+                },
+              }),
+            ),
+          )
         }
 
         // Return the product with all relations
@@ -216,15 +195,15 @@ export const productsRouter = new Elysia({
             images: true,
             variants: {
               include: {
-                attributeValues: true
-              }
-            }
-          }
-        });
-      });
+                attributeValues: true,
+              },
+            },
+          },
+        })
+      })
 
-      set.status = 'Created';
-      return product;
+      set.status = 'Created'
+      return product
     },
     {
       body: t.Object({
@@ -232,9 +211,7 @@ export const productsRouter = new Elysia({
         description: t.String(),
         categoryId: t.Optional(t.String({ format: 'uuid' })),
         status: t.Optional(ProductStatus),
-        tags: t.Optional(
-          t.ArrayString(t.String({ format: 'uuid' }), { minItems: 1 })
-        ),
+        tags: t.Optional(t.ArrayString(t.String({ format: 'uuid' }), { minItems: 1 })),
         variants: t.Optional(
           t.ArrayString(
             t.Object({
@@ -242,29 +219,26 @@ export const productsRouter = new Elysia({
               sku: t.Optional(t.String()),
               stock: t.Optional(t.Number({ minimum: 0, default: 0 })),
               currency: t.Optional(t.String({ default: 'EUR' })),
-              attributeValueIds: t.Array(t.String({ format: 'uuid' }))
-            })
-          )
+              attributeValueIds: t.Array(t.String({ format: 'uuid' })),
+            }),
+          ),
         ),
         images: t.Files({
           type: 'image',
           minItems: 1,
-          maxItems: MAX_IMAGES_PER_PRODUCT
-        })
+          maxItems: MAX_IMAGES_PER_PRODUCT,
+        }),
       }),
       beforeHandle: async ({ body: { name }, error }) => {
         const existingProduct = await prisma.product.findFirst({
-          where: { name }
-        });
+          where: { name },
+        })
 
         if (existingProduct) {
-          return error(
-            'Conflict',
-            `Product with name "${name}" already exists`
-          );
+          return error('Conflict', `Product with name "${name}" already exists`)
         }
-      }
-    }
+      },
+    },
   )
   .guard({ params: t.Object({ id: t.String({ format: 'uuid' }) }) })
   .resolve(async ({ params: { id }, error }) => {
@@ -276,47 +250,37 @@ export const productsRouter = new Elysia({
         tags: true,
         variants: {
           include: {
-            attributeValues: true
-          }
-        }
-      }
-    });
+            attributeValues: true,
+          },
+        },
+      },
+    })
 
     if (!product) {
-      return error('Not Found', 'Product not found');
+      return error('Not Found', 'Product not found')
     }
 
-    return { product };
+    return { product }
   })
   .get('/:id', async ({ product }) => product)
   .patch(
     '/:id',
-    async ({
-      product,
-      body: { name, description, categoryId, status, tags, variants, images },
-      error
-    }) => {
+    async ({ product, body: { name, description, categoryId, status, tags, variants, images }, error }) => {
       // 1. Handle new image uploads if any
-      let uploadedImages: UploadedFileData[] | null = null;
+      let uploadedImages: UploadedFileData[] | null = null
       if (images && images.length > 0) {
-        const totalImageCount = product.images.length + images.length;
+        const totalImageCount = product.images.length + images.length
         if (totalImageCount > MAX_IMAGES_PER_PRODUCT) {
-          return error(
-            'Precondition Failed',
-            'Maximum number of images exceeded'
-          );
+          return error('Precondition Failed', 'Maximum number of images exceeded')
         }
 
-        const { data, error: uploadError } = await uploadFiles(
-          name || product.name,
-          images
-        );
+        const { data, error: uploadError } = await uploadFiles(name || product.name, images)
 
         if (uploadError) {
-          return error('Precondition Failed', uploadError);
+          return error('Precondition Failed', uploadError)
         }
 
-        uploadedImages = data || [];
+        uploadedImages = data || []
       }
 
       // 2. Update the product with transaction to ensure consistency
@@ -329,9 +293,9 @@ export const productsRouter = new Elysia({
             description,
             status,
             ...(categoryId && {
-              category: { connect: { id: categoryId } }
-            })
-          };
+              category: { connect: { id: categoryId } },
+            }),
+          }
 
           // 2.2. Handle tag updates if provided
           if (tags && tags?.length > 0) {
@@ -340,15 +304,15 @@ export const productsRouter = new Elysia({
               where: { id: product.id },
               data: {
                 tags: {
-                  set: [] // Remove all existing connections
-                }
-              }
-            });
+                  set: [], // Remove all existing connections
+                },
+              },
+            })
 
             // 2.2.2 Then connect the new tags
             productUpdate.tags = {
-              connect: tags.map((tagId) => ({ id: tagId }))
-            };
+              connect: tags.map((tagId) => ({ id: tagId })),
+            }
           }
 
           // 2.3. Add new images if provided
@@ -359,10 +323,10 @@ export const productsRouter = new Elysia({
                   key: img.key,
                   url: img.ufsUrl,
                   altText: `${name || product.name} image`,
-                  isThumbnail: false // Don't automatically make new images thumbnails
-                }))
-              }
-            };
+                  isThumbnail: false, // Don't automatically make new images thumbnails
+                })),
+              },
+            }
           }
 
           // 2.4. Update the product with all non-variant changes
@@ -372,18 +336,18 @@ export const productsRouter = new Elysia({
             include: {
               variants: {
                 include: {
-                  attributeValues: true
-                }
-              }
-            }
-          });
+                  attributeValues: true,
+                },
+              },
+            },
+          })
 
           // 2.5 Handling variants
           if (variants && variants.length > 0) {
             // 2.5.1 Disconnect all existing variants first
             await tx.productVariant.deleteMany({
-              where: { productId: product.id }
-            });
+              where: { productId: product.id },
+            })
 
             // 2.5.2 Then connect the new variants
             await Promise.all(
@@ -396,12 +360,12 @@ export const productsRouter = new Elysia({
                     stock: variant.stock || 0,
                     currency: variant.currency || 'EUR',
                     attributeValues: {
-                      connect: variant.attributeValueIds.map((id) => ({ id }))
-                    }
-                  }
-                })
-              )
-            );
+                      connect: variant.attributeValueIds.map((id) => ({ id })),
+                    },
+                  },
+                }),
+              ),
+            )
           }
 
           // Return the updated product with all relations
@@ -413,25 +377,23 @@ export const productsRouter = new Elysia({
               images: true,
               variants: {
                 include: {
-                  attributeValues: true
-                }
-              }
-            }
-          });
-        })
-      );
+                  attributeValues: true,
+                },
+              },
+            },
+          })
+        }),
+      )
 
       if (prismaError) {
         // Clean up uploaded images if transaction failed
         if (uploadedImages && uploadedImages.length > 0) {
-          await Promise.all(
-            uploadedImages.map((img) => utapi.deleteFiles(img.key))
-          );
+          await Promise.all(uploadedImages.map((img) => utapi.deleteFiles(img.key)))
         }
-        throw prismaError;
+        throw prismaError
       }
 
-      return updatedProduct;
+      return updatedProduct
     },
     {
       body: t.Object({
@@ -447,15 +409,13 @@ export const productsRouter = new Elysia({
               sku: t.Optional(t.String()),
               stock: t.Optional(t.Number({ minimum: 0, default: 0 })),
               currency: t.Optional(t.String({ default: 'EUR' })),
-              attributeValueIds: t.ArrayString(t.String({ format: 'uuid' }))
-            })
-          )
+              attributeValueIds: t.ArrayString(t.String({ format: 'uuid' })),
+            }),
+          ),
         ),
-        images: t.Optional(
-          t.Files({ type: 'image', maxItems: MAX_IMAGES_PER_PRODUCT })
-        )
-      })
-    }
+        images: t.Optional(t.Files({ type: 'image', maxItems: MAX_IMAGES_PER_PRODUCT })),
+      }),
+    },
   )
   .delete(
     '/:id',
@@ -463,8 +423,8 @@ export const productsRouter = new Elysia({
       const deletedProduct = await prisma.$transaction(async (tx) => {
         // Delete variants first
         await tx.productVariant.deleteMany({
-          where: { productId: product.id }
-        });
+          where: { productId: product.id },
+        })
 
         // Delete the product (will cascade delete images)
         return tx.product.delete({
@@ -472,40 +432,37 @@ export const productsRouter = new Elysia({
           include: {
             category: true,
             tags: true,
-            images: true
-          }
-        });
-      });
+            images: true,
+          },
+        })
+      })
 
-      return deletedProduct;
+      return deletedProduct
     },
     {
       afterResponse: async ({ product }) => {
-        if (!product || !product.images.length) return;
+        if (!product || !product.images.length) return
 
         // Clean up all image files
         await Promise.all(
           product.images.map(async (img) => {
-            const { success } = await utapi.deleteFiles(img.key);
+            const { success } = await utapi.deleteFiles(img.key)
             if (!success) {
-              console.warn(`Failed to delete image ${img.key}`);
+              console.warn(`Failed to delete image ${img.key}`)
             }
-          })
-        );
-      }
-    }
+          }),
+        )
+      },
+    },
   )
   // Special endpoints for image management
   .post(
     '/:id/images',
     async ({ product, body: { images }, set, error }) => {
-      const { data: uploadedImgs, error: uploadError } = await uploadFiles(
-        product.name,
-        images
-      );
+      const { data: uploadedImgs, error: uploadError } = await uploadFiles(product.name, images)
 
       if (uploadError || !uploadedImgs) {
-        return error('Precondition Failed', uploadError || 'Upload failed');
+        return error('Precondition Failed', uploadError || 'Upload failed')
       }
 
       const { data: updatedImgs, error: prismaError } = await tryCatch(
@@ -519,57 +476,52 @@ export const productsRouter = new Elysia({
                   url: img.ufsUrl,
                   altText: `${product.name} image`,
                   isThumbnail: false,
-                  productId: product.id
-                }
-              })
-            )
-          );
+                  productId: product.id,
+                },
+              }),
+            ),
+          )
 
           // Update the product's image array
           const updatedProduct = await tx.product.update({
             where: { id: product.id },
             data: {
               images: {
-                connect: newImages.map((img) => ({ id: img.id }))
-              }
+                connect: newImages.map((img) => ({ id: img.id })),
+              },
             },
             include: {
-              images: true
-            }
-          });
+              images: true,
+            },
+          })
 
-          return updatedProduct.images;
-        })
-      );
+          return updatedProduct.images
+        }),
+      )
 
       if (prismaError) {
         // Clean up uploaded files
-        await Promise.all(
-          uploadedImgs.map((img) => utapi.deleteFiles(img.key))
-        );
-        throw prismaError;
+        await Promise.all(uploadedImgs.map((img) => utapi.deleteFiles(img.key)))
+        throw prismaError
       }
 
-      set.status = 'Created';
-      return updatedImgs;
+      set.status = 'Created'
+      return updatedImgs
     },
     {
       body: t.Object({
         images: t.Array(t.File({ type: 'image' }), {
           minItems: 1,
-          maxItems: MAX_IMAGES_PER_PRODUCT
-        })
+          maxItems: MAX_IMAGES_PER_PRODUCT,
+        }),
       }),
       beforeHandle: ({ product, body: { images }, error }) => {
         if (images && images.length > 0) {
-          const totalImageCount = product.images.length + images.length;
+          const totalImageCount = product.images.length + images.length
           if (totalImageCount > MAX_IMAGES_PER_PRODUCT) {
-            return error(
-              'Precondition Failed',
-              'Maximum number of images exceeded'
-            );
+            return error('Precondition Failed', 'Maximum number of images exceeded')
           }
         }
-      }
-    }
-  );
+      },
+    },
+  )

@@ -1,5 +1,5 @@
 import { Elysia, t } from 'elysia'
-import prisma from '../lib/prisma'
+import { prisma } from '../lib/prisma'
 import { prismaErrorPlugin } from '../plugins/prisma.plugin'
 import { TagPlainInputCreate, TagPlainInputUpdate } from '../prismabox/Tag'
 
