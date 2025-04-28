@@ -1,10 +1,19 @@
 {
-  "name": "spice-world",
+  "name": "@spice-world/root",
   "version": "0.1.0",
   "type": "module",
   "private": true,
+  "scripts": {
+    "dev": "bun run dev.ts"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "patchedDependencies": {
+    "@elysiajs/eden@1.2.0": "patches/@elysiajs%2Feden@1.2.0.patch"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4"
+  }
 }

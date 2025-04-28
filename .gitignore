@@ -11,6 +11,7 @@
 **/out/
 **/build
 **/dist
+**/.react-email
 
 # Environment files
 **/.env
@@ -46,6 +47,7 @@
 
 # Project-specific ignores
 **/src/prismabox
+**/src/prisma
 
 # Misc package managers
 package-lock.json
