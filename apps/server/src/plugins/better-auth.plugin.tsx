@@ -2,12 +2,12 @@ import { VerifyEmail } from '@spice-world/emails/src/spiceworld-welcome'
 import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { admin, openAPI } from 'better-auth/plugins'
-import Elysia from 'elysia'
+import { Elysia } from 'elysia'
 import { Resend } from 'resend'
 import { prisma } from '../lib/prisma'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const from = 'Spice World <contact@spice-world.com>'
+const from = 'Spice World <theosamarasinghe@gmail.com>'
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -38,6 +38,32 @@ export const auth = betterAuth({
       })
     },
   },
+  user: {
+    additionalFields: {
+      role: {
+        type: 'string',
+        required: false,
+        defaultValue: 'user',
+        input: false, // don't allow user to set role
+      },
+    },
+    changeEmail: {
+      enabled: true,
+      sendChangeEmailVerification: async ({ user, url }) => {
+        await resend.emails.send({
+          from,
+          to: [user.email],
+          subject: 'Spice World - Verify your email',
+          react: <VerifyEmail verifyLink={url} />,
+        })
+      },
+    },
+  },
+  account: {
+    accountLinking: {
+      allowDifferentEmails: true,
+    },
+  },
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
@@ -46,8 +72,6 @@ export const auth = betterAuth({
   },
   plugins: [openAPI(), admin()],
 })
-
-export const openAPISchema = await auth.api.generateOpenAPISchema()
 
 export const betterAuthPlugin = new Elysia({
   name: 'better-auth',
@@ -61,14 +85,18 @@ export const betterAuthPlugin = new Elysia({
           headers,
         })
 
-        if (!session) return
+        if (!session) {
+          return { user: null, session: null }
+        }
 
         return {
-          user: session.user,
-          session: session.session,
+          user: session?.user,
+          session: session?.session,
         }
       },
     },
+  })
+  .macro({
     isLogin: {
       async resolve({ error, request: { headers } }) {
         const session = await auth.api.getSession({
@@ -83,6 +111,8 @@ export const betterAuthPlugin = new Elysia({
         }
       },
     },
+  })
+  .macro({
     isAdmin: {
       async resolve({ error, request: { headers } }) {
         const session = await auth.api.getSession({
@@ -99,4 +129,24 @@ export const betterAuthPlugin = new Elysia({
       },
     },
   })
-  .get('/api/user', ({ user }) => user, { user: true })
+  .get(
+    '/api/user',
+    ({ user, session }) => {
+      return { user, session }
+    },
+    { user: true },
+  )
+  .get(
+    '/api/is-admin',
+    ({ user, session }) => {
+      return { user, session }
+    },
+    { isAdmin: true },
+  )
+  .get(
+    '/api/is-loggin',
+    ({ user, session }) => {
+      return { user, session }
+    },
+    { isLogin: true },
+  )
