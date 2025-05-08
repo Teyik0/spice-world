@@ -10,9 +10,6 @@
     "apps/*",
     "packages/*"
   ],
-  "patchedDependencies": {
-    "@elysiajs/eden@1.2.0": "patches/@elysiajs%2Feden@1.2.0.patch"
-  },
   "devDependencies": {
     "@biomejs/biome": "1.9.4"
   }
