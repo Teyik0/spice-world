@@ -5,13 +5,15 @@ import { prisma } from '../lib/prisma'
 import { tryCatch } from '../lib/trycatch'
 import { prismaErrorPlugin } from '../plugins/prisma.plugin'
 import type { Prisma, ProductStatus as PrismaProductStatus } from '../prisma/client'
-import { ProductStatus } from '../prismabox/ProductStatus'
 
 const SortField = t.Union([t.Literal('name'), t.Literal('createdAt'), t.Literal('updatedAt'), t.Literal('price')])
 const SortDirection = t.Union([t.Literal('asc'), t.Literal('desc')])
 export const nameType = t.String({
   pattern: '^[A-ZÀ-Ý][a-zà-ÿ ]*$',
   default: 'Hello world',
+})
+export const ProductStatus = t.Union([t.Literal('DRAFT'), t.Literal('PUBLISHED'), t.Literal('ARCHIVED')], {
+  additionalProperties: false,
 })
 
 const MAX_IMAGES_PER_PRODUCT = 5
@@ -125,10 +127,10 @@ export const productsRouter = new Elysia({
   )
   .post(
     '/',
-    async ({ body: { name, description, categoryId, status, tags, variants, images }, set, error }) => {
+    async ({ body: { name, description, categoryId, status: productStatus, tags, variants, images }, set, status }) => {
       const { data: uploadedImages, error: uploadError } = await uploadFiles(name, images)
       if (uploadError || !uploadedImages) {
-        return error('Precondition Failed', uploadError)
+        return status('Precondition Failed', uploadError)
       }
 
       const product = await prisma.$transaction(async (tx) => {
@@ -137,7 +139,7 @@ export const productsRouter = new Elysia({
             name,
             slug: name.toLowerCase().replace(/\s+/g, '-'),
             description,
-            status: status || 'DRAFT',
+            status: productStatus || 'DRAFT',
             categoryId,
             ...(tags &&
               tags.length > 0 && {
@@ -224,24 +226,23 @@ export const productsRouter = new Elysia({
           ),
         ),
         images: t.Files({
-          type: 'image',
           minItems: 1,
           maxItems: MAX_IMAGES_PER_PRODUCT,
         }),
       }),
-      beforeHandle: async ({ body: { name }, error }) => {
+      beforeHandle: async ({ body: { name }, status }) => {
         const existingProduct = await prisma.product.findFirst({
           where: { name },
         })
 
         if (existingProduct) {
-          return error('Conflict', `Product with name "${name}" already exists`)
+          return status('Conflict', `Product with name "${name}" already exists`)
         }
       },
     },
   )
   .guard({ params: t.Object({ id: t.String({ format: 'uuid' }) }) })
-  .resolve(async ({ params: { id }, error }) => {
+  .resolve(async ({ params: { id }, status }) => {
     const product = await prisma.product.findUnique({
       where: { id },
       include: {
@@ -257,7 +258,7 @@ export const productsRouter = new Elysia({
     })
 
     if (!product) {
-      return error('Not Found', 'Product not found')
+      return status('Not Found', 'Product not found')
     }
 
     return { product }
@@ -265,19 +266,23 @@ export const productsRouter = new Elysia({
   .get('/:id', async ({ product }) => product)
   .patch(
     '/:id',
-    async ({ product, body: { name, description, categoryId, status, tags, variants, images }, error }) => {
+    async ({
+      product,
+      body: { name, description, categoryId, status: productStatus, tags, variants, images },
+      status,
+    }) => {
       // 1. Handle new image uploads if any
       let uploadedImages: UploadedFileData[] | null = null
       if (images && images.length > 0) {
         const totalImageCount = product.images.length + images.length
         if (totalImageCount > MAX_IMAGES_PER_PRODUCT) {
-          return error('Precondition Failed', 'Maximum number of images exceeded')
+          return status('Precondition Failed', 'Maximum number of images exceeded')
         }
 
         const { data, error: uploadError } = await uploadFiles(name || product.name, images)
 
         if (uploadError) {
-          return error('Precondition Failed', uploadError)
+          return status('Precondition Failed', uploadError)
         }
 
         uploadedImages = data || []
@@ -291,7 +296,7 @@ export const productsRouter = new Elysia({
             name,
             slug: name ? name.toLowerCase().replace(/\s+/g, '-') : undefined,
             description,
-            status,
+            status: productStatus,
             ...(categoryId && {
               category: { connect: { id: categoryId } },
             }),
@@ -413,7 +418,7 @@ export const productsRouter = new Elysia({
             }),
           ),
         ),
-        images: t.Optional(t.Files({ type: 'image', maxItems: MAX_IMAGES_PER_PRODUCT })),
+        images: t.Optional(t.Files({ maxItems: MAX_IMAGES_PER_PRODUCT })),
       }),
     },
   )
@@ -458,11 +463,11 @@ export const productsRouter = new Elysia({
   // Special endpoints for image management
   .post(
     '/:id/images',
-    async ({ product, body: { images }, set, error }) => {
+    async ({ product, body: { images }, set, status }) => {
       const { data: uploadedImgs, error: uploadError } = await uploadFiles(product.name, images)
 
       if (uploadError || !uploadedImgs) {
-        return error('Precondition Failed', uploadError || 'Upload failed')
+        return status('Precondition Failed', uploadError || 'Upload failed')
       }
 
       const { data: updatedImgs, error: prismaError } = await tryCatch(
@@ -510,16 +515,13 @@ export const productsRouter = new Elysia({
     },
     {
       body: t.Object({
-        images: t.Array(t.File({ type: 'image' }), {
-          minItems: 1,
-          maxItems: MAX_IMAGES_PER_PRODUCT,
-        }),
+        images: t.Files({ minItems: 1, maxItems: MAX_IMAGES_PER_PRODUCT }),
       }),
-      beforeHandle: ({ product, body: { images }, error }) => {
+      beforeHandle: ({ product, body: { images }, status }) => {
         if (images && images.length > 0) {
           const totalImageCount = product.images.length + images.length
           if (totalImageCount > MAX_IMAGES_PER_PRODUCT) {
-            return error('Precondition Failed', 'Maximum number of images exceeded')
+            return status('Precondition Failed', 'Maximum number of images exceeded')
           }
         }
       },

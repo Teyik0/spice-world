@@ -1,6 +1,7 @@
 import { PrismaClient } from '../prisma/client'
 
 const prismaClientSingleton = () => {
+  // const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
   return new PrismaClient()
 }
 

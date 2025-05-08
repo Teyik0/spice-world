@@ -65,7 +65,7 @@ describe('Attribute routes test', () => {
 
   describe('GET /attributes', () => {
     it('should return all attributes', async () => {
-      const { data, status } = await api.attributes.index.get({ query: {} })
+      const { data, status } = await api.attributes.get({ query: {} })
       expect(status).toBe(200)
       expect(data).not.toBeNull()
       expect(Array.isArray(data)).toBe(true)
@@ -81,7 +81,7 @@ describe('Attribute routes test', () => {
     })
 
     it('should filter attributes by categoryId', async () => {
-      const { data, status } = await api.attributes.index.get({
+      const { data, status } = await api.attributes.get({
         query: {
           categoryId: testCategory.id,
         },
@@ -149,7 +149,7 @@ describe('Attribute routes test', () => {
         values: ['powder', 'whole', 'flakes'],
       }
 
-      const { data, status } = await api.attributes.index.post(newAttrData)
+      const { data, status } = await api.attributes.post(newAttrData)
 
       expect(status).toBe(201)
       expect(data).not.toBeNull()
@@ -185,7 +185,7 @@ describe('Attribute routes test', () => {
         values: ['powder', 'whole', 'flakes'],
       }
 
-      const { error, status } = await api.attributes.index.post(newAttrData)
+      const { error, status } = await api.attributes.post(newAttrData)
 
       expect(status).toBe(422)
       expect(error).not.toBeNull()
@@ -198,7 +198,7 @@ describe('Attribute routes test', () => {
         values: [], // Empty array should be rejected
       }
 
-      const { error, status } = await api.attributes.index.post(newAttrData)
+      const { error, status } = await api.attributes.post(newAttrData)
 
       expect(status).toBe(422)
       expect(error).not.toBeNull()
@@ -211,7 +211,7 @@ describe('Attribute routes test', () => {
         values: ['Valid', 'Invalid Value', '123invalid'], // Invalid formats
       }
 
-      const { error, status } = await api.attributes.index.post(newAttrData)
+      const { error, status } = await api.attributes.post(newAttrData)
 
       expect(status).toBe(422)
       expect(error).not.toBeNull()
@@ -224,7 +224,7 @@ describe('Attribute routes test', () => {
         values: ['powder', 'whole', 'flakes'],
       }
 
-      const { error, status } = await api.attributes.index.post(newAttrData)
+      const { error, status } = await api.attributes.post(newAttrData)
 
       expect(status).toBe(409) // Foreign key constraint violation prisma P2003
       expect(error).not.toBeNull()

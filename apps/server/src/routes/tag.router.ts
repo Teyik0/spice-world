@@ -1,7 +1,6 @@
 import { Elysia, t } from 'elysia'
 import { prisma } from '../lib/prisma'
 import { prismaErrorPlugin } from '../plugins/prisma.plugin'
-import { TagPlainInputCreate, TagPlainInputUpdate } from '../prismabox/Tag'
 
 export const tagRouter = new Elysia({
   name: 'tags',
@@ -41,18 +40,21 @@ export const tagRouter = new Elysia({
       })
     },
     {
-      body: TagPlainInputCreate,
+      body: t.Object({
+        name: t.String({ pattern: '^[a-z][a-z ]*$' }),
+        badgeColor: t.String({ pattern: '^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$' }),
+      }),
     },
   )
   .get('/count', async () => prisma.tag.count())
   .guard({ params: t.Object({ id: t.String({ format: 'uuid' }) }) })
-  .get('/:id', async ({ params: { id }, error }) => {
+  .get('/:id', async ({ params: { id }, status }) => {
     const tag = await prisma.tag.findUnique({
       where: {
         id,
       },
     })
-    return tag ?? error('Not Found', 'Tag not found')
+    return tag ?? status('Not Found', 'Tag not found')
   })
   .delete('/:id', async ({ params: { id } }) =>
     prisma.tag.delete({
@@ -74,6 +76,9 @@ export const tagRouter = new Elysia({
         },
       }),
     {
-      body: TagPlainInputUpdate,
+      body: t.Object({
+        name: t.Optional(t.String({ pattern: '^[a-z][a-z ]*$' })),
+        badgeColor: t.Optional(t.String({ pattern: '^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$' })),
+      }),
     },
   )

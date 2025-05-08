@@ -26,7 +26,7 @@ describe('Category routes test', () => {
   })
 
   const postCategory = async (name: string, file: BunFile) => {
-    const data = await api.categories.index.post({
+    const data = await api.categories.post({
       name,
       file,
     })
@@ -58,7 +58,7 @@ describe('Category routes test', () => {
       const file = Bun.file(filePath)
       const { data } = await postCategory('Other Category', file)
 
-      const { error, status } = await api.categories.index.post({
+      const { error, status } = await api.categories.post({
         name: 'Other Category',
         file,
       })
@@ -77,7 +77,7 @@ describe('Category routes test', () => {
     it('should error if file is not a webp - (1)', async () => {
       const filePath = `${import.meta.dir}/public/file.txt`
 
-      const response = await api.categories.index.post({
+      const response = await api.categories.post({
         name: 'Other Category',
         file: Bun.file(filePath),
       })
@@ -88,7 +88,7 @@ describe('Category routes test', () => {
     it('should error if file is not a webp - (2)', async () => {
       const filePath = `${import.meta.dir}/public/feculents.jpeg`
 
-      const response = await api.categories.index.post({
+      const response = await api.categories.post({
         name: 'Other Category',
         file: Bun.file(filePath),
       })
@@ -100,7 +100,7 @@ describe('Category routes test', () => {
       const filePath = `${import.meta.dir}/public/cumin.webp`
       const file = Bun.file(filePath)
 
-      const response = await api.categories.index.post({
+      const response = await api.categories.post({
         file: file,
         name: 'hello',
       })
@@ -112,7 +112,7 @@ describe('Category routes test', () => {
       const filePath = `${import.meta.dir}/public/cumin.webp`
       const file = Bun.file(filePath)
 
-      const response = await api.categories.index.post({
+      const response = await api.categories.post({
         file: file,
         name: 'hello world!',
       })
@@ -124,7 +124,7 @@ describe('Category routes test', () => {
       const filePath = `${import.meta.dir}/public/cumin.webp`
       const file = Bun.file(filePath)
 
-      const response = await api.categories.index.post({
+      const response = await api.categories.post({
         file: file,
         name: 'hello 5',
       })
@@ -135,7 +135,7 @@ describe('Category routes test', () => {
 
   describe('Get existing categories - GET/ & GET/:id', async () => {
     it('should return all categories', async () => {
-      const response = await api.categories.index.get({
+      const response = await api.categories.get({
         query: {
           skip: 0,
           take: 100,
@@ -175,7 +175,7 @@ describe('Category routes test', () => {
     it('should post and delete category', async () => {
       const filePath = `${import.meta.dir}/public/cumin.webp`
       const file = Bun.file(filePath)
-      const { status, data: oldCategory } = await api.categories.index.post({
+      const { status, data: oldCategory } = await api.categories.post({
         name: 'Hello Category',
         file: file,
       })
@@ -215,7 +215,7 @@ describe('Category routes test', () => {
     beforeAll(async () => {
       const filePath = `${import.meta.dir}/public/cumin.webp`
       const file = Bun.file(filePath)
-      const response = await api.categories.index.post({
+      const response = await api.categories.post({
         name: 'Dummy Category',
         file: file,
       })

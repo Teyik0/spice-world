@@ -1,12 +1,12 @@
 import { treaty } from '@elysiajs/eden'
-import type { Category, Image, Product, ProductVariant, Tag } from '../src/prisma/client'
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
+import { utapi } from '../src/lib/images'
+import type { Category, Image, Product, ProductVariant, Tag } from '../src/prisma/client'
 import { productsRouter } from '../src/routes/product.router'
-import { createDummyProducts } from './utils/dummy-products'
 import { createDummyAttributes, type AttributeWithValues } from './utils/dummy-attributes'
+import { createDummyProducts } from './utils/dummy-products'
 import { createDummyTags } from './utils/dummy-tags'
 import { resetDb } from './utils/reset-db'
-import { utapi } from '../src/lib/images'
 
 const api = treaty(productsRouter)
 
@@ -38,7 +38,7 @@ describe('Product routes test', () => {
 
   describe('GET /products', () => {
     it('should return a list of products sorted by name', async () => {
-      const { data, status } = await api.products.index.get({
+      const { data, status } = await api.products.get({
         query: { sortBy: 'name', sortDir: 'asc' },
       })
       expect(status).toBe(200)
@@ -60,7 +60,7 @@ describe('Product routes test', () => {
     })
 
     it('should return a list of products sorted by price', async () => {
-      const { data, status } = await api.products.index.get({
+      const { data, status } = await api.products.get({
         query: { sortBy: 'price', sortDir: 'asc' },
       })
 
@@ -85,7 +85,7 @@ describe('Product routes test', () => {
 
     it('should return a list of products filtered by category', async () => {
       const category = testCategories[0]
-      const { data, status } = await api.products.index.get({
+      const { data, status } = await api.products.get({
         query: { categories: [category.name] },
       })
 
@@ -100,7 +100,7 @@ describe('Product routes test', () => {
     })
 
     it('should return a list of products filtered by status', async () => {
-      const { data, status } = await api.products.index.get({
+      const { data, status } = await api.products.get({
         query: { status: 'PUBLISHED' },
       })
 
@@ -166,7 +166,7 @@ describe('Product routes test', () => {
         images: [Bun.file(filePath1), Bun.file(filePath2)],
       }
 
-      const { data, status } = await api.products.index.post({
+      const { data, status } = await api.products.post({
         name: newProduct.name,
         description: newProduct.description,
         categoryId: newProduct.categoryId,
@@ -214,7 +214,7 @@ describe('Product routes test', () => {
         images: [Bun.file(filePath1), Bun.file(filePath2)],
       }
 
-      const { error, status } = await api.products.index.post({
+      const { error, status } = await api.products.post({
         name: newProduct.name,
         description: newProduct.description,
         categoryId: newProduct.categoryId,

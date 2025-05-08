@@ -45,6 +45,7 @@ export const auth = betterAuth({
         required: false,
         defaultValue: 'user',
         input: false, // don't allow user to set role
+        returned: true,
       },
     },
     changeEmail: {

@@ -40,10 +40,10 @@ export const categoryRouter = new Elysia({
   )
   .post(
     '/',
-    async ({ body: { name, file }, error, set }) => {
+    async ({ body: { name, file }, status, set }) => {
       const { data: image, error: fileError } = await uploadFile(name, file)
       if (fileError || !image) {
-        return error('Precondition Failed', fileError || 'File upload succeeded but not data was returned')
+        return status('Precondition Failed', fileError || 'File upload succeeded but not data was returned')
       }
 
       const { data: category, error: prismaError } = await tryCatch(
@@ -79,12 +79,12 @@ export const categoryRouter = new Elysia({
         name: t.String({ pattern: '^[A-Z][a-zA-Z ]*$' }),
         file: t.File({ type: 'image/webp' }),
       }),
-      beforeHandle: async ({ body: { name }, error }) => {
+      beforeHandle: async ({ body: { name }, status }) => {
         const category = await prisma.category.findUnique({
           where: { name },
         })
         if (category) {
-          return error('Conflict', 'Category already exists')
+          return status('Conflict', 'Category already exists')
         }
       },
     },
@@ -131,13 +131,13 @@ export const categoryRouter = new Elysia({
   )
   .patch(
     '/:id',
-    async ({ category, body: { name, file }, error }) => {
+    async ({ category, body: { name, file }, status }) => {
       let newFile: UploadedFileData | null = null
 
       if (file) {
         const { data, error: err } = await uploadFile(name || category.name, file)
         if (!data || err) {
-          return error('Precondition Failed', err)
+          return status('Precondition Failed', err)
         }
         newFile = data
       }

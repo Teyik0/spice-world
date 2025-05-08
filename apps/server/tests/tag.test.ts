@@ -20,7 +20,7 @@ describe('Tags routes test', () => {
     it('should create a tag', async () => {
       for (let i = 0; i < 25; i++) {
         const char = String.fromCharCode(97 + i)
-        const { data, status } = await api.tags.index.post({
+        const { data, status } = await api.tags.post({
           name: `tag ${char}`,
           badgeColor: `#FF032F`,
         })
@@ -35,7 +35,7 @@ describe('Tags routes test', () => {
     })
 
     it('should throw an error if badge is not a color valid hex - (1)', async () => {
-      const { error, data } = await api.tags.index.post({
+      const { error, data } = await api.tags.post({
         name: 'data',
         badgeColor: 'F21DE2',
       })
@@ -48,7 +48,7 @@ describe('Tags routes test', () => {
 
     it('should throw an error if badge is not a color valid hex - (1)', async () => {
       // Hexadecimal color code must start with #
-      const { error, data } = await api.tags.index.post({
+      const { error, data } = await api.tags.post({
         name: 'data',
         badgeColor: 'F21DE2',
       })
@@ -61,7 +61,7 @@ describe('Tags routes test', () => {
 
     it('should throw an error if badge is not a color valid hex - (2)', async () => {
       // Hexadecimal color code must be 6 characters long
-      const { error, data } = await api.tags.index.post({
+      const { error, data } = await api.tags.post({
         name: 'data',
         badgeColor: '#00112233',
       })
@@ -74,7 +74,7 @@ describe('Tags routes test', () => {
 
     it('should throw an error if badge is not a color valid hex - (3)', async () => {
       // Hexadecimal color code must be 6 characters long
-      const { error, data } = await api.tags.index.post({
+      const { error, data } = await api.tags.post({
         name: 'data',
         badgeColor: '#00',
       })
@@ -87,7 +87,7 @@ describe('Tags routes test', () => {
 
     it('should throw an error if badge is not a color valid hex - (4)', async () => {
       // Hexadecimal color code must be between A-F
-      const { error, data } = await api.tags.index.post({
+      const { error, data } = await api.tags.post({
         name: 'data',
         badgeColor: '#GEZE02',
       })
@@ -101,7 +101,7 @@ describe('Tags routes test', () => {
 
   describe('Get tags by id - GET/:id', () => {
     it('should return a single tag', async () => {
-      const { data } = await api.tags.index.post({
+      const { data } = await api.tags.post({
         name: 'data',
         badgeColor: '#FF0323',
       })
@@ -125,7 +125,7 @@ describe('Tags routes test', () => {
 
   describe('Get tags - GET/', () => {
     it('should return 20 tags', async () => {
-      const { data } = await api.tags.index.get({
+      const { data } = await api.tags.get({
         query: {
           skip: 0,
           take: 20,
@@ -137,7 +137,7 @@ describe('Tags routes test', () => {
 
     it('should return all the tags in the database', async () => {
       const { data: totalTagNumber } = await api.tags.count.get()
-      const { data } = await api.tags.index.get({
+      const { data } = await api.tags.get({
         query: {
           skip: 0,
           take: totalTagNumber! + 40,
@@ -148,7 +148,7 @@ describe('Tags routes test', () => {
     })
 
     it('should return tags with pagination', async () => {
-      const { data } = await api.tags.index.get({
+      const { data } = await api.tags.get({
         query: {
           skip: 0,
           take: 10,
@@ -157,7 +157,7 @@ describe('Tags routes test', () => {
 
       expect(data?.length).toBe(10)
 
-      const { data: data2 } = await api.tags.index.get({
+      const { data: data2 } = await api.tags.get({
         query: {
           skip: 1,
           take: 10,
@@ -170,7 +170,7 @@ describe('Tags routes test', () => {
     })
 
     it('should return tags with specific search - (1)', async () => {
-      const { data } = await api.tags.index.get({
+      const { data } = await api.tags.get({
         query: {
           skip: 0,
           take: 10,
@@ -183,7 +183,7 @@ describe('Tags routes test', () => {
     })
 
     it('should return tags with specific search - (2)', async () => {
-      const { data } = await api.tags.index.get({
+      const { data } = await api.tags.get({
         query: {
           skip: 0,
           take: 40,
@@ -197,7 +197,7 @@ describe('Tags routes test', () => {
 
   describe('Delete tags - DELETE/:id', () => {
     it('should delete a tag', async () => {
-      const { data: createdTag } = await api.tags.index.post({
+      const { data: createdTag } = await api.tags.post({
         name: 'tag to delete',
         badgeColor: '#FF0323',
       })
@@ -214,7 +214,7 @@ describe('Tags routes test', () => {
 
   describe('Update tags - PATCH/:id', () => {
     it('should update a tag', async () => {
-      const { data: createdTag } = await api.tags.index.post({
+      const { data: createdTag } = await api.tags.post({
         name: 'original name',
         badgeColor: '#FF0323',
       })

@@ -1,15 +1,8 @@
 generator client {
   provider     = "prisma-client"
+  // previewFeatures = ["queryCompiler", "driverAdapters"]
   output       = "../src/prisma"
   moduleFormat = "esm"
-}
-
-generator prismabox {
-  provider                    = "prismabox"
-  output                      = "../src/prismabox"
-  typeboxImportVariableName   = "t"
-  typeboxImportDependencyName = "elysia"
-  inputModel                  = true
 }
 
 datasource db {

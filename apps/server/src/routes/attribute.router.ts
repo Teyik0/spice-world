@@ -52,13 +52,13 @@ export const attributeRouter = new Elysia({
     },
   )
   .guard({ params: t.Object({ id: t.String({ format: 'uuid' }) }) })
-  .get('/:id', async ({ params: { id }, error }) => {
+  .get('/:id', async ({ params: { id }, status }) => {
     const attribute = await prisma.attribute.findUnique({
       where: { id },
       include: { values: true, category: true },
     })
 
-    return attribute ?? error('Not Found', 'Attribute not found')
+    return attribute ?? status('Not Found', 'Attribute not found')
   })
   .patch(
     '/:id',
