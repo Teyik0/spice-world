@@ -55,10 +55,11 @@ const app = new Elysia()
   .guard({
     user: true,
   })
-  .onAfterResponse(({ user, path, set }) => {
+  .onAfterResponse(({ response, user, path, set }) => {
     console.log(`${formattedDate()} - RESPONSE ${path}`, {
       performance: `${(performance.now() / 1000).toFixed(2)} s`,
       status: set.status,
+      data: response,
       user: user ? user.id : 'anonymous',
     })
   })
