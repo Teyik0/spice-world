@@ -45,6 +45,8 @@ export const useListUsers = routeLoader$(async (requestEvent) => {
         searchField,
         searchValue,
         searchOperator: 'contains',
+        filterField: 'role',
+        filterValue: roleFilter,
         offset,
         sortBy: sortBy as 'name' | 'email' | 'createdAt',
         sortDirection: sortDirection as 'asc' | 'desc',
@@ -264,7 +266,7 @@ export default component$(() => {
       </Card.Root>
 
       {/* Results */}
-      <Card.Root class="rounded-lg">
+      <Card.Root class="rounded-lg mb-8">
         <Card.Header>
           <div class="flex items-center justify-between">
             <div>

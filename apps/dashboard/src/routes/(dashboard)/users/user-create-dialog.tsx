@@ -54,7 +54,7 @@ export const useFormAction = formAction$<CreateUserForm, UserWithRole>(async (va
 }, valiForm$(CreateUserSchema))
 
 export const CreateUserDialog = component$(() => {
-  const [createForm, { Form, Field }] = useForm<CreateUserForm, UserWithRole>({
+  const [form, { Form, Field }] = useForm<CreateUserForm, UserWithRole>({
     loader: { value: { name: '', email: '', password: '', role: 'user' } },
     action: useFormAction(),
     validate: valiForm$(CreateUserSchema),
@@ -63,16 +63,16 @@ export const CreateUserDialog = component$(() => {
   const show = useSignal(false)
 
   useTask$(({ track }) => {
-    const form = track(createForm)
-    if (form.response.status === 'success') {
-      show.value = false
+    const formdata = track(form)
+    if (formdata.response.status === 'success') {
       toast.success('User created successfully')
-      reset(createForm)
-    }
-    if (form.response.status === 'error') {
+      reset(form)
       show.value = false
-      toast.error(form.response.message)
-      form.response.status = undefined
+    }
+    if (formdata.response.status === 'error') {
+      toast.error(formdata.response.message)
+      formdata.response.status = undefined
+      show.value = false
     }
   })
 
@@ -152,12 +152,12 @@ export const CreateUserDialog = component$(() => {
               size="md"
               type="button"
               onClick$={() => (show.value = false)}
-              disabled={createForm.submitting}
+              disabled={form.submitting}
             >
               Cancel
             </Button>
-            <Button look="primary" size="md" type="submit" disabled={createForm.submitting}>
-              {createForm.submitting ? (
+            <Button look="primary" size="md" type="submit" disabled={form.submitting}>
+              {form.submitting ? (
                 <>
                   <LuLoader2 class="animate-spin h-4 w-4 mr-2" />
                   Creating...

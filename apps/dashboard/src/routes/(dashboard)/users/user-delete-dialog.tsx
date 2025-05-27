@@ -1,67 +1,28 @@
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { authClient, getBetterAuthCookie } from '@/lib/auth-client'
-import { FormError, formAction$, reset, useForm, valiForm$ } from '@modular-forms/qwik'
 import { cn } from '@qwik-ui/utils'
-import { component$, useSignal, useTask$ } from '@qwik.dev/core'
+import { $, component$, useSignal } from '@qwik.dev/core'
 import { LuAlertTriangle, LuLoader2, LuTrash2, LuX } from '@qwikest/icons/lucide'
 import type { UserWithRole } from 'better-auth/plugins'
 import { toast } from 'qwik-sonner'
-import * as v from 'valibot'
-
-const DeleteUserSchema = v.object({
-  userId: v.pipe(
-    v.string(),
-    v.nanoid('The Nano ID is badly formatted.'),
-    v.length(21, 'The Nano ID must be 21 characters long.'),
-  ),
-})
-
-export type DeleteUserForm = v.InferInput<typeof DeleteUserSchema>
-
-export const useFormDeleteAction = formAction$<DeleteUserForm>(async (values, { cookie }) => {
-  const response = await authClient.admin.removeUser(
-    {
-      userId: values.userId,
-    },
-    {
-      headers: {
-        cookie: getBetterAuthCookie(cookie),
-      },
-    },
-  )
-
-  if (response.data) {
-    return {
-      success: true,
-      message: 'User deleted successfully',
-    }
-  }
-
-  throw new FormError<DeleteUserForm>('Failed to delete user')
-}, valiForm$(DeleteUserSchema))
+import { useDeleteUser } from './layout'
 
 export const DeleteUserDialog = component$(({ user }: { user: UserWithRole }) => {
-  const [deleteForm, { Form, Field }] = useForm<DeleteUserForm>({
-    loader: { value: { userId: user.id } as DeleteUserForm },
-    action: useFormDeleteAction(),
-    validate: valiForm$(DeleteUserSchema),
-  })
+  const action = useDeleteUser()
 
   const show = useSignal(false)
+  const loading = useSignal(false)
 
-  useTask$(({ track }) => {
-    const form = track(deleteForm)
-    if (form.response.status === 'success') {
-      toast.success('User deleted successfully')
-      show.value = false
-      form.response.status = undefined
-      reset(deleteForm)
-    }
-    if (form.response.status === 'error') {
-      toast.error(`Failed to delete user: ${form.response.message}`)
-      form.response.status = undefined
-    }
+  const handleDelete = $(async () => {
+    loading.value = true
+    show.value = false
+
+    toast.promise(action.submit({ userId: user.id }), {
+      loading: `Deleting user: ${user.name}`,
+      success: 'User deleted successfully',
+      error: 'Failed to delete user',
+    })
+    loading.value = false
   })
 
   return (
@@ -85,41 +46,36 @@ export const DeleteUserDialog = component$(({ user }: { user: UserWithRole }) =>
           <div class="text-sm">
             <p class="font-medium mb-1">You are about to delete:</p>
             <p class="text-muted-foreground">
-              <span class="font-medium">{user.name || 'Unnamed User'}</span>
+              <span class="font-medium">{user.name}</span>
               <br />
               <span class="text-xs">{user.email}</span>
             </p>
           </div>
         </div>
-
-        <Form class="space-y-4">
-          <Field name="userId">{(field, props) => <input {...props} type="hidden" value={field.value} />}</Field>
-
-          <div class="flex justify-end gap-3">
-            <Button
-              look="secondary"
-              size="md"
-              type="button"
-              onClick$={() => (show.value = false)}
-              disabled={deleteForm.submitting}
-            >
-              Cancel
-            </Button>
-            <Button look="destructive" size="md" type="submit" disabled={deleteForm.submitting}>
-              {deleteForm.submitting ? (
-                <>
-                  <LuLoader2 class="animate-spin h-4 w-4 mr-2" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <LuTrash2 class="h-4 w-4 mr-2" />
-                  Delete User
-                </>
-              )}
-            </Button>
-          </div>
-        </Form>
+        <footer class="flex justify-end gap-4 mt-4">
+          <Button
+            look="secondary"
+            size="md"
+            type="button"
+            onClick$={() => (show.value = false)}
+            disabled={loading.value}
+          >
+            Cancel
+          </Button>
+          <Button look="destructive" size="md" type="submit" disabled={loading.value} onClick$={handleDelete}>
+            {loading.value ? (
+              <>
+                <LuLoader2 class="animate-spin h-4 w-4 mr-2" />
+                Deleting...
+              </>
+            ) : (
+              <>
+                <LuTrash2 class="h-4 w-4 mr-2" />
+                Delete User
+              </>
+            )}
+          </Button>
+        </footer>
 
         <Modal.Close
           class={cn(buttonVariants({ size: 'icon', look: 'ghost' }), 'absolute right-3 top-3')}
