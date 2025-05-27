@@ -7,6 +7,7 @@ import { FormError, formAction$, reset, useForm, valiForm$ } from '@modular-form
 import { cn } from '@qwik-ui/utils'
 import { component$, useSignal, useTask$ } from '@qwik.dev/core'
 import { LuLoader2, LuUserPlus, LuX } from '@qwikest/icons/lucide'
+import type { UserWithRole } from 'better-auth/plugins'
 import { toast } from 'qwik-sonner'
 import * as v from 'valibot'
 
@@ -27,7 +28,7 @@ const CreateUserSchema = v.object({
 
 export type CreateUserForm = v.InferInput<typeof CreateUserSchema>
 
-export const useFormCreateAction = formAction$<CreateUserForm>(async (values, { cookie }) => {
+export const useFormAction = formAction$<CreateUserForm, UserWithRole>(async (values, { cookie }) => {
   const { data, error } = await authClient.admin.createUser(
     {
       name: values.name,
@@ -49,14 +50,13 @@ export const useFormCreateAction = formAction$<CreateUserForm>(async (values, { 
       data: data.user,
     }
   }
-
   throw new FormError<CreateUserForm>(error.message || 'Failed to create user')
 }, valiForm$(CreateUserSchema))
 
 export const CreateUserDialog = component$(() => {
-  const [createForm, { Form, Field }] = useForm<CreateUserForm>({
-    loader: { value: { name: '', email: '', password: '', role: 'user' } as CreateUserForm },
-    action: useFormCreateAction(),
+  const [createForm, { Form, Field }] = useForm<CreateUserForm, UserWithRole>({
+    loader: { value: { name: '', email: '', password: '', role: 'user' } },
+    action: useFormAction(),
     validate: valiForm$(CreateUserSchema),
   })
 
