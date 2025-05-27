@@ -8,15 +8,28 @@ import { categoryRouter } from './routes/category.router'
 import { productsRouter } from './routes/product.router'
 import { tagRouter } from './routes/tag.router'
 
+const formattedDate = () =>
+  new Date().toLocaleString('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+
 const app = new Elysia()
   .use(opentelemetry())
   .use(
-    cors({
-      origin: ['http://localhost:3000', 'http://localhost:5173'],
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      credentials: true,
-      allowedHeaders: ['Content-Type', 'Authorization'],
-    }),
+    cors(
+      // {
+      //   origin: ['http://localhost:3000', 'http://localhost:5173'],
+      //   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      //   credentials: true,
+      //   allowedHeaders: ['Content-Type', 'Authorization'],
+      // }
+    ),
   )
   .use(
     swagger({
@@ -30,29 +43,28 @@ const app = new Elysia()
     }),
   )
   .onTransform(({ body, params, path, request: { method } }) => {
-    console.log(
-      `${new Date().toLocaleString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-      })} - ${method} ${path}`,
-      {
-        body,
-        params,
-      },
-    )
+    console.log(`${formattedDate()} - ${method} ${path}`, {
+      body,
+      params,
+    })
+  })
+  .onAfterResponse(() => {
+    return
   })
   .use(betterAuthPlugin)
   .guard({
     user: true,
   })
-  .onBeforeHandle(({ request, user, error }) => {
+  .onAfterResponse(({ user, path, set }) => {
+    console.log(`${formattedDate()} - RESPONSE ${path}`, {
+      performance: `${(performance.now() / 1000).toFixed(2)} s`,
+      status: set.status,
+      user: user ? user.id : 'anonymous',
+    })
+  })
+  .onBeforeHandle(({ request, user, status }) => {
     if (request.method !== 'GET' && (!user || user.role !== 'admin')) {
-      return error('Unauthorized', 'You need to be admin to perform this action')
+      return status('Unauthorized', 'You need to be admin to perform this action')
     }
   })
   .use(tagRouter)

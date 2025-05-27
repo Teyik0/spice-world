@@ -99,12 +99,12 @@ export const betterAuthPlugin = new Elysia({
   })
   .macro({
     isLogin: {
-      async resolve({ error, request: { headers } }) {
+      async resolve({ status, request: { headers } }) {
         const session = await auth.api.getSession({
           headers,
         })
 
-        if (!session) return error('Unauthorized')
+        if (!session) return status('Unauthorized')
 
         return {
           user: session.user,
@@ -115,13 +115,13 @@ export const betterAuthPlugin = new Elysia({
   })
   .macro({
     isAdmin: {
-      async resolve({ error, request: { headers } }) {
+      async resolve({ status, request: { headers } }) {
         const session = await auth.api.getSession({
           headers,
         })
 
-        if (!session) return error('Unauthorized')
-        if (session.user.role !== 'admin') return error('Unauthorized')
+        if (!session) return status('Unauthorized')
+        if (session.user.role !== 'admin') return status('Unauthorized')
 
         return {
           user: session.user,
@@ -145,7 +145,7 @@ export const betterAuthPlugin = new Elysia({
     { isAdmin: true },
   )
   .get(
-    '/api/is-loggin',
+    '/api/is-login',
     ({ user, session }) => {
       return { user, session }
     },

@@ -101,7 +101,6 @@ model Comment {
 
 model Category {
   id      String @id @default(uuid())
-  /// @prismabox.options{ pattern: "^[A-Z][a-zA-Z ]*$" }
   name    String @unique
   image   Image  @relation(fields: [imageId], references: [id])
   imageId String @unique
@@ -112,7 +111,6 @@ model Category {
 
 model Attribute {
   id   String @id @default(uuid())
-  /// @prismabox.options{ pattern: "^[a-z][a-z ]*$" }
   name String
 
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -125,7 +123,6 @@ model Attribute {
 
 model AttributeValue {
   id    String @id @default(uuid())
-  /// @prismabox.options{ pattern: "^[a-z][a-z ]*$" }
   value String
 
   attribute   Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
@@ -139,7 +136,6 @@ model AttributeValue {
 model Image {
   id          String  @id @default(uuid())
   key         String  @unique
-  /// @prismabox.options{ format: "uri" }
   url         String
   altText     String?
   isThumbnail Boolean @default(false)
@@ -152,7 +148,6 @@ model Image {
 
 model Product {
   id          String @id @default(uuid())
-  /// @prismabox.options{ pattern: "^[A-Z][a-z ]*$" }
   name        String @unique
   slug        String @unique
   description String
@@ -199,9 +194,7 @@ enum ProductStatus {
 
 model Tag {
   id         String    @id @default(uuid())
-  /// @prismabox.options{ pattern: "^[a-z][a-z ]*$" }
   name       String    @unique
-  /// @prismabox.options{ pattern: "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$" }
   badgeColor String
   Product    Product[]
 
