@@ -28,7 +28,7 @@ const CreateUserSchema = v.object({
 export type CreateUserForm = v.InferInput<typeof CreateUserSchema>
 
 export const useFormCreateAction = formAction$<CreateUserForm>(async (values, { cookie }) => {
-  const response = await authClient.admin.createUser(
+  const { data, error } = await authClient.admin.createUser(
     {
       name: values.name,
       email: values.email,
@@ -42,14 +42,15 @@ export const useFormCreateAction = formAction$<CreateUserForm>(async (values, { 
     },
   )
 
-  if (response.data) {
+  if (data) {
     return {
-      success: true,
+      status: 'success',
       message: 'User created successfully',
+      data: data.user,
     }
   }
 
-  throw new FormError<CreateUserForm>('Failed to create user')
+  throw new FormError<CreateUserForm>(error.message || 'Failed to create user')
 }, valiForm$(CreateUserSchema))
 
 export const CreateUserDialog = component$(() => {
@@ -64,13 +65,13 @@ export const CreateUserDialog = component$(() => {
   useTask$(({ track }) => {
     const form = track(createForm)
     if (form.response.status === 'success') {
-      toast.success('User created successfully')
       show.value = false
-      form.response.status = undefined
+      toast.success('User created successfully')
       reset(createForm)
     }
     if (form.response.status === 'error') {
-      toast.error(`Failed to create user: ${form.response.message}`)
+      show.value = false
+      toast.error(form.response.message)
       form.response.status = undefined
     }
   })
