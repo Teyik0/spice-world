@@ -32,8 +32,8 @@
 		"tailwindcss-animate": "^1.0.7",
 		"tw-animate-css": "^1.3.4",
 		"undici": "^7.11.0",
-		"vite": "5.3.5",
-		"vite-tsconfig-paths": "^4.3.2",
+		"vite": "7.0.0",
+		"vite-tsconfig-paths": "^5.1.4",
 		"@qwik.dev/router": "2.0.0-beta.2",
 		"@qwik.dev/core": "2.0.0-beta.2"
 	},
