@@ -36,7 +36,7 @@ jobs:
       - name: Get current package.json version
         id: version
         run: |
-          CURRENT_VERSION=$(bun --print "require('./package.json').version"")
+          CURRENT_VERSION=$(bun --print "require('./package.json').version")
           echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
           # Determine next version based on commits or manual input
