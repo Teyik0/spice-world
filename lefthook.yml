@@ -1,0 +1,136 @@
+pre-push:
+  jobs:
+    - name: packages audit
+      run: bun audit
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: files format
+      run: bun run format
+      glob:
+        - "*.js"
+        - "*.jsx"
+        - "*.ts"
+        - "*.tsx"
+        - "*.json"
+        - "*.jsonc"
+        - "*.css"
+      stage_fixed: true
+
+    - name: typescript check (server)
+      run: bun run tsc --noEmit
+      root: apps/server
+      glob: "*.{ts,tsx}"
+      stage_fixed: true
+
+    - name: typescript check (dashboard)
+      run: bun run tsc --noEmit
+      root: apps/dashboard
+      glob: "*.{ts,tsx}"
+      stage_fixed: true
+
+commit-msg:
+  jobs:
+    - name: conventional commit validation
+      run: |
+        # Read the commit message from the file passed as argument
+        COMMIT_MSG=$(cat $1)
+        FIRST_LINE=$(echo "$COMMIT_MSG" | head -n1)
+
+        echo "🔍 Validating commit message: $FIRST_LINE"
+
+        # Skip validation for merge commits
+        if echo "$FIRST_LINE" | grep -q "^Merge "; then
+          echo "⏭️ Skipping validation for merge commit"
+          exit 0
+        fi
+
+        # Skip validation for revert commits
+        if echo "$FIRST_LINE" | grep -q "^Revert "; then
+          echo "⏭️ Skipping validation for revert commit"
+          exit 0
+        fi
+
+        # Check conventional commit format
+        CONVENTIONAL_REGEX='^(feat|fix|docs|style|refactor|test|chore|perf|ci|build)(\(.+\))?!?: .+'
+        if ! echo "$FIRST_LINE" | grep -qE "$CONVENTIONAL_REGEX"; then
+          echo ""
+          echo "❌ Invalid commit message format!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Expected format: type(scope): description"
+          echo ""
+          echo "📝 Valid types:"
+          echo "   feat     - A new feature"
+          echo "   fix      - A bug fix"
+          echo "   docs     - Documentation only changes"
+          echo "   style    - Code style changes (formatting, etc.)"
+          echo "   refactor - Code refactoring"
+          echo "   test     - Adding or fixing tests"
+          echo "   chore    - Build process or auxiliary tool changes"
+          echo "   perf     - Performance improvements"
+          echo "   ci       - CI configuration changes"
+          echo "   build    - Build system changes"
+          echo ""
+          echo "💡 Examples:"
+          echo "   feat: add user authentication system"
+          echo "   fix(auth): resolve login timeout issue"
+          echo "   docs: update API documentation"
+          echo "   feat!: redesign user dashboard (breaking change)"
+          echo ""
+          echo "🚫 Your commit message: '$FIRST_LINE'"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          exit 1
+        fi
+
+        # Extract description after the colon
+        DESCRIPTION=$(echo "$FIRST_LINE" | sed 's/^[^:]*: *//')
+
+        # Check minimum description length
+        if [ ${#DESCRIPTION} -lt 5 ]; then
+          echo ""
+          echo "❌ Commit description too short!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Description must be at least 5 characters long"
+          echo "Your description: '$DESCRIPTION' (${#DESCRIPTION} characters)"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          exit 1
+        fi
+
+        # Check description doesn't end with period
+        if echo "$DESCRIPTION" | grep -q '\.$'; then
+          echo ""
+          echo "⚠️  Warning: Description shouldn't end with a period"
+          echo "Consider: '$(echo "$DESCRIPTION" | sed 's/\.$//')'"
+        fi
+
+        # Check description starts with lowercase (except for proper nouns)
+        FIRST_CHAR=$(echo "$DESCRIPTION" | cut -c1)
+        if echo "$FIRST_CHAR" | grep -q '[A-Z]'; then
+          # Allow common acronyms and proper nouns
+          if ! echo "$DESCRIPTION" | grep -qE '^(API|URL|HTTP|CSS|JS|TS|UI|UX|DB|SQL|JSON|XML|HTML|README|OAuth|JWT|CRUD)'; then
+            echo ""
+            echo "⚠️  Warning: Description should start with lowercase"
+            echo "Consider: '$(echo "$DESCRIPTION" | sed 's/^./\L&/')'"
+          fi
+        fi
+
+        # Check for imperative mood (common mistakes)
+        if echo "$DESCRIPTION" | grep -qE '^(added|fixed|updated|removed|changed|improved)'; then
+          echo ""
+          echo "⚠️  Warning: Use imperative mood (add, fix, update, remove, change, improve)"
+          SUGGESTED=$(echo "$DESCRIPTION" | sed -E 's/^added/add/; s/^fixed/fix/; s/^updated/update/; s/^removed/remove/; s/^changed/change/; s/^improved/improve/')
+          echo "Consider: '$SUGGESTED'"
+        fi
+
+        # Success message
+        echo "✅ Commit message is valid!"
+        echo "   Type: $(echo "$FIRST_LINE" | sed -E 's/^([^(:!]+).*$/\1/')"
+        if echo "$FIRST_LINE" | grep -q '!:'; then
+          echo "   ⚠️  Breaking change detected"
+        fi
+        if echo "$FIRST_LINE" | grep -qE '\([^)]+\)'; then
+          SCOPE=$(echo "$FIRST_LINE" | sed -E 's/^[^(]+\(([^)]+)\).*$/\1/')
+          echo "   Scope: $SCOPE"
+        fi
+        echo "   Description: $DESCRIPTION"

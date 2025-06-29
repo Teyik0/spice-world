@@ -1,19 +1,41 @@
-import { Body, Container, Head, Heading, Html, Img, Link, Section, Text } from '@react-email/components'
+import {
+  Body,
+  Container,
+  Head,
+  Heading,
+  Html,
+  Img,
+  Link,
+  Section,
+  Text,
+} from '@react-email/components';
 
 interface PlaidVerifyIdentityEmailProps {
-  validationCode?: string
+  validationCode?: string;
 }
 
-const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : ''
+const baseUrl = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : '';
 
-export const PlaidVerifyIdentityEmail = ({ validationCode }: PlaidVerifyIdentityEmailProps) => (
+export const PlaidVerifyIdentityEmail = ({
+  validationCode,
+}: PlaidVerifyIdentityEmailProps) => (
   <Html>
     <Head />
     <Body style={main}>
       <Container style={container}>
-        <Img src={`${baseUrl}/static/plaid-logo.png`} width="212" height="88" alt="Plaid" style={logo} />
+        <Img
+          alt="Plaid"
+          height="88"
+          src={`${baseUrl}/static/plaid-logo.png`}
+          style={logo}
+          width="212"
+        />
         <Text style={tertiary}>Verify Your Identity</Text>
-        <Heading style={secondary}>Enter the following code to finish linking Venmo.</Heading>
+        <Heading style={secondary}>
+          Enter the following code to finish linking Venmo.
+        </Heading>
         <Section style={codeContainer}>
           <Text style={code}>{validationCode}</Text>
         </Section>
@@ -29,18 +51,18 @@ export const PlaidVerifyIdentityEmail = ({ validationCode }: PlaidVerifyIdentity
       <Text style={footer}>Securely powered by Plaid.</Text>
     </Body>
   </Html>
-)
+);
 
 PlaidVerifyIdentityEmail.PreviewProps = {
   validationCode: '144833',
-} as PlaidVerifyIdentityEmailProps
+} as PlaidVerifyIdentityEmailProps;
 
-export default PlaidVerifyIdentityEmail
+export default PlaidVerifyIdentityEmail;
 
 const main = {
   backgroundColor: '#ffffff',
   fontFamily: 'HelveticaNeue,Helvetica,Arial,sans-serif',
-}
+};
 
 const container = {
   backgroundColor: '#ffffff',
@@ -51,11 +73,11 @@ const container = {
   maxWidth: '360px',
   margin: '0 auto',
   padding: '68px 0 130px',
-}
+};
 
 const logo = {
   margin: '0 auto',
-}
+};
 
 const tertiary = {
   color: '#0a85ea',
@@ -68,7 +90,7 @@ const tertiary = {
   margin: '16px 8px 8px 8px',
   textTransform: 'uppercase' as const,
   textAlign: 'center' as const,
-}
+};
 
 const secondary = {
   color: '#000',
@@ -80,7 +102,7 @@ const secondary = {
   marginBottom: '0',
   marginTop: '0',
   textAlign: 'center' as const,
-}
+};
 
 const codeContainer = {
   background: 'rgba(0,0,0,.05)',
@@ -88,7 +110,7 @@ const codeContainer = {
   margin: '16px auto 14px',
   verticalAlign: 'middle',
   width: '280px',
-}
+};
 
 const code = {
   color: '#000',
@@ -103,7 +125,7 @@ const code = {
   margin: '0 auto',
   width: '100%',
   textAlign: 'center' as const,
-}
+};
 
 const paragraph = {
   color: '#444',
@@ -114,12 +136,12 @@ const paragraph = {
   padding: '0 40px',
   margin: '0',
   textAlign: 'center' as const,
-}
+};
 
 const link = {
   color: '#444',
   textDecoration: 'underline',
-}
+};
 
 const footer = {
   color: '#000',
@@ -132,4 +154,4 @@ const footer = {
   fontFamily: 'HelveticaNeue,Helvetica,Arial,sans-serif',
   textAlign: 'center' as const,
   textTransform: 'uppercase' as const,
-}
+};

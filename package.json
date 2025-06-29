@@ -4,13 +4,21 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun run dev.ts"
+    "dev": "bun run dev.ts",
+    "format": "ultracite format"
   },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ],
+    "catalog": {}
+  },
   "devDependencies": {
-    "@biomejs/biome": "1.9.4"
+    "@biomejs/biome": "2.0.6",
+    "@types/bun": "^1.2.17",
+    "lefthook": "^1.11.14",
+    "typescript": "^5.8.3",
+    "ultracite": "5.0.26"
   }
 }

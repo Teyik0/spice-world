@@ -58,3 +58,6 @@ yarn.lock
 !/package-lock.json
 !/yarn.lock
 !/bun.lockb
+
+# Temp folder
+**/tmp
