@@ -1,22 +1,29 @@
-FROM oven/bun:latest
+FROM oven/bun:latest AS build
 
-WORKDIR /app
+WORKDIR /ws
 
-COPY package.json ../bun.lock ./
+COPY ./package.json ./bunfig.toml ./bun.lock ./
+COPY ./apps/server/package.json ./apps/server/package.json
 
 RUN bun install
 
-COPY . .
+COPY ./apps/server/src ./apps/server/src
+COPY ./apps/server/prisma ./apps/server/prisma
+
+WORKDIR /ws/apps/server
+
+ENV NODE_ENV=production
 
 RUN bun run prisma generate && bun run build
 
-FROM oven/bun:latest
+FROM gcr.io/distroless/base
 
-ENV NODE_ENV=production
 WORKDIR /app
 
 COPY --from=builder /app/dist /app/dist
 
-EXPOSE 3000/tcp
+ENV NODE_ENV=production
 
 CMD ["bun", "run", "start"]
+
+EXPOSE 3000

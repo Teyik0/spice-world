@@ -30,14 +30,14 @@ export const tagRouter = new Elysia({
 	)
 	.post(
 		"/",
-		async ({ body: { name, badgeColor }, set }) => {
-			set.status = "Created";
-			return await prisma.tag.create({
+		async ({ body: { name, badgeColor }, status }) => {
+			const tag = await prisma.tag.create({
 				data: {
 					name,
 					badgeColor,
 				},
 			});
+			return status("Created", tag);
 		},
 		{
 			body: t.Object({

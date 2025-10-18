@@ -26,20 +26,22 @@ export const attributeRouter = new Elysia({
 	)
 	.post(
 		"/",
-		async ({ body: { name, categoryId, values }, set }) => {
-			set.status = "Created";
-			return await prisma.attribute.create({
-				data: {
-					name,
-					categoryId,
-					values: {
-						createMany: {
-							data: values.map((value) => ({ value })),
+		async ({ body: { name, categoryId, values }, status }) => {
+			return status(
+				"Created",
+				await prisma.attribute.create({
+					data: {
+						name,
+						categoryId,
+						values: {
+							createMany: {
+								data: values.map((value) => ({ value })),
+							},
 						},
 					},
-				},
-				include: { values: true },
-			});
+					include: { values: true },
+				}),
+			);
 		},
 		{
 			body: t.Object({
@@ -83,14 +85,16 @@ export const attributeRouter = new Elysia({
 	)
 	.post(
 		"/:id/values",
-		async ({ body, set, params: { id } }) => {
-			set.status = "Created";
-			return await prisma.attributeValue.create({
-				data: {
-					value: body.value,
-					attributeId: id,
-				},
-			});
+		async ({ body, status, params: { id } }) => {
+			return status(
+				"Created",
+				await prisma.attributeValue.create({
+					data: {
+						value: body.value,
+						attributeId: id,
+					},
+				}),
+			);
 		},
 		{
 			body: t.Object({

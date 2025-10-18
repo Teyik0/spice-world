@@ -9,6 +9,7 @@ export const resetDb = async () =>
 		prisma.attributeValue.deleteMany(),
 		prisma.attribute.deleteMany(),
 		prisma.tag.deleteMany(),
+		prisma.user.deleteMany(),
 	]);
 
 resetDb();

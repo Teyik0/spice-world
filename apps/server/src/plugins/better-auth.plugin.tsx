@@ -79,75 +79,62 @@ export const betterAuthPlugin = new Elysia({
 	tags: ["Auth"],
 })
 	.mount(auth.handler)
-	.macro({
-		user: {
-			async resolve({ request: { headers } }) {
-				const session = await auth.api.getSession({
-					headers,
-				});
+	.macro("user", {
+		async resolve({ request: { headers } }) {
+			const session = await auth.api.getSession({
+				headers,
+			});
 
-				if (!session) {
-					return { user: null, session: null };
+			if (!session) {
+				return { user: null, session: null };
+			}
+
+			return session;
+		},
+	})
+	.macro("isLogin", {
+		user: true,
+		resolve: ({ session, user, status }) => {
+			if (!session || !user) return status("Unauthorized");
+			return { user, session };
+		},
+	})
+	.macro("isAdmin", {
+		isLogin: true,
+		resolve: ({ session, user, status }) => {
+			if (user.role !== "admin") return status("Unauthorized");
+			return { user, session };
+		},
+	});
+
+let _schema: ReturnType<typeof auth.api.generateOpenAPISchema>;
+const getSchema = async () => {
+	if (!_schema) {
+		_schema = auth.api.generateOpenAPISchema();
+	}
+	return _schema;
+};
+
+export const OpenAPI = {
+	getPaths: (prefix = "/api/auth") =>
+		getSchema().then(({ paths }) => {
+			const reference: typeof paths = Object.create(null);
+
+			for (const path of Object.keys(paths)) {
+				const key = prefix + path;
+				reference[key] = paths[path];
+
+				for (const method of Object.keys(paths[path])) {
+					// biome-ignore lint/suspicious/noExplicitAny: OpenAPI schema requires dynamic typing
+					const operation = (reference[key] as any)[method] as any;
+
+					operation.tags = ["Better Auth"];
 				}
+			}
 
-				return {
-					user: session?.user,
-					session: session?.session,
-				};
-			},
-		},
-	})
-	.macro({
-		isLogin: {
-			async resolve({ status, request: { headers } }) {
-				const session = await auth.api.getSession({
-					headers,
-				});
-
-				if (!session) return status("Unauthorized");
-
-				return {
-					user: session.user,
-					session: session.session,
-				};
-			},
-		},
-	})
-	.macro({
-		isAdmin: {
-			async resolve({ status, request: { headers } }) {
-				const session = await auth.api.getSession({
-					headers,
-				});
-
-				if (!session) return status("Unauthorized");
-				if (session.user.role !== "admin") return status("Unauthorized");
-
-				return {
-					user: session.user,
-					session: session.session,
-				};
-			},
-		},
-	})
-	.get(
-		"/api/user",
-		({ user, session }) => {
-			return { user, session };
-		},
-		{ user: true },
-	)
-	.get(
-		"/api/is-admin",
-		({ user, session }) => {
-			return { user, session };
-		},
-		{ isAdmin: true },
-	)
-	.get(
-		"/api/is-login",
-		({ user, session }) => {
-			return { user, session };
-		},
-		{ isLogin: true },
-	);
+			return reference;
+			// biome-ignore lint/suspicious/noExplicitAny: OpenAPI schema requires dynamic typing
+		}) as Promise<any>,
+	// biome-ignore lint/suspicious/noExplicitAny: OpenAPI schema requires dynamic typing
+	components: getSchema().then(({ components }) => components) as Promise<any>,
+} as const;

@@ -1,7 +1,12 @@
 {
-	"root": false,
-	"extends": ["../../../biome.jsonc"],
-	"files": {
-		"includes": ["**", "!src/prisma/**"]
-	}
+  "root": false,
+  "extends": [
+    "../../../biome.jsonc"
+  ],
+  "files": {
+    "includes": [
+      "**",
+      "!src/prisma"
+    ]
+  }
 }

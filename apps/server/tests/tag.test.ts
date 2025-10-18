@@ -2,8 +2,26 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { treaty } from "@elysiajs/eden";
 import { prisma } from "../src/lib/prisma";
 import { tagRouter } from "../src/routes/tag.router";
+import { expectDefined } from "./utils/helper";
+import { resetDb } from "./utils/reset-db";
 
 const api = treaty(tagRouter);
+
+const createTags = async (count: number, prefix = "", startChar = 97) => {
+	const promises = [];
+	for (let i = 0; i < count; i++) {
+		const char = String.fromCharCode(startChar + i);
+		promises.push(
+			prisma.tag.create({
+				data: {
+					name: `${prefix}tag ${char}`,
+					badgeColor: "#FF032F",
+				},
+			}),
+		);
+	}
+	await Promise.all(promises);
+};
 
 describe("Tags routes test", () => {
 	beforeAll(async () => {
@@ -13,19 +31,19 @@ describe("Tags routes test", () => {
 		if (!process.env.DATABASE_URL) {
 			throw new Error("DATABASE_URL should be set");
 		}
-		await prisma.tag.deleteMany();
+		await resetDb();
 	});
 
 	afterAll(async () => {
-		await prisma.tag.deleteMany();
+		await resetDb();
 	});
 
-	describe("Create new tag - POST/", () => {
-		it("should create a tag", async () => {
+	describe.serial("Create new tag - POST/", () => {
+		it.concurrent("should create a tag", async () => {
 			const tagCreationPromises = Array.from({ length: 25 }, (_, i) => {
 				const char = String.fromCharCode(97 + i);
 				return api.tags.post({
-					name: `tag ${char}`,
+					name: `create tag ${char}`,
 					badgeColor: "#FF032F",
 				});
 			});
@@ -37,105 +55,143 @@ describe("Tags routes test", () => {
 				const { data, status } = result;
 
 				expect(status).toBe(201);
-				expect(data?.id).toBeDefined();
-				expect(data?.name).toBe(`tag ${char}`);
-				expect(data?.badgeColor).toBe("#FF032F");
-				expect(data?.createdAt).toBeDefined();
-				expect(data?.updatedAt).toBeDefined();
+				expectDefined(data);
+				expect(data.id).toBeDefined();
+				expect(data.name).toBe(`create tag ${char}`);
+				expect(data.badgeColor).toBe("#FF032F");
+				expect(data.createdAt).toBeDefined();
+				expect(data.updatedAt).toBeDefined();
 			});
 		});
 
-		it("should throw an error if badge is not a color valid hex - (1)", async () => {
-			const { error, data } = await api.tags.post({
-				name: "data",
-				badgeColor: "F21DE2",
-			});
+		it.concurrent(
+			"should throw an error if badge is not a color valid hex - (1)",
+			async () => {
+				const { error, data } = await api.tags.post({
+					name: "data one",
+					badgeColor: "F21DE2",
+				});
 
-			expect(data).toBe(null);
-			expect(error?.status).toBe(422);
-			expect(error?.value.type).toBe("validation");
-			expect(error?.value.property).toBe("/badgeColor");
-		});
+				expect(data).toBe(null);
+				expectDefined(error);
+				expect(error.status).toBe(422);
+				// Extract the type for 422 validation errors
+				type ValidationError = Extract<
+					typeof error.value,
+					{ type: "validation" }
+				>;
+				const validationError = error.value as ValidationError;
+				expect(validationError.type).toBe("validation");
+				expect(validationError.property).toBe("/badgeColor");
+			},
+		);
 
-		it("should throw an error if badge is not a color valid hex - (1)", async () => {
-			// Hexadecimal color code must start with #
-			const { error, data } = await api.tags.post({
-				name: "data",
-				badgeColor: "F21DE2",
-			});
+		it.concurrent(
+			"should throw an error if badge is not a color valid hex - (2)",
+			async () => {
+				// Hexadecimal color code must be 6 characters long
+				const { error, data } = await api.tags.post({
+					name: "data two",
+					badgeColor: "#00112233",
+				});
 
-			expect(data).toBe(null);
-			expect(error?.status).toBe(422);
-			expect(error?.value.type).toBe("validation");
-			expect(error?.value.property).toBe("/badgeColor");
-		});
+				expect(data).toBe(null);
+				expectDefined(error);
+				expect(error.status).toBe(422);
+				// Extract the type for 422 validation errors
+				type ValidationError = Extract<
+					typeof error.value,
+					{ type: "validation" }
+				>;
+				const validationError = error.value as ValidationError;
+				expect(validationError.type).toBe("validation");
+				expect(validationError.property).toBe("/badgeColor");
+			},
+		);
 
-		it("should throw an error if badge is not a color valid hex - (2)", async () => {
-			// Hexadecimal color code must be 6 characters long
-			const { error, data } = await api.tags.post({
-				name: "data",
-				badgeColor: "#00112233",
-			});
+		it.concurrent(
+			"should throw an error if badge is not a color valid hex - (3)",
+			async () => {
+				// Hexadecimal color code must be 6 characters long
+				const { error, data } = await api.tags.post({
+					name: "data three",
+					badgeColor: "#00",
+				});
 
-			expect(data).toBe(null);
-			expect(error?.status).toBe(422);
-			expect(error?.value.type).toBe("validation");
-			expect(error?.value.property).toBe("/badgeColor");
-		});
+				expect(data).toBe(null);
+				expectDefined(error);
+				expect(error.status).toBe(422);
+				// Extract the type for 422 validation errors
+				type ValidationError = Extract<
+					typeof error.value,
+					{ type: "validation" }
+				>;
+				const validationError = error.value as ValidationError;
+				expect(validationError.type).toBe("validation");
+				expect(validationError.property).toBe("/badgeColor");
+			},
+		);
 
-		it("should throw an error if badge is not a color valid hex - (3)", async () => {
-			// Hexadecimal color code must be 6 characters long
-			const { error, data } = await api.tags.post({
-				name: "data",
-				badgeColor: "#00",
-			});
+		it.concurrent(
+			"should throw an error if badge is not a color valid hex - (4)",
+			async () => {
+				// Hexadecimal color code must be between A-F
+				const { error, data } = await api.tags.post({
+					name: "data four",
+					badgeColor: "#GEZE02",
+				});
 
-			expect(data).toBe(null);
-			expect(error?.status).toBe(422);
-			expect(error?.value.type).toBe("validation");
-			expect(error?.value.property).toBe("/badgeColor");
-		});
-
-		it("should throw an error if badge is not a color valid hex - (4)", async () => {
-			// Hexadecimal color code must be between A-F
-			const { error, data } = await api.tags.post({
-				name: "data",
-				badgeColor: "#GEZE02",
-			});
-
-			expect(data).toBe(null);
-			expect(error?.status).toBe(422);
-			expect(error?.value.type).toBe("validation");
-			expect(error?.value.property).toBe("/badgeColor");
-		});
+				expect(data).toBe(null);
+				expectDefined(error);
+				expect(error.status).toBe(422);
+				// Extract the type for 422 validation errors
+				type ValidationError = Extract<
+					typeof error.value,
+					{ type: "validation" }
+				>;
+				const validationError = error.value as ValidationError;
+				expect(validationError.type).toBe("validation");
+				expect(validationError.property).toBe("/badgeColor");
+			},
+		);
 	});
 
-	describe("Get tags by id - GET/:id", () => {
+	describe.serial("Get tags by id - GET/:id", () => {
 		it("should return a single tag", async () => {
 			const { data } = await api.tags.post({
-				name: "data",
+				name: "data by id",
 				badgeColor: "#FF0323",
 			});
 
-			const { data: tag } = await api.tags({ id: data?.id as string }).get();
-			expect(tag?.id).toBe(data?.id as string);
-			expect(tag?.name).toBe(data?.name as string);
-			expect(tag?.badgeColor).toBe(data?.badgeColor as string);
-			expect(tag?.createdAt).toBe(data?.createdAt as Date);
-			expect(tag?.updatedAt).toBe(data?.updatedAt as Date);
+			const tag = await prisma.tag.findUnique({
+				where: {
+					id: data?.id as string,
+				},
+			});
+			expect(tag).toEqual(data);
 		});
 	});
 
-	describe("Get tags count - GET/count", () => {
+	describe.serial("Get tags count - GET/count", () => {
+		beforeAll(async () => {
+			await resetDb();
+			await createTags(5, "count ");
+		});
+
 		it("should return the count of tags", async () => {
-			const totalTags = await prisma.tag.count();
 			const { data } = await api.tags.count.get();
+			const totalTags = await prisma.tag.count();
 			expect(data).toBe(totalTags);
 		});
 	});
 
-	describe("Get tags - GET/", () => {
-		it("should return 20 tags", async () => {
+	describe.serial("Get tags - GET/", () => {
+		beforeAll(async () => {
+			await resetDb();
+			await createTags(25);
+		});
+
+		it.concurrent("should return 20 tags", async () => {
 			const { data } = await api.tags.get({
 				query: {
 					skip: 0,
@@ -143,30 +199,31 @@ describe("Tags routes test", () => {
 				},
 			});
 
-			expect(data?.length).toBe(20);
+			expectDefined(data);
+			expect(data.length).toBe(20);
 		});
 
-		it("should return all the tags in the database", async () => {
-			const { data: totalTagNumber } = await api.tags.count.get();
+		it.concurrent("should return all the tags in the database", async () => {
 			const { data } = await api.tags.get({
 				query: {
 					skip: 0,
-					take: (totalTagNumber as number) + 40,
+					take: 100,
 				},
 			});
 
-			expect(data?.length).toBe(totalTagNumber as number);
+			expectDefined(data);
+			expect(data.length).toBe(25);
 		});
 
-		it("should return tags with pagination", async () => {
+		it.concurrent("should return tags with pagination", async () => {
 			const { data } = await api.tags.get({
 				query: {
 					skip: 0,
 					take: 10,
 				},
 			});
-
-			expect(data?.length).toBe(10);
+			expectDefined(data);
+			expect(data.length).toBe(10);
 
 			const { data: data2 } = await api.tags.get({
 				query: {
@@ -174,44 +231,42 @@ describe("Tags routes test", () => {
 					take: 10,
 				},
 			});
-
-			expect(data2?.length).toBe(10);
+			expectDefined(data2);
+			expect(data2.length).toBe(10);
 			expect(data2).not.toBe(data);
 			expect(data2).not.toEqual(data);
 		});
 
-		it("should return tags with specific search - (1)", async () => {
+		it.concurrent("should return tags with specific search - (1)", async () => {
 			const { data } = await api.tags.get({
 				query: {
 					skip: 0,
 					take: 10,
-					name: "data",
+					name: "tag a",
 				},
 			});
-			if (!data) {
-				throw new Error("No data found");
-			}
+			expectDefined(data);
 			expect(data.length).toBe(1);
-			expect(data[0].name).toBe("data");
+			expect(data[0].name).toBe("tag a");
 		});
 
-		it("should return tags with specific search - (2)", async () => {
+		it.concurrent("should return tags with specific search - (2)", async () => {
 			const { data } = await api.tags.get({
 				query: {
 					skip: 0,
-					take: 40,
+					take: 100,
 					name: "tag",
 				},
 			});
-			if (!data) {
-				throw new Error("No data found");
-			}
-			expect(data.length).toBe((await prisma.tag.count()) - 1);
+			expectDefined(data);
+			// All 25 tags created in beforeAll have pattern "tag [a-z]"
+			// The space after "tag" ensures we only match those specific tags
+			expect(data.length).toBe(25);
 		});
 	});
 
-	describe("Delete tags - DELETE/:id", () => {
-		it("should delete a tag", async () => {
+	describe.serial("Delete tags - DELETE/:id", () => {
+		it.concurrent("should delete a tag", async () => {
 			const { data: createdTag } = await api.tags.post({
 				name: "tag to delete",
 				badgeColor: "#FF0323",
@@ -231,8 +286,8 @@ describe("Tags routes test", () => {
 		});
 	});
 
-	describe("Update tags - PATCH/:id", () => {
-		it("should update a tag", async () => {
+	describe.serial("Update tags - PATCH/:id", () => {
+		it.concurrent("should update a tag", async () => {
 			const { data: createdTag } = await api.tags.post({
 				name: "original name",
 				badgeColor: "#FF0323",

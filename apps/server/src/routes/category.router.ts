@@ -40,7 +40,7 @@ export const categoryRouter = new Elysia({
 	)
 	.post(
 		"/",
-		async ({ body: { name, file }, status, set }) => {
+		async ({ body: { name, file }, status }) => {
 			const { data: image, error: fileError } = await uploadFile(name, file);
 			if (fileError || !image) {
 				return status(
@@ -74,8 +74,7 @@ export const categoryRouter = new Elysia({
 				throw prismaError;
 			}
 
-			set.status = "Created";
-			return category;
+			return status("Created", category);
 		},
 		{
 			body: t.Object({

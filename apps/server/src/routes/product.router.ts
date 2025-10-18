@@ -157,7 +157,6 @@ export const productsRouter = new Elysia({
 				variants,
 				images,
 			},
-			set,
 			status,
 		}) => {
 			const { data: uploadedImages, error: uploadError } = await uploadFiles(
@@ -239,8 +238,7 @@ export const productsRouter = new Elysia({
 				});
 			});
 
-			set.status = "Created";
-			return product;
+			return status("Created", product);
 		},
 		{
 			body: t.Object({
@@ -519,7 +517,7 @@ export const productsRouter = new Elysia({
 	// Special endpoints for image management
 	.post(
 		"/:id/images",
-		async ({ product, body: { images }, set, status }) => {
+		async ({ product, body: { images }, status }) => {
 			const { data: uploadedImgs, error: uploadError } = await uploadFiles(
 				product.name,
 				images,
@@ -571,8 +569,7 @@ export const productsRouter = new Elysia({
 				throw prismaError;
 			}
 
-			set.status = "Created";
-			return updatedImgs;
+			return status("Created", updatedImgs);
 		},
 		{
 			body: t.Object({
