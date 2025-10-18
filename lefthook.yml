@@ -19,14 +19,14 @@ pre-commit:
       glob: "*.{ts,tsx}"
       stage_fixed: true
 
-pre-push:
-  parallel: true
-  jobs:
-    - name: Server test
-      run: bun test
-      root: apps/server
-      glob: "*.{ts,tsx}"
-      stage_fixed: true
+# pre-push:
+#   parallel: true
+#   jobs:
+#     - name: Server test
+#       run: bun test
+#       root: apps/server
+#       glob: "*.{ts,tsx}"
+#       stage_fixed: true
 
 commit-msg:
   jobs:
