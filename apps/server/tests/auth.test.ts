@@ -2,7 +2,6 @@ import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
 import { auth } from "../src/plugins/better-auth.plugin";
 import { resetDb } from "./utils/reset-db";
 
-
 describe("BetterAuth Plugin Tests", () => {
 	let adminUser: Awaited<ReturnType<typeof auth.api.createUser>>;
 	let normalUser: Awaited<ReturnType<typeof auth.api.createUser>>;
@@ -17,20 +16,20 @@ describe("BetterAuth Plugin Tests", () => {
 		await resetDb();
 
 		normalUser = await auth.api.createUser({
-  		body: {
-  			email: "user@example.com",
-  			password: "password",
-  			name: "John Doe",
-  			role: "user",
-  		}
+			body: {
+				email: "user@example.com",
+				password: "password",
+				name: "John Doe",
+				role: "user",
+			},
 		});
 		adminUser = await auth.api.createUser({
-  		body: {
-  			email: "admin@example.com",
-  			password: "password",
-  			name: "Admin Doe",
-  			role: "admin",
-  		}
+			body: {
+				email: "admin@example.com",
+				password: "password",
+				name: "Admin Doe",
+				role: "admin",
+			},
 		});
 	});
 
@@ -44,7 +43,7 @@ describe("BetterAuth Plugin Tests", () => {
 			expect(auth.api).toBeDefined();
 			expect(auth.handler).toBeDefined();
 		});
-	})
+	});
 
 	describe("Email Sending", () => {
 		it("should send reset password email correctly", async () => {
