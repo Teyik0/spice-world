@@ -8,7 +8,7 @@ import {
 import { cn } from "@qwik-ui/utils";
 import { Label } from "./label";
 
-type SelectProps = {
+interface SelectProps {
 	ref?: QRL<(element: HTMLSelectElement) => void>;
 	name: string;
 	value: string | string[] | null | undefined;
@@ -24,7 +24,7 @@ type SelectProps = {
 	error?: string;
 	required?: boolean;
 	disabled?: boolean;
-};
+}
 
 /**
  * Select field that allows users to select predefined values. Various

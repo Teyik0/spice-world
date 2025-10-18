@@ -229,63 +229,54 @@ export async function createDummyProducts() {
 	});
 
 	const categories = await prisma.category.findMany();
-	console.log("step1 - categories created", categories);
 
-	await prisma.$transaction(
-		async (prisma) => {
-			await Promise.all(
-				productsData.map(async (productData) => {
-					const category = categories.find(
-						(cat) => cat.name === productData.category,
-					);
-					if (!category) return;
-
-					const product = await prisma.product.create({
-						data: {
-							name: productData.name,
-							slug: productData.slug,
-							description: productData.description,
-							status: Math.random() > 0.5 ? "PUBLISHED" : "DRAFT",
-							categoryId: category.id,
-							variants: {
-								create: [
-									{
-										price: Math.random() * 100,
-										sku: `${productData.slug.toUpperCase()}-001`,
-										stock: Math.floor(Math.random() * 100),
-									},
-									{
-										price: Math.random() * 100,
-										sku: `${productData.slug.toUpperCase()}-002`,
-										stock: Math.floor(Math.random() * 100),
-									},
-								],
-							},
-							images: {
-								create: [
-									{
-										key: `${productData.slug}-image-key-1`,
-										url: `https://test-url.com/${productData.slug}-image-1.jpg`,
-										altText: `${productData.name} Image 1`,
-										isThumbnail: true,
-									},
-									{
-										key: `${productData.slug}-image-key-2`,
-										url: `https://test-url.com/${productData.slug}-image-2.jpg`,
-										altText: `${productData.name} Image 2`,
-										isThumbnail: false,
-									},
-								],
-							},
-						},
-					});
-					console.log("product ->", productData.name, product);
-				}),
+	await Promise.all(
+		productsData.map(async (productData) => {
+			const category = categories.find(
+				(cat) => cat.name === productData.category,
 			);
-		},
-		{
-			timeout: 30000, // 30 seconds timeout
-		},
+			if (!category) return;
+
+			return prisma.product.create({
+				data: {
+					name: productData.name,
+					slug: productData.slug,
+					description: productData.description,
+					status: Math.random() > 0.5 ? "PUBLISHED" : "DRAFT",
+					categoryId: category.id,
+					variants: {
+						create: [
+							{
+								price: Math.random() * 100,
+								sku: `${productData.slug.toUpperCase()}-001`,
+								stock: Math.floor(Math.random() * 100),
+							},
+							{
+								price: Math.random() * 100,
+								sku: `${productData.slug.toUpperCase()}-002`,
+								stock: Math.floor(Math.random() * 100),
+							},
+						],
+					},
+					images: {
+						create: [
+							{
+								key: `${productData.slug}-image-key-1`,
+								url: `https://test-url.com/${productData.slug}-image-1.jpg`,
+								altText: `${productData.name} Image 1`,
+								isThumbnail: true,
+							},
+							{
+								key: `${productData.slug}-image-key-2`,
+								url: `https://test-url.com/${productData.slug}-image-2.jpg`,
+								altText: `${productData.name} Image 2`,
+								isThumbnail: false,
+							},
+						],
+					},
+				},
+			});
+		}),
 	);
 	const products = await prisma.product.findMany({
 		include: {
@@ -293,6 +284,5 @@ export async function createDummyProducts() {
 			variants: true,
 		},
 	});
-	console.log("products", products);
 	return { categories, products };
 }

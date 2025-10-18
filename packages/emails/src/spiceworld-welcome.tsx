@@ -10,11 +10,11 @@ import {
   Section,
   Tailwind,
   Text,
-} from '@react-email/components';
+} from "@react-email/components";
 
 const baseUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
-  : 'http://localhost:5173';
+  : "http://localhost:5173";
 
 export function VerifyEmail({ verifyLink }: { verifyLink: string }) {
   return (
@@ -26,7 +26,7 @@ export function VerifyEmail({ verifyLink }: { verifyLink: string }) {
           theme: {
             extend: {
               colors: {
-                brand: '#007291',
+                brand: "#007291",
               },
             },
           },
@@ -59,7 +59,7 @@ export function VerifyEmail({ verifyLink }: { verifyLink: string }) {
               <Hr className="my-5 border-[#e6ebf1]" />
               <Text className="text-left text-[#525f7f] text-base leading-6">
                 Si vous avez des questions, n'hésitez pas à nous contacter sur
-                notre{' '}
+                notre{" "}
                 <Link className="text-[#556cd6]" href={`${baseUrl}/support`}>
                   formulaire de support
                 </Link>

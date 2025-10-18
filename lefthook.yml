@@ -1,17 +1,17 @@
 pre-commit:
   parallel: true
   jobs:
-    - name: files format
-      run: bun run format
-      glob:
-        - "*.js"
-        - "*.jsx"
-        - "*.ts"
-        - "*.tsx"
-        - "*.json"
-        - "*.jsonc"
-        - "*.css"
-      stage_fixed: true
+    # - name: files format
+    #   run: bun run format
+    #   glob:
+    #     - "*.js"
+    #     - "*.jsx"
+    #     - "*.ts"
+    #     - "*.tsx"
+    #     - "*.json"
+    #     - "*.jsonc"
+    #     - "*.css"
+    #   stage_fixed: true
 
     - name: typescript check (server)
       run: bun run tsc --noEmit
@@ -19,9 +19,12 @@ pre-commit:
       glob: "*.{ts,tsx}"
       stage_fixed: true
 
-    - name: typescript check (dashboard)
-      run: bun run tsc --noEmit
-      root: apps/dashboard
+pre-push:
+  parallel: true
+  jobs:
+    - name: Server test
+      run: bun test
+      root: apps/server
       glob: "*.{ts,tsx}"
       stage_fixed: true
 

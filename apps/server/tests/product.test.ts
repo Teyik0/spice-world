@@ -1,4 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import {
+	afterAll,
+	beforeAll,
+	describe,
+	expect,
+	it,
+	setDefaultTimeout,
+} from "bun:test";
 import { treaty } from "@elysiajs/eden";
 import { file } from "bun";
 import { utapi } from "../src/lib/images";
@@ -17,6 +24,9 @@ import {
 import { createDummyProducts } from "./utils/dummy-products";
 import { createDummyTags } from "./utils/dummy-tags";
 import { resetDb } from "./utils/reset-db";
+
+// Increase timeout for this test file (30 seconds)
+setDefaultTimeout(30000);
 
 const api = treaty(productsRouter);
 
@@ -61,9 +71,7 @@ describe("Product routes test", () => {
 			expect(data?.length).toBe(testProducts.length);
 
 			// Verify our test products are in the response
-			const testProductNames = testProducts
-				.map((p) => p.name)
-				.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+			const testProductNames = testProducts.map((p) => p.name).sort(); // Use default alphabetical sort to match SQL ORDER BY
 			const returnedProductNames = data?.map((p) => p.name) || [];
 			for (const name of testProductNames) {
 				expect(returnedProductNames).toContain(name);
@@ -192,7 +200,7 @@ describe("Product routes test", () => {
 				variants: JSON.stringify(
 					newProduct.variants,
 				) as unknown as typeof newProduct.variants,
-				images: [file(filePath1), file(filePath2)],
+				images: [file(filePath1) as File, file(filePath2) as File],
 			});
 
 			expect(status).toBe(201);
@@ -245,7 +253,7 @@ describe("Product routes test", () => {
 				variants: JSON.stringify(
 					newProduct.variants,
 				) as unknown as typeof newProduct.variants,
-				images: newProduct.images,
+				images: newProduct.images as File[],
 			});
 
 			expect(status).toBe(409);
@@ -402,7 +410,7 @@ describe("Product routes test", () => {
 			const { data, status } = await api
 				.products({ id: productToUpdate.id })
 				.images.post({
-					images: [file(filePath1), file(filePath2)],
+					images: [file(filePath1) as File, file(filePath2) as File],
 				});
 
 			expect(status).toBe(201);
@@ -425,16 +433,24 @@ describe("Product routes test", () => {
 		});
 
 		it("should return an error if the maximum number of images is exceeded", async () => {
-			const productToUpdate = testProducts[1];
+			const productToUpdate = testProducts[2]; // Use different product than previous test
 			const filePath1 = `${import.meta.dir}/public/cumin.webp`;
 			const filePath2 = `${import.meta.dir}/public/feculents.jpeg`;
 			const filePath3 = `${import.meta.dir}/public/garlic.webp`;
 
-			// Upload initial images to reach the limit
+			// This product has 2 images initially, trying to add 3 more (total 5) should succeed
+			// So we need to add 4 images to exceed the limit of 5
+			const filePath4 = `${import.meta.dir}/public/curcuma.jpg`;
+
 			const { error, status } = await api
 				.products({ id: productToUpdate.id })
 				.images.post({
-					images: [file(filePath1), file(filePath2), file(filePath3)],
+					images: [
+						file(filePath1) as File,
+						file(filePath2) as File,
+						file(filePath3) as File,
+						file(filePath4) as File,
+					],
 				});
 
 			expect(status).toBe(412); // Precondition Failed

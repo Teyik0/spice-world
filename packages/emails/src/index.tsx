@@ -1,17 +1,16 @@
-import { render } from '@react-email/components';
-import { VerifyEmail } from './spiceworld-welcome';
+import { render } from "@react-email/components";
+import { VerifyEmail } from "./spiceworld-welcome";
 
 /**
  * Renders the verify email template to HTML string
  */
-export const renderVerifyEmail = (props: { verifyLink: string }): string => {
-  return render(<VerifyEmail verifyLink={props.verifyLink} />);
-};
+export const renderVerifyEmail = (props: { verifyLink: string }): string =>
+  render(<VerifyEmail verifyLink={props.verifyLink} />);
 
 // Export the component types for type safety
-export type VerifyEmailProps = {
+export interface VerifyEmailProps {
   verifyLink: string;
-};
+}
 
 // Export all email render functions
 export const emailTemplates = {

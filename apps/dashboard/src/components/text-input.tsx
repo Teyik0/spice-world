@@ -58,7 +58,7 @@ type AutoCompleteValue =
 	| "url"
 	| "photo";
 
-type TextInputProps = {
+interface TextInputProps {
 	name: string;
 	type: "text" | "email" | "tel" | "password" | "url" | "date";
 	autoComplete?:
@@ -74,7 +74,7 @@ type TextInputProps = {
 	onInput$: (event: Event, element: HTMLInputElement) => void;
 	onChange$: (event: Event, element: HTMLInputElement) => void;
 	onBlur$: (event: Event, element: HTMLInputElement) => void;
-};
+}
 
 export const TextInput = component$(
 	({ label, error, ...props }: TextInputProps) => {

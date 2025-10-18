@@ -500,7 +500,7 @@ export const productsRouter = new Elysia({
 		},
 		{
 			afterResponse: async ({ product }) => {
-				if (!product.images.length) return;
+				if (!product || !product.images || !product.images.length) return;
 
 				// Clean up all image files
 				await Promise.all(

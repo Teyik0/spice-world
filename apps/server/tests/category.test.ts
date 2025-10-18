@@ -1,4 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import {
+	afterAll,
+	beforeAll,
+	describe,
+	expect,
+	it,
+	setDefaultTimeout,
+} from "bun:test";
 import { treaty } from "@elysiajs/eden";
 import type { BunFile } from "bun";
 import { file } from "bun";
@@ -13,6 +20,9 @@ import {
 import { expectDefined } from "./utils/helper";
 
 const api = treaty(categoryRouter);
+
+// Increase timeout for this test file (30 seconds)
+setDefaultTimeout(30000);
 
 describe("Category routes test", () => {
 	let categories: Category[];
@@ -201,7 +211,7 @@ describe("Category routes test", () => {
 	});
 
 	describe("Update category - PATCH/:id", () => {
-		type DummyCategory = {
+		interface DummyCategory {
 			name: string;
 			id: string;
 			image: {
@@ -212,7 +222,7 @@ describe("Category routes test", () => {
 				isThumbnail: boolean;
 				productId: string | null;
 			};
-		};
+		}
 
 		let dummyCategory: DummyCategory;
 

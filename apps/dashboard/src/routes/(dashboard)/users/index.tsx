@@ -46,11 +46,11 @@ export const useListUsers = routeLoader$(async (requestEvent) => {
 	}
 
 	const limit = Math.min(
-		Number.parseInt(searchParams.get("limit") || "25"),
+		Number.parseInt(searchParams.get("limit") || "25", 10),
 		100,
 	);
 	const offset = Math.max(
-		Number.parseInt(searchParams.get("offset") || "0"),
+		Number.parseInt(searchParams.get("offset") || "0", 10),
 		0,
 	);
 	const searchValue = searchParams.get("search") || "";
