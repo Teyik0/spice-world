@@ -44,7 +44,7 @@ export async function createTestDatabase(
 	const adminClient = new PrismaClient({ adapter: adminAdapter });
 
 	// Parse the connection string to extract connection details
-	const url = new URL(Bun.env.DATABASE_URL.replace("postgres://", "http://"));
+	const url = new URL(BASE_DB_URL.replace("postgres://", "http://"));
 	const templateDb = url.pathname.slice(1) || "template1";
 
 	try {

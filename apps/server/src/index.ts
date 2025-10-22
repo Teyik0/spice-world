@@ -12,7 +12,7 @@ import { tagRouter } from "./routes/tag.router";
 
 declare module "bun" {
 	interface Env {
-		DATABASE_URL: string;
+		DATABASE_URL: string | undefined;
 		UPLOADTHING_TOKEN: string;
 		UPLOADTHING_SECRET: string;
 		BETTER_AUTH_SECRET: string;

@@ -16,13 +16,9 @@ declare global {
 	var __prisma: undefined | ReturnType<typeof prismaClientSingleton>;
 }
 
-// Initialize global prisma client if not already done
-if (!globalThis.__prisma) {
-	globalThis.__prisma = prismaClientSingleton();
-}
-
 // Export a getter that always returns the current global prisma client
 // This allows tests to replace globalThis.__prisma and have it reflected here
+// The client is created lazily on first access, not at module load time
 export const prisma = new Proxy({} as PrismaClient, {
 	get(_, prop) {
 		if (!globalThis.__prisma) {
