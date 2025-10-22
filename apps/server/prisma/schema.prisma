@@ -193,7 +193,7 @@ enum ProductStatus {
 
 model Tag {
   id         String    @id @default(uuid())
-  name       String    @unique
+  name       String    @unique @db.VarChar(100)
   badgeColor String
   Product    Product[]
 

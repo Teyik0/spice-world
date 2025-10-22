@@ -150,6 +150,50 @@ describe.concurrent("Tags routes test", () => {
 			expect(validationError.type).toBe("validation");
 			expect(validationError.property).toBe("/badgeColor");
 		});
+
+		test("should throw P2002 error when creating tag with duplicate name", async () => {
+			const uniqueName = "unique tag name for duplicate test";
+
+			// Create first tag
+			const { data: firstTag, status: firstStatus } = await api.tags.post({
+				name: uniqueName,
+				badgeColor: "#FF0323",
+			});
+
+			expect(firstStatus).toBe(201);
+			expectDefined(firstTag);
+
+			// Try to create second tag with same name - should fail with P2002
+			const { error, data, status } = await api.tags.post({
+				name: uniqueName,
+				badgeColor: "#00FF00",
+			});
+
+			expect(status).toBe(409); // Conflict
+			expect(data).toBeNull();
+			expectDefined(error);
+			const errorMessage = error.value as { message: string; code: string };
+			expect(errorMessage.message).toContain("Tag with this");
+			expect(errorMessage.message).toContain("already exists");
+		});
+
+		test("should throw P2000 error when tag name exceeds VARCHAR(100) limit", async () => {
+			// Create a string longer than 100 characters (our VARCHAR limit)
+			const tooLongName = "a".repeat(150);
+
+			const { error, data, status } = await api.tags.post({
+				name: tooLongName,
+				badgeColor: "#FF0323",
+			});
+
+			expect(status).toBe(400); // Bad Request
+			expect(data).toBeNull();
+			expectDefined(error);
+			expect(error.value).toMatchObject({
+				message: expect.stringContaining("too long"),
+				code: "P2000",
+			});
+		});
 	});
 
 	describe("Get tags by id - GET/:id", () => {

@@ -41,12 +41,14 @@ describe.concurrent("Product routes test", () => {
 		}
 		testDb = await createTestDatabase("product.test.ts");
 
-		spyOn(imagesModule, "uploadFile").mockImplementation(
-			async (_filename, file) => ({
-				data: createUploadedFileData(file),
+		spyOn(imagesModule.utapi, "uploadFiles").mockImplementation((async (
+			files,
+		) => {
+			return {
+				data: createUploadedFileData(files as File),
 				error: null,
-			}),
-		);
+			};
+		}) as typeof imagesModule.utapi.uploadFiles);
 
 		const { productsRouter } = await import("../src/routes/product.router");
 		api = treaty(productsRouter);

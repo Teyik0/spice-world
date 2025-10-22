@@ -23,7 +23,3 @@ export const createDummyTags = async (prisma: PrismaClient) => {
 	});
 	return [tag1, tag2, tag3];
 };
-
-export const deleteDummyTags = async (prisma: PrismaClient) => {
-	await prisma.tag.deleteMany();
-};
