@@ -1,6 +1,6 @@
-import { prisma } from "../../src/lib/prisma";
+import type { PrismaClient } from "../../src/prisma/client";
 
-export const createDummyTags = async () => {
+export const createDummyTags = async (prisma: PrismaClient) => {
 	const tag1 = await prisma.tag.create({
 		data: {
 			name: "spicy",
@@ -24,6 +24,6 @@ export const createDummyTags = async () => {
 	return [tag1, tag2, tag3];
 };
 
-export const deleteDummyTags = async () => {
+export const deleteDummyTags = async (prisma: PrismaClient) => {
 	await prisma.tag.deleteMany();
 };

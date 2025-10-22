@@ -1,19 +1,20 @@
-import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
+import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { auth } from "../src/plugins/better-auth.plugin";
-import { resetDb } from "./utils/reset-db";
+import { createTestDatabase } from "./utils/db-manager";
 
-describe("BetterAuth Plugin Tests", () => {
+describe.concurrent("BetterAuth Plugin Tests", () => {
 	let adminUser: Awaited<ReturnType<typeof auth.api.createUser>>;
 	let normalUser: Awaited<ReturnType<typeof auth.api.createUser>>;
+	let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
 
 	beforeAll(async () => {
-		if (process.env.NODE_ENV === "production") {
+		if (Bun.env.NODE_ENV === "production") {
 			throw new Error("You can't run tests in production");
 		}
-		if (!process.env.DATABASE_URL) {
+		if (!Bun.env.DATABASE_URL) {
 			throw new Error("DATABASE_URL should be set");
 		}
-		await resetDb();
+		testDb = await createTestDatabase("auth.test.ts");
 
 		normalUser = await auth.api.createUser({
 			body: {
@@ -34,11 +35,11 @@ describe("BetterAuth Plugin Tests", () => {
 	});
 
 	afterAll(async () => {
-		await resetDb();
+		await testDb.destroy();
 	});
 
 	describe("Initialization", () => {
-		it("should initialize betterAuth with correct configuration", () => {
+		test("should initialize betterAuth with correct configuration", () => {
 			expect(auth).toBeDefined();
 			expect(auth.api).toBeDefined();
 			expect(auth.handler).toBeDefined();
@@ -46,7 +47,7 @@ describe("BetterAuth Plugin Tests", () => {
 	});
 
 	describe("Email Sending", () => {
-		it("should send reset password email correctly", async () => {
+		test("should send reset password email correctly", async () => {
 			const sendEmailMock = spyOn(
 				auth.options.emailAndPassword,
 				"sendResetPassword",
@@ -65,7 +66,7 @@ describe("BetterAuth Plugin Tests", () => {
 			});
 		});
 
-		it("should send change email verification correctly", async () => {
+		test("should send change email verification correctly", async () => {
 			const sendEmailMock = spyOn(
 				auth.options.user.changeEmail,
 				"sendChangeEmailVerification",

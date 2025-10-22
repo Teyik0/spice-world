@@ -1,4 +1,4 @@
-import { prisma } from "../../src/lib/prisma";
+import type { PrismaClient } from "../../src/prisma/client";
 
 const categoriesData = [
 	{
@@ -206,11 +206,11 @@ const productsData = [
 	},
 ];
 
-export async function createDummyProducts() {
-	await prisma.$transaction(async (prisma) => {
+export async function createDummyProducts(prisma: PrismaClient) {
+	await prisma.$transaction(async (tx) => {
 		await Promise.all(
 			categoriesData.map((categoryData) =>
-				prisma.category.create({
+				tx.category.create({
 					data: {
 						name: categoryData.name,
 						id: categoryData.id,

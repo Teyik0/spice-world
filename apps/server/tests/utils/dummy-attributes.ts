@@ -1,14 +1,17 @@
-import { prisma } from "../../src/lib/prisma";
-import type { Attribute, AttributeValue } from "../../src/prisma/client";
+import type {
+	Attribute,
+	AttributeValue,
+	PrismaClient,
+} from "../../src/prisma/client";
 
 export type AttributeWithValues = Attribute & {
 	values: AttributeValue[];
 };
 
 // need to be use some categories to be created
-export const createDummyAttributes = async (): Promise<
-	AttributeWithValues[]
-> => {
+export const createDummyAttributes = async (
+	prisma: PrismaClient,
+): Promise<AttributeWithValues[]> => {
 	const categories = await prisma.category.findMany();
 
 	const attribute1 = await prisma.attribute.create({

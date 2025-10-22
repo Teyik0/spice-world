@@ -41,6 +41,10 @@ export const tagRouter = new Elysia({
 		},
 		{
 			body: t.Object({
+				// Regex explanation:
+				// ^[a-z]         : string must start with a lowercase letter
+				// [a-z ]*        : followed by zero or more lowercase letters or spaces
+				// $              : end of string
 				name: t.String({ pattern: "^[a-z][a-z ]*$" }),
 				badgeColor: t.String({ pattern: "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$" }),
 			}),
