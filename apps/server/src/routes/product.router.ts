@@ -101,11 +101,11 @@ export const productsRouter = new Elysia({
 				products.sort((a, b) => {
 					const aMinPrice =
 						a.variants.length > 0
-							? a.variants[0].price
+							? (a.variants[0]?.price ?? Number.POSITIVE_INFINITY)
 							: Number.POSITIVE_INFINITY;
 					const bMinPrice =
 						b.variants.length > 0
-							? b.variants[0].price
+							? (b.variants[0]?.price ?? Number.POSITIVE_INFINITY)
 							: Number.POSITIVE_INFINITY;
 					return direction === "asc"
 						? aMinPrice - bMinPrice
