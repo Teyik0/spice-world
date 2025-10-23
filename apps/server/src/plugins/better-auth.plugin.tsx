@@ -109,16 +109,9 @@ export const betterAuthPlugin = new Elysia({
 			return { user, session };
 		},
 	})
-	.get(
-		"/api/is-admin",
-		({ user, status }) => {
-			if (!user || user.role !== "admin") {
-				return status("Unauthorized");
-			}
-			return { success: true };
-		},
-		{ isLogin: true },
-	);
+	.get("/api/is-admin", ({ session, user }) => ({ session, user }), {
+		isAdmin: true,
+	});
 
 let _schema: ReturnType<typeof auth.api.generateOpenAPISchema>;
 const getSchema = async () => {

@@ -39,7 +39,7 @@ export function VerifyEmail({ verifyLink }: { verifyLink: string }) {
 							<Img
 								alt="Spice World"
 								height="100"
-								src={"/static/spice-world-logo-2.webp"}
+								src={`${baseUrl}/static/spice-world-logo-2.webp`}
 								width="100"
 							/>
 							<Hr className="my-5 border-[#e6ebf1]" />

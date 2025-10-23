@@ -6,7 +6,7 @@
 	"type": "module",
 	"main": "src/index.ts",
 	"scripts": {
-		"dev": "bun run --bun --watch --inspect --title '@spice-world/server' src/index.ts",
+		"dev": "bun run --bun --watch --inspect --title '@spice-world/entrypoint' src/index.ts",
 		"build": "bun build --compile --minify-whitespace --minify-syntax --target bun --outfile dist/server src/index.ts",
 		"start": "./dist/server"
 	},
