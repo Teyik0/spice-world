@@ -3,11 +3,6 @@ name: Setup Reusable Workflow
 on:
   workflow_call:
     inputs:
-      restore-keys:
-        description: "Restore keys for cache"
-        required: false
-        type: string
-        default: ${{ runner.os }}-bun-
       bun-version:
         description: "Bun version to use"
         required: false
