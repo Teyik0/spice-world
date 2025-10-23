@@ -61,3 +61,4 @@ yarn.lock
 
 # Temp folder
 **/tmp
+**/tsconfig.tsbuildinfo

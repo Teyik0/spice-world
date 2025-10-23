@@ -1,34 +1,33 @@
 pre-commit:
   parallel: true
   jobs:
-    # - name: files format
-    #   run: bun run format
-    #   glob:
-    #     - "*.js"
-    #     - "*.jsx"
-    #     - "*.ts"
-    #     - "*.tsx"
-    #     - "*.json"
-    #     - "*.jsonc"
-    #     - "*.css"
-    #   stage_fixed: true
+    - name: files format
+      run: bun run format
+      glob:
+        - "*.js"
+        - "*.jsx"
+        - "*.ts"
+        - "*.tsx"
+        - "*.json"
+        - "*.jsonc"
+        - "*.css"
+      stage_fixed: true
 
-    - name: typescript check (server)
-      run: bun run tsc --noEmit
+    - name: typescript check (monorepo)
+      run: bun run tsc --build --noEmit
+      glob: "*.{ts,tsx}"
+      stage_fixed: true
+
+pre-push:
+  parallel: true
+  jobs:
+    - name: Server test
+      run: bun run test
       root: apps/server
       glob: "*.{ts,tsx}"
       stage_fixed: true
 
-# pre-push:
-#   parallel: true
-#   jobs:
-#     - name: Server test
-#       run: bun test
-#       root: apps/server
-#       glob: "*.{ts,tsx}"
-#       stage_fixed: true
-
 commit-msg:
-  jobs:
-    - name: conventional commit validation
-      run: ./scripts/validate-commit.sh {1}
+  commands:
+    lint-commit-message:
+      run: bun run commitlint --edit {1}

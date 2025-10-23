@@ -1,5 +1,18 @@
 {
-  "compilerOptions": {
-    "strictNullChecks": true
-  }
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "files": [],
+  "references": [
+    {
+      "path": "./apps/server"
+    },
+    {
+      "path": "./apps/dashboard"
+    },
+    {
+      "path": "./apps/entrypoint"
+    },
+    {
+      "path": "./packages/emails"
+    }
+  ]
 }

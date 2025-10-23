@@ -3,6 +3,7 @@ import type {
 	AttributeValue,
 	PrismaClient,
 } from "../../src/prisma/client";
+import { expectDefined } from "./helper";
 
 export type AttributeWithValues = Attribute & {
 	values: AttributeValue[];
@@ -13,11 +14,13 @@ export const createDummyAttributes = async (
 	prisma: PrismaClient,
 ): Promise<AttributeWithValues[]> => {
 	const categories = await prisma.category.findMany();
+	const firstCategory = categories[0];
+	expectDefined(firstCategory);
 
 	const attribute1 = await prisma.attribute.create({
 		data: {
 			name: "heat level",
-			categoryId: categories[0].id,
+			categoryId: firstCategory.id,
 			values: {
 				create: [{ value: "mild" }, { value: "medium" }, { value: "hot" }],
 			},
@@ -28,7 +31,7 @@ export const createDummyAttributes = async (
 	const attribute2 = await prisma.attribute.create({
 		data: {
 			name: "origin",
-			categoryId: categories[0].id,
+			categoryId: firstCategory.id,
 			values: {
 				create: [{ value: "india" }, { value: "mexico" }, { value: "italy" }],
 			},

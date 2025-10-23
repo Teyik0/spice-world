@@ -106,6 +106,7 @@ describe.concurrent("Attribute routes test", () => {
 	describe("GET /attributes/:id", () => {
 		test("should return a specific attribute", async () => {
 			const testAttr = testAttributes[0];
+			expectDefined(testAttr);
 			const { data, status } = await api.attributes({ id: testAttr.id }).get();
 
 			expect(status).toBe(200);
@@ -256,6 +257,7 @@ describe.concurrent("Attribute routes test", () => {
 
 		test("should reject invalid attribute names", async () => {
 			const testAttr = testAttributes[0];
+			expectDefined(testAttr);
 
 			const { error, status } = await api
 				.attributes({ id: testAttr.id })
@@ -333,6 +335,7 @@ describe.concurrent("Attribute routes test", () => {
 	describe("POST /attributes/:id/values", () => {
 		test("should create a new attribute value", async () => {
 			const testAttr = testAttributes[1]; // Use the "origin" attribute
+			expectDefined(testAttr);
 			const newValue = "france";
 
 			const { data, status } = await api
@@ -349,6 +352,7 @@ describe.concurrent("Attribute routes test", () => {
 
 		test("should reject invalid value names", async () => {
 			const testAttr = testAttributes[1];
+			expectDefined(testAttr);
 
 			const { error, status } = await api
 				.attributes({ id: testAttr.id })
@@ -389,6 +393,7 @@ describe.concurrent("Attribute routes test", () => {
 			expectDefined(testAttr);
 
 			const testValue = testAttr.values[0];
+			expectDefined(testValue);
 			const newValueText = "extreme";
 			const { data, status } = await api.attributes
 				.values({ id: testValue.id })
@@ -405,6 +410,7 @@ describe.concurrent("Attribute routes test", () => {
 
 		test("should reject invalid value names", async () => {
 			const testValue = testAttributeValues[0];
+			expectDefined(testValue);
 
 			const { error, status } = await api.attributes
 				.values({ id: testValue.id })
@@ -435,6 +441,7 @@ describe.concurrent("Attribute routes test", () => {
 	describe("DELETE /attributes/values/:id", () => {
 		test("should delete an attribute value", async () => {
 			const testAttr = testAttributes[0];
+			expectDefined(testAttr);
 			const tempValue = await testDb.client.attributeValue.create({
 				data: {
 					value: "temporary",

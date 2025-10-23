@@ -1,4 +1,7 @@
-// import { VerifyEmail } from "@spice-world/emails/src/spiceworld-welcome";
+/** @jsxImportSource react */
+import { ChangeEmailVerification } from "@spice-world/emails/src/change-email-verification";
+import { ResetPassword } from "@spice-world/emails/src/reset-password";
+import { VerifyEmail } from "@spice-world/emails/src/spiceworld-welcome";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { admin, openAPI } from "better-auth/plugins";
@@ -17,24 +20,24 @@ export const auth = betterAuth({
 	emailAndPassword: {
 		enabled: true,
 		requireEmailVerification: true,
-		sendResetPassword: async ({ user }) => {
+		sendResetPassword: async ({ user, url }) => {
 			await resend.emails.send({
 				from,
 				to: [user.email],
-				subject: "Spice World - Reset your password",
-				react: "<VerifyEmail verifyLink={url} />",
+				subject: "Spice World - Réinitialisez votre mot de passe",
+				react: <ResetPassword resetLink={url} />,
 			});
 		},
 	},
 	emailVerification: {
 		sendOnSignUp: true,
 		autoSignInAfterVerification: true,
-		sendVerificationEmail: async ({ user }) => {
+		sendVerificationEmail: async ({ user, url }) => {
 			await resend.emails.send({
 				from,
 				to: [user.email],
 				subject: "Spice World - Verify your email",
-				react: "<VerifyEmail verifyLink={url} />",
+				react: <VerifyEmail verifyLink={url} />,
 			});
 		},
 	},
@@ -50,12 +53,12 @@ export const auth = betterAuth({
 		},
 		changeEmail: {
 			enabled: true,
-			sendChangeEmailVerification: async ({ user }) => {
+			sendChangeEmailVerification: async ({ newEmail, url }) => {
 				await resend.emails.send({
 					from,
-					to: [user.email],
-					subject: "Spice World - Verify your email",
-					react: "<VerifyEmail verifyLink={url} />",
+					to: [newEmail],
+					subject: "Spice World - Confirmez votre nouvelle adresse email",
+					react: <ChangeEmailVerification verifyLink={url} />,
 				});
 			},
 		},
@@ -105,6 +108,9 @@ export const betterAuthPlugin = new Elysia({
 			if (user.role !== "admin") return status("Unauthorized");
 			return { user, session };
 		},
+	})
+	.get("/api/is-admin", ({ session, user }) => ({ session, user }), {
+		isAdmin: true,
 	});
 
 let _schema: ReturnType<typeof auth.api.generateOpenAPISchema>;
@@ -122,9 +128,13 @@ export const OpenAPI = {
 
 			for (const path of Object.keys(paths)) {
 				const key = prefix + path;
-				reference[key] = paths[path];
+				const pathItem = paths[path];
 
-				for (const method of Object.keys(paths[path])) {
+				if (!pathItem) continue;
+
+				reference[key] = pathItem;
+
+				for (const method of Object.keys(pathItem)) {
 					// biome-ignore lint/suspicious/noExplicitAny: OpenAPI schema requires dynamic typing
 					const operation = (reference[key] as any)[method] as any;
 

@@ -6,8 +6,8 @@ on:
 
 jobs:
   setup:
-    name: Setup project
-    uses: ./.github/workflows/setup-wc.yml
+    name: Setup Project
+    uses: ./.github/workflows/setup-wc.yaml
     with:
       bun-version: latest
       install-dependencies: true
@@ -29,12 +29,6 @@ jobs:
     name: TypeScript type check
     runs-on: ubuntu-latest
     needs: setup
-    strategy:
-      matrix:
-        workspace:
-          - apps/server
-          - apps/dashboard
-          - packages/emails
     steps:
       - uses: ./.github/workflows/setup-wc.yml
         with:
@@ -42,37 +36,25 @@ jobs:
           install-dependencies: true
 
       - name: Generate prisma client
-        if: matrix.workspace == 'apps/server'
-        working-directory: ${{ matrix.workspace }}
+        working-directory: apps/server
         run: bunx prisma generate
 
       - name: Type check workspace
         working-directory: ${{ matrix.workspace }}
-        run: bunx tsc --noEmit
+        run: bunx tsc --build --noEmit
 
   test:
     name: Run Tests
     runs-on: ubuntu-latest
     needs: setup
-    services:
-      postgres:
-        image: postgres:latest
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_DB: test_db
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
     steps:
       - uses: ./.github/workflows/setup-wc.yml
         with:
           bun-version: latest
           install-dependencies: true
+
+      - name: Setup test database
+        run: docker compose up -d postresdb
 
       - name: Setup test database
         working-directory: apps/server
@@ -85,7 +67,6 @@ jobs:
       - name: Run server tests
         working-directory: apps/server
         env:
-          NODE_ENV: test
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
           UPLOADTHING_TOKEN: ${{ secrets.UPLOADTHING_TOKEN }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
@@ -93,7 +74,7 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-        run: bun test
+        run: bun run test
 
   build:
     name: Build Applications

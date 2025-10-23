@@ -60,6 +60,7 @@ export function useSidebarProvider({ defaultOpen = true }) {
 	useVisibleTask$(({ track }) => {
 		track(() => open.value);
 		// This sets the cookie to keep the sidebar state.
+		// biome-ignore lint/suspicious/noDocumentCookie: intentional cookie usage
 		document.cookie = `${SIDEBAR_COOKIE_NAME}=${open.value}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
 	});
 

@@ -258,6 +258,7 @@ describe.concurrent("Tags routes test", () => {
 			});
 			expectDefined(data);
 			expect(data.length).toBe(1);
+			expectDefined(data[0]);
 			expect(data[0].name).toContain("prefix specific");
 		});
 

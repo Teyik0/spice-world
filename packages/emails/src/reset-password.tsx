@@ -17,11 +17,11 @@ const baseUrl = process.env.VERCEL_URL
 	? `https://${process.env.VERCEL_URL}`
 	: "http://localhost:5173";
 
-export function VerifyEmail({ verifyLink }: { verifyLink: string }) {
+export function ResetPassword({ resetLink }: { resetLink: string }) {
 	return (
 		<Html>
 			<Head />
-			<Preview>Bienvenue sur notre site de vente d'épices en ligne !</Preview>
+			<Preview>Réinitialisez votre mot de passe Spice World</Preview>
 			<Tailwind
 				config={{
 					theme: {
@@ -39,25 +39,29 @@ export function VerifyEmail({ verifyLink }: { verifyLink: string }) {
 							<Img
 								alt="Spice World"
 								height="100"
-								src={`${baseUrl}/static/spice-world-logo-2.webp`}
+								src={"/static/spice-world-logo-2.webp"}
 								width="100"
 							/>
 							<Hr className="my-5 border-[#e6ebf1]" />
 							<Text className="text-left text-[#525f7f] text-base leading-6">
-								Merci de vous être inscrit sur notre site de vente d'épices en
-								ligne. Nous sommes ravis de vous compter parmi nos clients !
+								Vous avez demandé à réinitialiser votre mot de passe pour votre
+								compte Spice World.
 							</Text>
 							<Text className="text-left text-[#525f7f] text-base leading-6">
-								Veuillez confirmer votre adresse email en cliquant sur le bouton
-								ci-dessous :
+								Cliquez sur le bouton ci-dessous pour créer un nouveau mot de
+								passe :
 							</Text>
 							<Link
 								className="block w-full rounded bg-[#656ee8] py-2.5 text-center font-bold text-base text-white no-underline"
-								href={verifyLink}
+								href={resetLink}
 							>
-								Confirmer mon email
+								Réinitialiser mon mot de passe
 							</Link>
 							<Hr className="my-5 border-[#e6ebf1]" />
+							<Text className="text-left text-[#525f7f] text-base leading-6">
+								Si vous n'avez pas demandé cette réinitialisation, vous pouvez
+								ignorer cet email en toute sécurité.
+							</Text>
 							<Text className="text-left text-[#525f7f] text-base leading-6">
 								Si vous avez des questions, n'hésitez pas à nous contacter sur
 								notre{" "}
@@ -81,4 +85,4 @@ export function VerifyEmail({ verifyLink }: { verifyLink: string }) {
 	);
 }
 
-export default VerifyEmail;
+export default ResetPassword;

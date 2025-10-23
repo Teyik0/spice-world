@@ -1,37 +1,22 @@
 {
+	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
+		// Qwik-specific configuration
 		"lib": ["ESNext", "DOM", "WebWorker", "DOM.Iterable"],
-		"target": "ESNext",
-		"module": "Preserve",
-		"moduleDetection": "force",
-		"jsx": "react-jsx",
-		"allowJs": true,
-
-		"moduleResolution": "bundler",
-		"allowImportingTsExtensions": true,
-		"verbatimModuleSyntax": true,
-		"noEmit": true,
-
-		"strict": true,
-		"skipLibCheck": true,
-		"noFallthroughCasesInSwitch": true,
-
-		"noUnusedLocals": true,
-		"noUnusedParameters": true,
-		"noPropertyAccessFromIndexSignature": false,
-
 		"jsxImportSource": "@qwik.dev/core",
-		"forceConsistentCasingInFileNames": true,
-		"resolveJsonModule": true,
-		"esModuleInterop": true,
-		"incremental": true,
-		"isolatedModules": true,
-		"outDir": "tmp",
+		// Path aliases
 		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./src/*"]
-		}
+		},
+		// Qwik build output
+		"outDir": "tmp"
 	},
 	"include": ["src/**/*", "./*.d.ts", "./*.config.ts"],
-	"exclude": ["node_modules", "dist"]
+	"exclude": [
+		"node_modules",
+		"dist",
+		"../../packages/**",
+		"../../apps/server/**"
+	]
 }

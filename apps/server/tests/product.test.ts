@@ -82,8 +82,12 @@ describe.concurrent("Product routes test", () => {
 
 			// Verify the returned products are sorted alphabetically
 			for (let i = 0; i < data.length - 1; i++) {
+				const currentItem = data[i] as (typeof data)[number];
+				const nextItem = data[i + 1] as (typeof data)[number];
+				expectDefined(currentItem);
+				expectDefined(nextItem);
 				expect(
-					data[i].name.localeCompare(data[i + 1].name),
+					currentItem.name.localeCompare(nextItem.name),
 				).toBeLessThanOrEqual(0);
 			}
 		});
@@ -119,15 +123,18 @@ describe.concurrent("Product routes test", () => {
 					nextProduct.variants &&
 					nextProduct.variants.length > 0
 				) {
-					const currentPrice = currentProduct.variants[0].price;
-					const nextPrice = nextProduct.variants[0].price;
-					expect(currentPrice).toBeLessThanOrEqual(nextPrice);
+					const currentPrice = currentProduct.variants[0]?.price;
+					const nextPrice = nextProduct.variants[0]?.price;
+					if (currentPrice !== undefined && nextPrice !== undefined) {
+						expect(currentPrice).toBeLessThanOrEqual(nextPrice);
+					}
 				}
 			}
 		});
 
 		it("should return a list of products filtered by category", async () => {
 			const category = testCategories[0];
+			expectDefined(category);
 			const { data, status } = await api.products.get({
 				query: { categories: [category.name] },
 			});
@@ -181,20 +188,22 @@ describe.concurrent("Product routes test", () => {
 			const filePath2 = `${import.meta.dir}/public/curcuma.jpg`;
 
 			const category = testCategories[0];
+			expectDefined(category);
+			const testTag0 = testTags[0];
+			expectDefined(testTag0);
 			const newProduct = {
 				name: "New spice",
 				description: "A new spice for testing",
 				categoryId: category.id,
 				status: "PUBLISHED" as const,
-				tags: [testTags[0].id],
+				tags: [testTag0.id],
 				variants: [
 					{
 						price: 10.99,
 						sku: "NEW-SPICE-001",
 						stock: 100,
-						attributeValueIds: testAttributes[0].values.map(
-							(value) => value.id,
-						),
+						attributeValueIds:
+							testAttributes[0]?.values.map((value) => value.id) ?? [],
 					},
 				],
 				images: [file(filePath1), file(filePath2)],
@@ -227,12 +236,17 @@ describe.concurrent("Product routes test", () => {
 			const filePath2 = `${import.meta.dir}/public/curcuma.jpg`;
 
 			const existingProduct = testProducts[0];
+			expectDefined(existingProduct);
+			const testTag0 = testTags[0];
+			const testTag1 = testTags[1];
+			expectDefined(testTag0);
+			expectDefined(testTag1);
 			const newProduct = {
 				name: existingProduct.name,
 				description: "A duplicate product name",
 				categoryId: existingProduct.id,
 				status: "PUBLISHED" as const,
-				tags: [testTags[0].id, testTags[1].id],
+				tags: [testTag0.id, testTag1.id],
 				variants: [
 					{
 						price: 10.99,
@@ -264,14 +278,14 @@ describe.concurrent("Product routes test", () => {
 
 	describe("GET /products/:id", () => {
 		it("should return a product by id", async () => {
-			const { data, status } = await api
-				.products({ id: testProducts[0].id })
-				.get();
+			const testProduct = testProducts[0];
+			expectDefined(testProduct);
+			const { data, status } = await api.products({ id: testProduct.id }).get();
 
 			expect(status).toBe(200);
 			expectDefined(data);
-			expect(data.name).toBe(testProducts[0].name);
-			expect(data.categoryId).toBe(testProducts[0].categoryId);
+			expect(data.name).toBe(testProduct.name);
+			expect(data.categoryId).toBe(testProduct.categoryId);
 		});
 	});
 
@@ -280,26 +294,31 @@ describe.concurrent("Product routes test", () => {
 		const filePath2 = `${import.meta.dir}/public/curcuma.jpg`;
 
 		it("should update the product successfully", async () => {
+			const testProduct = testProducts[0];
+			expectDefined(testProduct);
+			const testTag1 = testTags[1];
+			expectDefined(testTag1);
+			const testTag0 = testTags[0];
+			expectDefined(testTag0);
 			const updatedProductData = {
 				name: "Updated Spice",
 				description: "An updated description",
 				status: "DRAFT" as const,
-				tags: [testTags[1].id, testTags[0].id],
+				tags: [testTag1.id, testTag0.id],
 				variants: [
 					{
 						price: 12.99,
 						sku: "UPDATED-SPICE-002",
 						stock: 50,
-						attributeValueIds: testAttributes[0].values.map(
-							(value) => value.id,
-						),
+						attributeValueIds:
+							testAttributes[0]?.values.map((value) => value.id) ?? [],
 					},
 				],
 				images: [file(filePath1), file(filePath2)],
 			};
 
 			const { data, status } = await api
-				.products({ id: testProducts[0].id })
+				.products({ id: testProduct.id })
 				.patch({
 					name: updatedProductData.name,
 					description: updatedProductData.description,
@@ -317,10 +336,14 @@ describe.concurrent("Product routes test", () => {
 			expect(data.description).toBe(updatedProductData.description);
 			expect(data.status).toBe(updatedProductData.status);
 			expect(data.variants.length).toBe(updatedProductData.variants.length);
-			expect(data.variants[0].price).toBe(updatedProductData.variants[0].price);
-			expect(data.variants[0].stock).toBe(updatedProductData.variants[0].stock);
+			expect(data.variants[0]?.price).toBe(
+				updatedProductData.variants[0]?.price,
+			);
+			expect(data.variants[0]?.stock).toBe(
+				updatedProductData.variants[0]?.stock,
+			);
 			expect(data.images.length).toBe(
-				testProducts[0].images.length + updatedProductData.images.length,
+				testProduct.images.length + updatedProductData.images.length,
 			);
 		});
 
@@ -340,14 +363,18 @@ describe.concurrent("Product routes test", () => {
 		});
 
 		it("should return an error update name conflict with an existing product", async () => {
+			const testProduct0 = testProducts[0];
+			const testProduct1 = testProducts[1];
+			expectDefined(testProduct0);
+			expectDefined(testProduct1);
 			const updatedProductData = {
-				name: testProducts[1].name,
+				name: testProduct1.name,
 				description: "This product does not exist",
 				status: "DRAFT" as const,
 			};
 
 			const { status, error } = await api
-				.products({ id: testProducts[0].id })
+				.products({ id: testProduct0.id })
 				.patch(updatedProductData);
 
 			expect(status).toBe(409);
@@ -358,6 +385,7 @@ describe.concurrent("Product routes test", () => {
 	describe("DELETE /products/:id", () => {
 		it("should delete a product successfully", async () => {
 			const productToDelete = testProducts[7];
+			expectDefined(productToDelete);
 
 			const { data, status } = await api
 				.products({ id: productToDelete.id })
@@ -391,6 +419,7 @@ describe.concurrent("Product routes test", () => {
 	describe("POST /products/:id/images", () => {
 		it("should upload new images successfully", async () => {
 			const productToUpdate = testProducts[1];
+			expectDefined(productToUpdate);
 			const filePath1 = `${import.meta.dir}/public/cumin.webp`;
 			const filePath2 = `${import.meta.dir}/public/curcuma.jpg`;
 
@@ -414,6 +443,7 @@ describe.concurrent("Product routes test", () => {
 
 		it("should return an error if the maximum number of images is exceeded", async () => {
 			const productToUpdate = testProducts[2]; // Use different product than previous test
+			expectDefined(productToUpdate);
 			const filePath1 = `${import.meta.dir}/public/cumin.webp`;
 			const filePath2 = `${import.meta.dir}/public/feculents.jpeg`;
 			const filePath3 = `${import.meta.dir}/public/garlic.webp`;
