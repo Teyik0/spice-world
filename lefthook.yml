@@ -13,9 +13,8 @@ pre-commit:
         - "*.css"
       stage_fixed: true
 
-    - name: typescript check (server)
-      run: bun run tsc --noEmit
-      root: apps/server
+    - name: typescript check (monorepo)
+      run: bun run tsc --build
       glob: "*.{ts,tsx}"
       stage_fixed: true
 

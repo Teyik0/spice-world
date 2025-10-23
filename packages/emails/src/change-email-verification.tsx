@@ -17,11 +17,15 @@ const baseUrl = process.env.VERCEL_URL
 	? `https://${process.env.VERCEL_URL}`
 	: "http://localhost:5173";
 
-export function VerifyEmail({ verifyLink }: { verifyLink: string }) {
+export function ChangeEmailVerification({
+	verifyLink,
+}: {
+	verifyLink: string;
+}) {
 	return (
 		<Html>
 			<Head />
-			<Preview>Bienvenue sur notre site de vente d'épices en ligne !</Preview>
+			<Preview>Confirmez votre nouvelle adresse email Spice World</Preview>
 			<Tailwind
 				config={{
 					theme: {
@@ -44,20 +48,24 @@ export function VerifyEmail({ verifyLink }: { verifyLink: string }) {
 							/>
 							<Hr className="my-5 border-[#e6ebf1]" />
 							<Text className="text-left text-[#525f7f] text-base leading-6">
-								Merci de vous être inscrit sur notre site de vente d'épices en
-								ligne. Nous sommes ravis de vous compter parmi nos clients !
+								Vous avez demandé à modifier l'adresse email associée à votre
+								compte Spice World.
 							</Text>
 							<Text className="text-left text-[#525f7f] text-base leading-6">
-								Veuillez confirmer votre adresse email en cliquant sur le bouton
-								ci-dessous :
+								Veuillez confirmer votre nouvelle adresse email en cliquant sur
+								le bouton ci-dessous :
 							</Text>
 							<Link
 								className="block w-full rounded bg-[#656ee8] py-2.5 text-center font-bold text-base text-white no-underline"
 								href={verifyLink}
 							>
-								Confirmer mon email
+								Confirmer ma nouvelle adresse email
 							</Link>
 							<Hr className="my-5 border-[#e6ebf1]" />
+							<Text className="text-left text-[#525f7f] text-base leading-6">
+								Si vous n'avez pas demandé ce changement, veuillez ignorer cet
+								email et contacter notre support immédiatement.
+							</Text>
 							<Text className="text-left text-[#525f7f] text-base leading-6">
 								Si vous avez des questions, n'hésitez pas à nous contacter sur
 								notre{" "}
@@ -81,4 +89,4 @@ export function VerifyEmail({ verifyLink }: { verifyLink: string }) {
 	);
 }
 
-export default VerifyEmail;
+export default ChangeEmailVerification;
