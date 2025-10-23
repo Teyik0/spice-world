@@ -14,7 +14,7 @@ pre-commit:
       stage_fixed: true
 
     - name: typescript check (monorepo)
-      run: bun run tsc --build
+      run: bun run tsc --build --noEmit
       glob: "*.{ts,tsx}"
       stage_fixed: true
 
@@ -30,4 +30,4 @@ pre-push:
 commit-msg:
   commands:
     lint-commit-message:
-      run: bunx commitlint --edit {1}
+      run: bun run commitlint --edit {1}
