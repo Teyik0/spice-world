@@ -1,4 +1,3 @@
-/** @jsxImportSource react */
 import { ChangeEmailVerification } from "@spice-world/emails/src/change-email-verification";
 import { ResetPassword } from "@spice-world/emails/src/reset-password";
 import { VerifyEmail } from "@spice-world/emails/src/spiceworld-welcome";
@@ -10,13 +9,13 @@ import { Resend } from "resend";
 import { prisma } from "../lib/prisma";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const from = "Spice World <theosamarasinghe@gmail.com>";
+const from = "Spice World <noreply@teyik0.dev>";
 
 export const auth = betterAuth({
 	database: prismaAdapter(prisma, {
 		provider: "postgresql",
 	}),
-	trustedOrigins: ["http://localhost:5173"],
+	trustedOrigins: ["http://localhost:3000", "http://localhost:3001"], // Both frontend and backend
 	emailAndPassword: {
 		enabled: true,
 		requireEmailVerification: true,

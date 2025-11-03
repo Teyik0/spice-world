@@ -6,13 +6,13 @@
       "path": "./apps/server"
     },
     {
-      "path": "./apps/dashboard"
-    },
-    {
-      "path": "./apps/entrypoint"
+      "path": "./apps/web"
     },
     {
       "path": "./packages/emails"
     }
-  ]
+  ],
+  "compilerOptions": {
+    "strictNullChecks": true
+  }
 }

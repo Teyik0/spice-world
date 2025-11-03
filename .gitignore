@@ -32,8 +32,6 @@
 **/*.tar.gz
 **/*.tgz
 **/*.bun
-**/bun.lockb
-**/bun.lock
 
 # Next.js
 **/.next
