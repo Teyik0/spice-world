@@ -1,4 +1,5 @@
 import { ChangeEmailVerification } from "@spice-world/emails/src/change-email-verification";
+import { PasswordReset } from "@spice-world/emails/src/password-reset";
 import { ResetPassword } from "@spice-world/emails/src/reset-password";
 import { VerifyEmail } from "@spice-world/emails/src/spiceworld-welcome";
 import { betterAuth } from "better-auth";
@@ -25,6 +26,14 @@ export const auth = betterAuth({
 				to: [user.email],
 				subject: "Spice World - Réinitialisez votre mot de passe",
 				react: <ResetPassword resetLink={url} />,
+			});
+		},
+		onPasswordReset: async ({ user }) => {
+			await resend.emails.send({
+				from,
+				to: [user.email],
+				subject: "Spice World - Votre mot de passe a été réinitialisé",
+				react: <PasswordReset />,
 			});
 		},
 	},

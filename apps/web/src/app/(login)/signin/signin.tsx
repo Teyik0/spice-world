@@ -142,7 +142,7 @@ export function SignIn({ rememberMe = true, lastEmail = "" }: SignInProps) {
 										<div className="flex items-center">
 											<FieldLabel htmlFor={field.name}>Password</FieldLabel>
 											<Link
-												href="#"
+												href="/forgot-password"
 												className="ml-auto inline-block text-sm underline"
 											>
 												Forgot your password?

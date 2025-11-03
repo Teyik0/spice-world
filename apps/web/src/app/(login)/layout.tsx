@@ -11,6 +11,7 @@ export default function Layout({
 }>) {
 	const pathname = usePathname();
 	const isSignIn = pathname === "/signin";
+	const isSignUp = pathname === "/signup";
 
 	return (
 		<main className="flex min-h-screen items-center justify-center p-4 bg-linear-to-br from-background via-muted/20 to-background">
@@ -36,7 +37,7 @@ export default function Layout({
 						className={cn(
 							"flex-1 px-6 py-3 text-center font-medium transition-all",
 							"hover:bg-muted/50",
-							!isSignIn
+							isSignUp
 								? "bg-background text-foreground border-b-2 border-primary"
 								: "text-muted-foreground",
 						)}
