@@ -1,11 +1,8 @@
 "use client";
 
-import { useForm } from "@tanstack/react-form";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-import { toast } from "sonner";
-import { z } from "zod";
+import { useAction } from "next-safe-action/hooks";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -14,60 +11,14 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import {
-	Field,
-	FieldError,
-	FieldGroup,
-	FieldLabel,
-} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { authClient } from "@/lib/utils";
-
-const forgotPasswordSchema = z.object({
-	email: z.email("Please enter a valid email address"),
-});
+import { Label } from "@/components/ui/label";
+import { forgotPasswordAction } from "./actions";
 
 export default function ForgotPasswordPage() {
-	const [emailSent, setEmailSent] = useState(false);
+	const { execute, result, isExecuting } = useAction(forgotPasswordAction);
 
-	const form = useForm({
-		defaultValues: {
-			email: "",
-		},
-		validators: {
-			onSubmit: forgotPasswordSchema,
-		},
-		onSubmit: async ({ value }) => {
-			try {
-				await authClient.forgetPassword(
-					{
-						email: value.email,
-						redirectTo: `${window.location.origin}/reset-password`,
-					},
-					{
-						onSuccess: () => {
-							setEmailSent(true);
-							toast.success("Email sent", {
-								description:
-									"Check your inbox for password reset instructions.",
-							});
-						},
-						onError: (ctx) => {
-							toast.error("Failed to send email", {
-								description:
-									ctx.error.message ||
-									"An error occurred. Please try again later.",
-							});
-						},
-					},
-				);
-			} catch (_error: unknown) {
-				toast.error("An unexpected error occurred", {
-					description: "Please try again later.",
-				});
-			}
-		},
-	});
+	const emailSent = result.data?.emailSent;
 
 	return (
 		<Card className="rounded-tl-none shadow-xl">
@@ -94,62 +45,61 @@ export default function ForgotPasswordPage() {
 					</div>
 				) : (
 					<form
-						className="grid gap-4"
 						onSubmit={(e) => {
 							e.preventDefault();
-							form.handleSubmit();
+							const formData = new FormData(e.currentTarget);
+							execute({
+								email: formData.get("email") as string,
+							});
 						}}
+						className="grid gap-4"
 					>
-						<FieldGroup className="gap-4">
-							<form.Field
+						<div className="space-y-2">
+							<Label htmlFor="email">Email</Label>
+							<Input
+								id="email"
 								name="email"
-								children={(field) => {
-									const isInvalid =
-										field.state.meta.isTouched && !field.state.meta.isValid;
-									return (
-										<Field data-invalid={isInvalid}>
-											<FieldLabel htmlFor={field.name}>Email</FieldLabel>
-											<Input
-												id={field.name}
-												name={field.name}
-												type="email"
-												placeholder="max@example.com"
-												value={field.state.value}
-												onBlur={field.handleBlur}
-												onChange={(e) => field.handleChange(e.target.value)}
-												aria-invalid={isInvalid}
-												autoComplete="email"
-											/>
-											{isInvalid && (
-												<FieldError errors={field.state.meta.errors} />
-											)}
-										</Field>
-									);
-								}}
+								type="email"
+								placeholder="max@example.com"
+								required
+								autoComplete="email"
+								disabled={isExecuting}
 							/>
+						</div>
 
-							<form.Subscribe
-								selector={(state) => [state.canSubmit, state.isSubmitting]}
+						{result.serverError && (
+							<div
+								role="alert"
+								aria-live="polite"
+								className="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200"
 							>
-								{([canSubmit, isSubmitting]) => (
-									<Button
-										type="submit"
-										className="w-full"
-										disabled={!canSubmit || isSubmitting}
-									>
-										{isSubmitting ? (
-											<Loader2 size={16} className="animate-spin" />
-										) : (
-											"Send reset link"
-										)}
-									</Button>
-								)}
-							</form.Subscribe>
+								{result.serverError}
+							</div>
+						)}
+						{result.validationErrors && (
+							<div
+								role="alert"
+								aria-live="polite"
+								className="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200"
+							>
+								{result.validationErrors.formErrors?.[0] ||
+									Object.values(result.validationErrors.fieldErrors || {})
+										.flat()
+										.join(", ")}
+							</div>
+						)}
 
-							<Button variant="ghost" className="w-full" asChild>
-								<Link href="/signin">Back to sign in</Link>
-							</Button>
-						</FieldGroup>
+						<Button type="submit" className="w-full" disabled={isExecuting}>
+							{isExecuting ? (
+								<Loader2 size={16} className="animate-spin" />
+							) : (
+								"Send reset link"
+							)}
+						</Button>
+
+						<Button variant="ghost" className="w-full" asChild>
+							<Link href="/signin">Back to sign in</Link>
+						</Button>
 					</form>
 				)}
 			</CardContent>
