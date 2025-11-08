@@ -4,23 +4,24 @@ import { cache } from "react";
 import { authClient } from "./utils";
 
 export const verifySession = cache(async () => {
-	return await getCachedSession();
+	const h = await headers();
+	return await getCachedSession(h);
 });
 
 const getCachedSession = unstable_cache(
-	async () => {
+	async (headersParam: Headers) => {
 		const { data } = await authClient.getSession({
 			fetchOptions: {
-				headers: await headers(),
+				headers: headersParam,
 			},
 		});
-		if (!data) return null;
+
 		return data;
 	},
 	["auth-session"],
 	{
 		tags: ["auth", "session"],
-		revalidate: 3600, // 1 hour
+		revalidate: 3600,
 	},
 );
 

@@ -4,7 +4,7 @@ import { opentelemetry } from "@elysiajs/opentelemetry";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { Elysia } from "elysia";
-import { betterAuthPlugin, OpenAPI } from "./plugins/better-auth.plugin";
+import { betterAuthPlugin, OpenAPI } from "./plugins/better-auth.plugin.tsx";
 import { attributeRouter } from "./routes/attribute.router";
 import { categoryRouter } from "./routes/category.router";
 import { productsRouter } from "./routes/product.router";

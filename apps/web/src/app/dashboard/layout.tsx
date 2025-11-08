@@ -1,6 +1,32 @@
+import { redirect } from "next/navigation";
 import { ThemeProvider } from "@/components/theme-provider";
+import {
+	Breadcrumb,
+	BreadcrumbItem,
+	BreadcrumbLink,
+	BreadcrumbList,
+	BreadcrumbPage,
+	BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Separator } from "@/components/ui/separator";
+import {
+	SidebarInset,
+	SidebarProvider,
+	SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { verifySession } from "@/lib/dal";
+import { AppSidebar } from "./app-sidebar";
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default async function Layout({
+	children,
+	collapsibleContent,
+}: {
+	children: React.ReactNode;
+	collapsibleContent: React.ReactNode;
+}) {
+	const login = await verifySession();
+	if (!login) redirect("/");
+
 	return (
 		<ThemeProvider
 			attribute="class"
@@ -8,7 +34,36 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 			enableSystem
 			disableTransitionOnChange
 		>
-			{children}
+			<SidebarProvider
+				style={
+					{
+						"--sidebar-width": "350px",
+					} as React.CSSProperties
+				}
+			>
+				<AppSidebar login={login}>{collapsibleContent}</AppSidebar>
+				<SidebarInset>
+					<header className="bg-background sticky top-0 flex shrink-0 items-center gap-2 border-b p-4">
+						<SidebarTrigger className="-ml-1" />
+						<Separator
+							orientation="vertical"
+							className="mr-2 data-[orientation=vertical]:h-4"
+						/>
+						<Breadcrumb>
+							<BreadcrumbList>
+								<BreadcrumbItem className="hidden md:block">
+									<BreadcrumbLink href="#">All Inboxes</BreadcrumbLink>
+								</BreadcrumbItem>
+								<BreadcrumbSeparator className="hidden md:block" />
+								<BreadcrumbItem>
+									<BreadcrumbPage>Inbox</BreadcrumbPage>
+								</BreadcrumbItem>
+							</BreadcrumbList>
+						</Breadcrumb>
+					</header>
+					<div className="flex flex-1 flex-col gap-4 p-4">{children}</div>
+				</SidebarInset>
+			</SidebarProvider>
 		</ThemeProvider>
 	);
 }

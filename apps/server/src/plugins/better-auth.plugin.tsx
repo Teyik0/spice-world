@@ -17,6 +17,17 @@ export const auth = betterAuth({
 		provider: "postgresql",
 	}),
 	trustedOrigins: ["http://localhost:3000", "http://localhost:3001"], // Both frontend and backend
+	rateLimit: {
+		enabled: true,
+		window: 10, // time window in seconds
+		max: 100, // max requests in the window
+		customRules: {
+			"/sign-in/email": {
+				window: 10,
+				max: 3,
+			},
+		},
+	},
 	emailAndPassword: {
 		enabled: true,
 		requireEmailVerification: true,

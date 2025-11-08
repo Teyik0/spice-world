@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { treaty } from "@elysiajs/eden";
 import Elysia from "elysia";
-import { auth, betterAuthPlugin } from "../src/plugins/better-auth.plugin";
+import { auth, betterAuthPlugin } from "../src/plugins/better-auth.plugin.tsx";
 import { createTestDatabase } from "./utils/db-manager";
 import { expectDefined } from "./utils/helper";
 
@@ -126,6 +126,21 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
 				newEmail: "newEmail@example.com",
 				url: "http://example.com/change-email",
 				token: "token",
+			});
+		});
+
+		test("should send password reset correctly", async () => {
+			const sendEmailMock = spyOn(
+				auth.options.emailAndPassword,
+				"onPasswordReset",
+			);
+
+			await auth.options.emailAndPassword.onPasswordReset({
+				user: adminUser.user,
+			});
+
+			expect(sendEmailMock).toHaveBeenCalledWith({
+				user: adminUser.user,
 			});
 		});
 	});

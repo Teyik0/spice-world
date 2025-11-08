@@ -34,9 +34,3 @@ export const authClient = createAuthClient({
 });
 
 export type Session = typeof authClient.$Infer.Session;
-
-export const getBetterAuthCookie = async (cookie: CookieStore) => {
-	const cookieAuthName = "better-auth.session_token";
-	const betterAuthToken = await cookie.get(cookieAuthName);
-	return `${cookieAuthName}=${betterAuthToken?.value}`;
-};
