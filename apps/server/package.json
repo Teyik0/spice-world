@@ -28,7 +28,7 @@
 		"@react-email/components": "^1.0.0",
 		"better-auth": "^1.3.34",
 		"elysia": "catalog:",
-		"file-type": "^21.0.0",
+		"file-type": "^21.1.0",
 		"react": "catalog:",
 		"resend": "^6.4.2",
 		"sharp": "^0.34.5",

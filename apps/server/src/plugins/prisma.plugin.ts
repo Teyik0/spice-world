@@ -20,7 +20,10 @@ export const prismaErrorPlugin = (entity: Entity) =>
 	}).onError({ as: "scoped" }, ({ error, status }) => {
 		if (error instanceof PrismaClientUnknownRequestError) {
 			console.error("PrismaClientUnknownRequestError ->", error);
-			return status("Internal Server Error", error);
+			return status("Internal Server Error", {
+				message: "An unknown PrismaClientUnknownRequestError error occurred",
+				code: "UNKNOWN",
+			});
 		}
 
 		if (!(error instanceof PrismaClientKnownRequestError)) {

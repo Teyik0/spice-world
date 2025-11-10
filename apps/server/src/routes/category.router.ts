@@ -78,8 +78,8 @@ export const categoryRouter = new Elysia({
 		},
 		{
 			body: t.Object({
-				name: t.String({ pattern: "^[A-Z][a-zA-Z ]*$" }),
-				file: t.File({ type: "image/webp" }),
+				name: t.String({ pattern: "^[A-ZÀ-ÖØ-Þ][a-zA-ZÀ-ÖØ-öø-ÿ ]*$" }),
+				file: t.File({ type: "image/*" }),
 			}),
 			beforeHandle: async ({ body: { name }, status }) => {
 				const category = await prisma.category.findUnique({
@@ -135,6 +135,12 @@ export const categoryRouter = new Elysia({
 		"/:id",
 		async ({ category, body: { name, file }, status }) => {
 			let newFile: UploadedFileData | null = null;
+			if (!file && !name) {
+				return status(
+					"Not Acceptable",
+					"Fill either name or file to update this category",
+				);
+			}
 
 			if (file) {
 				const { data, error: err } = await uploadFile(
@@ -172,8 +178,10 @@ export const categoryRouter = new Elysia({
 		},
 		{
 			body: t.Object({
-				name: t.Optional(t.String({ pattern: "^[A-Z][a-zA-Z ]*$" })),
-				file: t.Optional(t.File({ type: "image/webp" })),
+				name: t.Optional(
+					t.String({ pattern: "^[A-ZÀ-ÖØ-Þ][a-zA-ZÀ-ÖØ-öø-ÿ ]*$" }),
+				),
+				file: t.Optional(t.File({ type: "image/*" })),
 			}),
 			afterResponse: async ({ category, body: { file } }) => {
 				if (!(file && category)) return;

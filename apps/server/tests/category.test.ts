@@ -62,6 +62,22 @@ describe.concurrent("Category routes test", () => {
 			expect(data.image).toHaveProperty("isThumbnail");
 		});
 
+		test("should create a new category with accent", async () => {
+			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const bunfile = file(filePath);
+			const name = "Épices";
+			const { data, status } = await postCategory(name, bunfile);
+
+			expect(status).toBe(201);
+			expectDefined(data);
+			expect(data.name).toBe(name);
+			expect(data.image).toHaveProperty("id");
+			expect(data.image).toHaveProperty("key");
+			expect(data.image).toHaveProperty("url");
+			expect(data.image).toHaveProperty("altText");
+			expect(data.image).toHaveProperty("isThumbnail");
+		});
+
 		test("should error if name is already taken", async () => {
 			const filePath = `${import.meta.dir}/public/cumin.webp`;
 			const bunfile = file(filePath);
@@ -75,32 +91,6 @@ describe.concurrent("Category routes test", () => {
 			});
 
 			expect(status).toBe(409);
-			expect(error).not.toBeNull();
-			expect(error).not.toBeUndefined();
-		});
-
-		test("should error if file is not a webp - (1)", async () => {
-			const filePath = `${import.meta.dir}/public/file.txt`;
-
-			const { error, status } = await api.categories.post({
-				name: "Other Category",
-				file: file(filePath) as File,
-			});
-
-			expect(status).toBe(422);
-			expect(error).not.toBeNull();
-			expect(error).not.toBeUndefined();
-		});
-
-		test("should error if file is not a webp - (2)", async () => {
-			const filePath = `${import.meta.dir}/public/feculents.jpeg`;
-
-			const { error, status } = await api.categories.post({
-				name: "Other Category",
-				file: file(filePath) as File,
-			});
-
-			expect(status).toBe(422);
 			expect(error).not.toBeNull();
 			expect(error).not.toBeUndefined();
 		});
@@ -261,6 +251,24 @@ describe.concurrent("Category routes test", () => {
 			expect(data).toHaveProperty("id");
 			expect(data).toHaveProperty("name", "New Category");
 			expect(data.image).not.toBe(category.data.image);
+		});
+
+		test("should not update category without one of the two field fill", async () => {
+			const category = await postCategory(
+				"Categorytres",
+				file(`${import.meta.dir}/public/cumin.webp`),
+			);
+			expectDefined(category.data);
+
+			const { error, status } = await api
+				.categories({ id: category.data.id })
+				.patch({
+					name: undefined,
+					file: undefined,
+				});
+
+			expect(status).toBe(406);
+			expectDefined(error);
 		});
 	});
 });
