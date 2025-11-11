@@ -1,5 +1,3 @@
-import { treaty } from "@elysiajs/eden";
-import type { App } from "@spice-world/server";
 import type { auth } from "@spice-world/server/src/plugins/better-auth.plugin";
 import { createEnv } from "@t3-oss/env-nextjs";
 import { createAuthClient } from "better-auth/client";
@@ -23,14 +21,26 @@ export const env = createEnv({
 	},
 });
 
-export const app = treaty<App>(env.NEXT_PUBLIC_BETTER_AUTH_URL);
-
 export const authClient = createAuthClient({
 	baseURL: env.NEXT_PUBLIC_BETTER_AUTH_URL,
 	plugins: [adminClient(), inferAdditionalFields<typeof auth>()],
 	fetchOptions: {
-		credentials: "include",
+		credentials: "include", // automatic includes cookies in requests
 	},
 });
 
 export type Session = typeof authClient.$Infer.Session;
+
+export const unknownError = (
+	error: unknown,
+	fallback: string = "Unknown error",
+) => {
+	const errorMessage = error instanceof Error ? error.message : fallback;
+	return {
+		status: 500,
+		value: {
+			code: "unknown",
+			message: errorMessage,
+		},
+	} as const;
+};

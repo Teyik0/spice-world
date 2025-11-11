@@ -21,7 +21,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { productAtom } from "@/lib/product";
+import { currentProductAtom, newProductAtom } from "../store";
 
 const DEFAULT_VARIANT = {
 	price: 0,
@@ -31,8 +31,10 @@ const DEFAULT_VARIANT = {
 	attributeValueIds: [],
 };
 
-export const ProductFormStock = () => {
-	const [currentProduct, setProduct] = useAtom(productAtom);
+export const ProductFormStock = ({ isNew }: { isNew: boolean }) => {
+	const [currentProduct, setProduct] = useAtom(
+		isNew ? newProductAtom : currentProductAtom,
+	);
 
 	const variants =
 		currentProduct && "variants" in currentProduct

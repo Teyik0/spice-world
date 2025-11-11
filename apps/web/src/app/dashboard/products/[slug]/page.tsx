@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { newProductDefault } from "@/lib/product";
-import { app } from "@/lib/utils";
+import { app } from "@/lib/elysia";
+import { newProductDefault } from "../store";
 import { ProductForm } from "./product-form";
 
 export default async function Page(props: {
@@ -21,11 +21,11 @@ export default async function Page(props: {
 		);
 	}
 
-	const product = undefined;
+	const { data: product } = await app.products({ id: params.slug }).get();
 	if (!product) redirect("/dashboard/products");
 	return (
 		<main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-			here
+			<ProductForm product={product} categories={categories} />
 		</main>
 	);
 }

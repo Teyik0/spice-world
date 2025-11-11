@@ -1,3 +1,3 @@
 export default function DashboardPage() {
-	return <main>zfejiogezi</main>;
+	return <main>/dashboard main page</main>;
 }

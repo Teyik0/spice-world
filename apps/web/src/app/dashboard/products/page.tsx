@@ -1,3 +1,3 @@
 export default function Page() {
-	return <div>TODO: Statistiques</div>;
+	return <div>/dashboard/products main page</div>;
 }

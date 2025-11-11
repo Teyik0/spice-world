@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { app } from "@/lib/utils";
+import { app } from "@/lib/elysia";
 
 export default async function middleware(req: NextRequest) {
 	const cookieName = "better-auth.session_token";
@@ -9,7 +9,6 @@ export default async function middleware(req: NextRequest) {
 			cookie: sessionCookie ? `${cookieName}=${sessionCookie}` : "",
 		},
 	});
-	console.log("error", error);
 
 	if (error) {
 		return NextResponse.redirect(new URL("/", req.url));

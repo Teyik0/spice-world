@@ -16,10 +16,12 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { productAtom } from "@/lib/product";
+import { currentProductAtom, newProductAtom } from "../store";
 
-export const ProductFormDetails = () => {
-	const [product, setProduct] = useAtom(productAtom);
+export const ProductFormDetails = ({ isNew }: { isNew: boolean }) => {
+	const [product, setProduct] = useAtom(
+		isNew ? newProductAtom : currentProductAtom,
+	);
 
 	const updateProduct = (field: string, value: string) => {
 		if (!product) return;

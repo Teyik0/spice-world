@@ -10,6 +10,7 @@ import {
 	VolumeOffIcon,
 } from "lucide-react";
 import { Suspense } from "react";
+import { ClientOnly } from "@/components/client-only";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import {
@@ -21,27 +22,20 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import {
-	Sidebar,
-	SidebarContent,
-	SidebarGroup,
-	SidebarGroupContent,
-	SidebarHeader,
-} from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { app } from "@/lib/utils";
-import { AddProductButton, NewProduct } from "./new-product";
-import { ProductCard } from "./product";
+import type { GetProduct } from "@/lib/elysia";
+import {
+	AddProductButton,
+	ExistingProductCard,
+	NewProductCard,
+} from "./product-card";
+import { newProductDefault } from "./store";
 
-export default async function CollapsibleContent() {
-	const { data: products } = await app.products.get({
-		query: { take: 100, skip: 0, status: undefined },
-	});
-
+export async function SidebarRight({ products }: { products: GetProduct[] }) {
 	return (
 		<Suspense fallback={<ProductsSidebarSkeleton />}>
-			<Sidebar collapsible="none" className="hidden flex-1 md:flex">
-				<SidebarHeader className="p-3">
+			<aside className="hidden md:flex flex-1 flex-col border-r bg-background h-screen overflow-hidden">
+				<header className="p-3 border-b h-16 items-center flex">
 					<ButtonGroup className="w-full">
 						<Input placeholder="Type to search..." />
 						<Button variant="outline" aria-label="Search">
@@ -91,47 +85,40 @@ export default async function CollapsibleContent() {
 							</DropdownMenuContent>
 						</DropdownMenu>
 
-						<AddProductButton />
+						<ClientOnly>
+							<AddProductButton />
+						</ClientOnly>
 					</ButtonGroup>
-				</SidebarHeader>
-				<SidebarContent>
-					<SidebarGroup className="px-0">
-						<SidebarGroupContent>
-							<NewProduct />
-							{products?.map((product) => (
-								<ProductCard key={product.id} product={product} isNew={false} />
-							))}
-						</SidebarGroupContent>
-					</SidebarGroup>
-				</SidebarContent>
-			</Sidebar>
+				</header>
+				<div className="flex-1 overflow-auto">
+					<ClientOnly>
+						<NewProductCard product={newProductDefault} />
+					</ClientOnly>
+					{products?.map((product) => (
+						<ExistingProductCard key={product.id} product={product} />
+					))}
+				</div>
+			</aside>
 		</Suspense>
 	);
 }
 
 function ProductsSidebarSkeleton() {
 	return (
-		<Sidebar collapsible="none" className="hidden flex-1 md:flex">
-			<SidebarHeader className="p-3">
+		<aside className="hidden md:flex flex-1 flex-col border-r bg-background h-screen overflow-hidden">
+			<header className="p-3 border-b h-16">
 				<div className="flex gap-2">
-					<Skeleton className="h-10 flex-1" />
-					<Skeleton className="h-10 w-10" />
-					<Skeleton className="h-10 w-10" />
-					<Skeleton className="h-10 w-10" />
+					<Skeleton className="h-9 flex-1" />
 				</div>
-			</SidebarHeader>
-			<SidebarContent>
-				<SidebarGroup className="px-0">
-					<SidebarGroupContent>
-						{Array.from({ length: 5 }).map((_, index) => (
-							<div key={index} className="border-b p-4">
-								<Skeleton className="h-4 w-3/4 mb-2" />
-								<Skeleton className="h-3 w-full" />
-							</div>
-						))}
-					</SidebarGroupContent>
-				</SidebarGroup>
-			</SidebarContent>
-		</Sidebar>
+			</header>
+			<div className="flex-1 overflow-auto">
+				{Array.from({ length: 5 }).map((_, index) => (
+					<div key={index} className="border-b p-4">
+						<Skeleton className="h-4 w-3/4 mb-2" />
+						<Skeleton className="h-3 w-full" />
+					</div>
+				))}
+			</div>
+		</aside>
 	);
 }
