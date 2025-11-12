@@ -4,11 +4,11 @@ import { opentelemetry } from "@elysiajs/opentelemetry";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { Elysia } from "elysia";
+import { attributeRouter } from "@/modules/attributes";
+import { categoryRouter } from "@/modules/categories";
+import { tagRouter } from "@/modules/tags";
 import { betterAuthPlugin, OpenAPI } from "./plugins/better-auth.plugin.tsx";
-import { attributeRouter } from "./routes/attribute.router";
-import { categoryRouter } from "./routes/category.router";
 import { productsRouter } from "./routes/product.router";
-import { tagRouter } from "./routes/tag.router";
 
 declare module "bun" {
 	interface Env {

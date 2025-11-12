@@ -244,7 +244,7 @@ export const productsRouter = new Elysia({
 			body: t.Object({
 				name: nameType,
 				description: t.String(),
-				categoryId: t.Optional(t.String({ format: "uuid" })),
+				categoryId: t.String({ format: "uuid" }),
 				status: t.Optional(ProductStatus),
 				tags: t.Optional(
 					t.ArrayString(t.String({ format: "uuid" }), { minItems: 1 }),

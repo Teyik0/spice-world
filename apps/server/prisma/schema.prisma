@@ -98,38 +98,44 @@ model Comment {
 
 //PRODUCTS
 
+// Category: Represents a product category (e.g., "Épices", "Vêtements")
+// Each category can have its own set of attributes (e.g., Épices: Couleur, Taille, Origine)
 model Category {
   id      String @id @default(uuid())
-  name    String @unique
+  name    String @unique // Category name (e.g., "Épices")
   image   Image  @relation(fields: [imageId], references: [id])
   imageId String @unique
 
-  products   Product[]
-  attributes Attribute[]
+  products   Product[] // All products in this category
+  attributes Attribute[] // Attributes available for this category
 }
 
+// Attribute: Defines a characteristic for a category (e.g., "Couleur", "Taille")
+// Each attribute belongs to a specific category and can have multiple values
 model Attribute {
   id   String @id @default(uuid())
-  name String
+  name String // Attribute name (e.g., "Couleur", "Taille")
 
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   categoryId String
 
-  values AttributeValue[]
+  values AttributeValue[] // Possible values for this attribute
 
-  @@unique([categoryId, name])
+  @@unique([categoryId, name]) // No duplicate attributes per category
 }
 
+// AttributeValue: Specific value for an attribute (e.g., "Noir", "100g")
+// These values are combined in ProductVariants to create specific product variations
 model AttributeValue {
   id    String @id @default(uuid())
-  value String
+  value String // Attribute value (e.g., "Noir", "Blanc", "100g", "250g")
 
   attribute   Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
   attributeId String
 
-  productVariants ProductVariant[]
+  productVariants ProductVariant[] // Used in multiple product variants
 
-  @@unique([attributeId, value])
+  @@unique([attributeId, value]) // No duplicate values per attribute
 }
 
 model Image {
@@ -145,10 +151,12 @@ model Image {
   category Category?
 }
 
+// Product: Base product without variations (e.g., "Poivre")
+// The actual purchasable items are ProductVariants with specific attributes
 model Product {
   id          String @id @default(uuid())
-  name        String @unique
-  slug        String @unique
+  name        String @unique // Product name (e.g., "Poivre")
+  slug        String @unique // URL-friendly name (e.g., "poivre")
   description String
 
   status   ProductStatus @default(DRAFT)
@@ -156,28 +164,30 @@ model Product {
   tags     Tag[]
   comments Comment[]
 
-  variants ProductVariant[]
+  variants ProductVariant[] // All variations of this product (e.g., Poivre Noir 100g, Poivre Blanc 250g)
   orders   Order[]
 
-  category   Category? @relation(fields: [categoryId], references: [id])
-  categoryId String?
+  category   Category @relation(fields: [categoryId], references: [id])
+  categoryId String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+// ProductVariant: Specific variation of a product with unique attributes, price, and stock
+// Example: "Poivre Noir 100g" (attributeValues: [Noir, 100g], price: 5.99€, stock: 50)
 model ProductVariant {
   id        String  @id @default(uuid())
   productId String
   product   Product @relation(fields: [productId], references: [id])
 
-  attributeValues AttributeValue[]
+  attributeValues AttributeValue[] // Combination of attributes (e.g., [Noir, 100g])
 
-  sku      String? @unique // Stock Keeping Unit
-  price    Float
+  sku      String? @unique // Stock Keeping Unit - unique code (e.g., "POIV-NOIR-100G")
+  price    Float // Price for this specific variant
   currency String  @default("EUR")
 
-  stock Int @default(0) // Available stock
+  stock Int @default(0) // Available stock for this variant
 
   // Additional fields like weight, dimensions, etc. can be added here
 

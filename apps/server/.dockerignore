@@ -1,8 +1,0 @@
-Dockerfile
-docker-compose.yaml
-.env
-.env.example
-README.md
-.coverage
-./src/prisma
-./src/prismabox

@@ -2,8 +2,8 @@ import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { treaty } from "@elysiajs/eden";
 import type { BunFile } from "bun";
 import { file } from "bun";
-import * as imagesModule from "../src/lib/images";
-import type { categoryRouter } from "../src/routes/category.router";
+import * as imagesModule from "@/lib/images";
+import type { categoryRouter } from "@/modules/categories";
 import { createTestDatabase } from "./utils/db-manager";
 import { createUploadedFileData, expectDefined } from "./utils/helper";
 
@@ -29,7 +29,7 @@ describe.concurrent("Category routes test", () => {
 			};
 		}) as typeof imagesModule.utapi.uploadFiles);
 
-		const { categoryRouter } = await import("../src/routes/category.router");
+		const { categoryRouter } = await import("@/modules/categories");
 		api = treaty(categoryRouter);
 	});
 
@@ -85,14 +85,10 @@ describe.concurrent("Category routes test", () => {
 			expectDefined(category.data);
 			expect(category.status).toBe(201);
 
-			const { error, status } = await api.categories.post({
-				name: "Other Category",
-				file: bunfile as unknown as File,
-			});
+			const { error, status } = await postCategory("Other Category", bunfile);
 
 			expect(status).toBe(409);
-			expect(error).not.toBeNull();
-			expect(error).not.toBeUndefined();
+			expectDefined(error);
 		});
 
 		test("should error if name don't start with a uppercase letter", async () => {
@@ -180,15 +176,13 @@ describe.concurrent("Category routes test", () => {
 			expect(oldCategory).toHaveProperty("name", "Hello Category");
 			expect(oldCategory).toHaveProperty("image");
 
-			const { data: category, status } = await api
+			const { data, status } = await api
 				.categories({ id: oldCategory.id })
 				.delete();
 
 			expect(status).toBe(200);
-			expectDefined(category);
-			expect(category).toHaveProperty("id");
-			expect(category).toHaveProperty("name", "Hello Category");
-			expect(category).toHaveProperty("image");
+			expectDefined(data);
+			expect(data).toBe("OK");
 		});
 	});
 
@@ -222,6 +216,7 @@ describe.concurrent("Category routes test", () => {
 			const { data, status } = await api
 				.categories({ id: category.data.id })
 				.patch({
+					name: category.data.name,
 					file: file(`${import.meta.dir}/public/garlic.webp`) as File,
 				});
 
@@ -251,24 +246,6 @@ describe.concurrent("Category routes test", () => {
 			expect(data).toHaveProperty("id");
 			expect(data).toHaveProperty("name", "New Category");
 			expect(data.image).not.toBe(category.data.image);
-		});
-
-		test("should not update category without one of the two field fill", async () => {
-			const category = await postCategory(
-				"Categorytres",
-				file(`${import.meta.dir}/public/cumin.webp`),
-			);
-			expectDefined(category.data);
-
-			const { error, status } = await api
-				.categories({ id: category.data.id })
-				.patch({
-					name: undefined,
-					file: undefined,
-				});
-
-			expect(status).toBe(406);
-			expectDefined(error);
 		});
 	});
 });

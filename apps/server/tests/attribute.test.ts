@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import type { Attribute, AttributeValue, Category } from "../src/prisma/client";
-import type { attributeRouter } from "../src/routes/attribute.router";
-import { createTestDatabase } from "./utils/db-manager";
-import { expectDefined } from "./utils/helper";
+import type { attributeRouter } from "@/modules/attributes";
+import type { Attribute, AttributeValue, Category } from "@/prisma/client";
+import { createTestDatabase } from "@/utils/db-manager";
+import { expectDefined } from "@/utils/helper";
 
 describe.concurrent("Attribute routes test", () => {
 	let testCategory: Category;
@@ -21,7 +21,7 @@ describe.concurrent("Attribute routes test", () => {
 			throw new Error("DATABASE_URL should be set");
 		}
 		testDb = await createTestDatabase("attribute.test.ts");
-		const { attributeRouter } = await import("../src/routes/attribute.router");
+		const { attributeRouter } = await import("@/modules/attributes");
 		api = treaty(attributeRouter);
 
 		testCategory = await testDb.client.category.create({
@@ -304,7 +304,7 @@ describe.concurrent("Attribute routes test", () => {
 
 			expect(status).toBe(200);
 			expectDefined(data);
-			expect(data.id).toBe(tempAttr.id);
+			expect(data).toBe("OK");
 
 			// Verify it's actually deleted
 			const checkAttr = await testDb.client.attribute.findUnique({
@@ -341,7 +341,7 @@ describe.concurrent("Attribute routes test", () => {
 			const { data, status } = await api
 				.attributes({ id: testAttr.id })
 				.values.post({
-					value: newValue,
+					name: newValue,
 				});
 
 			expect(status).toBe(201);
@@ -357,7 +357,7 @@ describe.concurrent("Attribute routes test", () => {
 			const { error, status } = await api
 				.attributes({ id: testAttr.id })
 				.values.post({
-					value: "Invalid Value", // Invalid format
+					name: "Invalid Value", // Invalid format
 				});
 
 			expect(status).toBe(422);
@@ -369,7 +369,7 @@ describe.concurrent("Attribute routes test", () => {
 			const { error, status } = await api
 				.attributes({ id: "00000000-0000-0000-0000-000000000000" })
 				.values.post({
-					value: "france",
+					name: "france",
 				});
 
 			expect(status).toBe(409); // Foreign key constraint violation prisma P2003
@@ -398,7 +398,7 @@ describe.concurrent("Attribute routes test", () => {
 			const { data, status } = await api.attributes
 				.values({ id: testValue.id })
 				.patch({
-					value: newValueText,
+					name: newValueText,
 				});
 
 			expect(status).toBe(200);
@@ -415,7 +415,7 @@ describe.concurrent("Attribute routes test", () => {
 			const { error, status } = await api.attributes
 				.values({ id: testValue.id })
 				.patch({
-					value: "Invalid Value", // Invalid format
+					name: "Invalid Value", // Invalid format
 				});
 
 			expect(status).toBe(422);
@@ -429,7 +429,7 @@ describe.concurrent("Attribute routes test", () => {
 					id: "00000000-0000-0000-0000-000000000000",
 				})
 				.patch({
-					value: "extreme",
+					name: "extreme",
 				});
 
 			expect(status).toBe(404);
