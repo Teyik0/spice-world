@@ -1,7 +1,7 @@
 import { Elysia, status } from "elysia";
 import { utapi } from "@/lib/images";
 import { prismaErrorPlugin } from "@/plugins/prisma.plugin";
-import { uuid } from "../shared";
+import { uuidGuard } from "../shared";
 import { CategoryModel } from "./model";
 import { categoryService } from "./service";
 
@@ -18,7 +18,7 @@ export const categoryRouter = new Elysia({
 		body: CategoryModel.postBody,
 	})
 	.get("/count", async () => await categoryService.count())
-	.guard({ params: uuid })
+	.guard({ params: uuidGuard })
 	.get("/:id", async ({ params }) => await categoryService.getById(params))
 	.state("imageKey", null as null | string)
 	.onAfterResponse(async ({ store }) => {

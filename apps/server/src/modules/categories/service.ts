@@ -2,7 +2,7 @@ import { status } from "elysia";
 import type { UploadedFileData } from "uploadthing/types";
 import { uploadFile, utapi } from "@/lib/images";
 import { prisma } from "@/lib/prisma";
-import { uploadFileStatus, type uuid } from "../shared";
+import { uploadFileErrStatus, type uuidGuard } from "../shared";
 import type { CategoryModel } from "./model";
 
 export const categoryService = {
@@ -26,7 +26,7 @@ export const categoryService = {
 		return categories;
 	},
 
-	async getById({ id }: uuid) {
+	async getById({ id }: uuidGuard) {
 		const category = await prisma.category.findUnique({
 			where: { id },
 			include: {
@@ -44,7 +44,7 @@ export const categoryService = {
 	async post({ name, file }: CategoryModel.postBody) {
 		const { data: image, error: fileError } = await uploadFile(name, file);
 		if (fileError || !image) {
-			return uploadFileStatus(fileError);
+			return uploadFileErrStatus(fileError);
 		}
 
 		try {
@@ -73,13 +73,13 @@ export const categoryService = {
 		}
 	},
 
-	async patch({ id, name, file }: CategoryModel.patchBody & uuid) {
+	async patch({ id, name, file }: CategoryModel.patchBody & uuidGuard) {
 		let newFile: UploadedFileData | null = null;
 
 		if (file) {
 			const { data: image, error: fileError } = await uploadFile(name, file);
 			if (fileError || !image) {
-				return { data: null, error: uploadFileStatus(fileError) };
+				return { data: null, error: uploadFileErrStatus(fileError) };
 			}
 			newFile = image;
 		}
@@ -105,7 +105,7 @@ export const categoryService = {
 					},
 					include: { image: true },
 				});
-				return { updatedCategory, oldImage: category?.image };
+				return { updatedCategory, oldImage: category.image };
 			});
 
 			return { data: tx, error: null };
@@ -115,7 +115,7 @@ export const categoryService = {
 		}
 	},
 
-	async delete({ id }: uuid & {}) {
+	async delete({ id }: uuidGuard) {
 		const tx = await prisma.$transaction(async (tx) => {
 			const deletedCategory = await tx.category.delete({ where: { id } });
 			const deletedImage = await tx.image.delete({

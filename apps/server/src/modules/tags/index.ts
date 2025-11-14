@@ -1,6 +1,6 @@
 import { Elysia } from "elysia";
 import { prismaErrorPlugin } from "@/plugins/prisma.plugin";
-import { uuid } from "../shared";
+import { uuidGuard } from "../shared";
 import { TagModel } from "./model";
 import { tagService } from "./service";
 
@@ -17,7 +17,7 @@ export const tagRouter = new Elysia({
 		body: TagModel.postBody,
 	})
 	.get("/count", async () => await tagService.count())
-	.guard({ params: uuid })
+	.guard({ params: uuidGuard })
 	.get("/:id", async ({ params }) => await tagService.getById(params))
 	.delete("/:id", async ({ params }) => await tagService.delete(params))
 	.patch(

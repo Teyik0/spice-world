@@ -13,9 +13,9 @@ export namespace TagModel {
 		name: t.Optional(t.String()),
 	});
 	export type getQuery = typeof getQuery.static;
-	export type getResult = typeof tagService.get;
+	export type getResult = Awaited<ReturnType<typeof tagService.get>>;
 
-	export type getByIdResult = typeof tagService.getById;
+	export type getByIdResult = Awaited<ReturnType<typeof tagService.getById>>;
 
 	export const postBody = t.Object({
 		name: nameLowerPattern,

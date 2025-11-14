@@ -7,12 +7,18 @@ Regex explanation:
 [a-zà-ÿ ]*       : followed by zero or more lowercase letters with latin char with accent (i.e éè) or spaces
 $                : end of string
 */
-export const nameLowerPattern = t.String({ pattern: "^[a-zà-ÿ][a-zà-ÿ ]*$" });
+export const nameLowerPattern = t.String({
+	pattern: "^[a-zà-ÿ][a-zà-ÿ ]*$",
+	minLength: 3,
+});
 
-export const uuid = t.Object({ id: t.String({ format: "uuid" }) });
+export const uuid = t.String({ format: "uuid" });
 export type uuid = typeof uuid.static;
 
-export const uploadFileStatus = (
+export const uuidGuard = t.Object({ id: uuid });
+export type uuidGuard = typeof uuidGuard.static;
+
+export const uploadFileErrStatus = (
 	fileError: Awaited<ReturnType<typeof uploadFile>>["error"],
 ) => {
 	return status(

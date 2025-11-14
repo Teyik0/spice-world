@@ -101,8 +101,9 @@ model Comment {
 // Category: Represents a product category (e.g., "Épices", "Vêtements")
 // Each category can have its own set of attributes (e.g., Épices: Couleur, Taille, Origine)
 model Category {
-  id      String @id @default(uuid())
-  name    String @unique // Category name (e.g., "Épices")
+  id   String @id @default(uuid())
+  name String @unique // Category name (e.g., "Épices")
+
   image   Image  @relation(fields: [imageId], references: [id])
   imageId String @unique
 
@@ -145,7 +146,7 @@ model Image {
   altText     String?
   isThumbnail Boolean @default(false)
 
-  product   Product? @relation(fields: [productId], references: [id])
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId String?
 
   category Category?
@@ -158,6 +159,7 @@ model Product {
   name        String @unique // Product name (e.g., "Poivre")
   slug        String @unique // URL-friendly name (e.g., "poivre")
   description String
+  version     Int    @default(0)
 
   status   ProductStatus @default(DRAFT)
   images   Image[]
@@ -167,7 +169,7 @@ model Product {
   variants ProductVariant[] // All variations of this product (e.g., Poivre Noir 100g, Poivre Blanc 250g)
   orders   Order[]
 
-  category   Category @relation(fields: [categoryId], references: [id])
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   categoryId String
 
   createdAt DateTime @default(now())
@@ -179,7 +181,7 @@ model Product {
 model ProductVariant {
   id        String  @id @default(uuid())
   productId String
-  product   Product @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   attributeValues AttributeValue[] // Combination of attributes (e.g., [Noir, 100g])
 

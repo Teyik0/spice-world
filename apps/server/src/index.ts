@@ -6,9 +6,9 @@ import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { Elysia } from "elysia";
 import { attributeRouter } from "@/modules/attributes";
 import { categoryRouter } from "@/modules/categories";
+import { productsRouter } from "@/modules/products";
 import { tagRouter } from "@/modules/tags";
 import { betterAuthPlugin, OpenAPI } from "./plugins/better-auth.plugin.tsx";
-import { productsRouter } from "./routes/product.router";
 
 declare module "bun" {
 	interface Env {

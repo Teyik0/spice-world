@@ -3,6 +3,7 @@ import { treaty } from "@elysiajs/eden";
 import type { BunFile } from "bun";
 import { file } from "bun";
 import * as imagesModule from "@/lib/images";
+import { prisma } from "@/lib/prisma";
 import type { categoryRouter } from "@/modules/categories";
 import { createTestDatabase } from "./utils/db-manager";
 import { createUploadedFileData, expectDefined } from "./utils/helper";
@@ -49,7 +50,7 @@ describe.concurrent("Category routes test", () => {
 		test("should create a new category", async () => {
 			const filePath = `${import.meta.dir}/public/cumin.webp`;
 			const bunfile = file(filePath);
-			const name = "Test Category";
+			const name = "test category";
 			const { data, status } = await postCategory(name, bunfile);
 
 			expect(status).toBe(201);
@@ -65,7 +66,7 @@ describe.concurrent("Category routes test", () => {
 		test("should create a new category with accent", async () => {
 			const filePath = `${import.meta.dir}/public/cumin.webp`;
 			const bunfile = file(filePath);
-			const name = "Épices";
+			const name = "épices";
 			const { data, status } = await postCategory(name, bunfile);
 
 			expect(status).toBe(201);
@@ -81,23 +82,23 @@ describe.concurrent("Category routes test", () => {
 		test("should error if name is already taken", async () => {
 			const filePath = `${import.meta.dir}/public/cumin.webp`;
 			const bunfile = file(filePath);
-			const category = await postCategory("Other Category", bunfile);
+			const category = await postCategory("other category", bunfile);
 			expectDefined(category.data);
 			expect(category.status).toBe(201);
 
-			const { error, status } = await postCategory("Other Category", bunfile);
+			const { error, status } = await postCategory("other category", bunfile);
 
 			expect(status).toBe(409);
 			expectDefined(error);
 		});
 
-		test("should error if name don't start with a uppercase letter", async () => {
+		test("should error if name start with a uppercase letter", async () => {
 			const filePath = `${import.meta.dir}/public/cumin.webp`;
 			const bunfile = file(filePath);
 
 			const { error, status } = await api.categories.post({
 				file: bunfile as File,
-				name: "hello",
+				name: "Hello",
 			});
 
 			expect(status).toBe(422);
@@ -139,7 +140,7 @@ describe.concurrent("Category routes test", () => {
 			// First, create a category using postCategory
 			const filePath = `${import.meta.dir}/public/cumin.webp`;
 			const bunfile = file(filePath);
-			const name = "Test Category For Get";
+			const name = "test category for get";
 			const { data: createdCategory, status: postStatus } = await postCategory(
 				name,
 				bunfile,
@@ -166,14 +167,14 @@ describe.concurrent("Category routes test", () => {
 			const filePath = `${import.meta.dir}/public/cumin.webp`;
 			const { data: oldCategory, status: oldStatus } =
 				await api.categories.post({
-					name: "Hello Category",
+					name: "hello category",
 					file: file(filePath) as File,
 				});
 
 			expect(oldStatus).toBe(201);
 			expectDefined(oldCategory);
 			expect(oldCategory).toHaveProperty("id");
-			expect(oldCategory).toHaveProperty("name", "Hello Category");
+			expect(oldCategory).toHaveProperty("name", "hello category");
 			expect(oldCategory).toHaveProperty("image");
 
 			const { data, status } = await api
@@ -183,13 +184,19 @@ describe.concurrent("Category routes test", () => {
 			expect(status).toBe(200);
 			expectDefined(data);
 			expect(data).toBe("OK");
+
+			// Check image is well deleted
+			const image = await prisma.image.findUnique({
+				where: { id: oldCategory.image?.id },
+			});
+			expect(image).toBe(null);
 		});
 	});
 
 	describe("Update category - PATCH/:id", () => {
 		test("should update category with new name only", async () => {
 			const category = await postCategory(
-				"Initial Category",
+				"initial category",
 				file(`${import.meta.dir}/public/cumin.webp`),
 			);
 			expectDefined(category.data);
@@ -197,18 +204,18 @@ describe.concurrent("Category routes test", () => {
 			const { data, status } = await api
 				.categories({ id: category.data.id })
 				.patch({
-					name: "Updated Category",
+					name: "updated category",
 				});
 
 			expect(status).toBe(200);
 			expectDefined(data);
 			expect(data).toHaveProperty("id");
-			expect(data).toHaveProperty("name", "Updated Category");
+			expect(data).toHaveProperty("name", "updated category");
 		});
 
 		test("should update category with new file only", async () => {
 			const category = await postCategory(
-				"Categoryuno",
+				"categoryuno",
 				file(`${import.meta.dir}/public/cumin.webp`),
 			);
 			expectDefined(category.data);
@@ -229,7 +236,7 @@ describe.concurrent("Category routes test", () => {
 
 		test("should update category with new file and new name", async () => {
 			const category = await postCategory(
-				"Categorydos",
+				"categorydos",
 				file(`${import.meta.dir}/public/cumin.webp`),
 			);
 			expectDefined(category.data);
@@ -237,14 +244,14 @@ describe.concurrent("Category routes test", () => {
 			const { data, status } = await api
 				.categories({ id: category.data.id })
 				.patch({
-					name: "New Category",
+					name: "new category",
 					file: file(`${import.meta.dir}/public/cumin.webp`) as File,
 				});
 
 			expect(status).toBe(200);
 			expectDefined(data);
 			expect(data).toHaveProperty("id");
-			expect(data).toHaveProperty("name", "New Category");
+			expect(data).toHaveProperty("name", "new category");
 			expect(data.image).not.toBe(category.data.image);
 		});
 	});

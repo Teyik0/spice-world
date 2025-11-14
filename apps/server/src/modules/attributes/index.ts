@@ -1,7 +1,7 @@
 import { Elysia } from "elysia";
 import { prisma } from "@/lib/prisma";
 import { prismaErrorPlugin } from "@/plugins/prisma.plugin";
-import { uuid } from "../shared";
+import { uuidGuard } from "../shared";
 import { AttributeModel, AttributeValueModel } from "./model";
 import { attributeService, attributeValueService } from "./service";
 
@@ -18,7 +18,7 @@ export const attributeRouter = new Elysia({
 		body: AttributeModel.postBody,
 	})
 	.get("/count", async () => await attributeService.count())
-	.guard({ params: uuid })
+	.guard({ params: uuidGuard })
 	.get("/:id", async ({ params }) => await attributeService.getById(params))
 	.patch(
 		"/:id",
@@ -39,7 +39,7 @@ export const attributeRouter = new Elysia({
 	)
 	.group("/values", (app) =>
 		app
-			.guard({ params: uuid })
+			.guard({ params: uuidGuard })
 			.patch(
 				"/:id",
 				async ({ params, body }) =>

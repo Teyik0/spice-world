@@ -7,7 +7,7 @@ export namespace AttributeModel {
 		categoryId: t.Optional(t.String({ format: "uuid" })),
 	});
 	export type getQuery = typeof getQuery.static;
-	export type getResult = typeof attributeService.get;
+	export type getResult = Awaited<ReturnType<typeof attributeService.get>>;
 
 	export type getById = typeof attributeService.getById;
 

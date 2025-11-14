@@ -1,6 +1,6 @@
 import { status } from "elysia";
 import { prisma } from "@/lib/prisma";
-import type { uuid } from "../shared";
+import type { uuidGuard } from "../shared";
 import type { TagModel } from "./model";
 
 export const tagService = {
@@ -17,7 +17,7 @@ export const tagService = {
 		return tags;
 	},
 
-	async getById({ id }: uuid) {
+	async getById({ id }: uuidGuard) {
 		const tag = await prisma.tag.findUnique({
 			where: {
 				id,
@@ -41,7 +41,7 @@ export const tagService = {
 		return count;
 	},
 
-	async delete({ id }: uuid) {
+	async delete({ id }: uuidGuard) {
 		await prisma.tag.delete({
 			where: {
 				id,
@@ -50,7 +50,7 @@ export const tagService = {
 		return status(200);
 	},
 
-	async patch({ id, name, badgeColor }: TagModel.patchBody & uuid) {
+	async patch({ id, name, badgeColor }: TagModel.patchBody & uuidGuard) {
 		const tag = await prisma.tag.update({
 			where: {
 				id,

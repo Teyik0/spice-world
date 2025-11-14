@@ -1,6 +1,6 @@
 import { status } from "elysia";
 import { prisma } from "@/lib/prisma";
-import type { uuid } from "../shared";
+import type { uuidGuard } from "../shared";
 import type { AttributeModel, AttributeValueModel } from "./model";
 
 export const attributeService = {
@@ -42,7 +42,7 @@ export const attributeService = {
 		return count;
 	},
 
-	async patch({ id, name }: AttributeModel.patchBody & uuid) {
+	async patch({ id, name }: AttributeModel.patchBody & uuidGuard) {
 		const attribute = prisma.attribute.update({
 			where: { id },
 			data: {
@@ -53,7 +53,7 @@ export const attributeService = {
 		return attribute;
 	},
 
-	async delete({ id }: uuid) {
+	async delete({ id }: uuidGuard) {
 		await prisma.attribute.delete({
 			where: {
 				id,
@@ -64,7 +64,7 @@ export const attributeService = {
 };
 
 export const attributeValueService = {
-	async post({ id, name }: AttributeValueModel.postBody & uuid) {
+	async post({ id, name }: AttributeValueModel.postBody & uuidGuard) {
 		const attributeValue = await prisma.attributeValue.create({
 			data: {
 				value: name,
@@ -74,7 +74,7 @@ export const attributeValueService = {
 		return status("Created", attributeValue);
 	},
 
-	async patch({ id, name }: AttributeValueModel.patchBody & uuid) {
+	async patch({ id, name }: AttributeValueModel.patchBody & uuidGuard) {
 		const attributeValue = prisma.attributeValue.update({
 			where: { id },
 			data: { value: name },
@@ -82,7 +82,7 @@ export const attributeValueService = {
 		return attributeValue;
 	},
 
-	async delete({ id }: uuid) {
+	async delete({ id }: uuidGuard) {
 		await prisma.attributeValue.delete({
 			where: { id },
 		});

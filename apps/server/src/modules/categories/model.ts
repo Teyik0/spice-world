@@ -1,7 +1,6 @@
 import { t } from "elysia";
+import { nameLowerPattern } from "../shared";
 import type { categoryService } from "./service";
-
-const namePattern = t.String({ pattern: "^[A-ZÀ-ÖØ-Þ][a-zA-ZÀ-ÖØ-öø-ÿ ]*$" });
 
 export namespace CategoryModel {
 	export const getQuery = t.Object({
@@ -10,19 +9,21 @@ export namespace CategoryModel {
 		name: t.Optional(t.String()),
 	});
 	export type getQuery = typeof getQuery.static;
-	export type getResult = typeof categoryService.get;
+	export type getResult = Awaited<ReturnType<typeof categoryService.get>>;
 
-	export type getByIdResult = typeof categoryService.getById;
+	export type getByIdResult = Awaited<
+		ReturnType<typeof categoryService.getById>
+	>;
 
 	export const postBody = t.Object({
-		name: namePattern,
+		name: nameLowerPattern,
 		file: t.File({ type: "image/*" }),
 	});
 	export type postBody = typeof postBody.static;
 	export type postResult = typeof categoryService.post;
 
 	export const patchBody = t.Object({
-		name: namePattern,
+		name: nameLowerPattern,
 		file: t.Optional(t.File({ type: "image/*" })),
 	});
 	export type patchBody = typeof patchBody.static;
