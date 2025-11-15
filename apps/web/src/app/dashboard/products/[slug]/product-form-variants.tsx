@@ -1,9 +1,6 @@
 "use client";
 
-import { useAtom } from "jotai";
-import { PlusCircle, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@spice-world/web/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -11,13 +8,17 @@ import {
 	CardFooter,
 	CardHeader,
 	CardTitle,
-} from "@/components/ui/card";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+} from "@spice-world/web/components/ui/card";
+import {
+	Field,
+	FieldGroup,
+	FieldLabel,
+} from "@spice-world/web/components/ui/field";
+import { Input } from "@spice-world/web/components/ui/input";
 import {
 	MultiSelect,
 	type MultiSelectOption,
-} from "@/components/ui/multi-select";
+} from "@spice-world/web/components/ui/multi-select";
 import {
 	Table,
 	TableBody,
@@ -25,8 +26,11 @@ import {
 	TableHead,
 	TableHeader,
 	TableRow,
-} from "@/components/ui/table";
-import { app } from "@/lib/elysia";
+} from "@spice-world/web/components/ui/table";
+import { app } from "@spice-world/web/lib/elysia";
+import { useAtom } from "jotai";
+import { PlusCircle, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { currentProductAtom, newProductAtom } from "../store";
 
 interface AttributeWithValues {

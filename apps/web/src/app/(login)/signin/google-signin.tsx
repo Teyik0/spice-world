@@ -1,9 +1,9 @@
 "use client";
 
+import { Button } from "@spice-world/web/components/ui/button";
+import { authClient } from "@spice-world/web/lib/utils";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { authClient } from "@/lib/utils";
 
 export const GoogleSignIn = () => {
 	const router = useRouter();

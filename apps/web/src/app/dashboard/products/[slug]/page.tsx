@@ -1,5 +1,5 @@
+import { app, convertToFormData } from "@spice-world/web/lib/elysia";
 import { redirect } from "next/navigation";
-import { app, convertToFormData } from "@/lib/elysia";
 import { newProductDefault } from "../store";
 import { ProductForm } from "./product-form";
 

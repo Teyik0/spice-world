@@ -7,15 +7,15 @@ import {
 	XIcon,
 } from "lucide-react";
 
-import { cn } from "@/lib/utils";
-import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { cn } from "@spice-world/web/lib/utils";
+import { Separator } from "@spice-world/web/components/ui/separator";
+import { Button } from "@spice-world/web/components/ui/button";
+import { Badge } from "@spice-world/web/components/ui/badge";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@spice-world/web/components/ui/popover";
 import {
 	Command,
 	CommandEmpty,
@@ -23,7 +23,7 @@ import {
 	CommandInput,
 	CommandItem,
 	CommandList,
-} from "@/components/ui/command";
+} from "@spice-world/web/components/ui/command";
 
 const multiSelectVariants = cva("m-1 transition-all duration-300 ease-in-out", {
 	variants: {

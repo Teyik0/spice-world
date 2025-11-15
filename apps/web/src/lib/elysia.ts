@@ -1,5 +1,5 @@
 import { treaty } from "@elysiajs/eden";
-import type { App } from "@spice-world/server";
+import type { App } from "@spice-world/server/index";
 import { env } from "./utils";
 
 export const app = treaty<App>(env.NEXT_PUBLIC_BETTER_AUTH_URL, {

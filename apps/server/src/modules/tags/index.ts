@@ -1,5 +1,5 @@
+import { prismaErrorPlugin } from "@spice-world/server/plugins/prisma.plugin";
 import { Elysia } from "elysia";
-import { prismaErrorPlugin } from "@/plugins/prisma.plugin";
 import { uuidGuard } from "../shared";
 import { TagModel } from "./model";
 import { tagService } from "./service";

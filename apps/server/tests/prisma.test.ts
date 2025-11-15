@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, test } from "bun:test";
-import { prisma } from "../src/lib/prisma";
+import { prisma } from "@spice-world/server/lib/prisma";
 
 describe.concurrent("Prisma client singleton", () => {
 	let originalPrisma: unknown;

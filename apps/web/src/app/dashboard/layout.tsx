@@ -1,8 +1,8 @@
+import { ThemeProvider } from "@spice-world/web/components/theme-provider";
+import { SidebarProvider } from "@spice-world/web/components/ui/sidebar";
+import { verifySession } from "@spice-world/web/lib/dal";
 import { Provider } from "jotai";
 import { redirect } from "next/navigation";
-import { ThemeProvider } from "@/components/theme-provider";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { verifySession } from "@/lib/dal";
 import { AppSidebar } from "./sidebar-left";
 
 export default async function Layout({

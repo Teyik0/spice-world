@@ -1,7 +1,7 @@
+import { uploadFile, utapi } from "@spice-world/server/lib/images";
+import { prisma } from "@spice-world/server/lib/prisma";
 import { status } from "elysia";
 import type { UploadedFileData } from "uploadthing/types";
-import { uploadFile, utapi } from "@/lib/images";
-import { prisma } from "@/lib/prisma";
 import { uploadFileErrStatus, type uuidGuard } from "../shared";
 import type { CategoryModel } from "./model";
 

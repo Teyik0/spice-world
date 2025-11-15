@@ -1,5 +1,5 @@
+import { prisma } from "@spice-world/server/lib/prisma";
 import { status } from "elysia";
-import { prisma } from "@/lib/prisma";
 import type { uuidGuard } from "../shared";
 import type { AttributeModel, AttributeValueModel } from "./model";
 

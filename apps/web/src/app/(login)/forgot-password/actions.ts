@@ -1,8 +1,8 @@
 "use server";
 
+import { actionClient } from "@spice-world/web/lib/safe-action";
+import { authClient } from "@spice-world/web/lib/utils";
 import { z } from "zod";
-import { actionClient } from "@/lib/safe-action";
-import { authClient } from "@/lib/utils";
 
 const forgotPasswordSchema = z.object({
 	email: z.email("Please enter a valid email address"),

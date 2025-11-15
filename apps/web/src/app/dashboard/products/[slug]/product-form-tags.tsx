@@ -1,20 +1,20 @@
 "use client";
 
-import { useAtom } from "jotai";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "@/components/ui/card";
+} from "@spice-world/web/components/ui/card";
 import {
 	MultiSelect,
 	type MultiSelectOption,
-} from "@/components/ui/multi-select";
-import { app } from "@/lib/elysia";
+} from "@spice-world/web/components/ui/multi-select";
+import { app } from "@spice-world/web/lib/elysia";
+import { useAtom } from "jotai";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { currentProductAtom, newProductAtom } from "../store";
 
 const generateRandomColor = (): string => {

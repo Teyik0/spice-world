@@ -1,14 +1,14 @@
 "use client";
 
-import { Moon, Sun } from "lucide-react";
-import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes";
-import type * as React from "react";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@spice-world/web/components/ui/dropdown-menu";
+import { Moon, Sun } from "lucide-react";
+import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes";
+import type * as React from "react";
 import { Button } from "./ui/button";
 
 export function ThemeProvider({

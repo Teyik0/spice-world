@@ -3,11 +3,11 @@ import { openapi } from "@elysiajs/openapi";
 import { opentelemetry } from "@elysiajs/opentelemetry";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
+import { attributeRouter } from "@spice-world/server/modules/attributes";
+import { categoryRouter } from "@spice-world/server/modules/categories";
+import { productsRouter } from "@spice-world/server/modules/products";
+import { tagRouter } from "@spice-world/server/modules/tags";
 import { Elysia } from "elysia";
-import { attributeRouter } from "@/modules/attributes";
-import { categoryRouter } from "@/modules/categories";
-import { productsRouter } from "@/modules/products";
-import { tagRouter } from "@/modules/tags";
 import { betterAuthPlugin, OpenAPI } from "./plugins/better-auth.plugin.tsx";
 
 declare module "bun" {

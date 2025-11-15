@@ -1,6 +1,6 @@
+import { prisma } from "@spice-world/server/lib/prisma";
+import { prismaErrorPlugin } from "@spice-world/server/plugins/prisma.plugin";
 import { Elysia } from "elysia";
-import { prisma } from "@/lib/prisma";
-import { prismaErrorPlugin } from "@/plugins/prisma.plugin";
 import { uuidGuard } from "../shared";
 import { AttributeModel, AttributeValueModel } from "./model";
 import { attributeService, attributeValueService } from "./service";

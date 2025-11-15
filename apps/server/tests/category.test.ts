@@ -1,12 +1,15 @@
 import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { treaty } from "@elysiajs/eden";
+import * as imagesModule from "@spice-world/server/lib/images";
+import { prisma } from "@spice-world/server/lib/prisma";
+import type { categoryRouter } from "@spice-world/server/modules/categories";
+import { createTestDatabase } from "@spice-world/server/utils/db-manager";
+import {
+	createUploadedFileData,
+	expectDefined,
+} from "@spice-world/server/utils/helper";
 import type { BunFile } from "bun";
 import { file } from "bun";
-import * as imagesModule from "@/lib/images";
-import { prisma } from "@/lib/prisma";
-import type { categoryRouter } from "@/modules/categories";
-import { createTestDatabase } from "./utils/db-manager";
-import { createUploadedFileData, expectDefined } from "./utils/helper";
 
 describe.concurrent("Category routes test", () => {
 	let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
@@ -30,7 +33,9 @@ describe.concurrent("Category routes test", () => {
 			};
 		}) as typeof imagesModule.utapi.uploadFiles);
 
-		const { categoryRouter } = await import("@/modules/categories");
+		const { categoryRouter } = await import(
+			"@spice-world/server/modules/categories"
+		);
 		api = treaty(categoryRouter);
 	});
 

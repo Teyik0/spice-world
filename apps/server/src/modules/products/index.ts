@@ -1,6 +1,6 @@
+import { utapi } from "@spice-world/server/lib/images";
+import { prismaErrorPlugin } from "@spice-world/server/plugins/prisma.plugin";
 import { Elysia, status } from "elysia";
-import { utapi } from "@/lib/images";
-import { prismaErrorPlugin } from "@/plugins/prisma.plugin";
 import { uuidGuard } from "../shared";
 import { ProductModel } from "./model";
 import { productService } from "./service";

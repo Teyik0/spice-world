@@ -1,19 +1,17 @@
 "use client";
 
-import { useAtom } from "jotai";
-import { Edit2, Upload } from "lucide-react";
-import Image from "next/image";
-import { useActionState, useState } from "react";
-import { toast } from "sonner";
-import { ElysiaError, ErrorItem } from "@/components/elysia-error";
-import { Button } from "@/components/ui/button";
+import {
+	ElysiaError,
+	ErrorItem,
+} from "@spice-world/web/components/elysia-error";
+import { Button } from "@spice-world/web/components/ui/button";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "@/components/ui/card";
+} from "@spice-world/web/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -21,7 +19,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@spice-world/web/components/ui/dialog";
 import {
 	Drawer,
 	DrawerClose,
@@ -31,23 +29,39 @@ import {
 	DrawerHeader,
 	DrawerTitle,
 	DrawerTrigger,
-} from "@/components/ui/drawer";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@spice-world/web/components/ui/drawer";
+import {
+	Field,
+	FieldGroup,
+	FieldLabel,
+} from "@spice-world/web/components/ui/field";
+import { Input } from "@spice-world/web/components/ui/input";
+import { Label } from "@spice-world/web/components/ui/label";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select";
-import { Spinner } from "@/components/ui/spinner";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useFileUpload } from "@/hooks/use-file-upload";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { app, type GetCategory, type TreatyMethodState } from "@/lib/elysia";
-import { cn, unknownError } from "@/lib/utils";
+} from "@spice-world/web/components/ui/select";
+import { Spinner } from "@spice-world/web/components/ui/spinner";
+import {
+	ToggleGroup,
+	ToggleGroupItem,
+} from "@spice-world/web/components/ui/toggle-group";
+import { useFileUpload } from "@spice-world/web/hooks/use-file-upload";
+import { useIsMobile } from "@spice-world/web/hooks/use-mobile";
+import {
+	app,
+	type GetCategory,
+	type TreatyMethodState,
+} from "@spice-world/web/lib/elysia";
+import { cn, unknownError } from "@spice-world/web/lib/utils";
+import { useAtom } from "jotai";
+import { Edit2, Upload } from "lucide-react";
+import Image from "next/image";
+import { useActionState, useState } from "react";
+import { toast } from "sonner";
 import { currentProductAtom, newProductAtom } from "../store";
 
 export const ProductFormOrganization = ({

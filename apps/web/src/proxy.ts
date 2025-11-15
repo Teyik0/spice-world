@@ -1,5 +1,5 @@
+import { app } from "@spice-world/web/lib/elysia";
 import { type NextRequest, NextResponse } from "next/server";
-import { app } from "@/lib/elysia";
 
 export default async function middleware(req: NextRequest) {
 	const cookieName = "better-auth.session_token";

@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@/prisma/client";
+import type { PrismaClient } from "@spice-world/server/prisma/client";
 
 export const createDummyTags = async (prisma: PrismaClient) => {
 	const tag1 = await prisma.tag.create({

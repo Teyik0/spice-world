@@ -1,20 +1,20 @@
 "use client";
 
+import { Badge } from "@spice-world/web/components/ui/badge";
+import { Button } from "@spice-world/web/components/ui/button";
+import {
+	app,
+	type GetCategory,
+	type ProductFormData,
+	type TreatyMethodState,
+} from "@spice-world/web/lib/elysia";
+import { unknownError } from "@spice-world/web/lib/utils";
 import { useAtom } from "jotai";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-	app,
-	type GetCategory,
-	type ProductFormData,
-	type TreatyMethodState,
-} from "@/lib/elysia";
-import { unknownError } from "@/lib/utils";
 import {
 	currentProductAtom,
 	newProductAtom,

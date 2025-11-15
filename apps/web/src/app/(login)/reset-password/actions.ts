@@ -1,9 +1,9 @@
 "use server";
 
+import { invalidateSessionCache } from "@spice-world/web/lib/dal";
+import { actionClient } from "@spice-world/web/lib/safe-action";
+import { authClient } from "@spice-world/web/lib/utils";
 import { z } from "zod";
-import { invalidateSessionCache } from "@/lib/dal";
-import { actionClient } from "@/lib/safe-action";
-import { authClient } from "@/lib/utils";
 import { passwordValidation } from "../utils";
 
 const resetPasswordSchema = z

@@ -1,4 +1,8 @@
-import type { Attribute, AttributeValue, PrismaClient } from "@/prisma/client";
+import type {
+	Attribute,
+	AttributeValue,
+	PrismaClient,
+} from "@spice-world/server/prisma/client";
 import { expectDefined } from "./helper";
 
 export type AttributeWithValues = Attribute & {

@@ -1,5 +1,5 @@
+import type { uploadFile } from "@spice-world/server/lib/images";
 import { status, t } from "elysia";
-import type { uploadFile } from "@/lib/images";
 
 /*
 Regex explanation:

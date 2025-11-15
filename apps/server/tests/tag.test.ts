@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import type { tagRouter } from "@/modules/tags";
-import type { PrismaClient } from "@/prisma/client";
-import { createTestDatabase } from "./utils/db-manager";
-import { expectDefined } from "./utils/helper";
+import type { tagRouter } from "@spice-world/server/modules/tags";
+import type { PrismaClient } from "@spice-world/server/prisma/client";
+import { createTestDatabase } from "@spice-world/server/utils/db-manager";
+import { expectDefined } from "@spice-world/server/utils/helper";
 
 describe.concurrent("Tags routes test", () => {
 	let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
@@ -38,7 +38,7 @@ describe.concurrent("Tags routes test", () => {
 			throw new Error("DATABASE_URL should be set");
 		}
 		testDb = await createTestDatabase("tag.test.ts");
-		const { tagRouter } = await import("@/modules/tags");
+		const { tagRouter } = await import("@spice-world/server/modules/tags");
 		api = treaty(tagRouter);
 	});
 

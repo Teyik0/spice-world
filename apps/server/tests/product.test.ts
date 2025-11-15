@@ -1,24 +1,27 @@
 import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import { file } from "bun";
-import * as imagesModule from "@/lib/images";
-import type { productsRouter } from "@/modules/products";
-import type { ProductModel } from "@/modules/products/model";
+import * as imagesModule from "@spice-world/server/lib/images";
+import type { productsRouter } from "@spice-world/server/modules/products";
+import type { ProductModel } from "@spice-world/server/modules/products/model";
 import type {
 	Category,
 	Image,
 	Product,
 	ProductVariant,
 	Tag,
-} from "@/prisma/client";
-import { createTestDatabase } from "./utils/db-manager";
+} from "@spice-world/server/prisma/client";
+import { createTestDatabase } from "@spice-world/server/utils/db-manager";
 import {
 	type AttributeWithValues,
 	createDummyAttributes,
-} from "./utils/dummy-attributes";
-import { createDummyProducts } from "./utils/dummy-products";
-import { createDummyTags } from "./utils/dummy-tags";
-import { createUploadedFileData, expectDefined } from "./utils/helper";
+} from "@spice-world/server/utils/dummy-attributes";
+import { createDummyProducts } from "@spice-world/server/utils/dummy-products";
+import { createDummyTags } from "@spice-world/server/utils/dummy-tags";
+import {
+	createUploadedFileData,
+	expectDefined,
+} from "@spice-world/server/utils/helper";
+import { file } from "bun";
 
 let api: ReturnType<typeof treaty<typeof productsRouter>>;
 
@@ -51,7 +54,9 @@ describe.concurrent("Product routes test", () => {
 			};
 		}) as typeof imagesModule.utapi.uploadFiles);
 
-		const { productsRouter } = await import("@/modules/products");
+		const { productsRouter } = await import(
+			"@spice-world/server/modules/products"
+		);
 		api = treaty(productsRouter);
 
 		const { categories, products } = await createDummyProducts(testDb.client);

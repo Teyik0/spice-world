@@ -1,24 +1,27 @@
 "use client";
 
-import { useAtom } from "jotai";
-import { ImageIcon, Trash, Upload, XIcon } from "lucide-react";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
+import { Button } from "@spice-world/web/components/ui/button";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "@/components/ui/card";
+} from "@spice-world/web/components/ui/card";
 import {
 	Carousel,
 	CarouselContent,
 	CarouselItem,
 	CarouselNext,
 	CarouselPrevious,
-} from "@/components/ui/carousel";
-import { formatBytes, useFileUpload } from "@/hooks/use-file-upload";
+} from "@spice-world/web/components/ui/carousel";
+import {
+	formatBytes,
+	useFileUpload,
+} from "@spice-world/web/hooks/use-file-upload";
+import { useAtom } from "jotai";
+import { ImageIcon, Trash, Upload, XIcon } from "lucide-react";
+import Image from "next/image";
 import { currentProductAtom, newProductAtom } from "../store";
 
 const MAX_IMAGES = 5;

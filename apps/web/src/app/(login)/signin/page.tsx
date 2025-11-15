@@ -1,12 +1,12 @@
-import { cookies } from "next/headers";
-import { Suspense } from "react";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "@/components/ui/card";
+} from "@spice-world/web/components/ui/card";
+import { cookies } from "next/headers";
+import { Suspense } from "react";
 import { SignInFormSkeleton } from "../skeletons";
 import { EmailSignIn } from "./email-signin";
 import { GoogleSignIn } from "./google-signin";

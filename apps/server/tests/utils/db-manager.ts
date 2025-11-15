@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@spice-world/server/prisma/client";
 import { sql } from "bun";
-import { PrismaClient } from "../../src/prisma/client";
 
 interface TestDatabase {
 	client: PrismaClient;

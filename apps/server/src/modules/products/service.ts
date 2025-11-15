@@ -1,9 +1,9 @@
+import { uploadFiles, utapi } from "@spice-world/server/lib/images";
+import { prisma } from "@spice-world/server/lib/prisma";
+import type { Product } from "@spice-world/server/prisma/client";
 import { sql } from "bun";
 import { status } from "elysia";
 import type { UploadedFileData } from "uploadthing/types";
-import { uploadFiles, utapi } from "@/lib/images";
-import { prisma } from "@/lib/prisma";
-import type { Product } from "@/prisma/client";
 import type { uuidGuard } from "../shared";
 import { MAX_IMAGES_PER_PRODUCT, type ProductModel } from "./model";
 

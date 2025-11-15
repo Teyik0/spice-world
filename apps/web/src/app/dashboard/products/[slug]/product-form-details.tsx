@@ -1,21 +1,21 @@
 "use client";
 
-import { useAtom } from "jotai";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "@/components/ui/card";
+} from "@spice-world/web/components/ui/card";
 import {
 	Field,
 	FieldDescription,
 	FieldGroup,
 	FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+} from "@spice-world/web/components/ui/field";
+import { Input } from "@spice-world/web/components/ui/input";
+import { Textarea } from "@spice-world/web/components/ui/textarea";
+import { useAtom } from "jotai";
 import { currentProductAtom, newProductAtom } from "../store";
 
 export const ProductFormDetails = ({ isNew }: { isNew: boolean }) => {

@@ -1,4 +1,4 @@
-import type { PrismaClient } from "../../src/prisma/client";
+import type { PrismaClient } from "@spice-world/server/prisma/client";
 
 const categoriesData = [
 	{

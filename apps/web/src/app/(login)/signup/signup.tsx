@@ -1,5 +1,21 @@
 "use client";
 
+import { Button } from "@spice-world/web/components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@spice-world/web/components/ui/card";
+import {
+	Field,
+	FieldError,
+	FieldGroup,
+	FieldLabel,
+} from "@spice-world/web/components/ui/field";
+import { Input } from "@spice-world/web/components/ui/input";
+import { authClient } from "@spice-world/web/lib/utils";
 import { useForm } from "@tanstack/react-form";
 import { useStore } from "@tanstack/react-store";
 import { Loader2, X } from "lucide-react";
@@ -7,22 +23,6 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import {
-	Field,
-	FieldError,
-	FieldGroup,
-	FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { authClient } from "@/lib/utils";
 import { passwordValidation } from "../utils";
 
 const signupFormSchema = z

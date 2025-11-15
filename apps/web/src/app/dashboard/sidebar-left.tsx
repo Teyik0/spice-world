@@ -1,5 +1,21 @@
 "use client";
 
+import { ThemeToggle } from "@spice-world/web/components/theme-provider";
+import {
+	Avatar,
+	AvatarFallback,
+	AvatarImage,
+} from "@spice-world/web/components/ui/avatar";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@spice-world/web/components/ui/dropdown-menu";
+import type { Session } from "@spice-world/web/lib/utils";
 import {
 	BadgeCheck,
 	Boxes,
@@ -12,18 +28,6 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ThemeToggle } from "@/components/theme-provider";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import type { Session } from "@/lib/utils";
 
 const navItems = [
 	{

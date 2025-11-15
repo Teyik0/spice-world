@@ -1,18 +1,18 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-import Link from "next/link";
-import { useAction } from "next-safe-action/hooks";
-import { Button } from "@/components/ui/button";
+import { Button } from "@spice-world/web/components/ui/button";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@spice-world/web/components/ui/card";
+import { Input } from "@spice-world/web/components/ui/input";
+import { Label } from "@spice-world/web/components/ui/label";
+import { Loader2 } from "lucide-react";
+import Link from "next/link";
+import { useAction } from "next-safe-action/hooks";
 import { resetPasswordAction } from "./actions";
 
 interface ResetPasswordFormProps {

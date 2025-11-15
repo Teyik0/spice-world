@@ -4,8 +4,8 @@ import {
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@spice-world/web/components/ui/card";
+import { Skeleton } from "@spice-world/web/components/ui/skeleton";
 
 export function SignInFormSkeleton() {
 	return (

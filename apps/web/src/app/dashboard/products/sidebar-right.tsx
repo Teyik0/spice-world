@@ -1,3 +1,16 @@
+import { ClientOnly } from "@spice-world/web/components/client-only";
+import { Button } from "@spice-world/web/components/ui/button";
+import { ButtonGroup } from "@spice-world/web/components/ui/button-group";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@spice-world/web/components/ui/dropdown-menu";
+import { Input } from "@spice-world/web/components/ui/input";
+import { Skeleton } from "@spice-world/web/components/ui/skeleton";
 import {
 	AlertTriangleIcon,
 	CheckIcon,
@@ -10,19 +23,6 @@ import {
 	VolumeOffIcon,
 } from "lucide-react";
 import { Suspense } from "react";
-import { ClientOnly } from "@/components/client-only";
-import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import type { GetProduct } from "@/lib/elysia";
 import {
 	AddProductButton,

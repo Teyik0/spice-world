@@ -5,9 +5,13 @@ import {
 	BreadcrumbList,
 	BreadcrumbPage,
 	BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { Sidebar, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { app } from "@/lib/elysia";
+} from "@spice-world/web/components/ui/breadcrumb";
+import {
+	Sidebar,
+	SidebarInset,
+	SidebarTrigger,
+} from "@spice-world/web/components/ui/sidebar";
+import { app } from "@spice-world/web/lib/elysia";
 import { SidebarRight } from "./sidebar-right";
 
 export default async function LayoutProducts({

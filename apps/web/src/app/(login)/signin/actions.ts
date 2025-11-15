@@ -1,11 +1,11 @@
 "use server";
 
+import { invalidateSessionCache } from "@spice-world/web/lib/dal";
+import { actionClient } from "@spice-world/web/lib/safe-action";
+import { authClient } from "@spice-world/web/lib/utils";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { invalidateSessionCache } from "@/lib/dal";
-import { actionClient } from "@/lib/safe-action";
-import { authClient } from "@/lib/utils";
 
 export const setSignInCookie = async (
 	rememberMe: boolean,

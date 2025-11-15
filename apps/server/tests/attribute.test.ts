@@ -1,9 +1,13 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import type { attributeRouter } from "@/modules/attributes";
-import type { Attribute, AttributeValue, Category } from "@/prisma/client";
-import { createTestDatabase } from "@/utils/db-manager";
-import { expectDefined } from "@/utils/helper";
+import type { attributeRouter } from "@spice-world/server/modules/attributes";
+import type {
+	Attribute,
+	AttributeValue,
+	Category,
+} from "@spice-world/server/prisma/client";
+import { createTestDatabase } from "@spice-world/server/utils/db-manager";
+import { expectDefined } from "@spice-world/server/utils/helper";
 
 describe.concurrent("Attribute routes test", () => {
 	let testCategory: Category;
@@ -21,7 +25,9 @@ describe.concurrent("Attribute routes test", () => {
 			throw new Error("DATABASE_URL should be set");
 		}
 		testDb = await createTestDatabase("attribute.test.ts");
-		const { attributeRouter } = await import("@/modules/attributes");
+		const { attributeRouter } = await import(
+			"@spice-world/server/modules/attributes"
+		);
 		api = treaty(attributeRouter);
 
 		testCategory = await testDb.client.category.create({

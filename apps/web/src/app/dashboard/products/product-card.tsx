@@ -1,17 +1,17 @@
 "use client";
 
-import { useAtom, useAtomValue } from "jotai";
-import { MinusIcon, PlusIcon } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@spice-world/web/components/ui/badge";
+import { Button } from "@spice-world/web/components/ui/button";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
-} from "@/components/ui/tooltip";
-import type { GetProduct, ProductFormData } from "@/lib/elysia";
+} from "@spice-world/web/components/ui/tooltip";
+import type { GetProduct, ProductFormData } from "@spice-world/web/lib/elysia";
+import { useAtom, useAtomValue } from "jotai";
+import { MinusIcon, PlusIcon } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { currentProductAtom, newProductAtom } from "./store";
 
 export const ExistingProductCard = ({ product }: { product: GetProduct }) => {
