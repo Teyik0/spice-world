@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { sql } from "bun";
 import { PrismaClient } from "../../src/prisma/client";
 
 interface TestDatabase {
@@ -48,7 +49,6 @@ export async function createTestDatabase(
 	const templateDb = url.pathname.slice(1) || "template1";
 
 	try {
-		await resetTestDatabase(adminClient);
 		// Create database with template to copy the schema
 		await adminClient.$executeRawUnsafe(
 			`CREATE DATABASE "${databaseName}" TEMPLATE "${templateDb}"`,
@@ -67,6 +67,7 @@ export async function createTestDatabase(
 	const testAdapter = new PrismaPg({ connectionString: testConnectionString });
 	const testClient = new PrismaClient({ adapter: testAdapter });
 	globalThis.__prisma = testClient;
+	await resetTestDatabase(testClient); // Refresh the DB
 
 	// Cleanup function to drop the database and restore original DATABASE_URL
 	const destroy = async () => {
@@ -80,6 +81,11 @@ export async function createTestDatabase(
 		globalThis.__prisma = dropClient;
 
 		try {
+			if (
+				databaseName.startsWith("test_product") ||
+				databaseName.startsWith("test_load")
+			)
+				await sql.close();
 			await dropClient.$executeRawUnsafe(
 				`DROP DATABASE IF EXISTS "${databaseName}"`,
 			);

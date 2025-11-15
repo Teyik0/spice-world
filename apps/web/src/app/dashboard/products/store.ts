@@ -1,24 +1,25 @@
 import { atom } from "jotai";
-import type { GetProductById } from "@/lib/elysia";
+import type { ProductFormData } from "@/lib/elysia";
 
-export const newProductAtom = atom<GetProductById | null>(null);
-export const newProductDefault: NonNullable<GetProductById> = {
+export const newProductAtom = atom<ProductFormData | null>(null);
+export const newProductDefault: ProductFormData = {
 	id: "new",
 	name: "New product",
 	slug: "new",
 	description: "New product description",
 	categoryId: "",
-	category: {
-		id: "",
-		name: "",
-		imageId: "",
-	},
 	images: [],
 	status: "DRAFT",
 	tags: [],
-	variants: [],
-	createdAt: new Date(),
-	updatedAt: new Date(),
+	variants: [
+		{
+			price: 0,
+			sku: "",
+			stock: 0,
+			currency: "EUR",
+			attributeValueIds: [],
+		},
+	],
 };
 
-export const currentProductAtom = atom<GetProductById | null>(null);
+export const currentProductAtom = atom<ProductFormData | null>(null);

@@ -63,13 +63,14 @@ describe.concurrent("Product routes test", () => {
 
 	afterAll(async () => {
 		await testDb.destroy();
-	});
+	}, 10000);
 
 	describe("GET /products", () => {
 		it("should return a list of products sorted by name", async () => {
 			const { data, status } = await api.products.get({
 				query: { sortBy: "name", sortDir: "asc" },
 			});
+
 			expect(status).toBe(200);
 			expectDefined(data);
 			expect(Array.isArray(data)).toBe(true);
@@ -109,26 +110,18 @@ describe.concurrent("Product routes test", () => {
 				expect(returnedProductNames).toContain(testProduct.name);
 			}
 
-			// Verify the returned products are sorted by price (ascending)
-			// Products have variants with prices
+			// Verify the returned products are sorted by minPrice (ascending)
 			for (let i = 0; i < data.length - 1; i++) {
-				const currentProduct = data[i] as (typeof data)[number] & {
-					variants: Array<{ price: number }>;
+				const current = data[i] as Product & {
+					minprice: number | null;
 				};
-				const nextProduct = data[i + 1] as (typeof data)[number] & {
-					variants: Array<{ price: number }>;
+				const next = data[i + 1] as Product & {
+					minprice: number | null;
 				};
-				if (
-					currentProduct.variants &&
-					currentProduct.variants.length > 0 &&
-					nextProduct.variants &&
-					nextProduct.variants.length > 0
-				) {
-					const currentPrice = currentProduct.variants[0]?.price;
-					const nextPrice = nextProduct.variants[0]?.price;
-					if (currentPrice !== undefined && nextPrice !== undefined) {
-						expect(currentPrice).toBeLessThanOrEqual(nextPrice);
-					}
+
+				// Skip comparison if either has no price (NULL values come last due to NULLS LAST)
+				if (current.minprice !== null && next.minprice !== null) {
+					expect(current.minprice).toBeLessThanOrEqual(next.minprice);
 				}
 			}
 		});
@@ -290,7 +283,7 @@ describe.concurrent("Product routes test", () => {
 		});
 	});
 
-	describe.only("PATCH /products/:id", () => {
+	describe("PATCH /products/:id", () => {
 		const filePath1 = `${import.meta.dir}/public/cumin.webp`;
 		const filePath2 = `${import.meta.dir}/public/curcuma.jpg`;
 		const files = [file(filePath1) as File, file(filePath2) as File];

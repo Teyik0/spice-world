@@ -231,7 +231,7 @@ const CategoryForm = ({ setOpen, categories }: CategoryFormProps) => {
 				const name = formData.get("name") as string;
 
 				const { data, error } = await app.categories.post({
-					name: name.charAt(0).toUpperCase() + name.slice(1),
+					name: name.toLowerCase(),
 					file: files[0]?.file as File,
 				});
 

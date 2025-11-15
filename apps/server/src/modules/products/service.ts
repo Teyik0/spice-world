@@ -1,7 +1,9 @@
+import { sql } from "bun";
 import { status } from "elysia";
 import type { UploadedFileData } from "uploadthing/types";
 import { uploadFiles, utapi } from "@/lib/images";
 import { prisma } from "@/lib/prisma";
+import type { Product } from "@/prisma/client";
 import type { uuidGuard } from "../shared";
 import { MAX_IMAGES_PER_PRODUCT, type ProductModel } from "./model";
 
@@ -66,65 +68,42 @@ export const productService = {
 		const direction = sortDir ?? "asc";
 		const orderByField = sortBy ?? "name";
 
-		const products = await prisma.product.findMany({
-			skip,
-			take,
-			distinct: ["id"],
-			where: {
-				status: {
-					equals: status,
-				},
-				name: {
-					contains: name,
-				},
-				category:
-					categories && categories.length > 0
-						? {
-								name: {
-									in: categories,
-								},
-							}
-						: undefined,
-			},
-			include: {
-				category: true,
-				images: true,
-				variants: {
-					orderBy: {
-						price: direction,
-					},
-					include: {
-						attributeValues: true,
-					},
-				},
-				tags: true,
-			},
-			orderBy:
-				orderByField !== "price"
-					? {
-							[orderByField]: direction,
-						}
-					: undefined,
-		});
-
-		if (sortBy === "price") {
-			// Sort products by the price of the first variant
-			products.sort((a, b) => {
-				const aMinPrice =
-					a.variants.length > 0
-						? (a.variants[0]?.price ?? Number.POSITIVE_INFINITY)
-						: Number.POSITIVE_INFINITY;
-				const bMinPrice =
-					b.variants.length > 0
-						? (b.variants[0]?.price ?? Number.POSITIVE_INFINITY)
-						: Number.POSITIVE_INFINITY;
-				return direction === "asc"
-					? aMinPrice - bMinPrice
-					: bMinPrice - aMinPrice;
-			});
+		const conditions = [];
+		if (status) conditions.push(sql`p.status = ${status}`);
+		if (name) conditions.push(sql`p.name ILIKE ${`%${name}%`}`);
+		if (categories?.length) {
+			conditions.push(
+				sql`p."categoryId" IN (SELECT id FROM "Category" WHERE name IN (${categories}))`,
+			);
 		}
 
-		return products;
+		const whereClause =
+			conditions.length > 0
+				? conditions.reduce(
+						(prev, curr) => sql`${prev} AND ${curr}`,
+						sql`WHERE ${conditions[0]}`, // initial value
+					)
+				: sql``;
+
+		const orderByClause =
+			orderByField === "price" ? sql`minprice` : sql`p.${sql(orderByField)}`;
+		const selectClause =
+			orderByField === "price"
+				? sql`, (SELECT MIN(price) FROM "ProductVariant" WHERE "productId" = p.id) AS minprice`
+				: sql``;
+		const nullsClause = orderByField === "price" ? sql`NULLS LAST` : sql``; // If product has no productVariants
+
+		const orderDirection = direction === "asc" ? sql`ASC` : sql`DESC`;
+		const offsetClause = skip !== undefined ? sql`OFFSET ${skip}` : sql``;
+		const limitClause = take !== undefined ? sql`LIMIT ${take}` : sql``;
+
+		const products = await sql<
+			Product[]
+		>`SELECT p.*${selectClause} FROM "Product" p ${whereClause}
+		  ORDER BY ${orderByClause} ${orderDirection} ${nullsClause} ${limitClause} ${offsetClause}`;
+
+		// We are using Bun.sql here because this query need to be performant for users
+		return [...products]; // erase array extra properties given by Bun.sql
 	},
 
 	async getById({ id }: uuidGuard) {
@@ -188,7 +167,7 @@ export const productService = {
 									data: uploadedImages.map((img, index) => ({
 										key: img.key,
 										url: img.ufsUrl,
-										altText: `${name} image ${index + 1}`,
+										altText: `$nameimage $index + 1`,
 										isThumbnail: index === 0, // First image is thumbnail by default
 									})),
 								},
@@ -260,7 +239,7 @@ export const productService = {
 					data: null,
 					error: status(
 						"Conflict",
-						`Product has been modified. Expected version ${_version}, current is ${product.version}`,
+						`Product has been modified. Expected version $_version, current is $product.version`,
 					),
 				};
 			}
@@ -275,7 +254,7 @@ export const productService = {
 					data: null,
 					error: status(
 						"Bad Request",
-						`Maximum ${MAX_IMAGES_PER_PRODUCT} images per product. Current: ${currentCount}, attempting to add: ${imagesCreate.length}, deleting: ${deleteCount}`,
+						`Maximum $MAX_IMAGES_PER_PRODUCTimages per product. Current: $currentCount, attempting to add: $imagesCreate.length, deleting: $deleteCount`,
 					),
 				};
 			}
@@ -322,7 +301,7 @@ export const productService = {
 					where: { id },
 					data: {
 						name,
-						slug: name ? name.toLowerCase().replace(/\s+/g, "-") : undefined,
+						slug: name ? name.toLowerCase().replace(/s+/g, "-") : undefined,
 						description,
 						version: { increment: 1 },
 						status: productStatus,

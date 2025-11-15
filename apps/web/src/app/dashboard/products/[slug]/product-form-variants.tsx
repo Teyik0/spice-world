@@ -2,6 +2,7 @@
 
 import { useAtom } from "jotai";
 import { PlusCircle, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -14,6 +15,10 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
+	MultiSelect,
+	type MultiSelectOption,
+} from "@/components/ui/multi-select";
+import {
 	Table,
 	TableBody,
 	TableCell,
@@ -21,7 +26,17 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { app } from "@/lib/elysia";
 import { currentProductAtom, newProductAtom } from "../store";
+
+interface AttributeWithValues {
+	id: string;
+	name: string;
+	values: Array<{
+		id: string;
+		value: string;
+	}>;
+}
 
 const DEFAULT_VARIANT = {
 	price: 0,
@@ -31,10 +46,36 @@ const DEFAULT_VARIANT = {
 	attributeValueIds: [],
 };
 
-export const ProductFormStock = ({ isNew }: { isNew: boolean }) => {
+export const ProductFormVariants = ({
+	isNew,
+	categoryId,
+}: {
+	isNew: boolean;
+	categoryId?: string | null;
+}) => {
 	const [currentProduct, setProduct] = useAtom(
 		isNew ? newProductAtom : currentProductAtom,
 	);
+	const [attributes, setAttributes] = useState<AttributeWithValues[]>([]);
+	const [isLoadingAttributes, setIsLoadingAttributes] = useState(false);
+
+	useEffect(() => {
+		const fetchAttributes = async () => {
+			if (!categoryId) {
+				setAttributes([]);
+				return;
+			}
+			setIsLoadingAttributes(true);
+			const { data } = await app.attributes.get({
+				query: { categoryId },
+			});
+			if (data) {
+				setAttributes(data);
+			}
+			setIsLoadingAttributes(false);
+		};
+		fetchAttributes();
+	}, [categoryId]);
 
 	const variants =
 		currentProduct && "variants" in currentProduct
@@ -61,7 +102,6 @@ export const ProductFormStock = ({ isNew }: { isNew: boolean }) => {
 
 		const updatedVariants = [...(currentProduct.variants || [])];
 
-		// Prevent deletion if only one variant remains
 		if (updatedVariants.length <= 1) {
 			return;
 		}
@@ -99,10 +139,38 @@ export const ProductFormStock = ({ isNew }: { isNew: boolean }) => {
 		});
 	};
 
+	const handleAttributeValuesChange = (index: number, valueIds: string[]) => {
+		if (!currentProduct || !("variants" in currentProduct)) return;
+
+		const updatedVariants = [...(currentProduct.variants || [])];
+		const currentVariant = updatedVariants[index];
+
+		if (!currentVariant) return;
+
+		updatedVariants[index] = {
+			...currentVariant,
+			attributeValueIds: valueIds,
+		};
+
+		setProduct({
+			...currentProduct,
+			variants: updatedVariants,
+		});
+	};
+
 	const totalStock = variants.reduce(
 		(sum, variant) => sum + (variant.stock || 0),
 		0,
 	);
+
+	const getAttributeOptions = (): MultiSelectOption[] => {
+		return attributes.flatMap((attr) =>
+			attr.values.map((val) => ({
+				label: `${attr.name}: ${val.value}`,
+				value: val.id,
+			})),
+		);
+	};
 
 	if (!currentProduct || !("variants" in currentProduct)) {
 		return null;
@@ -111,8 +179,10 @@ export const ProductFormStock = ({ isNew }: { isNew: boolean }) => {
 	return (
 		<Card className="rounded-md">
 			<CardHeader>
-				<CardTitle>Stock</CardTitle>
-				<CardDescription>Add product variants and manage stock</CardDescription>
+				<CardTitle>Stock & Variants</CardTitle>
+				<CardDescription>
+					Add product variants with attributes and manage stock
+				</CardDescription>
 				<FieldGroup className="mt-6">
 					<Field>
 						<FieldLabel htmlFor="total-stock">
@@ -132,15 +202,41 @@ export const ProductFormStock = ({ isNew }: { isNew: boolean }) => {
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<TableHead className="w-[70px]">SKU</TableHead>
-							<TableHead className="w-[50px]">Price (€)</TableHead>
-							<TableHead className="w-[50px]">Stock</TableHead>
-							<TableHead className="w-[30px]" />
+							<TableHead>Attributes</TableHead>
+							<TableHead className="w-[100px]">SKU</TableHead>
+							<TableHead className="w-[80px]">Price (€)</TableHead>
+							<TableHead className="w-[80px]">Stock</TableHead>
+							<TableHead className="w-[50px]" />
 						</TableRow>
 					</TableHeader>
 					<TableBody>
 						{variants.map((variant, index) => (
 							<TableRow key={index}>
+								<TableCell className="min-w-[200px]">
+									<MultiSelect
+										options={getAttributeOptions()}
+										onValueChange={(values) =>
+											handleAttributeValuesChange(index, values)
+										}
+										defaultValue={variant.attributeValueIds || []}
+										placeholder={
+											isLoadingAttributes
+												? "Loading..."
+												: !categoryId
+													? "Select category first"
+													: attributes.length === 0
+														? "No attributes available"
+														: "Select attributes"
+										}
+										maxCount={2}
+										disabled={
+											isLoadingAttributes ||
+											!categoryId ||
+											attributes.length === 0
+										}
+										className="min-w-full"
+									/>
+								</TableCell>
 								<TableCell>
 									<Input
 										type="text"
@@ -149,7 +245,7 @@ export const ProductFormStock = ({ isNew }: { isNew: boolean }) => {
 											handleVariantChange(index, "sku", e.target.value)
 										}
 										placeholder="SKU-001"
-										className="min-w-[120px]"
+										className="min-w-[100px]"
 									/>
 								</TableCell>
 								<TableCell>
@@ -162,7 +258,7 @@ export const ProductFormStock = ({ isNew }: { isNew: boolean }) => {
 										placeholder="0.00"
 										step="0.01"
 										min="0"
-										className="min-w-[100px]"
+										className="w-[80px]"
 									/>
 								</TableCell>
 								<TableCell>
@@ -174,7 +270,7 @@ export const ProductFormStock = ({ isNew }: { isNew: boolean }) => {
 										}
 										placeholder="0"
 										min="0"
-										className="w-[100px]"
+										className="w-[80px]"
 									/>
 								</TableCell>
 								<TableCell>

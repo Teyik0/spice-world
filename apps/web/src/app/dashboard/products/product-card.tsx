@@ -11,7 +11,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { GetProduct, GetProductById } from "@/lib/elysia";
+import type { GetProduct, ProductFormData } from "@/lib/elysia";
 import { currentProductAtom, newProductAtom } from "./store";
 
 export const ExistingProductCard = ({ product }: { product: GetProduct }) => {
@@ -51,11 +51,7 @@ export const ExistingProductCard = ({ product }: { product: GetProduct }) => {
 	);
 };
 
-export const NewProductCard = ({
-	product,
-}: {
-	product: NonNullable<GetProductById>;
-}) => {
+export const NewProductCard = ({ product }: { product: ProductFormData }) => {
 	const router = useRouter();
 	const pathname = usePathname();
 	const newProduct = useAtomValue(newProductAtom);
