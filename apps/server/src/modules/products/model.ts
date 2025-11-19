@@ -1,4 +1,4 @@
-import { t } from "elysia";
+import { type ElysiaCustomStatusResponse, t } from "elysia";
 import { nameLowerPattern, uuid } from "../shared";
 import type { productService } from "./service";
 
@@ -31,6 +31,11 @@ export namespace ProductModel {
 	});
 	export type getQuery = typeof getQuery.static;
 	export type getResult = Awaited<ReturnType<typeof productService.get>>;
+	export type getByIdResult = Exclude<
+		Awaited<ReturnType<typeof productService.getById>>,
+		// biome-ignore lint/suspicious/noExplicitAny: ok
+		ElysiaCustomStatusResponse<any>
+	>;
 
 	export const countQuery = t.Object({
 		status: t.Optional(productStatus),

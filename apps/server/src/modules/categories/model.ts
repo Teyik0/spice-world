@@ -1,4 +1,4 @@
-import { t } from "elysia";
+import { type ElysiaCustomStatusResponse, t } from "elysia";
 import { nameLowerPattern } from "../shared";
 import type { categoryService } from "./service";
 
@@ -11,8 +11,10 @@ export namespace CategoryModel {
 	export type getQuery = typeof getQuery.static;
 	export type getResult = Awaited<ReturnType<typeof categoryService.get>>;
 
-	export type getByIdResult = Awaited<
-		ReturnType<typeof categoryService.getById>
+	export type getByIdResult = Exclude<
+		Awaited<ReturnType<typeof categoryService.getById>>,
+		// biome-ignore lint/suspicious/noExplicitAny: ok
+		ElysiaCustomStatusResponse<any>
 	>;
 
 	export const postBody = t.Object({

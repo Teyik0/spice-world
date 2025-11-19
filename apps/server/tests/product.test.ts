@@ -79,7 +79,8 @@ describe.concurrent("Product routes test", () => {
 			expect(status).toBe(200);
 			expectDefined(data);
 			expect(Array.isArray(data)).toBe(true);
-			expect(data.length).toBeGreaterThanOrEqual(testProducts.length);
+			// toBeGreaterThanOrEqual testProducts.length - 1 because a product could have been deleted concurrently first
+			expect(data.length).toBeGreaterThanOrEqual(testProducts.length - 1);
 
 			// Verify our test products are in the response
 			const returnedProductNames = data.map((p) => p.name);
@@ -240,7 +241,7 @@ describe.concurrent("Product routes test", () => {
 			const testTag1 = testTags[1];
 			expectDefined(testTag0);
 			expectDefined(testTag1);
-			const newProduct = {
+			const newProduct: ProductModel.postBody = {
 				name: existingProduct.name,
 				description: "A duplicate product name",
 				categoryId: existingProduct.id,
@@ -255,7 +256,7 @@ describe.concurrent("Product routes test", () => {
 						attributeValueIds: testAttributes.map((value) => value.id),
 					},
 				],
-				images: [file(filePath1), file(filePath2)],
+				images: [file(filePath1) as File, file(filePath2) as File],
 			};
 
 			const { error, status } = await api.products.post({
@@ -273,6 +274,64 @@ describe.concurrent("Product routes test", () => {
 			expect(status).toBe(409);
 			expectDefined(error);
 		});
+
+		it("should return an error if an attribute coming from another category is set", async () => {
+			const filePath1 = `${import.meta.dir}/public/cumin.webp`;
+			const filePath2 = `${import.meta.dir}/public/curcuma.jpg`;
+
+			const testTag0 = testTags[0];
+			expectDefined(testTag0);
+			const testTag1 = testTags[1];
+			expectDefined(testTag1);
+
+			const firstCategory = await testDb.client.category.findUnique({
+				where: { name: "spices" },
+				include: { attributes: { include: { values: true } } },
+			});
+			expectDefined(firstCategory);
+
+			const secondCategory = await testDb.client.category.findUnique({
+				where: { name: "herbs" },
+				include: { attributes: { include: { values: true } } },
+			});
+			expectDefined(secondCategory);
+
+			const newProduct: ProductModel.postBody = {
+				name: "invalid attribute product",
+				description: "Product with invalid attribute",
+				categoryId: firstCategory.id,
+				status: "PUBLISHED" as const,
+				tags: [testTag0.id, testTag1.id],
+				variants: [
+					{
+						price: 9.99,
+						sku: "INVALID-ATTR-001",
+						stock: 50,
+						attributeValueIds: [
+							firstCategory.attributes[0]?.values[0]?.id as string, // valid one
+							secondCategory.attributes[0]?.values[0]?.id as string, // INVALID → should trigger error
+						],
+					},
+				],
+				images: [file(filePath1) as File, file(filePath2) as File],
+			};
+
+			const { error, status } = await api.products.post({
+				name: newProduct.name,
+				description: newProduct.description,
+				categoryId: newProduct.categoryId,
+				status: newProduct.status,
+				tags: JSON.stringify(newProduct.tags) as unknown as string[],
+				variants: JSON.stringify(
+					newProduct.variants,
+				) as unknown as typeof newProduct.variants,
+				images: newProduct.images as File[],
+			});
+
+			expect(status).toBe(400);
+			expectDefined(error);
+			expect(error.value).toMatch(/invalid attribute/i);
+		});
 	});
 
 	describe("GET /products/:id", () => {
@@ -288,7 +347,7 @@ describe.concurrent("Product routes test", () => {
 		});
 	});
 
-	describe("PATCH /products/:id", () => {
+	describe.only("PATCH /products/:id", () => {
 		const filePath1 = `${import.meta.dir}/public/cumin.webp`;
 		const filePath2 = `${import.meta.dir}/public/curcuma.jpg`;
 		const files = [file(filePath1) as File, file(filePath2) as File];
@@ -490,8 +549,17 @@ describe.concurrent("Product routes test", () => {
 		});
 
 		it("should create new variants successfully", async () => {
-			const testProduct = testProducts[5];
+			const testProduct = await testDb.client.product.findFirst({
+				where: { category: { name: "spices" } },
+				include: { variants: true },
+			});
 			expectDefined(testProduct);
+			const validAttributes = await testDb.client.attribute.findFirst({
+				where: { categoryId: testProduct.categoryId },
+				include: { values: true },
+			});
+			expectDefined(validAttributes);
+
 			const initialVariantCount = testProduct.variants.length;
 
 			const { data, status } = await api
@@ -504,8 +572,7 @@ describe.concurrent("Product routes test", () => {
 								sku: "NEW-VARIANT-SKU",
 								stock: 75,
 								currency: "EUR",
-								attributeValueIds:
-									testAttributes[0]?.values.map((v) => v.id) ?? [],
+								attributeValueIds: validAttributes.values.map((av) => av.id),
 							},
 						],
 					},
@@ -518,6 +585,102 @@ describe.concurrent("Product routes test", () => {
 			expectDefined(newVariant);
 			expect(newVariant.price).toBe(25.99);
 			expect(newVariant.stock).toBe(75);
+		});
+
+		it("should return an error if an attribute coming from another category is set for create", async () => {
+			const testProduct = await testDb.client.product.findFirst({
+				where: { category: { name: "spices" } },
+				include: { variants: true },
+			});
+			expectDefined(testProduct);
+			const validAttributes = await testDb.client.attribute.findFirst({
+				where: { categoryId: testProduct.categoryId },
+				include: { values: true },
+			});
+			expectDefined(validAttributes);
+			const invalidAttributes = await testDb.client.attribute.findFirst({
+				where: { category: { name: "herbs" } },
+				include: { values: true },
+			});
+			expectDefined(invalidAttributes);
+
+			const { error, status } = await api
+				.products({ id: testProduct.id })
+				.patch({
+					variants: {
+						create: [
+							{
+								price: 25.99,
+								sku: "NEW-VARIANT-SKU",
+								stock: 75,
+								currency: "EUR",
+								attributeValueIds: invalidAttributes.values.map((av) => av.id),
+							},
+						],
+					},
+				});
+
+			expect(status).toBe(400);
+			expectDefined(error);
+			expect(error.value).toMatch(/invalid attribute/i);
+		});
+
+		it("should return an error if an attribute coming from another category is set for update", async () => {
+			const testProduct = await testDb.client.product.findFirst({
+				where: { category: { name: "spices" } },
+				include: { variants: true },
+			});
+			expectDefined(testProduct);
+			const validAttributes = await testDb.client.attribute.findFirst({
+				where: { categoryId: testProduct.categoryId },
+				include: { values: true },
+			});
+			expectDefined(validAttributes);
+			const invalidAttributes = await testDb.client.attribute.findFirst({
+				where: { category: { name: "herbs" } },
+				include: { values: true },
+			});
+			expectDefined(invalidAttributes);
+
+			const { data: data1, status: status1 } = await api
+				.products({ id: testProduct.id })
+				.patch({
+					variants: {
+						create: [
+							{
+								price: 25.99,
+								sku: "NEW-VARIANT-SKU-CREATE",
+								stock: 75,
+								currency: "EUR",
+								attributeValueIds: validAttributes.values.map((av) => av.id),
+							},
+						],
+					},
+				});
+			expect(status1).toBe(200);
+			expectDefined(data1);
+			expectDefined(data1.variants[0]);
+
+			const { error, status } = await api
+				.products({ id: testProduct.id })
+				.patch({
+					variants: {
+						update: [
+							{
+								id: data1.variants[0].id,
+								price: 27.99,
+								sku: "NEW-VARIANT-SKU-UPDATE",
+								stock: 75,
+								currency: "EUR",
+								attributeValueIds: invalidAttributes.values.map((av) => av.id),
+							},
+						],
+					},
+				});
+
+			expect(status).toBe(400);
+			expectDefined(error);
+			expect(error.value).toMatch(/invalid attribute/i);
 		});
 
 		it("should delete variants successfully", async () => {

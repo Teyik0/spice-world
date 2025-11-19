@@ -148,7 +148,7 @@ export const productService = {
 
 		try {
 			const product = await prisma.$transaction(async (tx) => {
-				const product = await tx.product.create({
+				const productPromise = tx.product.create({
 					data: {
 						name,
 						slug: name.toLowerCase().replace(/\s+/g, "-"),
@@ -181,10 +181,28 @@ export const productService = {
 					},
 				});
 
+				const [product, allowedAttributeValues] = await Promise.all([
+					productPromise,
+					tx.attributeValue.findMany({
+						where: { attribute: { categoryId } },
+						select: { id: true },
+					}),
+				]);
+
+				const allowedAttributeValueIds = new Set(
+					allowedAttributeValues.map((a) => a.id),
+				);
+
 				const createdVariants = await Promise.all(
-					variants.map((variant) =>
+					variants.map((variant) => {
+						// This check if an attribute ID from another category is set, which is forbidden
+						validateVariantAttributeValues(
+							variant.sku ?? "",
+							variant.attributeValueIds,
+							allowedAttributeValueIds,
+						);
 						// createMany does not handle connect
-						tx.productVariant.create({
+						return tx.productVariant.create({
 							data: {
 								productId: product.id,
 								price: variant.price,
@@ -195,8 +213,8 @@ export const productService = {
 									connect: variant.attributeValueIds.map((id) => ({ id })),
 								},
 							},
-						}),
-					),
+						});
+					}),
 				);
 
 				return {
@@ -353,11 +371,6 @@ export const productService = {
 						},
 					},
 					include: {
-						variants: {
-							include: {
-								attributeValues: true,
-							},
-						},
 						images: true,
 						tags: true,
 					},
@@ -365,6 +378,15 @@ export const productService = {
 
 				const promises = [];
 				if (variants) {
+					const allowedAttributeValueIds = new Set(
+						(
+							await tx.attributeValue.findMany({
+								where: { attribute: { categoryId: updatedProduct.categoryId } },
+								select: { id: true },
+							})
+						).map((v) => v.id),
+					);
+
 					if (variants.delete && variants.delete.length > 0) {
 						promises.push(
 							tx.productVariant.deleteMany({
@@ -375,6 +397,11 @@ export const productService = {
 
 					if (variants.update && variants.update.length > 0) {
 						variants.update.forEach((variant) => {
+							validateVariantAttributeValues(
+								variant.id,
+								variant.attributeValueIds,
+								allowedAttributeValueIds,
+							);
 							promises.push(
 								tx.productVariant.update({
 									where: { id: variant.id },
@@ -405,6 +432,11 @@ export const productService = {
 
 					if (variants.create && variants.create.length > 0) {
 						variants.create.forEach((variant) => {
+							validateVariantAttributeValues(
+								variant.sku ?? "",
+								variant.attributeValueIds,
+								allowedAttributeValueIds,
+							);
 							promises.push(
 								tx.productVariant.create({
 									data: {
@@ -459,3 +491,24 @@ export const productService = {
 		return deletedProduct;
 	},
 };
+
+function validateVariantAttributeValues(
+	variantSkuOrId: string,
+	attributeValueIds: string[] | undefined,
+	allowedAttributeValueIds: Set<string>,
+) {
+	if (!attributeValueIds || attributeValueIds.length === 0) return;
+
+	const invalidIds = attributeValueIds.filter(
+		(id) => !allowedAttributeValueIds.has(id),
+	);
+
+	if (invalidIds.length > 0) {
+		throw status(
+			"Bad Request",
+			`Invalid attribute values for variant ${variantSkuOrId}: ${invalidIds.join(
+				", ",
+			)}. Attribute values should match product category.`,
+		);
+	}
+}

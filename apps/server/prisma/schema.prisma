@@ -1,99 +1,99 @@
 generator client {
-  provider     = "prisma-client"
-  output       = "../src/prisma"
-  moduleFormat = "esm"
+    provider     = "prisma-client"
+    output       = "../src/prisma"
+    moduleFormat = "esm"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
 }
 
 model Account {
-  id                    String    @id @default(cuid())
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accountId             String
-  providerId            String
-  accessToken           String?
-  refreshToken          String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
-  scope                 String?
-  idToken               String?
-  password              String?
-  createdAt             DateTime
-  updatedAt             DateTime
+    id                    String    @id @default(cuid())
+    userId                String
+    user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    accountId             String
+    providerId            String
+    accessToken           String?
+    refreshToken          String?
+    accessTokenExpiresAt  DateTime?
+    refreshTokenExpiresAt DateTime?
+    scope                 String?
+    idToken               String?
+    password              String?
+    createdAt             DateTime
+    updatedAt             DateTime
 
-  @@map("account")
+    @@map("account")
 }
 
 model Verification {
-  id         String    @id
-  identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime?
-  updatedAt  DateTime?
+    id         String    @id
+    identifier String
+    value      String
+    expiresAt  DateTime
+    createdAt  DateTime?
+    updatedAt  DateTime?
 
-  @@map("verification")
+    @@map("verification")
 }
 
 model Session {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String
-  expiresAt DateTime
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    id        String   @id @default(cuid())
+    userId    String
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    token     String
+    expiresAt DateTime
+    ipAddress String?
+    userAgent String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 
-  impersonatedBy String?
+    impersonatedBy String?
 
-  @@unique([token])
-  @@map("session")
+    @@unique([token])
+    @@map("session")
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified Boolean   @default(false)
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
-  Comments      Comment[]
-  Order         Order[]
-  role          String    @default("user")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+    id            String    @id @default(cuid())
+    name          String?
+    email         String?   @unique
+    emailVerified Boolean   @default(false)
+    image         String?
+    accounts      Account[]
+    sessions      Session[]
+    Comments      Comment[]
+    Order         Order[]
+    role          String    @default("user")
+    createdAt     DateTime  @default(now())
+    updatedAt     DateTime  @updatedAt
 
-  banned     Boolean?
-  banReason  String?
-  banExpires DateTime?
+    banned     Boolean?
+    banReason  String?
+    banExpires DateTime?
 
-  @@map("user")
+    @@map("user")
 }
 
 model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
+    identifier String
+    token      String   @unique
+    expires    DateTime
 
-  @@unique([identifier, token])
+    @@unique([identifier, token])
 }
 
 model Comment {
-  id        String   @id @default(uuid())
-  text      String
-  productId String
-  product   Product  @relation(fields: [productId], references: [id])
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    id        String   @id @default(uuid())
+    text      String
+    productId String
+    product   Product  @relation(fields: [productId], references: [id])
+    userId    String
+    user      User     @relation(fields: [userId], references: [id])
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
 //PRODUCTS
@@ -101,134 +101,135 @@ model Comment {
 // Category: Represents a product category (e.g., "Épices", "Vêtements")
 // Each category can have its own set of attributes (e.g., Épices: Couleur, Taille, Origine)
 model Category {
-  id   String @id @default(uuid())
-  name String @unique // Category name (e.g., "Épices")
+    id   String @id @default(uuid())
+    name String @unique // Category name (e.g., "Épices")
 
-  image   Image  @relation(fields: [imageId], references: [id])
-  imageId String @unique
+    image   Image  @relation(fields: [imageId], references: [id])
+    imageId String @unique
 
-  products   Product[] // All products in this category
-  attributes Attribute[] // Attributes available for this category
+    products   Product[] // All products in this category
+    attributes Attribute[] // Attributes available for this category
 }
 
 // Attribute: Defines a characteristic for a category (e.g., "Couleur", "Taille")
 // Each attribute belongs to a specific category and can have multiple values
 model Attribute {
-  id   String @id @default(uuid())
-  name String // Attribute name (e.g., "Couleur", "Taille")
+    id   String @id @default(uuid())
+    name String // Attribute name (e.g., "Couleur", "Taille")
 
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  categoryId String
+    category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+    categoryId String
 
-  values AttributeValue[] // Possible values for this attribute
+    values AttributeValue[] // Possible values for this attribute
 
-  @@unique([categoryId, name]) // No duplicate attributes per category
+    @@unique([categoryId, name]) // No duplicate attributes per category
 }
 
 // AttributeValue: Specific value for an attribute (e.g., "Noir", "100g")
 // These values are combined in ProductVariants to create specific product variations
 model AttributeValue {
-  id    String @id @default(uuid())
-  value String // Attribute value (e.g., "Noir", "Blanc", "100g", "250g")
+    id    String @id @default(uuid())
+    value String // Attribute value (e.g., "Noir", "Blanc", "100g", "250g")
 
-  attribute   Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
-  attributeId String
+    attribute   Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+    attributeId String
 
-  productVariants ProductVariant[] // Used in multiple product variants
+    productVariants ProductVariant[] // Used in multiple product variants
 
-  @@unique([attributeId, value]) // No duplicate values per attribute
+    @@unique([attributeId, value]) // No duplicate values per attribute
 }
 
 model Image {
-  id          String  @id @default(uuid())
-  key         String  @unique
-  url         String
-  altText     String?
-  isThumbnail Boolean @default(false)
+    id          String  @id @default(uuid())
+    key         String  @unique
+    url         String
+    altText     String?
+    isThumbnail Boolean @default(false)
 
-  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productId String?
+    product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+    productId String?
 
-  category Category?
+    category Category?
 }
 
 // Product: Base product without variations (e.g., "Poivre")
 // The actual purchasable items are ProductVariants with specific attributes
 model Product {
-  id          String @id @default(uuid())
-  name        String @unique // Product name (e.g., "Poivre")
-  slug        String @unique // URL-friendly name (e.g., "poivre")
-  description String
-  version     Int    @default(0)
+    id          String @id @default(uuid())
+    name        String @unique // Product name (e.g., "Poivre")
+    slug        String @unique // URL-friendly name (e.g., "poivre")
+    description String
+    version     Int    @default(0)
 
-  status   ProductStatus @default(DRAFT)
-  images   Image[]
-  tags     Tag[]
-  comments Comment[]
+    status   ProductStatus @default(DRAFT)
+    images   Image[]
+    tags     Tag[]
+    comments Comment[]
 
-  variants ProductVariant[] // All variations of this product (e.g., Poivre Noir 100g, Poivre Blanc 250g)
-  orders   Order[]
+    variants ProductVariant[] // All variations of this product (e.g., Poivre Noir 100g, Poivre Blanc 250g)
+    orders   Order[]
 
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  categoryId String
+    category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+    categoryId String
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
 // ProductVariant: Specific variation of a product with unique attributes, price, and stock
 // Example: "Poivre Noir 100g" (attributeValues: [Noir, 100g], price: 5.99€, stock: 50)
 model ProductVariant {
-  id        String  @id @default(uuid())
-  productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+    id        String  @id @default(uuid())
+    productId String
+    product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  attributeValues AttributeValue[] // Combination of attributes (e.g., [Noir, 100g])
+    attributeValues AttributeValue[] // Combination of attributes (e.g., [Noir, 100g])
 
-  sku      String? @unique // Stock Keeping Unit - unique code (e.g., "POIV-NOIR-100G")
-  price    Float // Price for this specific variant
-  currency String  @default("EUR")
+    sku      String? @unique // Stock Keeping Unit - unique code (e.g., "POIV-NOIR-100G")
+    price    Float // Price for this specific variant
+    currency String  @default("EUR")
 
-  stock Int @default(0) // Available stock for this variant
+    stock  Int @default(0) // Available stock for this variant
+    weight Int @default(0)
 
-  // Additional fields like weight, dimensions, etc. can be added here
+    // Additional fields like weight, dimensions, etc. can be added here
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
 enum ProductStatus {
-  DRAFT
-  PUBLISHED
-  ARCHIVED
+    DRAFT
+    PUBLISHED
+    ARCHIVED
 }
 
 model Tag {
-  id         String    @id @default(uuid())
-  name       String    @unique @db.VarChar(100)
-  badgeColor String
-  Product    Product[]
+    id         String    @id @default(uuid())
+    name       String    @unique @db.VarChar(100)
+    badgeColor String
+    Product    Product[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
 model Order {
-  id            String      @id @default(uuid())
-  paymentIntent String      @unique
-  stripeSession String
-  status        OrderStatus
-  user          User        @relation(fields: [userId], references: [id])
-  userId        String
-  products      Product[]
-  totalPrice    Float
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+    id            String      @id @default(uuid())
+    paymentIntent String      @unique
+    stripeSession String
+    status        OrderStatus
+    user          User        @relation(fields: [userId], references: [id])
+    userId        String
+    products      Product[]
+    totalPrice    Float
+    createdAt     DateTime    @default(now())
+    updatedAt     DateTime    @updatedAt
 }
 
 enum OrderStatus {
-  PENDING
-  FULLFILLED
-  CANCELLED
-  DECLINED
+    PENDING
+    FULLFILLED
+    CANCELLED
+    DECLINED
 }
