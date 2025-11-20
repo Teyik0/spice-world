@@ -3,6 +3,7 @@ import { treaty } from "@elysiajs/eden";
 import * as imagesModule from "@spice-world/server/lib/images";
 import { prisma } from "@spice-world/server/lib/prisma";
 import type { categoryRouter } from "@spice-world/server/modules/categories";
+import type { CategoryModel } from "@spice-world/server/modules/categories/model";
 import { createTestDatabase } from "@spice-world/server/utils/db-manager";
 import {
 	createUploadedFileData,
@@ -52,7 +53,7 @@ describe.concurrent("Category routes test", () => {
 	};
 
 	describe("Create new category - POST/", () => {
-		test("should create a new category", async () => {
+		test("should create a new category without attributes", async () => {
 			const filePath = `${import.meta.dir}/public/cumin.webp`;
 			const bunfile = file(filePath);
 			const name = "test category";
@@ -66,6 +67,7 @@ describe.concurrent("Category routes test", () => {
 			expect(data.image).toHaveProperty("url");
 			expect(data.image).toHaveProperty("altText");
 			expect(data.image).toHaveProperty("isThumbnail");
+			expect(data.attributes).toEqual([]);
 		});
 
 		test("should create a new category with accent", async () => {
@@ -137,6 +139,151 @@ describe.concurrent("Category routes test", () => {
 			expect(status).toBe(422);
 			expect(error).not.toBeNull();
 			expect(error).not.toBeUndefined();
+		});
+
+		test("should create a new category with single attribute", async () => {
+			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const bunfile = file(filePath);
+			const name = "vêtements";
+			const { data, status } = await api.categories.post({
+				name,
+				file: bunfile as File,
+				attributes: JSON.stringify([
+					{
+						name: "taille",
+						values: ["small", "medium", "large"],
+					},
+				]) as unknown as CategoryModel.postAttributes,
+			});
+
+			expect(status).toBe(201);
+			expectDefined(data);
+			expect(data.name).toBe(name);
+			expect(data.attributes).toHaveLength(1);
+			expect(data.attributes[0]).toHaveProperty("id");
+			expect(data.attributes[0]).toHaveProperty("name", "taille");
+			expect(data.attributes[0]).toHaveProperty("categoryId", data.id);
+			expect(data.attributes[0]?.values).toHaveLength(3);
+			expect(data.attributes[0]?.values[0]).toHaveProperty("value", "small");
+			expect(data.attributes[0]?.values[1]).toHaveProperty("value", "medium");
+			expect(data.attributes[0]?.values[2]).toHaveProperty("value", "large");
+		});
+
+		test("should create a new category with multiple attributes", async () => {
+			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const bunfile = file(filePath);
+			const name = "spices category";
+			const { data, status } = await api.categories.post({
+				name,
+				file: bunfile as File,
+				attributes: JSON.stringify([
+					{
+						name: "couleur",
+						values: ["noir", "blanc", "rouge"],
+					},
+					{
+						name: "poids",
+						values: [
+							"cent grammes",
+							"deux cent cinquante grammes",
+							"cinq cents grammes",
+						],
+					},
+					{
+						name: "origine",
+						values: ["france", "inde", "maroc"],
+					},
+				]) as unknown as CategoryModel.postAttributes,
+			});
+
+			expect(status).toBe(201);
+			expectDefined(data);
+			expect(data.name).toBe(name);
+			expect(data.attributes).toHaveLength(3);
+
+			// Check first attribute
+			expect(data.attributes[0]).toHaveProperty("name", "couleur");
+			expect(data.attributes[0]?.values).toHaveLength(3);
+			expect(data.attributes[0]?.values.map((v) => v.value)).toEqual([
+				"noir",
+				"blanc",
+				"rouge",
+			]);
+
+			// Check second attribute
+			expect(data.attributes[1]).toHaveProperty("name", "poids");
+			expect(data.attributes[1]?.values).toHaveLength(3);
+			expect(data.attributes[1]?.values.map((v) => v.value)).toEqual([
+				"cent grammes",
+				"deux cent cinquante grammes",
+				"cinq cents grammes",
+			]);
+
+			// Check third attribute
+			expect(data.attributes[2]).toHaveProperty("name", "origine");
+			expect(data.attributes[2]?.values).toHaveLength(3);
+			expect(data.attributes[2]?.values.map((v) => v.value)).toEqual([
+				"france",
+				"inde",
+				"maroc",
+			]);
+		});
+
+		test("should error if attribute name is invalid (uppercase)", async () => {
+			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const bunfile = file(filePath);
+
+			const { error, status } = await api.categories.post({
+				name: "invalid attr category",
+				file: bunfile as File,
+				attributes: [
+					{
+						name: "Couleur",
+						values: ["noir"],
+					},
+				],
+			});
+
+			expect(status).toBe(422);
+			expectDefined(error);
+		});
+
+		test("should error if attribute has no values", async () => {
+			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const bunfile = file(filePath);
+
+			const { error, status } = await api.categories.post({
+				name: "empty values category",
+				file: bunfile as File,
+				attributes: [
+					{
+						name: "couleur",
+						values: [],
+					},
+				],
+			});
+
+			expect(status).toBe(422);
+			expectDefined(error);
+		});
+
+		test("should error if attribute value is invalid (contains numbers)", async () => {
+			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const bunfile = file(filePath);
+
+			const { error, status } = await api.categories.post({
+				name: "invalid value category",
+				file: bunfile as File,
+				attributes: [
+					{
+						name: "couleur",
+						values: ["noir123"],
+					},
+				],
+			});
+
+			expect(status).toBe(422);
+			expectDefined(error);
 		});
 	});
 
@@ -258,6 +405,294 @@ describe.concurrent("Category routes test", () => {
 			expect(data).toHaveProperty("id");
 			expect(data).toHaveProperty("name", "new category");
 			expect(data.image).not.toBe(category.data.image);
+		});
+
+		test("should update category with new attribute", async () => {
+			const category = await postCategory(
+				"category for attribute",
+				file(`${import.meta.dir}/public/cumin.webp`),
+			);
+			expectDefined(category.data);
+			expect(category.data.attributes).toEqual([]);
+
+			const { data, status } = await api
+				.categories({ id: category.data.id })
+				.patch({
+					name: category.data.name,
+					attributes: JSON.stringify({
+						create: [
+							{
+								name: "couleur",
+								values: ["noir", "blanc"],
+							},
+						],
+					}) as unknown as CategoryModel.attributeOperations,
+				});
+
+			expect(status).toBe(200);
+			expectDefined(data);
+			expect(data.attributes).toHaveLength(1);
+			expect(data.attributes[0]).toHaveProperty("name", "couleur");
+			expect(data.attributes[0]?.values).toHaveLength(2);
+			expect(data.attributes[0]?.values[0]).toHaveProperty("value", "noir");
+			expect(data.attributes[0]?.values[1]).toHaveProperty("value", "blanc");
+		});
+
+		test("should update category with multiple attribute operations", async () => {
+			const category = await api.categories.post({
+				name: "multi ops category",
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: JSON.stringify([
+					{
+						name: "couleur",
+						values: ["noir"],
+					},
+					{
+						name: "taille",
+						values: ["small"],
+					},
+					{
+						name: "poids",
+						values: ["cent grammes"],
+					},
+				]) as unknown as CategoryModel.postAttributes,
+			});
+
+			expectDefined(category.data);
+			expect(category.data.attributes).toHaveLength(3);
+
+			const attributeToUpdate = category.data.attributes.find(
+				(a) => a.name === "couleur",
+			);
+			const attributeToDelete = category.data.attributes.find(
+				(a) => a.name === "poids",
+			);
+			expectDefined(attributeToUpdate);
+			expectDefined(attributeToDelete);
+
+			const { data, status } = await api
+				.categories({ id: category.data.id })
+				.patch({
+					name: category.data.name,
+					attributes: JSON.stringify({
+						create: [
+							{
+								name: "origine",
+								values: ["france", "inde"],
+							},
+						],
+						update: [
+							{
+								id: attributeToUpdate.id,
+								name: "color",
+							},
+						],
+						delete: [attributeToDelete.id],
+					}) as unknown as CategoryModel.attributeOperations,
+				});
+
+			expect(status).toBe(200);
+			expectDefined(data);
+			expect(data.attributes).toHaveLength(3);
+
+			const updatedAttr = data.attributes.find(
+				(a: { id: string }) => a.id === attributeToUpdate.id,
+			);
+			const createdAttr = data.attributes.find(
+				(a: { name: string }) => a.name === "origine",
+			);
+			const deletedAttr = data.attributes.find(
+				(a: { id: string }) => a.id === attributeToDelete.id,
+			);
+
+			expectDefined(updatedAttr);
+			expect(updatedAttr.name).toBe("color");
+			expectDefined(createdAttr);
+			expect(createdAttr.values).toHaveLength(2);
+			expect(deletedAttr).toBeUndefined();
+		});
+
+		test("should update attribute name only", async () => {
+			const category = await api.categories.post({
+				name: "update name category",
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: JSON.stringify([
+					{
+						name: "couleur",
+						values: ["noir", "blanc", "rouge"],
+					},
+				]) as unknown as CategoryModel.postAttributes,
+			});
+
+			expectDefined(category.data);
+			const attributeId = category.data.attributes[0]?.id;
+			expectDefined(attributeId);
+
+			const { data, status } = await api
+				.categories({ id: category.data.id })
+				.patch({
+					name: category.data.name,
+					attributes: JSON.stringify({
+						update: [
+							{
+								id: attributeId,
+								name: "color",
+							},
+						],
+					}) as unknown as CategoryModel.attributeOperations,
+				});
+
+			expect(status).toBe(200);
+			expectDefined(data);
+			expect(data.attributes).toHaveLength(1);
+			expect(data.attributes[0]).toHaveProperty("name", "color");
+			expect(data.attributes[0]?.values).toHaveLength(3);
+		});
+
+		test("should delete attribute and cascade delete values", async () => {
+			const category = await api.categories.post({
+				name: "delete attr category",
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: JSON.stringify([
+					{
+						name: "couleur",
+						values: ["noir", "blanc"],
+					},
+					{
+						name: "taille",
+						values: ["small", "medium"],
+					},
+				]) as unknown as CategoryModel.postAttributes,
+			});
+
+			expectDefined(category.data);
+			expect(category.data.attributes).toHaveLength(2);
+			const attributeToDelete = category.data.attributes[0];
+			expectDefined(attributeToDelete);
+
+			const { data, status } = await api
+				.categories({ id: category.data.id })
+				.patch({
+					name: category.data.name,
+					attributes: JSON.stringify({
+						delete: [attributeToDelete.id],
+					}) as unknown as CategoryModel.attributeOperations,
+				});
+
+			expect(status).toBe(200);
+			expectDefined(data);
+			expect(data.attributes).toHaveLength(1);
+			expect(
+				data.attributes.find(
+					(a: { id: string }) => a.id === attributeToDelete.id,
+				),
+			).toBeUndefined();
+		});
+
+		test("should error if creating attribute with duplicate name", async () => {
+			const category = await api.categories.post({
+				name: "duplicate create category",
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: JSON.stringify([
+					{
+						name: "couleur",
+						values: ["noir"],
+					},
+				]) as unknown as CategoryModel.postAttributes,
+			});
+
+			expectDefined(category.data);
+
+			const { error, status } = await api
+				.categories({ id: category.data.id })
+				.patch({
+					name: category.data.name,
+					attributes: JSON.stringify({
+						create: [
+							{
+								name: "couleur",
+								values: ["blanc"],
+							},
+						],
+					}) as unknown as CategoryModel.attributeOperations,
+				});
+
+			expect(status).toBe(409);
+			expectDefined(error);
+		});
+
+		test("should error if updating attribute to duplicate name", async () => {
+			const category = await api.categories.post({
+				name: "duplicate update category",
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: JSON.stringify([
+					{
+						name: "couleur",
+						values: ["noir"],
+					},
+					{
+						name: "taille",
+						values: ["small"],
+					},
+				]) as unknown as CategoryModel.postAttributes,
+			});
+
+			expectDefined(category.data);
+			const tailleAttribute = category.data.attributes.find(
+				(a) => a.name === "taille",
+			);
+			expectDefined(tailleAttribute);
+
+			const { error, status } = await api
+				.categories({ id: category.data.id })
+				.patch({
+					name: category.data.name,
+					attributes: JSON.stringify({
+						update: [
+							{
+								id: tailleAttribute.id,
+								name: "couleur",
+							},
+						],
+					}) as unknown as CategoryModel.attributeOperations,
+				});
+
+			expect(status).toBe(409);
+			expectDefined(error);
+		});
+
+		test("should update category name and attributes together", async () => {
+			const category = await api.categories.post({
+				name: "combined update category",
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: JSON.stringify([
+					{
+						name: "couleur",
+						values: ["noir"],
+					},
+				]) as unknown as CategoryModel.postAttributes,
+			});
+
+			expectDefined(category.data);
+
+			const { data, status } = await api
+				.categories({ id: category.data.id })
+				.patch({
+					name: "renamed category",
+					attributes: JSON.stringify({
+						create: [
+							{
+								name: "taille",
+								values: ["small", "large"],
+							},
+						],
+					}) as unknown as CategoryModel.attributeOperations,
+				});
+
+			expect(status).toBe(200);
+			expectDefined(data);
+			expect(data.name).toBe("renamed category");
+			expect(data.attributes).toHaveLength(2);
 		});
 	});
 });

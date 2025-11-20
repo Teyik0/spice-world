@@ -30,18 +30,16 @@ export const categoryService = {
 		const category = await prisma.category.findUnique({
 			where: { id },
 			include: {
-				image: {
-					select: {
-						key: true,
-						url: true,
-					},
+				image: true,
+				attributes: {
+					include: { values: true },
 				},
 			},
 		});
 		return category ?? status("Not Found", "Category not found");
 	},
 
-	async post({ name, file }: CategoryModel.postBody) {
+	async post({ name, file, attributes }: CategoryModel.postBody) {
 		const { data: image, error: fileError } = await uploadFile(name, file);
 		if (fileError || !image) {
 			return uploadFileErrStatus(fileError);
@@ -59,11 +57,27 @@ export const categoryService = {
 							isThumbnail: true,
 						},
 					},
+					...(attributes &&
+						attributes.length > 0 && {
+							attributes: {
+								create: attributes.map((attr) => ({
+									name: attr.name,
+									values: {
+										createMany: {
+											data: attr.values.map((value) => ({ value })),
+										},
+									},
+								})),
+							},
+						}),
 				},
-				select: {
-					id: true,
-					name: true,
+				include: {
 					image: true,
+					attributes: {
+						include: {
+							values: true,
+						},
+					},
 				},
 			});
 			return status("Created", category);
@@ -73,7 +87,12 @@ export const categoryService = {
 		}
 	},
 
-	async patch({ id, name, file }: CategoryModel.patchBody & uuidGuard) {
+	async patch({
+		id,
+		name,
+		file,
+		attributes,
+	}: CategoryModel.patchBody & uuidGuard) {
 		let newFile: UploadedFileData | null = null;
 
 		if (file) {
@@ -88,8 +107,45 @@ export const categoryService = {
 			const tx = await prisma.$transaction(async (tx) => {
 				const category = await tx.category.findUniqueOrThrow({
 					where: { id },
-					include: { image: { select: { key: true } } },
+					include: {
+						image: { select: { key: true } },
+						attributes: { include: { values: true } },
+					},
 				});
+
+				if (attributes) {
+					if (attributes.create) {
+						const existingNames = category.attributes.map((a) => a.name);
+						const newNames = attributes.create.map((a) => a.name);
+						const duplicates = newNames.filter((n) =>
+							existingNames.includes(n),
+						);
+						if (duplicates.length > 0) {
+							throw status(
+								"Conflict",
+								`Attribute names already exist: ${duplicates.join(", ")}`,
+							);
+						}
+					}
+
+					if (attributes.update) {
+						const updateIds = attributes.update.map((u) => u.id);
+						const updateNames = attributes.update.map((u) => u.name);
+						const otherAttributes = category.attributes
+							.filter((a) => !updateIds.includes(a.id))
+							.map((a) => a.name);
+						const conflicts = updateNames.filter((n) =>
+							otherAttributes.includes(n),
+						);
+						if (conflicts.length > 0) {
+							throw status(
+								"Conflict",
+								`Attribute name conflicts: ${conflicts.join(", ")}`,
+							);
+						}
+					}
+				}
+
 				const updatedCategory = await tx.category.update({
 					where: { id },
 					data: {
@@ -102,15 +158,48 @@ export const categoryService = {
 								},
 							},
 						}),
+						...(attributes && {
+							attributes: {
+								...(attributes.create &&
+									attributes.create.length > 0 && {
+										create: attributes.create.map((attr) => ({
+											name: attr.name,
+											values: {
+												createMany: {
+													data: attr.values.map((value) => ({ value })),
+												},
+											},
+										})),
+									}),
+								...(attributes.update &&
+									attributes.update.length > 0 && {
+										update: attributes.update.map((attr) => ({
+											where: { id: attr.id },
+											data: { name: attr.name },
+										})),
+									}),
+								...(attributes.delete &&
+									attributes.delete.length > 0 && {
+										delete: attributes.delete.map((attrId) => ({ id: attrId })),
+									}),
+							},
+						}),
 					},
-					include: { image: true },
+					include: {
+						image: true,
+						attributes: {
+							include: {
+								values: true,
+							},
+						},
+					},
 				});
 				return { updatedCategory, oldImage: category.image };
 			});
 
 			return { data: tx, error: null };
 		} catch (err: unknown) {
-			newFile && (await utapi.deleteFiles(newFile.key)); // Cleanup uploaded file
+			newFile && (await utapi.deleteFiles(newFile.key));
 			throw err;
 		}
 	},
