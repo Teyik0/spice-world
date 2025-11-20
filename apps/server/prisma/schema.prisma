@@ -6,7 +6,6 @@ generator client {
 
 datasource db {
     provider = "postgresql"
-    url      = env("DATABASE_URL")
 }
 
 model Account {
@@ -189,8 +188,7 @@ model ProductVariant {
     price    Float // Price for this specific variant
     currency String  @default("EUR")
 
-    stock  Int @default(0) // Available stock for this variant
-    weight Int @default(0)
+    stock Int @default(0) // Available stock for this variant
 
     // Additional fields like weight, dimensions, etc. can be added here
 
