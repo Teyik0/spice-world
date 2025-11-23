@@ -2,6 +2,6 @@
 	"root": false,
 	"extends": ["../../../biome.jsonc"],
 	"files": {
-		"includes": ["**", "!src/components/ui"]
+		"includes": ["**"]
 	}
 }

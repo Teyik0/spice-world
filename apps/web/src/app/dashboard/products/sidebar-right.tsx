@@ -1,3 +1,4 @@
+import type { ProductModel } from "@spice-world/server/modules/products/model";
 import { ClientOnly } from "@spice-world/web/components/client-only";
 import { Button } from "@spice-world/web/components/ui/button";
 import { ButtonGroup } from "@spice-world/web/components/ui/button-group";
@@ -23,15 +24,13 @@ import {
 	VolumeOffIcon,
 } from "lucide-react";
 import { Suspense } from "react";
-import type { GetProduct } from "@/lib/elysia";
-import {
-	AddProductButton,
-	ExistingProductCard,
-	NewProductCard,
-} from "./product-card";
-import { newProductDefault } from "./store";
+import { AddProductButton, ProductItem } from "./product-item";
 
-export async function SidebarRight({ products }: { products: GetProduct[] }) {
+export async function SidebarRight({
+	products,
+}: {
+	products: ProductModel.getResult;
+}) {
 	return (
 		<Suspense fallback={<ProductsSidebarSkeleton />}>
 			<aside className="hidden md:flex flex-1 flex-col border-r bg-background h-screen overflow-hidden">
@@ -92,10 +91,10 @@ export async function SidebarRight({ products }: { products: GetProduct[] }) {
 				</header>
 				<div className="flex-1 overflow-auto">
 					<ClientOnly>
-						<NewProductCard product={newProductDefault} />
+						<ProductItem />
 					</ClientOnly>
 					{products?.map((product) => (
-						<ExistingProductCard key={product.id} product={product} />
+						<ProductItem key={product.id} product={{ ...product, img: null }} />
 					))}
 				</div>
 			</aside>

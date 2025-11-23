@@ -1,4 +1,4 @@
-import type { ElysiaAppError } from "@/lib/elysia";
+import type { ElysiaAppError } from "@spice-world/web/lib/elysia";
 
 export const ErrorItem = ({ children }: { children: React.ReactNode }) => {
 	return (
@@ -17,7 +17,11 @@ const BadRequestError = (error: BadRequestErrorProps) => {
 	return (
 		<ErrorItem>
 			<strong className="font-medium">Bad Request</strong>
-			<div>{error.value.message ?? "There was a bad request error."}</div>
+			<div>
+				{typeof error.value === "string"
+					? error.value
+					: (error.value.message ?? "There was a bad request error.")}
+			</div>
 		</ErrorItem>
 	);
 };
@@ -36,16 +40,6 @@ const NotFoundError = (error: NotFoundErrorProps) => {
 	);
 };
 
-type NotAcceptableErrorProps = Extract<ElysiaErrorProps, { status: 406 }>;
-const NotAcceptableError = (error: NotAcceptableErrorProps) => {
-	return (
-		<ErrorItem>
-			<strong className="font-medium">Not Acceptable</strong>
-			<div>{error.value}</div>
-		</ErrorItem>
-	);
-};
-
 type ConflictErrorProps = Extract<ElysiaErrorProps, { status: 409 }>;
 const ConflictError = (error: ConflictErrorProps) => {
 	return (
@@ -55,20 +49,6 @@ const ConflictError = (error: ConflictErrorProps) => {
 				{typeof error.value === "string"
 					? error.value
 					: (error.value.message ?? "There was a conflict error.")}
-			</div>
-		</ErrorItem>
-	);
-};
-
-type PreconditionFailedErrorProps = Extract<ElysiaErrorProps, { status: 412 }>;
-const PreconditionFailedError = (error: PreconditionFailedErrorProps) => {
-	return (
-		<ErrorItem>
-			<strong className="font-medium">Precondition Failed</strong>
-			<div>
-				{typeof error.value === "string"
-					? error.value
-					: (error.value.message ?? "The precondition for the request failed.")}
 			</div>
 		</ErrorItem>
 	);
@@ -95,14 +75,8 @@ export const ElysiaError = (error: ElysiaErrorProps) => {
 		case 404:
 			return <NotFoundError {...error} />;
 
-		case 406:
-			return <NotAcceptableError {...error} />;
-
 		case 409:
 			return <ConflictError {...error} />;
-
-		case 412:
-			return <PreconditionFailedError {...error} />;
 
 		case 422:
 			return <ValidationError {...error} />;

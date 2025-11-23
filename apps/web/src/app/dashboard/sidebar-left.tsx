@@ -15,6 +15,12 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@spice-world/web/components/ui/dropdown-menu";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@spice-world/web/components/ui/tooltip";
 import type { Session } from "@spice-world/web/lib/utils";
 import {
 	BadgeCheck,
@@ -81,32 +87,40 @@ export function AppSidebar({ login }: { login: Session }) {
 
 				{/* Navigation items */}
 				<nav className="flex-1 py-4">
-					<ul className="flex flex-col gap-2 px-2">
-						{navItems.map((item) => (
-							<li key={item.title}>
-								<button
-									type="button"
-									onClick={() => {
-										setActiveItem(item);
-										router.push(item.url);
-									}}
-									className={`
-										w-full h-8 flex items-center justify-center rounded-lg
-										transition-colors cursor-pointer
-										${
-											activeItem?.title === item.title
-												? "bg-sidebar-accent text-sidebar-accent-foreground"
-												: "hover:bg-sidebar-accent/50 text-sidebar-foreground"
-										}
-									`}
-									title={item.title}
-								>
-									<item.icon className="h-5 w-5" />
-									<span className="sr-only">{item.title}</span>
-								</button>
-							</li>
-						))}
-					</ul>
+					<TooltipProvider>
+						<ul className="flex flex-col gap-2 px-2">
+							{navItems.map((item) => (
+								<li key={item.title}>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<button
+												type="button"
+												onClick={() => {
+													setActiveItem(item);
+													router.push(item.url);
+												}}
+												className={`
+													w-full h-8 flex items-center justify-center rounded-lg
+													transition-colors cursor-pointer
+													${
+														activeItem?.title === item.title
+															? "bg-sidebar-accent text-sidebar-accent-foreground"
+															: "hover:bg-sidebar-accent/50 text-sidebar-foreground"
+													}
+												`}
+											>
+												<item.icon className="h-5 w-5" />
+												<span className="sr-only">{item.title}</span>
+											</button>
+										</TooltipTrigger>
+										<TooltipContent side="right" sideOffset={4}>
+											{item.title}
+										</TooltipContent>
+									</Tooltip>
+								</li>
+							))}
+						</ul>
+					</TooltipProvider>
 				</nav>
 				<footer className="p-2 flex flex-col gap-2">
 					<ThemeToggle />

@@ -22,6 +22,7 @@ export interface FileWithPreview {
 	file: File | FileMetadata;
 	id: string;
 	preview?: string;
+	isThumbnail?: boolean;
 }
 
 export interface FileUploadOptions {
@@ -45,6 +46,7 @@ export interface FileUploadActions {
 	removeFile: (id: string) => void;
 	clearFiles: () => void;
 	clearErrors: () => void;
+	setThumbnail: (id: string) => void;
 	handleDragEnter: (e: DragEvent<HTMLElement>) => void;
 	handleDragLeave: (e: DragEvent<HTMLElement>) => void;
 	handleDragOver: (e: DragEvent<HTMLElement>) => void;
@@ -171,106 +173,94 @@ export const useFileUpload = (
 			if (!newFiles || newFiles.length === 0) return;
 
 			const newFilesArray = Array.from(newFiles);
-			const errors: string[] = [];
 
-			// Clear existing errors when new files are uploaded
-			setState((prev) => ({ ...prev, errors: [] }));
-
-			// In single file mode, clear existing files first
-			if (!multiple) {
-				clearFiles();
-			}
-
-			// Check if adding these files would exceed maxFiles (only in multiple mode)
-			if (
-				multiple &&
-				maxFiles !== Infinity &&
-				state.files.length + newFilesArray.length > maxFiles
-			) {
-				errors.push(`You can only upload a maximum of ${maxFiles} files.`);
-				setState((prev) => ({ ...prev, errors }));
-				return;
-			}
-
-			const validFiles: FileWithPreview[] = [];
-
-			newFilesArray.forEach((file) => {
-				// Only check for duplicates if multiple files are allowed
-				if (multiple) {
-					const isDuplicate = state.files.some(
-						(existingFile) =>
-							existingFile.file.name === file.name &&
-							existingFile.file.size === file.size,
-					);
-
-					// Skip duplicate files silently
-					if (isDuplicate) {
-						return;
-					}
-				}
-
-				// Check file size
-				if (file.size > maxSize) {
-					errors.push(
-						multiple
-							? `Some files exceed the maximum size of ${formatBytes(maxSize)}.`
-							: `File exceeds the maximum size of ${formatBytes(maxSize)}.`,
-					);
-					return;
-				}
-
-				const error = validateFile(file);
-				if (error) {
-					errors.push(error);
-				} else {
-					validFiles.push({
-						file,
-						id: generateUniqueId(file),
-						preview: createPreview(file),
-					});
-				}
-			});
-
-			// Only update state if we have valid files to add
-			if (validFiles.length > 0) {
-				// Call the onFilesAdded callback with the newly added valid files
-				onFilesAdded?.(validFiles);
-
-				const newFiles = !multiple
-					? validFiles
-					: [...state.files, ...validFiles];
-
-				setState((prev) => {
-					return {
-						...prev,
-						files: newFiles,
-						errors,
-					};
-				});
-
-				// Call onFilesChange after setState to avoid "setState during render" error
-				onFilesChange?.(newFiles);
-			} else if (errors.length > 0) {
-				setState((prev) => ({
-					...prev,
-					errors,
-				}));
-			}
-
-			// Reset input value after handling files
+			// Reset input value IMMEDIATELY to allow re-selecting same file
 			if (inputRef.current) {
 				inputRef.current.value = "";
 			}
+
+			// Use functional setState to avoid stale closure issues
+			setState((prev) => {
+				const errors: string[] = [];
+
+				// Get current files - in single mode start fresh, in multiple mode keep existing
+				const currentFiles = multiple ? prev.files : [];
+
+				// Check if adding these files would exceed maxFiles (only in multiple mode)
+				if (
+					multiple &&
+					maxFiles !== Infinity &&
+					currentFiles.length + newFilesArray.length > maxFiles
+				) {
+					errors.push(`You can only upload a maximum of ${maxFiles} files.`);
+					return { ...prev, errors };
+				}
+
+				const validFiles: FileWithPreview[] = [];
+
+				for (const file of newFilesArray) {
+					// Only check for duplicates if multiple files are allowed
+					if (multiple) {
+						const isDuplicate = currentFiles.some(
+							(existingFile) =>
+								existingFile.file.name === file.name &&
+								existingFile.file.size === file.size,
+						);
+
+						// Show error for duplicate files instead of silently skipping
+						if (isDuplicate) {
+							errors.push(`File "${file.name}" is already added.`);
+							continue;
+						}
+					}
+
+					// Check file size
+					if (file.size > maxSize) {
+						errors.push(
+							`File "${file.name}" exceeds the maximum size of ${formatBytes(maxSize)}.`,
+						);
+						continue;
+					}
+
+					const error = validateFile(file);
+					if (error) {
+						errors.push(error);
+					} else {
+						validFiles.push({
+							file,
+							id: generateUniqueId(file),
+							preview: createPreview(file),
+						});
+					}
+				}
+
+				// Build new files array from current state
+				const newFilesState = [...currentFiles, ...validFiles];
+
+				// Call callbacks after state update completes
+				if (validFiles.length > 0) {
+					// Call onFilesAdded with newly added files
+					onFilesAdded?.(validFiles);
+					// Call onFilesChange with complete file list
+					onFilesChange?.(newFilesState);
+				}
+
+				// Return new state
+				return {
+					...prev,
+					files: newFilesState,
+					errors,
+				};
+			});
 		},
 		[
-			state.files,
+			// Removed state.files from dependencies since we now use prev.files
 			maxFiles,
 			multiple,
 			maxSize,
 			validateFile,
 			createPreview,
 			generateUniqueId,
-			clearFiles,
 			onFilesChange,
 			onFilesAdded,
 		],
@@ -278,29 +268,31 @@ export const useFileUpload = (
 
 	const removeFile = useCallback(
 		(id: string) => {
-			const fileToRemove = state.files.find((file) => file.id === id);
-			if (
-				fileToRemove?.preview &&
-				fileToRemove.file instanceof File &&
-				fileToRemove.file.type.startsWith("image/")
-			) {
-				URL.revokeObjectURL(fileToRemove.preview);
-			}
-
-			const newFiles = state.files.filter((file) => file.id !== id);
-
 			setState((prev) => {
+				// Find and revoke object URL if needed
+				const fileToRemove = prev.files.find((file) => file.id === id);
+				if (
+					fileToRemove?.preview &&
+					fileToRemove.file instanceof File &&
+					fileToRemove.file.type.startsWith("image/")
+				) {
+					URL.revokeObjectURL(fileToRemove.preview);
+				}
+
+				// Filter out the file
+				const newFiles = prev.files.filter((file) => file.id !== id);
+
+				// Call onFilesChange with updated files
+				onFilesChange?.(newFiles);
+
 				return {
 					...prev,
 					files: newFiles,
 					errors: [],
 				};
 			});
-
-			// Call onFilesChange after setState to avoid "setState during render" error
-			onFilesChange?.(newFiles);
 		},
-		[state.files, onFilesChange],
+		[onFilesChange],
 	);
 
 	const clearErrors = useCallback(() => {
@@ -309,6 +301,27 @@ export const useFileUpload = (
 			errors: [],
 		}));
 	}, []);
+
+	const setThumbnail = useCallback(
+		(id: string) => {
+			setState((prev) => {
+				// Set the selected file as thumbnail and remove thumbnail flag from others
+				const newFiles = prev.files.map((file) => ({
+					...file,
+					isThumbnail: file.id === id,
+				}));
+
+				// Call onFilesChange with updated files
+				onFilesChange?.(newFiles);
+
+				return {
+					...prev,
+					files: newFiles,
+				};
+			});
+		},
+		[onFilesChange],
+	);
 
 	const handleDragEnter = useCallback((e: DragEvent<HTMLElement>) => {
 		e.preventDefault();
@@ -394,6 +407,7 @@ export const useFileUpload = (
 			removeFile,
 			clearFiles,
 			clearErrors,
+			setThumbnail,
 			handleDragEnter,
 			handleDragLeave,
 			handleDragOver,

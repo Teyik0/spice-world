@@ -1,25 +1,26 @@
+import type { ProductStatus } from "@spice-world/server/prisma/enums";
 import { atom } from "jotai";
-import type { ProductFormData } from "@/lib/elysia";
 
-export const newProductAtom = atom<ProductFormData | null>(null);
-export const newProductDefault: ProductFormData = {
-	id: "new",
-	name: "New product",
-	slug: "new",
-	description: "New product description",
-	categoryId: "",
-	images: [],
-	status: "DRAFT",
-	tags: [],
-	variants: [
-		{
-			price: 0,
-			sku: "",
-			stock: 0,
-			currency: "EUR",
-			attributeValueIds: [],
-		},
-	],
-};
+/**
+ * Product item data structure used for sidebar display
+ * This is a simplified version of the full product model
+ */
+export interface ProductItemProps {
+	name: string;
+	description: string;
+	status: ProductStatus;
+	img: string | null;
+	categoryId: string;
+	slug: string;
+}
 
-export const currentProductAtom = atom<ProductFormData | null>(null);
+/**
+ * Atom for storing the -current/new product being edited in the sidebar
+ *
+ * PURPOSE: Display-only state for sidebar live updates
+ * - Updated FROM TanStack Form state (one-way sync)
+ * - Never used as source of truth for form validation
+ * - Allows ProductItem component to show real-time changes
+ */
+export const currentProductAtom = atom<ProductItemProps | null>(null);
+export const newProductAtom = atom<ProductItemProps | null>(null);

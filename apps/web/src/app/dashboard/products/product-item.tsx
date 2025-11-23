@@ -8,81 +8,66 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@spice-world/web/components/ui/tooltip";
-import type { GetProduct, ProductFormData } from "@spice-world/web/lib/elysia";
 import { useAtom, useAtomValue } from "jotai";
 import { MinusIcon, PlusIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { currentProductAtom, newProductAtom } from "./store";
+import {
+	currentProductAtom,
+	newProductAtom,
+	type ProductItemProps,
+} from "./store";
 
-export const ExistingProductCard = ({ product }: { product: GetProduct }) => {
+export const ProductItem = ({ product }: { product?: ProductItemProps }) => {
 	const router = useRouter();
 	const pathname = usePathname();
-	const currentProduct = useAtomValue(currentProductAtom);
 
-	const isSelected = pathname.includes(product.slug);
+	const isNew =
+		pathname === "/dashboard/products/new" ||
+		pathname === "/dashboard/products";
+	const currentProduct = useAtomValue(
+		isNew ? newProductAtom : currentProductAtom,
+	);
+	if (!isNew || !currentProduct) return null;
+
+	const isSelected = pathname.includes(product ? product.slug : "new");
 
 	const handleClick = () => {
-		router.push(`/dashboard/products/${product.slug}`);
+		router.push(`/dashboard/products/${product ? product.slug : "new"}`);
 	};
 
 	return (
 		<button
 			type="button"
-			key={product.id}
 			className={`w-full cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-4
 			text-sm leading-tight whitespace-nowrap last:border-b-0 ${isSelected ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""}`}
 			onClick={handleClick}
 		>
 			<div className="flex w-full items-center gap-2">
-				<span>{currentProduct ? currentProduct.name : product.name}</span>
+				<span>
+					{currentProduct
+						? currentProduct.name
+						: product
+							? product.name
+							: "new"}
+				</span>
 				<Badge
 					variant="secondary"
 					className="bg-blue-500 text-white font-semibold dark:bg-blue-600 ml-auto text-xs"
 				>
 					{currentProduct
 						? currentProduct.status.toLowerCase()
-						: product.status.toLowerCase()}
+						: product
+							? product.status.toLowerCase()
+							: "new"}
 				</Badge>
 			</div>
 			<span className="font-medium">
-				{currentProduct ? currentProduct.description : product.description}
+				{currentProduct
+					? currentProduct.description
+					: product
+						? product.description
+						: ""}
 			</span>
-		</button>
-	);
-};
-
-export const NewProductCard = ({ product }: { product: ProductFormData }) => {
-	const router = useRouter();
-	const pathname = usePathname();
-	const newProduct = useAtomValue(newProductAtom);
-
-	// Don't render if there's no new product in the atom
-	if (!newProduct) return null;
-
-	const isSelected = pathname.includes("/new");
-
-	const handleClick = () => {
-		router.push("/dashboard/products/new");
-	};
-
-	return (
-		<button
-			type="button"
-			key="new-product"
-			className={`w-full cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-4
-			text-sm leading-tight whitespace-nowrap last:border-b-0 ${isSelected ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""}`}
-			onClick={handleClick}
-		>
-			<div className="flex w-full items-center gap-2">
-				<span>{product.name}</span>
-				<Badge
-					variant="secondary"
-					className="bg-blue-500 text-white font-semibold dark:bg-blue-600 ml-auto text-xs"
-				>
-					new
-				</Badge>
-			</div>
-			<span className="font-medium">{product.description}</span>
 		</button>
 	);
 };
@@ -97,7 +82,11 @@ export const AddProductButton = () => {
 			router.push("/dashboard/products");
 			return;
 		}
-
+		/*
+		  We can't setNewProduct with default value here as there is two cases:
+				- Click the AddProductButton
+				- Direct Navigation to /dashboard/products/
+		 */
 		router.push("/dashboard/products/new");
 	};
 

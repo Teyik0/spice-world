@@ -44,3 +44,28 @@ export const unknownError = (
 		},
 	} as const;
 };
+
+export const generateRandomColor = (): string => {
+	const colors = [
+		"#3b82f6",
+		"#ef4444",
+		"#10b981",
+		"#f59e0b",
+		"#8b5cf6",
+		"#ec4899",
+		"#06b6d4",
+		"#f97316",
+	];
+	return colors[Math.floor(Math.random() * colors.length)] || "#3b82f6";
+};
+
+export async function urlToFile(url: string, filename: string): Promise<File> {
+	const response = await fetch(url);
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch image: ${response.statusText}`);
+	}
+
+	const blob = await response.blob();
+	return new File([blob], filename, { type: blob.type });
+}
