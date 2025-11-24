@@ -12,7 +12,7 @@ import {
 	CardTitle,
 } from "@spice-world/web/components/ui/card";
 import { Input } from "@spice-world/web/components/ui/input";
-import { type MultiSelectOption } from "@spice-world/web/components/ui/multi-select";
+import type { MultiSelectOption } from "@spice-world/web/components/ui/multi-select";
 import {
 	Table,
 	TableBody,

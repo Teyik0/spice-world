@@ -28,7 +28,7 @@ import { useFileUpload } from "@spice-world/web/hooks/use-file-upload";
 import { useIsMobile } from "@spice-world/web/hooks/use-mobile";
 import { Edit2, ImageIcon, Trash2Icon } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface CategoryDialogProps {
 	categories: CategoryModel.getResult;
@@ -99,7 +99,7 @@ interface CategoryFormProps {
 	categories: CategoryModel.getResult;
 }
 
-const CategoryForm = ({ setOpen, categories }: CategoryFormProps) => {
+const CategoryForm = ({ categories }: CategoryFormProps) => {
 	const [toggleValue, setToggleValue] = useState<
 		"create" | "update" | "delete"
 	>("create");
@@ -108,13 +108,6 @@ const CategoryForm = ({ setOpen, categories }: CategoryFormProps) => {
 		setToggleValue(toggleValue);
 		clearFiles();
 	};
-
-	const [{ files, errors }, { getInputProps, clearFiles }] = useFileUpload({
-		maxFiles: 1,
-		maxSize: 1024 * 1024 * 3,
-		accept: "image/*",
-		multiple: false,
-	});
 
 	const form = useForm({
 		schema: CategoryModel.patchBody,
@@ -132,6 +125,18 @@ const CategoryForm = ({ setOpen, categories }: CategoryFormProps) => {
 			console.log("✅ onSubmit called with values:", values);
 		},
 	});
+
+	const [{ files }, { getInputProps, clearFiles }] = useFileUpload({
+		maxFiles: 1,
+		maxSize: 1024 * 1024 * 3,
+		accept: "image/*",
+		multiple: false,
+	});
+
+	useEffect(() => {
+		const file = files[0]?.file;
+		form.setFieldValue("file", file instanceof File ? file : undefined);
+	}, [files, form]);
 
 	return (
 		<div>
@@ -161,7 +166,14 @@ const CategoryForm = ({ setOpen, categories }: CategoryFormProps) => {
 							{(field) => (
 								<field.Field>
 									<field.Label>Name</field.Label>
-									<field.Input type="text" id="name" placeholder="Épices" />
+									<field.Input
+										type="text"
+										id="name"
+										placeholder="Épices"
+										onChange={(e) =>
+											field.handleChange(e.target.value.toLowerCase())
+										}
+									/>
 									<field.Message />
 								</field.Field>
 							)}
@@ -190,7 +202,15 @@ const CategoryForm = ({ setOpen, categories }: CategoryFormProps) => {
 											<form.AppField name={`attributes.create[${index}].name`}>
 												{(aField) => (
 													<aField.Content className="col-span-3">
-														<aField.Input type="text" placeholder="couleur" />
+														<aField.Input
+															type="text"
+															placeholder="couleur"
+															onChange={(e) =>
+																aField.handleChange(
+																	e.target.value.toLowerCase(),
+																)
+															}
+														/>
 														<aField.Message />
 													</aField.Content>
 												)}
@@ -214,10 +234,10 @@ const CategoryForm = ({ setOpen, categories }: CategoryFormProps) => {
 															maxCount={5}
 															creatable
 															onCreateNew={async (value) => {
-																avField.pushValue(value);
+																avField.pushValue(value.toLowerCase());
 																return {
-																	label: value,
-																	value: value,
+																	label: value.toLowerCase(),
+																	value: value.toLowerCase(),
 																};
 															}}
 														/>

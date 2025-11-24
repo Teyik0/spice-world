@@ -27,9 +27,9 @@ export function SubmitButton(props: React.ComponentProps<typeof Button>) {
 	const form = useFormContext();
 
 	return (
-		<form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-			{([canSubmit, isSubmitting]) => (
-				<Button type="submit" {...props} disabled={!canSubmit || isSubmitting}>
+		<form.Subscribe selector={(state) => [state.isSubmitting]}>
+			{([isSubmitting]) => (
+				<Button type="submit" {...props} disabled={isSubmitting}>
 					{isSubmitting ? (
 						<>
 							<Loader2 size={16} className="animate-spin" /> {props.children}
@@ -50,7 +50,7 @@ function FormInput(props: React.ComponentProps<typeof Input>) {
 		<Input
 			id={field.name}
 			name={field.name}
-			value={field.state.value}
+			value={field.state.value ?? ""}
 			placeholder={props.placeholder}
 			onBlur={field.handleBlur}
 			onChange={(e) => field.handleChange(e.target.value)}
@@ -64,7 +64,7 @@ function FormSelect(props: React.ComponentProps<typeof Select>) {
 	return (
 		<Select
 			name={field.name}
-			value={field.state.value}
+			value={field.state.value ?? ""}
 			onValueChange={(value) => field.handleChange(value)}
 			{...props}
 		/>
@@ -77,7 +77,7 @@ function FormTextarea(props: React.ComponentProps<typeof Textarea>) {
 		<Textarea
 			id={field.name}
 			name={field.name}
-			value={field.state.value}
+			value={field.state.value ?? ""}
 			placeholder={props.placeholder}
 			onBlur={field.handleBlur}
 			onChange={(e) => field.handleChange(e.target.value)}
@@ -115,14 +115,17 @@ function FormSwitch(props: React.ComponentProps<typeof Switch>) {
 function FormMultiSelect({
 	onValueChange: _,
 	defaultValue: __,
+	value: ___,
+	onBlur: ____,
 	...props
 }: React.ComponentProps<typeof MultiSelect>) {
 	const field = useFieldContext<string[]>();
 	return (
 		<MultiSelect
 			{...props}
-			defaultValue={field.state.value}
+			value={field.state.value || []}
 			onValueChange={(value) => field.handleChange(value)}
+			onBlur={() => field.handleBlur()}
 		/>
 	);
 }
@@ -278,6 +281,7 @@ function FieldMessage(props: React.ComponentProps<typeof FieldError>) {
 		: field.state.meta.errors.map((err) =>
 				typeof err === "string" ? { message: err } : err,
 			);
+	console.log("errorToShow", errorsToShow);
 
 	return <FieldError {...props} errors={errorsToShow} />;
 }

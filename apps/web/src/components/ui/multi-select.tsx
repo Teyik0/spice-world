@@ -46,6 +46,8 @@ interface MultiSelectProps
 	options: MultiSelectOption[] | null;
 	onValueChange?: (value: string[]) => void;
 	defaultValue?: string[];
+	value?: string[];
+	onBlur?: () => void;
 	placeholder?: string;
 	maxCount?: number;
 	className?: string;
@@ -61,6 +63,8 @@ export const MultiSelect = React.forwardRef<HTMLDivElement, MultiSelectProps>(
 			onValueChange,
 			variant,
 			defaultValue = [],
+			value,
+			onBlur,
 			placeholder = "Select options",
 			maxCount = 3,
 			className,
@@ -69,13 +73,19 @@ export const MultiSelect = React.forwardRef<HTMLDivElement, MultiSelectProps>(
 			creatable = false,
 			...props
 		},
-		ref,
+		_ref,
 	) => {
 		const [selectedValues, setSelectedValues] =
 			React.useState<string[]>(defaultValue);
 		const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
 		const [searchValue, setSearchValue] = React.useState("");
 		const [isCreating, setIsCreating] = React.useState(false);
+
+		React.useEffect(() => {
+			if (value !== undefined) {
+				setSelectedValues(value);
+			}
+		}, [value]);
 
 		const toggleOption = (optionValue: string) => {
 			if (disabled) return;
@@ -123,8 +133,15 @@ export const MultiSelect = React.forwardRef<HTMLDivElement, MultiSelectProps>(
 				(opt) => opt.label.toLowerCase() === searchValue.trim().toLowerCase(),
 			);
 
+		const handlePopoverChange = (open: boolean) => {
+			setIsPopoverOpen(open);
+			if (!open && onBlur) {
+				onBlur();
+			}
+		};
+
 		return (
-			<Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+			<Popover open={isPopoverOpen} onOpenChange={handlePopoverChange}>
 				<PopoverTrigger asChild>
 					<div
 						role="button"
