@@ -1,26 +1,26 @@
 "use server";
 
 import { invalidateSessionCache } from "@spice-world/web/lib/dal";
-import { actionClient } from "@spice-world/web/lib/safe-action";
-import { authClient } from "@spice-world/web/lib/utils";
-import { z } from "zod";
+import {
+	actionClient,
+	authClient,
+	typeboxToStandardSchema,
+} from "@spice-world/web/lib/utils";
+import { t } from "elysia";
 import { passwordValidation } from "../utils";
 
-const resetPasswordSchema = z
-	.object({
-		newPassword: passwordValidation,
-		confirmPassword: z.string(),
-		token: z.string().min(1, "Reset token is required"),
-	})
-	.refine((data) => data.newPassword === data.confirmPassword, {
-		message: "Passwords must match",
-		path: ["confirmPassword"],
-	});
+const resetPasswordSchema = t.Object({
+	newPassword: passwordValidation,
+	confirmPassword: t.String(),
+	token: t.String({ minLength: 1, error: "Reset token is required" }),
+});
 
 export const resetPasswordAction = actionClient
-	.metadata({ actionName: "resetPassword" })
-	.inputSchema(resetPasswordSchema)
-	.action(async ({ parsedInput: { newPassword, token } }) => {
+	.inputSchema(typeboxToStandardSchema(resetPasswordSchema))
+	.action(async ({ parsedInput: { newPassword, confirmPassword, token } }) => {
+		if (newPassword !== confirmPassword) {
+			throw new Error("Passwords must match");
+		}
 		const response = await authClient.resetPassword({
 			newPassword,
 			token,

@@ -1,11 +1,8 @@
-import { z } from "zod";
+import { t } from "elysia";
 
-export const passwordValidation = z
-	.string()
-	.min(8, "Password must be at least 8 characters")
-	.regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-	.regex(/[a-z]/, "Password must contain at least one lowercase letter")
-	.regex(
-		/[!@#$%^&*(),.?":{}|<>]/,
-		"Password must contain at least one special character",
-	);
+export const passwordValidation = t.String({
+	minLength: 8,
+	pattern: '^(?=.*[A-Z])(?=.*[a-z])(?=.*[!@#$%^&*(),.?":{}|<>]).*$',
+	error:
+		"Password must be at least 8 characters and contain uppercase, lowercase, and special characters",
+});

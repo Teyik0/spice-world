@@ -132,15 +132,15 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
 							>
 								{(() => {
 									// Gather all possible error messages
-									const errors = [
+									const errors = new Set([
 										...(result.validationErrors.formErrors || []),
 										...Object.values(
 											result.validationErrors.fieldErrors || {},
 										).flat(),
-									];
+									]);
 
 									// Render them with * and line breaks
-									return errors.map((err, idx) => (
+									return Array.from(errors).map((err, idx) => (
 										<span key={idx}>
 											* {err}
 											<br />

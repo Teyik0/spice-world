@@ -1,6 +1,5 @@
 "use client";
 
-import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { Button } from "@spice-world/web/components/ui/button";
 import { Checkbox } from "@spice-world/web/components/ui/checkbox";
 import {
@@ -15,8 +14,10 @@ import { MultiSelect } from "@spice-world/web/components/ui/multi-select";
 import { Select } from "@spice-world/web/components/ui/select";
 import { Switch } from "@spice-world/web/components/ui/switch";
 import { Textarea } from "@spice-world/web/components/ui/textarea";
+import { typeboxToStandardSchema } from "@spice-world/web/lib/utils";
 import { createFormHook, createFormHookContexts } from "@tanstack/react-form";
 import type { TSchema } from "elysia";
+import { Loader2 } from "lucide-react";
 import type * as React from "react";
 
 export const { fieldContext, useFieldContext, formContext, useFormContext } =
@@ -26,9 +27,17 @@ export function SubmitButton(props: React.ComponentProps<typeof Button>) {
 	const form = useFormContext();
 
 	return (
-		<form.Subscribe selector={(state) => state.isSubmitting}>
-			{(isSubmitting) => (
-				<Button type="submit" disabled={isSubmitting} {...props} />
+		<form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+			{([canSubmit, isSubmitting]) => (
+				<Button type="submit" {...props} disabled={!canSubmit || isSubmitting}>
+					{isSubmitting ? (
+						<>
+							<Loader2 size={16} className="animate-spin" /> {props.children}
+						</>
+					) : (
+						props.children
+					)}
+				</Button>
 			)}
 		</form.Subscribe>
 	);
@@ -112,7 +121,7 @@ function FormMultiSelect({
 	return (
 		<MultiSelect
 			{...props}
-			defaultValue={field.state.value || []}
+			defaultValue={field.state.value}
 			onValueChange={(value) => field.handleChange(value)}
 		/>
 	);
@@ -144,43 +153,6 @@ export const { useAppForm } = createFormHook({
 	fieldContext,
 	formContext,
 });
-
-// Adapter: Convert TypeBox schema to Standard Schema V1
-function typeboxToStandardSchema<TSchemaType extends TSchema>(
-	schema: TSchemaType,
-) {
-	type Output = TSchemaType["static"];
-	const compiled = TypeCompiler.Compile(schema);
-
-	return {
-		"~standard": {
-			version: 1 as const,
-			vendor: "typebox",
-			validate: (value: unknown) => {
-				if (compiled.Check(value)) {
-					return {
-						value: value as Output,
-					};
-				}
-
-				// Convert TypeBox errors to StandardSchema issues
-				const errors = [...compiled.Errors(value)];
-				const issues = errors.map((err) => ({
-					message: err.message,
-					path: err.path ? err.path.split("/").filter(Boolean) : undefined,
-				}));
-				console.log(issues);
-				return {
-					issues,
-				};
-			},
-			types: {
-				input: undefined as unknown as Output,
-				output: undefined as unknown as Output,
-			},
-		},
-	} as const;
-}
 
 export function useForm<TSchemaType extends TSchema>({
 	schema,
@@ -300,7 +272,9 @@ function FieldMessage(props: React.ComponentProps<typeof FieldError>) {
 
 	// Convert string errors to the format FieldError expects: Array<{ message?: string }>
 	const errorsToShow = hasSubmitError
-		? [{ message: hasSubmitError }]
+		? typeof hasSubmitError === "string"
+			? [{ message: hasSubmitError }]
+			: hasSubmitError
 		: field.state.meta.errors.map((err) =>
 				typeof err === "string" ? { message: err } : err,
 			);

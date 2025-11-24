@@ -1,11 +1,14 @@
 "use server";
 
 import { invalidateSessionCache } from "@spice-world/web/lib/dal";
-import { actionClient } from "@spice-world/web/lib/safe-action";
-import { authClient } from "@spice-world/web/lib/utils";
+import {
+	actionClient,
+	authClient,
+	typeboxToStandardSchema,
+} from "@spice-world/web/lib/utils";
+import { t } from "elysia";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 
 export const setSignInCookie = async (
 	rememberMe: boolean,
@@ -16,15 +19,17 @@ export const setSignInCookie = async (
 	cookieStore.set("lastEmail", lastEmail);
 };
 
-const signinSchema = z.object({
-	email: z.email("Please enter a valid email address"),
-	password: z.string().min(1, "Password is required"),
-	rememberMe: z.boolean().optional().default(false),
+const signinSchema = t.Object({
+	email: t.String({
+		format: "email",
+		error: "Please enter a valid email address",
+	}),
+	password: t.String({ minLength: 3 }),
+	rememberMe: t.Boolean({ default: false }),
 });
 
 export const signInAction = actionClient
-	.metadata({ actionName: "signIn" })
-	.inputSchema(signinSchema)
+	.inputSchema(typeboxToStandardSchema(signinSchema))
 	.action(async ({ parsedInput: { email, password, rememberMe } }) => {
 		const response = await authClient.signIn.email({
 			email,

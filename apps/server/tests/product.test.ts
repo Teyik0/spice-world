@@ -214,11 +214,9 @@ describe.concurrent("Product routes test", () => {
 				description: newProduct.description,
 				categoryId: newProduct.categoryId,
 				status: newProduct.status,
-				tags: JSON.stringify(newProduct.tags) as unknown as string[],
-				variants: JSON.stringify(
-					newProduct.variants,
-				) as unknown as typeof newProduct.variants,
-				images: [file(filePath1) as File, file(filePath2) as File],
+				tags: newProduct.tags,
+				variants: newProduct.variants,
+				images: [file(filePath1), file(filePath2)],
 			});
 
 			expect(status).toBe(201);
@@ -256,7 +254,7 @@ describe.concurrent("Product routes test", () => {
 						attributeValueIds: testAttributes.map((value) => value.id),
 					},
 				],
-				images: [file(filePath1) as File, file(filePath2) as File],
+				images: [file(filePath1), file(filePath2)],
 			};
 
 			const { error, status } = await api.products.post({
@@ -264,11 +262,9 @@ describe.concurrent("Product routes test", () => {
 				description: newProduct.description,
 				categoryId: newProduct.categoryId,
 				status: newProduct.status,
-				tags: JSON.stringify(newProduct.tags) as unknown as string[],
-				variants: JSON.stringify(
-					newProduct.variants,
-				) as unknown as typeof newProduct.variants,
-				images: newProduct.images as File[],
+				tags: newProduct.tags,
+				variants: newProduct.variants,
+				images: newProduct.images,
 			});
 
 			expect(status).toBe(409);
@@ -313,7 +309,7 @@ describe.concurrent("Product routes test", () => {
 						],
 					},
 				],
-				images: [file(filePath1) as File, file(filePath2) as File],
+				images: [file(filePath1), file(filePath2)],
 			};
 
 			const { error, status } = await api.products.post({
@@ -321,11 +317,9 @@ describe.concurrent("Product routes test", () => {
 				description: newProduct.description,
 				categoryId: newProduct.categoryId,
 				status: newProduct.status,
-				tags: JSON.stringify(newProduct.tags) as unknown as string[],
-				variants: JSON.stringify(
-					newProduct.variants,
-				) as unknown as typeof newProduct.variants,
-				images: newProduct.images as File[],
+				tags: newProduct.tags,
+				variants: newProduct.variants,
+				images: newProduct.images,
 			});
 
 			expect(status).toBe(400);
@@ -350,7 +344,7 @@ describe.concurrent("Product routes test", () => {
 	describe.only("PATCH /products/:id", () => {
 		const filePath1 = `${import.meta.dir}/public/cumin.webp`;
 		const filePath2 = `${import.meta.dir}/public/curcuma.jpg`;
-		const files = [file(filePath1) as File, file(filePath2) as File];
+		const files = [file(filePath1), file(filePath2)];
 
 		it("should update the product successfully", async () => {
 			const testProduct = testProducts[0];
@@ -388,12 +382,8 @@ describe.concurrent("Product routes test", () => {
 					name: updatedProductData.name,
 					description: updatedProductData.description,
 					status: updatedProductData.status,
-					tags: JSON.stringify(
-						updatedProductData.tags,
-					) as unknown as typeof ProductModel.tagOperations.static,
-					variants: JSON.stringify(
-						updatedProductData.variants,
-					) as unknown as typeof ProductModel.variantOperations.static,
+					tags: updatedProductData.tags,
+					variants: updatedProductData.variants,
 					imagesCreate: updatedProductData.imagesCreate,
 				});
 
@@ -723,10 +713,10 @@ describe.concurrent("Product routes test", () => {
 					name: "complex updated product",
 					description: "updated with multiple operations",
 					status: "PUBLISHED",
-					tags: JSON.stringify({
+					tags: {
 						add: [testTag.id],
-					}) as unknown as typeof ProductModel.tagOperations.static,
-					variants: JSON.stringify({
+					},
+					variants: {
 						update: [
 							{
 								id: variantToUpdate.id,
@@ -734,11 +724,11 @@ describe.concurrent("Product routes test", () => {
 								stock: 10,
 							},
 						],
-					}) as unknown as typeof ProductModel.variantOperations.static,
-					images: JSON.stringify({
+					},
+					images: {
 						delete: [imageToDelete.id],
-					}) as unknown as ProductModel.imageOperations,
-					imagesCreate: [file(filePath1) as File],
+					},
+					imagesCreate: file(filePath1),
 				});
 
 			expect(status).toBe(200);

@@ -12,10 +12,7 @@ import {
 	CardTitle,
 } from "@spice-world/web/components/ui/card";
 import { Input } from "@spice-world/web/components/ui/input";
-import {
-	MultiSelect,
-	type MultiSelectOption,
-} from "@spice-world/web/components/ui/multi-select";
+import { type MultiSelectOption } from "@spice-world/web/components/ui/multi-select";
 import {
 	Table,
 	TableBody,
@@ -124,20 +121,6 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 		return undefined;
 	};
 
-	const handleAttributeValuesChange = (index: number, valueIds: string[]) => {
-		const updatedVariants = [...variants];
-		const currentVariant = updatedVariants[index];
-
-		if (!currentVariant) return;
-
-		updatedVariants[index] = {
-			...currentVariant,
-			attributeValueIds: valueIds,
-		};
-
-		form.setFieldValue("variants", updatedVariants);
-	};
-
 	return (
 		<Card className="rounded-md">
 			<CardHeader>
@@ -171,29 +154,34 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 							) => (
 								<TableRow key={variant.id || index}>
 									<TableCell className="min-w-[200px]">
-										<MultiSelect
-											options={attributeOptions}
-											onValueChange={(values) =>
-												handleAttributeValuesChange(index, values)
-											}
-											defaultValue={variant.attributeValueIds || []}
-											placeholder={
-												isLoadingAttributes
-													? "Loading..."
-													: !categoryId
-														? "Select category first"
-														: attributes.length === 0
-															? "No attributes available"
-															: "Select attributes"
-											}
-											maxCount={2}
-											disabled={
-												isLoadingAttributes ||
-												!categoryId ||
-												attributes.length === 0
-											}
-											className="min-w-full"
-										/>
+										<form.AppField
+											name={`variants[${index}].attributeValueIds`}
+										>
+											{(field) => (
+												<div className="flex flex-col gap-1">
+													<field.MultiSelect
+														options={attributeOptions}
+														placeholder={
+															isLoadingAttributes
+																? "Loading..."
+																: !categoryId
+																	? "Select category first"
+																	: attributes.length === 0
+																		? "No attributes available"
+																		: "Select attributes"
+														}
+														maxCount={2}
+														disabled={
+															isLoadingAttributes ||
+															!categoryId ||
+															attributes.length === 0
+														}
+														className="min-w-full"
+													/>
+													<field.Message />
+												</div>
+											)}
+										</form.AppField>
 									</TableCell>
 									<TableCell>
 										<div className="flex flex-col gap-1">

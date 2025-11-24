@@ -1,16 +1,21 @@
 "use server";
 
-import { actionClient } from "@spice-world/web/lib/safe-action";
-import { authClient } from "@spice-world/web/lib/utils";
-import { z } from "zod";
+import {
+	actionClient,
+	authClient,
+	typeboxToStandardSchema,
+} from "@spice-world/web/lib/utils";
+import { t } from "elysia";
 
-const forgotPasswordSchema = z.object({
-	email: z.email("Please enter a valid email address"),
+const forgotPasswordSchema = t.Object({
+	email: t.String({
+		format: "email",
+		error: "Please enter a valid email address",
+	}),
 });
 
 export const forgotPasswordAction = actionClient
-	.metadata({ actionName: "forgotPassword" })
-	.inputSchema(forgotPasswordSchema)
+	.inputSchema(typeboxToStandardSchema(forgotPasswordSchema))
 	.action(async ({ parsedInput: { email } }) => {
 		try {
 			await authClient.forgetPassword({

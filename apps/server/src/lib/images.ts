@@ -1,3 +1,4 @@
+import type { BunFile } from "bun";
 import sharp from "sharp";
 
 import { UTApi } from "uploadthing/server";
@@ -7,7 +8,7 @@ export const utapi = new UTApi({
 	token: process.env.UPLOADTHING_TOKEN as string,
 });
 
-const _uploadFile = async (filename: string, file: File) => {
+const _uploadFile = async (filename: string, file: File | BunFile) => {
 	const arrayBuffer = await file.arrayBuffer();
 	const buffer = Buffer.from(arrayBuffer);
 	const outputImageBuffer = await sharp(buffer)
@@ -20,7 +21,7 @@ const _uploadFile = async (filename: string, file: File) => {
 	);
 };
 
-export const uploadFile = async (filename: string, file: File) => {
+export const uploadFile = async (filename: string, file: File | BunFile) => {
 	for (let attempt = 0; attempt < 3; attempt++) {
 		const resp = await _uploadFile(filename, file);
 		if (resp.error && attempt === 2) return { data: null, error: resp.error };
@@ -31,7 +32,10 @@ export const uploadFile = async (filename: string, file: File) => {
 	return { data: null, error: { message: "Upload failed after 3 attempts" } };
 };
 
-export const uploadFiles = async (filename: string, files: File[]) => {
+export const uploadFiles = async (
+	filename: string,
+	files: Array<File | BunFile>,
+) => {
 	const uploadPromises = files.map((file, i) => {
 		return uploadFile(
 			`${filename.toLowerCase().replace(/\s+/g, "-")}-${i}`,

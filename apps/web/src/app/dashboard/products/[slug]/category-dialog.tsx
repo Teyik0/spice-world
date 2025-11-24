@@ -188,11 +188,11 @@ const CategoryForm = ({ setOpen, categories }: CategoryFormProps) => {
 											key={index}
 										>
 											<form.AppField name={`attributes.create[${index}].name`}>
-												{(afield) => (
-													<afield.Content className="col-span-3">
-														<afield.Input type="text" placeholder="couleur" />
-														<afield.Message />
-													</afield.Content>
+												{(aField) => (
+													<aField.Content className="col-span-3">
+														<aField.Input type="text" placeholder="couleur" />
+														<aField.Message />
+													</aField.Content>
 												)}
 											</form.AppField>
 											<form.AppField
@@ -200,7 +200,7 @@ const CategoryForm = ({ setOpen, categories }: CategoryFormProps) => {
 												mode="array"
 											>
 												{(avField) => (
-													<field.Content className="col-span-4">
+													<avField.Content className="col-span-4">
 														<avField.MultiSelect
 															options={
 																avField.state.value?.map((v) => {
@@ -222,13 +222,12 @@ const CategoryForm = ({ setOpen, categories }: CategoryFormProps) => {
 															}}
 														/>
 														<avField.Message />
-													</field.Content>
+													</avField.Content>
 												)}
 											</form.AppField>
 											<Button asChild onClick={() => field.removeValue(index)}>
 												<Trash2Icon className="col-span-1 w-full bg-red-900 text-black hover:bg-red-800 hover:text-black" />
 											</Button>
-											<field.Message />
 										</field.Content>
 									))}
 									<field.Message />

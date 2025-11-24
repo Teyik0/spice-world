@@ -3,7 +3,6 @@ import { treaty } from "@elysiajs/eden";
 import * as imagesModule from "@spice-world/server/lib/images";
 import { prisma } from "@spice-world/server/lib/prisma";
 import type { categoryRouter } from "@spice-world/server/modules/categories";
-import type { CategoryModel } from "@spice-world/server/modules/categories/model";
 import { createTestDatabase } from "@spice-world/server/utils/db-manager";
 import {
 	createUploadedFileData,
@@ -47,7 +46,7 @@ describe.concurrent("Category routes test", () => {
 	const postCategory = async (name: string, bunfile: BunFile) => {
 		const data = await api.categories.post({
 			name,
-			file: bunfile as File,
+			file: bunfile,
 		});
 		return data;
 	};
@@ -104,7 +103,7 @@ describe.concurrent("Category routes test", () => {
 			const bunfile = file(filePath);
 
 			const { error, status } = await api.categories.post({
-				file: bunfile as File,
+				file: bunfile,
 				name: "Hello",
 			});
 
@@ -118,7 +117,7 @@ describe.concurrent("Category routes test", () => {
 			const bunfile = file(filePath);
 
 			const { error, status } = await api.categories.post({
-				file: bunfile as File,
+				file: bunfile,
 				name: "hello world!",
 			});
 
@@ -132,7 +131,7 @@ describe.concurrent("Category routes test", () => {
 			const bunfile = file(filePath);
 
 			const { error, status } = await api.categories.post({
-				file: bunfile as File,
+				file: bunfile,
 				name: "hello 5",
 			});
 
@@ -147,13 +146,13 @@ describe.concurrent("Category routes test", () => {
 			const name = "vêtements";
 			const { data, status } = await api.categories.post({
 				name,
-				file: bunfile as File,
-				attributes: JSON.stringify([
+				file: bunfile,
+				attributes: [
 					{
 						name: "taille",
 						values: ["small", "medium", "large"],
 					},
-				]) as unknown as CategoryModel.postAttributes,
+				],
 			});
 
 			expect(status).toBe(201);
@@ -175,8 +174,8 @@ describe.concurrent("Category routes test", () => {
 			const name = "spices category";
 			const { data, status } = await api.categories.post({
 				name,
-				file: bunfile as File,
-				attributes: JSON.stringify([
+				file: bunfile,
+				attributes: [
 					{
 						name: "couleur",
 						values: ["noir", "blanc", "rouge"],
@@ -193,7 +192,7 @@ describe.concurrent("Category routes test", () => {
 						name: "origine",
 						values: ["france", "inde", "maroc"],
 					},
-				]) as unknown as CategoryModel.postAttributes,
+				],
 			});
 
 			expect(status).toBe(201);
@@ -235,7 +234,7 @@ describe.concurrent("Category routes test", () => {
 
 			const { error, status } = await api.categories.post({
 				name: "invalid attr category",
-				file: bunfile as File,
+				file: bunfile,
 				attributes: [
 					{
 						name: "Couleur",
@@ -254,7 +253,7 @@ describe.concurrent("Category routes test", () => {
 
 			const { error, status } = await api.categories.post({
 				name: "empty values category",
-				file: bunfile as File,
+				file: bunfile,
 				attributes: [
 					{
 						name: "couleur",
@@ -273,7 +272,7 @@ describe.concurrent("Category routes test", () => {
 
 			const { error, status } = await api.categories.post({
 				name: "invalid value category",
-				file: bunfile as File,
+				file: bunfile,
 				attributes: [
 					{
 						name: "couleur",
@@ -320,7 +319,7 @@ describe.concurrent("Category routes test", () => {
 			const { data: oldCategory, status: oldStatus } =
 				await api.categories.post({
 					name: "hello category",
-					file: file(filePath) as File,
+					file: file(filePath),
 				});
 
 			expect(oldStatus).toBe(201);
@@ -376,7 +375,7 @@ describe.concurrent("Category routes test", () => {
 				.categories({ id: category.data.id })
 				.patch({
 					name: category.data.name,
-					file: file(`${import.meta.dir}/public/garlic.webp`) as File,
+					file: file(`${import.meta.dir}/public/garlic.webp`),
 				});
 
 			expect(status).toBe(200);
@@ -397,7 +396,7 @@ describe.concurrent("Category routes test", () => {
 				.categories({ id: category.data.id })
 				.patch({
 					name: "new category",
-					file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+					file: file(`${import.meta.dir}/public/cumin.webp`),
 				});
 
 			expect(status).toBe(200);
@@ -419,14 +418,14 @@ describe.concurrent("Category routes test", () => {
 				.categories({ id: category.data.id })
 				.patch({
 					name: category.data.name,
-					attributes: JSON.stringify({
+					attributes: {
 						create: [
 							{
 								name: "couleur",
 								values: ["noir", "blanc"],
 							},
 						],
-					}) as unknown as CategoryModel.attributeOperations,
+					},
 				});
 
 			expect(status).toBe(200);
@@ -441,8 +440,8 @@ describe.concurrent("Category routes test", () => {
 		test("should update category with multiple attribute operations", async () => {
 			const category = await api.categories.post({
 				name: "multi ops category",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
-				attributes: JSON.stringify([
+				file: file(`${import.meta.dir}/public/cumin.webp`),
+				attributes: [
 					{
 						name: "couleur",
 						values: ["noir"],
@@ -455,7 +454,7 @@ describe.concurrent("Category routes test", () => {
 						name: "poids",
 						values: ["cent grammes"],
 					},
-				]) as unknown as CategoryModel.postAttributes,
+				],
 			});
 
 			expectDefined(category.data);
@@ -474,7 +473,7 @@ describe.concurrent("Category routes test", () => {
 				.categories({ id: category.data.id })
 				.patch({
 					name: category.data.name,
-					attributes: JSON.stringify({
+					attributes: {
 						create: [
 							{
 								name: "origine",
@@ -488,7 +487,7 @@ describe.concurrent("Category routes test", () => {
 							},
 						],
 						delete: [attributeToDelete.id],
-					}) as unknown as CategoryModel.attributeOperations,
+					},
 				});
 
 			expect(status).toBe(200);
@@ -515,13 +514,13 @@ describe.concurrent("Category routes test", () => {
 		test("should update attribute name only", async () => {
 			const category = await api.categories.post({
 				name: "update name category",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
-				attributes: JSON.stringify([
+				file: file(`${import.meta.dir}/public/cumin.webp`),
+				attributes: [
 					{
 						name: "couleur",
 						values: ["noir", "blanc", "rouge"],
 					},
-				]) as unknown as CategoryModel.postAttributes,
+				],
 			});
 
 			expectDefined(category.data);
@@ -532,14 +531,14 @@ describe.concurrent("Category routes test", () => {
 				.categories({ id: category.data.id })
 				.patch({
 					name: category.data.name,
-					attributes: JSON.stringify({
+					attributes: {
 						update: [
 							{
 								id: attributeId,
 								name: "color",
 							},
 						],
-					}) as unknown as CategoryModel.attributeOperations,
+					},
 				});
 
 			expect(status).toBe(200);
@@ -552,8 +551,8 @@ describe.concurrent("Category routes test", () => {
 		test("should delete attribute and cascade delete values", async () => {
 			const category = await api.categories.post({
 				name: "delete attr category",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
-				attributes: JSON.stringify([
+				file: file(`${import.meta.dir}/public/cumin.webp`),
+				attributes: [
 					{
 						name: "couleur",
 						values: ["noir", "blanc"],
@@ -562,7 +561,7 @@ describe.concurrent("Category routes test", () => {
 						name: "taille",
 						values: ["small", "medium"],
 					},
-				]) as unknown as CategoryModel.postAttributes,
+				],
 			});
 
 			expectDefined(category.data);
@@ -574,9 +573,9 @@ describe.concurrent("Category routes test", () => {
 				.categories({ id: category.data.id })
 				.patch({
 					name: category.data.name,
-					attributes: JSON.stringify({
+					attributes: {
 						delete: [attributeToDelete.id],
-					}) as unknown as CategoryModel.attributeOperations,
+					},
 				});
 
 			expect(status).toBe(200);
@@ -592,13 +591,13 @@ describe.concurrent("Category routes test", () => {
 		test("should error if creating attribute with duplicate name", async () => {
 			const category = await api.categories.post({
 				name: "duplicate create category",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
-				attributes: JSON.stringify([
+				file: file(`${import.meta.dir}/public/cumin.webp`),
+				attributes: [
 					{
 						name: "couleur",
 						values: ["noir"],
 					},
-				]) as unknown as CategoryModel.postAttributes,
+				],
 			});
 
 			expectDefined(category.data);
@@ -607,14 +606,14 @@ describe.concurrent("Category routes test", () => {
 				.categories({ id: category.data.id })
 				.patch({
 					name: category.data.name,
-					attributes: JSON.stringify({
+					attributes: {
 						create: [
 							{
 								name: "couleur",
 								values: ["blanc"],
 							},
 						],
-					}) as unknown as CategoryModel.attributeOperations,
+					},
 				});
 
 			expect(status).toBe(409);
@@ -624,8 +623,8 @@ describe.concurrent("Category routes test", () => {
 		test("should error if updating attribute to duplicate name", async () => {
 			const category = await api.categories.post({
 				name: "duplicate update category",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
-				attributes: JSON.stringify([
+				file: file(`${import.meta.dir}/public/cumin.webp`),
+				attributes: [
 					{
 						name: "couleur",
 						values: ["noir"],
@@ -634,7 +633,7 @@ describe.concurrent("Category routes test", () => {
 						name: "taille",
 						values: ["small"],
 					},
-				]) as unknown as CategoryModel.postAttributes,
+				],
 			});
 
 			expectDefined(category.data);
@@ -647,14 +646,14 @@ describe.concurrent("Category routes test", () => {
 				.categories({ id: category.data.id })
 				.patch({
 					name: category.data.name,
-					attributes: JSON.stringify({
+					attributes: {
 						update: [
 							{
 								id: tailleAttribute.id,
 								name: "couleur",
 							},
 						],
-					}) as unknown as CategoryModel.attributeOperations,
+					},
 				});
 
 			expect(status).toBe(409);
@@ -664,13 +663,13 @@ describe.concurrent("Category routes test", () => {
 		test("should update category name and attributes together", async () => {
 			const category = await api.categories.post({
 				name: "combined update category",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
-				attributes: JSON.stringify([
+				file: file(`${import.meta.dir}/public/cumin.webp`),
+				attributes: [
 					{
 						name: "couleur",
 						values: ["noir"],
 					},
-				]) as unknown as CategoryModel.postAttributes,
+				],
 			});
 
 			expectDefined(category.data);
@@ -679,14 +678,14 @@ describe.concurrent("Category routes test", () => {
 				.categories({ id: category.data.id })
 				.patch({
 					name: "renamed category",
-					attributes: JSON.stringify({
+					attributes: {
 						create: [
 							{
 								name: "taille",
 								values: ["small", "large"],
 							},
 						],
-					}) as unknown as CategoryModel.attributeOperations,
+					},
 				});
 
 			expect(status).toBe(200);
