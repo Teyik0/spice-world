@@ -235,7 +235,7 @@ export const MultiSelect = React.forwardRef<HTMLDivElement, MultiSelectProps>(
 								}
 							}}
 						/>
-						<CommandList className="max-h-[300px] overflow-y-auto">
+						<CommandList className="max-h-75 overflow-y-auto">
 							<CommandEmpty className="m-0 p-0">
 								{showCreateOption ? (
 									<Button

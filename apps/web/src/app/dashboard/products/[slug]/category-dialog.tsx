@@ -28,6 +28,7 @@ import { useFileUpload } from "@spice-world/web/hooks/use-file-upload";
 import { useIsMobile } from "@spice-world/web/hooks/use-mobile";
 import { Edit2, ImageIcon, Trash2Icon } from "lucide-react";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 interface CategoryDialogProps {
@@ -49,13 +50,13 @@ export const CategoryDialog = ({
 
 	if (isDesktop) {
 		return (
-			<Dialog open={open} onOpenChange={setOpen}>
+			<Dialog onOpenChange={setOpen} open={open}>
 				<DialogTrigger asChild>
-					<Button variant="outline" size="icon-sm">
+					<Button size="icon-sm" variant="outline">
 						<Edit2 className="h-3 w-3" />
 					</Button>
 				</DialogTrigger>
-				<DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+				<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-150">
 					<DialogHeader>
 						<DialogTitle>Edit category</DialogTitle>
 						<DialogDescription>
@@ -63,16 +64,16 @@ export const CategoryDialog = ({
 							done.
 						</DialogDescription>
 					</DialogHeader>
-					<CategoryForm setOpen={handleClose} categories={categories} />
+					<CategoryForm categories={categories} setOpen={handleClose} />
 				</DialogContent>
 			</Dialog>
 		);
 	}
 
 	return (
-		<Drawer open={open} onOpenChange={setOpen}>
+		<Drawer onOpenChange={setOpen} open={open}>
 			<DrawerTrigger asChild>
-				<Button variant="outline" size="icon-sm">
+				<Button size="icon-sm" variant="outline">
 					<Edit2 className="h-3 w-3" />
 				</Button>
 			</DrawerTrigger>
@@ -83,7 +84,7 @@ export const CategoryDialog = ({
 						Add or delete categories here. Click save when you&apos;re done.
 					</DrawerDescription>
 				</DrawerHeader>
-				<CategoryForm setOpen={handleClose} categories={categories} />
+				<CategoryForm categories={categories} setOpen={handleClose} />
 				<DrawerFooter className="pt-2">
 					<DrawerClose asChild>
 						<Button variant="outline">Cancel</Button>
@@ -100,9 +101,12 @@ interface CategoryFormProps {
 }
 
 const CategoryForm = ({ categories }: CategoryFormProps) => {
-	const [toggleValue, setToggleValue] = useState<
+	const [_toggleValue, setToggleValue] = useState<
 		"create" | "update" | "delete"
 	>("create");
+
+	const pathname = usePathname();
+	const isNew = pathname.endsWith("new");
 
 	const onToggleChange = (toggleValue: "create" | "update" | "delete") => {
 		setToggleValue(toggleValue);
@@ -110,8 +114,8 @@ const CategoryForm = ({ categories }: CategoryFormProps) => {
 	};
 
 	const form = useForm({
-		schema: CategoryModel.patchBody,
-		validationMode: "onBlur",
+		schema: isNew ? CategoryModel.postBody : CategoryModel.patchBody,
+		validationMode: "onSubmit",
 		defaultValues: {
 			name: categories[0]?.name ?? "",
 			file: undefined,
@@ -121,8 +125,51 @@ const CategoryForm = ({ categories }: CategoryFormProps) => {
 				delete: undefined,
 			},
 		},
-		onSubmit: async (values) => {
+		onSubmit: (values) => {
 			console.log("✅ onSubmit called with values:", values);
+		},
+		onSubmitInvalid: ({ formApi, value }) => {
+			console.log("❌ Form validation failed");
+			console.log(
+				"Current values:",
+				JSON.stringify(value.attributes?.create, null, 2),
+			);
+
+			let hasRemovedAny = false;
+
+			// Remove empty values from arrays
+			for (const index in value.attributes?.create) {
+				const values = value.attributes.create[Number(index)]?.values;
+				if (!values) continue;
+
+				console.log(`Checking attribute[${index}].values:`, values);
+
+				// Loop backwards to avoid index shifting
+				for (let j = values.length - 1; j >= 0; j--) {
+					const val = values[j];
+					console.log(
+						`  [${j}]: "${val}" - isEmpty: ${!val || val.trim() === ""}`,
+					);
+
+					if (!val || val.trim() === "") {
+						console.log(`  -> Removing empty value at index ${j}`);
+						formApi.removeFieldValue(`attributes.create[${index}].values`, j);
+						hasRemovedAny = true;
+					}
+				}
+			}
+
+			console.log("Has removed any?", hasRemovedAny);
+
+			// Only retry if we actually removed something
+			if (hasRemovedAny) {
+				setTimeout(() => {
+					console.log("Retrying submission after cleanup...");
+					formApi.handleSubmit();
+				}, 100);
+			} else {
+				console.log("No empty values found, stopping retry");
+			}
 		},
 	});
 
@@ -140,179 +187,179 @@ const CategoryForm = ({ categories }: CategoryFormProps) => {
 
 	return (
 		<div>
-			<Form form={form} className="grid items-start gap-4 px-4 md:px-0">
+			<Form className="grid items-start gap-4 px-4 md:px-0" form={form}>
 				<ToggleGroup
-					type="single"
 					className="flex w-full justify-start"
+					defaultValue="create"
 					onValueChange={(value) =>
 						onToggleChange(value as "create" | "update" | "delete")
 					}
-					defaultValue="create"
+					type="single"
 				>
-					<ToggleGroupItem value="create" aria-label="create" variant="outline">
+					<ToggleGroupItem aria-label="create" value="create" variant="outline">
 						Create
 					</ToggleGroupItem>
-					<ToggleGroupItem value="update" aria-label="update" variant="outline">
+					<ToggleGroupItem aria-label="update" value="update" variant="outline">
 						Update
 					</ToggleGroupItem>
-					<ToggleGroupItem value="delete" aria-label="delete" variant="outline">
+					<ToggleGroupItem aria-label="delete" value="delete" variant="outline">
 						Delete
 					</ToggleGroupItem>
 				</ToggleGroup>
 
-				{toggleValue === "create" && (
-					<div className="flex flex-col gap-4">
-						<form.AppField name="name">
-							{(field) => (
-								<field.Field>
-									<field.Label>Name</field.Label>
-									<field.Input
-										type="text"
-										id="name"
-										placeholder="Épices"
-										onChange={(e) =>
-											field.handleChange(e.target.value.toLowerCase())
-										}
-									/>
-									<field.Message />
-								</field.Field>
-							)}
-						</form.AppField>
+				<div className="flex flex-col gap-4">
+					<form.AppField name="name">
+						{(field) => (
+							<field.Field>
+								<field.Label>Name</field.Label>
+								<field.Input
+									id="name"
+									onChange={(e) =>
+										field.handleChange(e.target.value.toLowerCase())
+									}
+									placeholder="Épices"
+									type="text"
+								/>
+								<field.Message />
+							</field.Field>
+						)}
+					</form.AppField>
 
-						<form.AppField name="attributes.create" mode="array">
-							{(field) => (
-								<field.Field>
-									<div className="flex justify-between items-center">
-										<field.Label>Attributes</field.Label>
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											onClick={() => field.pushValue({ name: "", values: [] })}
-										>
-											New attributes
-										</Button>
-									</div>
+					<form.AppField mode="array" name="attributes.create">
+						{(field) => (
+							<field.Field>
+								<div className="flex items-center justify-between">
+									<field.Label>Attributes</field.Label>
+									<Button
+										onClick={() => field.pushValue({ name: "", values: [] })}
+										size="sm"
+										type="button"
+										variant="outline"
+									>
+										New attributes
+									</Button>
+								</div>
 
-									{field.state.value?.map((_, index) => (
-										<field.Content
-											className="grid grid-cols-8 gap-4"
-											key={index}
+								{field.state.value?.map((_, index) => (
+									// biome-ignore lint/suspicious/noArrayIndexKey: throw user from input field otherwise
+									<field.Content className="grid grid-cols-8 gap-4" key={index}>
+										<form.AppField name={`attributes.create[${index}].name`}>
+											{(aField) => (
+												<aField.Content className="col-span-3">
+													<aField.Input
+														onChange={(e) =>
+															aField.handleChange(e.target.value.toLowerCase())
+														}
+														placeholder="couleur"
+														type="text"
+													/>
+													<aField.Message />
+												</aField.Content>
+											)}
+										</form.AppField>
+										<form.AppField
+											mode="array"
+											name={`attributes.create[${index}].values`}
 										>
-											<form.AppField name={`attributes.create[${index}].name`}>
-												{(aField) => (
-													<aField.Content className="col-span-3">
-														<aField.Input
-															type="text"
-															placeholder="couleur"
-															onChange={(e) =>
-																aField.handleChange(
-																	e.target.value.toLowerCase(),
-																)
-															}
-														/>
-														<aField.Message />
-													</aField.Content>
-												)}
-											</form.AppField>
-											<form.AppField
-												name={`attributes.create[${index}].values`}
-												mode="array"
-											>
-												{(avField) => (
-													<avField.Content className="col-span-4">
-														<avField.MultiSelect
-															options={
-																avField.state.value?.map((v) => {
-																	return {
+											{(avField) => (
+												<avField.Content className="col-span-4">
+													<avField.MultiSelect
+														creatable
+														maxCount={5}
+														onCreateNew={async (value) => {
+															avField.pushValue(value);
+															return {
+																label: value.toLowerCase(),
+																value: value.toLowerCase(),
+															};
+														}}
+														options={
+															avField.state.value?.map(
+																(v) =>
+																	({
 																		label: v,
 																		value: v,
-																	} as MultiSelectOption;
-																}) ?? null
-															}
-															placeholder="Select or create attribute values"
-															maxCount={5}
-															creatable
-															onCreateNew={async (value) => {
-																avField.pushValue(value.toLowerCase());
-																return {
-																	label: value.toLowerCase(),
-																	value: value.toLowerCase(),
-																};
-															}}
-														/>
-														<avField.Message />
-													</avField.Content>
-												)}
-											</form.AppField>
-											<Button asChild onClick={() => field.removeValue(index)}>
-												<Trash2Icon className="col-span-1 w-full bg-red-900 text-black hover:bg-red-800 hover:text-black" />
-											</Button>
-										</field.Content>
-									))}
-									<field.Message />
-								</field.Field>
-							)}
-						</form.AppField>
-
-						<form.AppField name="file">
-							{(field) => (
-								<field.Field>
-									<field.Label>Image</field.Label>
-									<field.Content className="flex justify-center items-center relative">
-										{files.length > 0 && files[0]?.preview ? (
-											<>
-												<Image
-													src={files[0].preview}
-													alt="Category image"
-													className="object-cover aspect-square w-1/2 rounded-md border-2"
-													width={200}
-													height={200}
-												/>
-												<field.Input
-													{...getInputProps()}
-													type="image"
-													className="absolute  left-1/2 -translate-x-1/2 z-50 w-1/2 h-full opacity-0 cursor-pointer"
-												/>
-											</>
-										) : (
-											<div
-												className="relative flex p-16 items-center justify-center rounded-md
-										                  border-2 border-dashed border-input cursor-pointer"
-											>
-												<field.Input
-													{...getInputProps()}
-													className="absolute inset-0 z-50 w-full h-full opacity-0 cursor-pointer"
-												/>
-												<div className="flex flex-col items-center justify-center text-center">
-													<div
-														className="mb-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border bg-background"
-														aria-hidden="true"
-													>
-														<ImageIcon className="h-4 w-4 opacity-60" />
-													</div>
-													<p className="mb-1.5 text-sm font-medium">
-														Drop your images here
-													</p>
-													<p className="text-xs text-muted-foreground">
-														or click to browse
-													</p>
-												</div>
-											</div>
-										)}
-										<field.Message />
+																	}) as MultiSelectOption,
+															) ?? null
+														}
+														placeholder="Select or create attribute values"
+													/>
+													{avField.state.value?.map((v, j) => (
+														<form.AppField
+															key={v}
+															name={`attributes.create[${index}].values[${j}]`}
+														>
+															{(valueField) => <valueField.Message />}
+														</form.AppField>
+													))}
+													<avField.Message />
+												</avField.Content>
+											)}
+										</form.AppField>
+										<Button asChild onClick={() => field.removeValue(index)}>
+											<Trash2Icon className="col-span-1 w-full bg-red-900 text-black hover:bg-red-800 hover:text-black" />
+										</Button>
 									</field.Content>
-								</field.Field>
-							)}
-						</form.AppField>
-					</div>
-				)}
-				<div className="grid grid-cols-4 justify-end mt-4 gap-4">
+								))}
+								<field.Message />
+							</field.Field>
+						)}
+					</form.AppField>
+
+					<form.AppField name="file">
+						{(field) => (
+							<field.Field>
+								<field.Label>Image</field.Label>
+								<field.Content className="relative flex items-center justify-center">
+									{files.length > 0 && files[0]?.preview ? (
+										<>
+											<Image
+												alt="Category image"
+												className="aspect-square w-1/2 rounded-md border-2 object-cover"
+												height={200}
+												src={files[0].preview}
+												width={200}
+											/>
+											<field.Input
+												{...getInputProps()}
+												className="absolute left-1/2 z-50 h-full w-1/2 -translate-x-1/2 cursor-pointer opacity-0"
+												type="image"
+											/>
+										</>
+									) : (
+										<div className="relative flex cursor-pointer items-center justify-center rounded-md border-2 border-input border-dashed p-16">
+											<field.Input
+												{...getInputProps()}
+												className="absolute inset-0 z-50 h-full w-full cursor-pointer opacity-0"
+											/>
+											<div className="flex flex-col items-center justify-center text-center">
+												<div
+													aria-hidden="true"
+													className="mb-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border bg-background"
+												>
+													<ImageIcon className="h-4 w-4 opacity-60" />
+												</div>
+												<p className="mb-1.5 font-medium text-sm">
+													Drop your images here
+												</p>
+												<p className="text-muted-foreground text-xs">
+													or click to browse
+												</p>
+											</div>
+										</div>
+									)}
+									<field.Message />
+								</field.Content>
+							</field.Field>
+						)}
+					</form.AppField>
+				</div>
+
+				<div className="mt-4 grid grid-cols-4 justify-end gap-4">
 					<Button className="col-start-3">Reset</Button>
 					<form.SubmitButton
-						type="submit"
-						variant="outline"
 						className="col-span-1 col-start-4"
+						variant="outline"
 					>
 						Save
 					</form.SubmitButton>

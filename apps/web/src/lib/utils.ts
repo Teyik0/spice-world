@@ -100,8 +100,7 @@ export function typeboxToStandardSchema<TSchemaType extends TSchema>(
 			version: 1 as const,
 			vendor: "typebox",
 			validate: (value: unknown) => {
-				const unwrappedSchema = unwrapElysiaSchema(schema); // ✅ Step 1
-				const compiled = TypeCompiler.Compile(unwrappedSchema);
+				const compiled = TypeCompiler.Compile(schema);
 				if (compiled.Check(value)) {
 					return {
 						value: value as TSchemaType["static"],
@@ -110,8 +109,6 @@ export function typeboxToStandardSchema<TSchemaType extends TSchema>(
 
 				// Convert TypeBox errors to StandardSchema issues
 				const errors = [...compiled.Errors(value)];
-				console.log("errors", errors);
-
 				const issues = errors.map((err) => ({
 					message:
 						typeof err.schema.error === "string"
@@ -130,52 +127,4 @@ export function typeboxToStandardSchema<TSchemaType extends TSchema>(
 			},
 		},
 	} as const;
-}
-
-/**
- * Recursively unwraps Elysia's ObjectString and ArrayString union types
- * to get the actual validation schemas with clear error messages
- */
-function unwrapElysiaSchema(schema: TSchema): any {
-	// If this is an ObjectString/ArrayString, unwrap it
-	console.log("uwrap call", schema);
-	if ("anyOf" in schema && "elysiaMeta" in schema) {
-		if (
-			schema.elysiaMeta === "ObjectString" ||
-			schema.elysiaMeta === "ArrayString"
-		) {
-			// Get the actual object/array branch (skip the string format branch)
-			const actualSchema = schema.anyOf.find(
-				(branch: any) => branch.type === "object" || branch.type === "array",
-			);
-
-			if (actualSchema) {
-				// Recursively unwrap this schema's nested properties
-				return unwrapElysiaSchema(actualSchema);
-			}
-		}
-	}
-
-	// Recursively unwrap object properties
-	if (schema.type === "object" && schema.properties) {
-		return {
-			...schema,
-			properties: Object.fromEntries(
-				Object.entries(schema.properties).map(([key, propSchema]) => [
-					key,
-					unwrapElysiaSchema(propSchema as TSchema),
-				]),
-			),
-		};
-	}
-
-	// Recursively unwrap array items
-	if (schema.type === "array" && schema.items) {
-		return {
-			...schema,
-			items: unwrapElysiaSchema(schema.items),
-		};
-	}
-
-	return schema;
 }

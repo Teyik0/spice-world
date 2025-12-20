@@ -17,25 +17,28 @@ export namespace CategoryModel {
 		ElysiaCustomStatusResponse<any>
 	>;
 
-	export const postAttribute = t.Object({
-		name: nameLowerPattern,
-		values: t.Array(nameLowerPattern, {
-			minItems: 1,
+	export const postAttribute = t.Array(
+		t.Object({
+			name: nameLowerPattern,
+			values: t.Array(nameLowerPattern, {
+				minItems: 1,
+			}),
 		}),
-	});
+		{ minItems: 1 },
+	);
 
 	export type postAttribute = typeof postAttribute.static;
 
 	export const postBody = t.Object({
 		name: nameLowerPattern,
 		file: t.File({ type: "image/*" }),
-		attributes: t.Optional(t.ArrayString(postAttribute, { minItems: 1 })),
+		attributes: t.Optional(t.Object({ create: t.Optional(postAttribute) })),
 	});
 	export type postBody = typeof postBody.static;
 	export type postResult = typeof categoryService.post;
 
-	export const attributeOperations = t.ObjectString({
-		create: t.Optional(t.Array(postAttribute, { minItems: 1 })),
+	export const attributeOperations = t.Object({
+		create: t.Optional(postAttribute),
 		update: t.Optional(
 			t.Array(
 				t.Object({

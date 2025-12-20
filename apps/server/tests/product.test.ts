@@ -216,7 +216,7 @@ describe.concurrent("Product routes test", () => {
 				status: newProduct.status,
 				tags: newProduct.tags,
 				variants: newProduct.variants,
-				images: [file(filePath1), file(filePath2)],
+				images: [file(filePath1), file(filePath2)] as File[],
 			});
 
 			expect(status).toBe(201);
@@ -254,7 +254,7 @@ describe.concurrent("Product routes test", () => {
 						attributeValueIds: testAttributes.map((value) => value.id),
 					},
 				],
-				images: [file(filePath1), file(filePath2)],
+				images: [file(filePath1), file(filePath2)] as File[],
 			};
 
 			const { error, status } = await api.products.post({
@@ -309,7 +309,7 @@ describe.concurrent("Product routes test", () => {
 						],
 					},
 				],
-				images: [file(filePath1), file(filePath2)],
+				images: [file(filePath1), file(filePath2)] as File[],
 			};
 
 			const { error, status } = await api.products.post({
@@ -373,7 +373,7 @@ describe.concurrent("Product routes test", () => {
 						},
 					],
 				},
-				imagesCreate: files,
+				imagesCreate: files as File[],
 			};
 
 			const { data, status } = await api
@@ -728,7 +728,7 @@ describe.concurrent("Product routes test", () => {
 					images: {
 						delete: [imageToDelete.id],
 					},
-					imagesCreate: file(filePath1),
+					imagesCreate: [file(filePath1)] as File[],
 				});
 
 			expect(status).toBe(200);

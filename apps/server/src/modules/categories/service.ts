@@ -57,10 +57,10 @@ export const categoryService = {
 							isThumbnail: true,
 						},
 					},
-					...(attributes &&
-						attributes.length > 0 && {
+					...(attributes?.create &&
+						attributes.create.length > 0 && {
 							attributes: {
-								create: attributes.map((attr) => ({
+								create: attributes.create.map((attr) => ({
 									name: attr.name,
 									values: {
 										createMany: {

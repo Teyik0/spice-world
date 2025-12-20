@@ -10,8 +10,8 @@ $                : end of string
 export const nameLowerPattern = t.String({
 	pattern: "^[a-zà-ÿ][a-zà-ÿ ]*$",
 	minLength: 3,
-	error:
-		"Name must be at least 3 characters long, and contain only lowercase letters (including accents) and spaces.",
+	// error:
+	// 	"Name must be at least 3 characters long, and contain only lowercase letters (including accents) and spaces.",
 });
 
 export const uuid = t.String({ format: "uuid" });

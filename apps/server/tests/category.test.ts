@@ -46,7 +46,7 @@ describe.concurrent("Category routes test", () => {
 	const postCategory = async (name: string, bunfile: BunFile) => {
 		const data = await api.categories.post({
 			name,
-			file: bunfile,
+			file: bunfile as File,
 		});
 		return data;
 	};
@@ -103,7 +103,7 @@ describe.concurrent("Category routes test", () => {
 			const bunfile = file(filePath);
 
 			const { error, status } = await api.categories.post({
-				file: bunfile,
+				file: bunfile as File,
 				name: "Hello",
 			});
 
@@ -117,8 +117,8 @@ describe.concurrent("Category routes test", () => {
 			const bunfile = file(filePath);
 
 			const { error, status } = await api.categories.post({
-				file: bunfile,
 				name: "hello world!",
+				file: bunfile as File,
 			});
 
 			expect(status).toBe(422);
@@ -131,7 +131,7 @@ describe.concurrent("Category routes test", () => {
 			const bunfile = file(filePath);
 
 			const { error, status } = await api.categories.post({
-				file: bunfile,
+				file: bunfile as File,
 				name: "hello 5",
 			});
 
@@ -146,13 +146,15 @@ describe.concurrent("Category routes test", () => {
 			const name = "vêtements";
 			const { data, status } = await api.categories.post({
 				name,
-				file: bunfile,
-				attributes: [
-					{
-						name: "taille",
-						values: ["small", "medium", "large"],
-					},
-				],
+				file: bunfile as File,
+				attributes: {
+					create: [
+						{
+							name: "taille",
+							values: ["small", "medium", "large"],
+						},
+					],
+				},
 			});
 
 			expect(status).toBe(201);
@@ -174,25 +176,27 @@ describe.concurrent("Category routes test", () => {
 			const name = "spices category";
 			const { data, status } = await api.categories.post({
 				name,
-				file: bunfile,
-				attributes: [
-					{
-						name: "couleur",
-						values: ["noir", "blanc", "rouge"],
-					},
-					{
-						name: "poids",
-						values: [
-							"cent grammes",
-							"deux cent cinquante grammes",
-							"cinq cents grammes",
-						],
-					},
-					{
-						name: "origine",
-						values: ["france", "inde", "maroc"],
-					},
-				],
+				file: bunfile as File,
+				attributes: {
+					create: [
+						{
+							name: "couleur",
+							values: ["noir", "blanc", "rouge"],
+						},
+						{
+							name: "poids",
+							values: [
+								"cent grammes",
+								"deux cent cinquante grammes",
+								"cinq cents grammes",
+							],
+						},
+						{
+							name: "origine",
+							values: ["france", "inde", "maroc"],
+						},
+					],
+				},
 			});
 
 			expect(status).toBe(201);
@@ -234,13 +238,15 @@ describe.concurrent("Category routes test", () => {
 
 			const { error, status } = await api.categories.post({
 				name: "invalid attr category",
-				file: bunfile,
-				attributes: [
-					{
-						name: "Couleur",
-						values: ["noir"],
-					},
-				],
+				file: bunfile as File,
+				attributes: {
+					create: [
+						{
+							name: "Couleur", // invalid uppercase letter
+							values: ["noir"],
+						},
+					],
+				},
 			});
 
 			expect(status).toBe(422);
@@ -253,13 +259,15 @@ describe.concurrent("Category routes test", () => {
 
 			const { error, status } = await api.categories.post({
 				name: "empty values category",
-				file: bunfile,
-				attributes: [
-					{
-						name: "couleur",
-						values: [],
-					},
-				],
+				file: bunfile as File,
+				attributes: {
+					create: [
+						{
+							name: "couleur",
+							values: [],
+						},
+					],
+				},
 			});
 
 			expect(status).toBe(422);
@@ -272,13 +280,15 @@ describe.concurrent("Category routes test", () => {
 
 			const { error, status } = await api.categories.post({
 				name: "invalid value category",
-				file: bunfile,
-				attributes: [
-					{
-						name: "couleur",
-						values: ["noir123"],
-					},
-				],
+				file: bunfile as File,
+				attributes: {
+					create: [
+						{
+							name: "couleur",
+							values: ["noir123"],
+						},
+					],
+				},
 			});
 
 			expect(status).toBe(422);
@@ -319,7 +329,7 @@ describe.concurrent("Category routes test", () => {
 			const { data: oldCategory, status: oldStatus } =
 				await api.categories.post({
 					name: "hello category",
-					file: file(filePath),
+					file: file(filePath) as File,
 				});
 
 			expect(oldStatus).toBe(201);
@@ -375,7 +385,7 @@ describe.concurrent("Category routes test", () => {
 				.categories({ id: category.data.id })
 				.patch({
 					name: category.data.name,
-					file: file(`${import.meta.dir}/public/garlic.webp`),
+					file: file(`${import.meta.dir}/public/garlic.webp`) as File,
 				});
 
 			expect(status).toBe(200);
@@ -396,7 +406,7 @@ describe.concurrent("Category routes test", () => {
 				.categories({ id: category.data.id })
 				.patch({
 					name: "new category",
-					file: file(`${import.meta.dir}/public/cumin.webp`),
+					file: file(`${import.meta.dir}/public/cumin.webp`) as File,
 				});
 
 			expect(status).toBe(200);
@@ -440,21 +450,23 @@ describe.concurrent("Category routes test", () => {
 		test("should update category with multiple attribute operations", async () => {
 			const category = await api.categories.post({
 				name: "multi ops category",
-				file: file(`${import.meta.dir}/public/cumin.webp`),
-				attributes: [
-					{
-						name: "couleur",
-						values: ["noir"],
-					},
-					{
-						name: "taille",
-						values: ["small"],
-					},
-					{
-						name: "poids",
-						values: ["cent grammes"],
-					},
-				],
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: {
+					create: [
+						{
+							name: "couleur",
+							values: ["noir"],
+						},
+						{
+							name: "taille",
+							values: ["small"],
+						},
+						{
+							name: "poids",
+							values: ["cent grammes"],
+						},
+					],
+				},
 			});
 
 			expectDefined(category.data);
@@ -514,13 +526,15 @@ describe.concurrent("Category routes test", () => {
 		test("should update attribute name only", async () => {
 			const category = await api.categories.post({
 				name: "update name category",
-				file: file(`${import.meta.dir}/public/cumin.webp`),
-				attributes: [
-					{
-						name: "couleur",
-						values: ["noir", "blanc", "rouge"],
-					},
-				],
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: {
+					create: [
+						{
+							name: "couleur",
+							values: ["noir", "blanc", "rouge"],
+						},
+					],
+				},
 			});
 
 			expectDefined(category.data);
@@ -551,17 +565,19 @@ describe.concurrent("Category routes test", () => {
 		test("should delete attribute and cascade delete values", async () => {
 			const category = await api.categories.post({
 				name: "delete attr category",
-				file: file(`${import.meta.dir}/public/cumin.webp`),
-				attributes: [
-					{
-						name: "couleur",
-						values: ["noir", "blanc"],
-					},
-					{
-						name: "taille",
-						values: ["small", "medium"],
-					},
-				],
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: {
+					create: [
+						{
+							name: "couleur",
+							values: ["noir", "blanc"],
+						},
+						{
+							name: "taille",
+							values: ["small", "medium"],
+						},
+					],
+				},
 			});
 
 			expectDefined(category.data);
@@ -591,13 +607,15 @@ describe.concurrent("Category routes test", () => {
 		test("should error if creating attribute with duplicate name", async () => {
 			const category = await api.categories.post({
 				name: "duplicate create category",
-				file: file(`${import.meta.dir}/public/cumin.webp`),
-				attributes: [
-					{
-						name: "couleur",
-						values: ["noir"],
-					},
-				],
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: {
+					create: [
+						{
+							name: "couleur",
+							values: ["noir"],
+						},
+					],
+				},
 			});
 
 			expectDefined(category.data);
@@ -623,17 +641,19 @@ describe.concurrent("Category routes test", () => {
 		test("should error if updating attribute to duplicate name", async () => {
 			const category = await api.categories.post({
 				name: "duplicate update category",
-				file: file(`${import.meta.dir}/public/cumin.webp`),
-				attributes: [
-					{
-						name: "couleur",
-						values: ["noir"],
-					},
-					{
-						name: "taille",
-						values: ["small"],
-					},
-				],
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: {
+					create: [
+						{
+							name: "couleur",
+							values: ["noir"],
+						},
+						{
+							name: "taille",
+							values: ["small"],
+						},
+					],
+				},
 			});
 
 			expectDefined(category.data);
@@ -663,13 +683,15 @@ describe.concurrent("Category routes test", () => {
 		test("should update category name and attributes together", async () => {
 			const category = await api.categories.post({
 				name: "combined update category",
-				file: file(`${import.meta.dir}/public/cumin.webp`),
-				attributes: [
-					{
-						name: "couleur",
-						values: ["noir"],
-					},
-				],
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: {
+					create: [
+						{
+							name: "couleur",
+							values: ["noir"],
+						},
+					],
+				},
 			});
 
 			expectDefined(category.data);

@@ -47,8 +47,8 @@ export namespace ProductModel {
 		description: t.String(),
 		status: productStatus,
 		categoryId: uuid,
-		tags: t.Optional(t.ArrayString(uuid, { minItems: 1 })),
-		variants: t.ArrayString(
+		tags: t.Optional(t.Array(uuid, { minItems: 1 })),
+		variants: t.Array(
 			t.Object({
 				price: t.Number({ minimum: 0 }),
 				sku: t.Optional(t.String()),
@@ -66,7 +66,7 @@ export namespace ProductModel {
 	export type postBody = typeof postBody.static;
 	export type postResult = Awaited<ReturnType<typeof productService.post>>;
 
-	export const tagOperations = t.ObjectString({
+	export const tagOperations = t.Object({
 		add: t.Optional(t.Array(uuid)),
 		remove: t.Optional(t.Array(uuid)),
 	});
@@ -77,7 +77,7 @@ export namespace ProductModel {
 		isThumbnail: t.Optional(t.Boolean()),
 	});
 
-	export const imageOperations = t.ObjectString({
+	export const imageOperations = t.Object({
 		// create option can't be added here due to multipart/form-data limitation
 		update: t.Optional(t.Array(imageUpdate)),
 		delete: t.Optional(t.Array(uuid)),
@@ -104,7 +104,7 @@ export namespace ProductModel {
 		attributeValueIds: t.Optional(t.Array(uuid)),
 	});
 
-	export const variantOperations = t.ObjectString({
+	export const variantOperations = t.Object({
 		create: t.Optional(t.Array(variantCreate)),
 		update: t.Optional(t.Array(variantUpdate)),
 		delete: t.Optional(t.Array(uuid)),

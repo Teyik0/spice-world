@@ -15,7 +15,12 @@ import { Select } from "@spice-world/web/components/ui/select";
 import { Switch } from "@spice-world/web/components/ui/switch";
 import { Textarea } from "@spice-world/web/components/ui/textarea";
 import { typeboxToStandardSchema } from "@spice-world/web/lib/utils";
-import { createFormHook, createFormHookContexts } from "@tanstack/react-form";
+import {
+	createFormHook,
+	createFormHookContexts,
+	type FormApi,
+	type TStandardSchemaValidatorIssue,
+} from "@tanstack/react-form";
 import type { TSchema } from "elysia";
 import { Loader2 } from "lucide-react";
 import type * as React from "react";
@@ -32,7 +37,7 @@ export function SubmitButton(props: React.ComponentProps<typeof Button>) {
 				<Button type="submit" {...props} disabled={isSubmitting}>
 					{isSubmitting ? (
 						<>
-							<Loader2 size={16} className="animate-spin" /> {props.children}
+							<Loader2 className="animate-spin" size={16} /> {props.children}
 						</>
 					) : (
 						props.children
@@ -50,10 +55,10 @@ function FormInput(props: React.ComponentProps<typeof Input>) {
 		<Input
 			id={field.name}
 			name={field.name}
-			value={field.state.value ?? ""}
-			placeholder={props.placeholder}
 			onBlur={field.handleBlur}
 			onChange={(e) => field.handleChange(e.target.value)}
+			placeholder={props.placeholder}
+			value={field.state.value ?? ""}
 			{...props}
 		/>
 	);
@@ -64,8 +69,8 @@ function FormSelect(props: React.ComponentProps<typeof Select>) {
 	return (
 		<Select
 			name={field.name}
-			value={field.state.value ?? ""}
 			onValueChange={(value) => field.handleChange(value)}
+			value={field.state.value ?? ""}
 			{...props}
 		/>
 	);
@@ -77,10 +82,10 @@ function FormTextarea(props: React.ComponentProps<typeof Textarea>) {
 		<Textarea
 			id={field.name}
 			name={field.name}
-			value={field.state.value ?? ""}
-			placeholder={props.placeholder}
 			onBlur={field.handleBlur}
 			onChange={(e) => field.handleChange(e.target.value)}
+			placeholder={props.placeholder}
+			value={field.state.value ?? ""}
 			{...props}
 		/>
 	);
@@ -90,9 +95,9 @@ function FormCheckbox(props: React.ComponentProps<typeof Checkbox>) {
 	const field = useFieldContext<boolean>();
 	return (
 		<Checkbox
+			checked={Boolean(field.state.value)}
 			id={field.name}
 			name={field.name}
-			checked={Boolean(field.state.value)}
 			onCheckedChange={(checked) => field.handleChange(Boolean(checked))}
 			{...props}
 		/>
@@ -103,29 +108,23 @@ function FormSwitch(props: React.ComponentProps<typeof Switch>) {
 	const field = useFieldContext<boolean>();
 	return (
 		<Switch
+			checked={Boolean(field.state.value)}
 			id={field.name}
 			name={field.name}
-			checked={Boolean(field.state.value)}
 			onCheckedChange={(checked) => field.handleChange(Boolean(checked))}
 			{...props}
 		/>
 	);
 }
 
-function FormMultiSelect({
-	onValueChange: _,
-	defaultValue: __,
-	value: ___,
-	onBlur: ____,
-	...props
-}: React.ComponentProps<typeof MultiSelect>) {
+function FormMultiSelect(props: React.ComponentProps<typeof MultiSelect>) {
 	const field = useFieldContext<string[]>();
+
 	return (
 		<MultiSelect
 			{...props}
-			value={field.state.value || []}
-			onValueChange={(value) => field.handleChange(value)}
 			onBlur={() => field.handleBlur()}
+			onValueChange={(value) => field.handleChange(value)}
 		/>
 	);
 }
@@ -151,7 +150,7 @@ export const { useAppForm } = createFormHook({
 		Content: FieldContent,
 	},
 	formComponents: {
-		SubmitButton: SubmitButton,
+		SubmitButton,
 	},
 	fieldContext,
 	formContext,
@@ -161,14 +160,19 @@ export function useForm<TSchemaType extends TSchema>({
 	schema,
 	defaultValues,
 	onSubmit,
-	validationMode = "onBlur",
+	onSubmitInvalid,
+	validationMode = "onSubmit",
 }: {
 	schema: TSchemaType;
 	defaultValues: TSchemaType["static"];
 	onSubmit: (values: TSchemaType["static"]) => void | Promise<void>;
+	onSubmitInvalid?: (props: {
+		value: TSchemaType["static"];
+		formApi: unknown;
+		meta: unknown;
+	}) => void;
 	validationMode?: "onChange" | "onBlur" | "onSubmit";
 }) {
-	// Convert TypeBox schema to Standard Schema V1
 	const standardSchema = typeboxToStandardSchema(schema);
 
 	return useAppForm({
@@ -179,6 +183,7 @@ export function useForm<TSchemaType extends TSchema>({
 		onSubmit: async ({ value }) => {
 			await onSubmit(value as TSchemaType["static"]);
 		},
+		onSubmitInvalid: onSubmitInvalid,
 	});
 }
 
@@ -227,7 +232,7 @@ export function Form({
 				onSubmit={(e) => {
 					e.preventDefault();
 					e.stopPropagation();
-					void form.handleSubmit();
+					form.handleSubmit();
 				}}
 				{...props}
 			>
@@ -254,8 +259,8 @@ function FieldDescription({
 
 	return (
 		<FieldDescriptionComponent
-			id={`${field.name}-form-item-description`}
 			className={className}
+			id={`${field.name}-form-item-description`}
 			{...props}
 		/>
 	);
@@ -274,14 +279,28 @@ function FieldMessage(props: React.ComponentProps<typeof FieldError>) {
 	}
 
 	// Convert string errors to the format FieldError expects: Array<{ message?: string }>
-	const errorsToShow = hasSubmitError
-		? typeof hasSubmitError === "string"
-			? [{ message: hasSubmitError }]
-			: hasSubmitError
-		: field.state.meta.errors.map((err) =>
-				typeof err === "string" ? { message: err } : err,
+	let errorsToShow: { message?: string }[] = [];
+
+	if (hasSubmitError) {
+		if (typeof hasSubmitError === "string") {
+			errorsToShow = [{ message: hasSubmitError }];
+		} else if (Array.isArray(hasSubmitError)) {
+			errorsToShow = hasSubmitError.map((err) =>
+				typeof err === "string"
+					? { message: err }
+					: (err as { message?: string }),
 			);
-	console.log("errorToShow", errorsToShow);
+		} else {
+			// Fallback in case of unexpected shape
+			errorsToShow = [{ message: String(hasSubmitError) }];
+		}
+	} else {
+		errorsToShow = field.state.meta.errors.map((err) =>
+			typeof err === "string"
+				? { message: err }
+				: (err as { message?: string }),
+		);
+	}
 
 	return <FieldError {...props} errors={errorsToShow} />;
 }
