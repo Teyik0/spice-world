@@ -255,7 +255,7 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
 					<SelectContent>
 						<SelectGroup>
 							<SelectLabel>Category</SelectLabel>
-							<SelectItem value="new">New</SelectItem>
+							<SelectItem value="new">New Category</SelectItem>
 							{categories.map((category) => (
 								<SelectItem
 									key={category.id}
@@ -483,7 +483,7 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
 												src={currentCategory.image.url}
 												width={200}
 											/>
-											<input
+											<field.Input
 												{...getInputProps()}
 												className="absolute inset-0 z-50 h-full w-full cursor-pointer opacity-0"
 												type="file"
