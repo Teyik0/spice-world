@@ -274,25 +274,30 @@ describe.concurrent("Category routes test", () => {
 			expectDefined(error);
 		});
 
-		test("should error if attribute value is invalid (contains numbers)", async () => {
+		test("should accept attribute values with numbers", async () => {
 			const filePath = `${import.meta.dir}/public/cumin.webp`;
 			const bunfile = file(filePath);
 
-			const { error, status } = await api.categories.post({
-				name: "invalid value category",
+			const { data, status } = await api.categories.post({
+				name: "value with numbers category",
 				file: bunfile as File,
 				attributes: {
 					create: [
 						{
-							name: "couleur",
-							values: ["noir123"],
+							name: "modèle",
+							values: ["iphone 15", "galaxy s24", "pixel 8"],
 						},
 					],
 				},
 			});
 
-			expect(status).toBe(422);
-			expectDefined(error);
+			expect(status).toBe(201);
+			expectDefined(data);
+			expect(data.attributes).toHaveLength(1);
+			expect(data.attributes[0]?.values).toHaveLength(3);
+			expect(data.attributes[0]?.values.map((v) => v.value)).toContain(
+				"iphone 15",
+			);
 		});
 	});
 
@@ -714,6 +719,311 @@ describe.concurrent("Category routes test", () => {
 			expectDefined(data);
 			expect(data.name).toBe("renamed category");
 			expect(data.attributes).toHaveLength(2);
+		});
+	});
+
+	describe("Update attribute values - PATCH/:id", () => {
+		test("should create new attribute values", async () => {
+			const category = await api.categories.post({
+				name: "category with values",
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: {
+					create: [
+						{
+							name: "couleur",
+							values: ["noir", "blanc"],
+						},
+					],
+				},
+			});
+
+			expectDefined(category.data);
+			const attributeId = category.data.attributes[0]?.id;
+			expectDefined(attributeId);
+
+			const { data, status } = await api
+				.categories({ id: category.data.id })
+				.patch({
+					name: category.data.name,
+					attributes: {
+						update: [
+							{
+								id: attributeId,
+								values: {
+									create: ["rouge", "vert"],
+								},
+							},
+						],
+					},
+				});
+
+			expect(status).toBe(200);
+			expectDefined(data);
+			expect(data.attributes).toHaveLength(1);
+			expect(data.attributes[0]?.values).toHaveLength(4);
+			expect(data.attributes[0]?.values.map((v) => v.value).sort()).toEqual([
+				"blanc",
+				"noir",
+				"rouge",
+				"vert",
+			]);
+		});
+
+		test("should delete attribute values", async () => {
+			const category = await api.categories.post({
+				name: "category for deletion",
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: {
+					create: [
+						{
+							name: "taille",
+							values: ["small", "medium", "large"],
+						},
+					],
+				},
+			});
+
+			expectDefined(category.data);
+			const attribute = category.data.attributes[0];
+			expectDefined(attribute);
+			const valueToDelete = attribute.values.find((v) => v.value === "medium");
+			expectDefined(valueToDelete);
+
+			const { data, status } = await api
+				.categories({ id: category.data.id })
+				.patch({
+					name: category.data.name,
+					attributes: {
+						update: [
+							{
+								id: attribute.id,
+								values: {
+									delete: [valueToDelete.id],
+								},
+							},
+						],
+					},
+				});
+
+			expect(status).toBe(200);
+			expectDefined(data);
+			expect(data.attributes[0]?.values).toHaveLength(2);
+			expect(data.attributes[0]?.values.map((v) => v.value).sort()).toEqual([
+				"large",
+				"small",
+			]);
+		});
+
+		test("should create and delete values in same operation", async () => {
+			const category = await api.categories.post({
+				name: "category for combined ops",
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: {
+					create: [
+						{
+							name: "couleur",
+							values: ["noir", "blanc", "gris"],
+						},
+					],
+				},
+			});
+
+			expectDefined(category.data);
+			const attribute = category.data.attributes[0];
+			expectDefined(attribute);
+			const valueToDelete = attribute.values.find((v) => v.value === "gris");
+			expectDefined(valueToDelete);
+
+			const { data, status } = await api
+				.categories({ id: category.data.id })
+				.patch({
+					name: category.data.name,
+					attributes: {
+						update: [
+							{
+								id: attribute.id,
+								values: {
+									create: ["rouge", "bleu"],
+									delete: [valueToDelete.id],
+								},
+							},
+						],
+					},
+				});
+
+			expect(status).toBe(200);
+			expectDefined(data);
+			expect(data.attributes[0]?.values).toHaveLength(4);
+			expect(data.attributes[0]?.values.map((v) => v.value).sort()).toEqual([
+				"blanc",
+				"bleu",
+				"noir",
+				"rouge",
+			]);
+		});
+
+		test("should fail when creating duplicate value", async () => {
+			const category = await api.categories.post({
+				name: "category duplicate test",
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: {
+					create: [
+						{
+							name: "couleur",
+							values: ["noir", "blanc"],
+						},
+					],
+				},
+			});
+
+			expectDefined(category.data);
+			const attributeId = category.data.attributes[0]?.id;
+			expectDefined(attributeId);
+
+			const { data, status, error } = await api
+				.categories({ id: category.data.id })
+				.patch({
+					name: category.data.name,
+					attributes: {
+						update: [
+							{
+								id: attributeId,
+								values: {
+									create: ["noir"], // Already exists
+								},
+							},
+						],
+					},
+				});
+
+			expect(status).toBe(409);
+			expectDefined(error);
+			expect(error.value).toContain("already has values");
+		});
+
+		test("should fail when deleting non-existent value ID", async () => {
+			const category = await api.categories.post({
+				name: "category invalid id test",
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: {
+					create: [
+						{
+							name: "couleur",
+							values: ["noir"],
+						},
+					],
+				},
+			});
+
+			expectDefined(category.data);
+			const attributeId = category.data.attributes[0]?.id;
+			expectDefined(attributeId);
+
+			const { data, status, error } = await api
+				.categories({ id: category.data.id })
+				.patch({
+					name: category.data.name,
+					attributes: {
+						update: [
+							{
+								id: attributeId,
+								values: {
+									delete: ["00000000-0000-0000-0000-000000000000"],
+								},
+							},
+						],
+					},
+				});
+
+			expect(status).toBe(404);
+			expectDefined(error);
+			expect(error.value).toContain("Value IDs not found");
+		});
+
+		test("should update attribute name and values together", async () => {
+			const category = await api.categories.post({
+				name: "category combined update",
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: {
+					create: [
+						{
+							name: "couleur",
+							values: ["noir", "blanc"],
+						},
+					],
+				},
+			});
+
+			expectDefined(category.data);
+			const attribute = category.data.attributes[0];
+			expectDefined(attribute);
+
+			const { data, status } = await api
+				.categories({ id: category.data.id })
+				.patch({
+					name: category.data.name,
+					attributes: {
+						update: [
+							{
+								id: attribute.id,
+								name: "color",
+								values: {
+									create: ["rouge"],
+								},
+							},
+						],
+					},
+				});
+
+			expect(status).toBe(200);
+			expectDefined(data);
+			expect(data.attributes[0]?.name).toBe("color");
+			expect(data.attributes[0]?.values).toHaveLength(3);
+			expect(data.attributes[0]?.values.map((v) => v.value).sort()).toEqual([
+				"blanc",
+				"noir",
+				"rouge",
+			]);
+		});
+
+		test("should update only values without changing name", async () => {
+			const category = await api.categories.post({
+				name: "category values only",
+				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				attributes: {
+					create: [
+						{
+							name: "taille",
+							values: ["small"],
+						},
+					],
+				},
+			});
+
+			expectDefined(category.data);
+			const attributeId = category.data.attributes[0]?.id;
+			expectDefined(attributeId);
+
+			const { data, status } = await api
+				.categories({ id: category.data.id })
+				.patch({
+					name: category.data.name,
+					attributes: {
+						update: [
+							{
+								id: attributeId,
+								values: {
+									create: ["large", "medium"],
+								},
+							},
+						],
+					},
+				});
+
+			expect(status).toBe(200);
+			expectDefined(data);
+			expect(data.attributes[0]?.name).toBe("taille");
+			expect(data.attributes[0]?.values).toHaveLength(3);
 		});
 	});
 });

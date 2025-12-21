@@ -130,7 +130,9 @@ export const categoryService = {
 
 					if (attributes.update) {
 						const updateIds = attributes.update.map((u) => u.id);
-						const updateNames = attributes.update.map((u) => u.name);
+						const updateNames = attributes.update
+							.filter((u) => u.name !== undefined)
+							.map((u) => u.name as string);
 						const otherAttributes = category.attributes
 							.filter((a) => !updateIds.includes(a.id))
 							.map((a) => a.name);
@@ -142,6 +144,50 @@ export const categoryService = {
 								"Conflict",
 								`Attribute name conflicts: ${conflicts.join(", ")}`,
 							);
+						}
+
+						// Validation for values operations
+						for (const attrUpdate of attributes.update) {
+							const existingAttr = category.attributes.find(
+								(a) => a.id === attrUpdate.id,
+							);
+							if (!existingAttr) {
+								throw status(
+									"Not Found",
+									`Attribute ${attrUpdate.id} not found`,
+								);
+							}
+
+							if (attrUpdate.values?.create) {
+								// Check for duplicates with existing values
+								const existingValues = existingAttr.values.map((v) => v.value);
+								const newValues = attrUpdate.values.create;
+								const duplicates = newValues.filter((v) =>
+									existingValues.includes(v),
+								);
+
+								if (duplicates.length > 0) {
+									throw status(
+										"Conflict",
+										`Attribute ${existingAttr.name} already has values: ${duplicates.join(", ")}`,
+									);
+								}
+							}
+
+							if (attrUpdate.values?.delete) {
+								// Verify all value IDs exist
+								const valueIds = existingAttr.values.map((v) => v.id);
+								const invalidIds = attrUpdate.values.delete.filter(
+									(id) => !valueIds.includes(id),
+								);
+
+								if (invalidIds.length > 0) {
+									throw status(
+										"Not Found",
+										`Value IDs not found: ${invalidIds.join(", ")}`,
+									);
+								}
+							}
 						}
 					}
 				}
@@ -175,7 +221,23 @@ export const categoryService = {
 									attributes.update.length > 0 && {
 										update: attributes.update.map((attr) => ({
 											where: { id: attr.id },
-											data: { name: attr.name },
+											data: {
+												...(attr.name && { name: attr.name }),
+												...(attr.values && {
+													values: {
+														...(attr.values.create && {
+															create: attr.values.create.map((value) => ({
+																value,
+															})),
+														}),
+														...(attr.values.delete && {
+															deleteMany: {
+																id: { in: attr.values.delete },
+															},
+														}),
+													},
+												}),
+											},
 										})),
 									}),
 								...(attributes.delete &&

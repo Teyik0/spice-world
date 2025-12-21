@@ -36,13 +36,20 @@ export namespace CategoryModel {
 	export type postBody = typeof postBody.static;
 	export type postResult = typeof categoryService.post;
 
+	export const attributeValueOperations = t.Object({
+		create: t.Optional(t.Array(nameLowerPatternWithNumber, { minItems: 1 })),
+		delete: t.Optional(t.Array(t.String({ format: "uuid" }), { minItems: 1 })),
+	});
+	export type attributeValueOperations = typeof attributeValueOperations.static;
+
 	export const attributeOperations = t.Object({
 		create: t.Optional(postAttributes),
 		update: t.Optional(
 			t.Array(
 				t.Object({
 					id: t.String({ format: "uuid" }),
-					name: nameLowerPattern,
+					name: t.Optional(nameLowerPattern),
+					values: t.Optional(attributeValueOperations),
 				}),
 				{ minItems: 1 },
 			),

@@ -53,6 +53,7 @@ interface MultiSelectProps
 	className?: string;
 	disabled?: boolean;
 	onCreateNew?: (value: string) => Promise<MultiSelectOption | null>;
+	onRemove?: (value: string, index: number) => void;
 	creatable?: boolean;
 }
 
@@ -70,6 +71,7 @@ export const MultiSelect = React.forwardRef<HTMLDivElement, MultiSelectProps>(
 			className,
 			disabled = false,
 			onCreateNew,
+			onRemove,
 			creatable = false,
 			...props
 		},
@@ -165,7 +167,7 @@ export const MultiSelect = React.forwardRef<HTMLDivElement, MultiSelectProps>(
 						{selectedValues.length > 0 ? (
 							<div className="flex justify-between">
 								<div className="flex items-center gap-1 overflow-x-auto overflow-y-hidden px-2 py-1 min-w-0 [&::-webkit-scrollbar]:h-0">
-									{selectedValues.slice(0, maxCount).map((value) => {
+									{selectedValues.slice(0, maxCount).map((value, index) => {
 										const option = options?.find((opt) => opt.value === value);
 										if (!option) return null;
 
@@ -181,6 +183,7 @@ export const MultiSelect = React.forwardRef<HTMLDivElement, MultiSelectProps>(
 													type="button"
 													onClick={(event) => {
 														event.stopPropagation();
+														onRemove?.(value, index);
 														toggleOption(value);
 													}}
 													aria-label={`Remove ${option.label}`}

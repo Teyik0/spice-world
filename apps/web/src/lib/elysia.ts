@@ -44,3 +44,9 @@ export type ElysiaAppError =
 	| ProductErrors
 	| TagErrors
 	| AttributeErrors;
+
+export const elysiaErrorToString = (error: NonNullable<ElysiaAppError>) => {
+	const errorMessage =
+		typeof error.value === "string" ? error.value : error.value.message;
+	return errorMessage;
+};

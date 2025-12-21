@@ -31,7 +31,7 @@ import {
 import { Form, useForm } from "@spice-world/web/components/ui/tanstack-form";
 import { useFileUpload } from "@spice-world/web/hooks/use-file-upload";
 import { useIsMobile } from "@spice-world/web/hooks/use-mobile";
-import { app } from "@spice-world/web/lib/elysia";
+import { app, elysiaErrorToString } from "@spice-world/web/lib/elysia";
 import { Edit2, ImageIcon, Trash2Icon } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -107,40 +107,57 @@ interface CategoryFormProps {
 }
 
 const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
-	const [toggleValue, setToggleValue] = useState<string>("new");
-	const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+	const [categoryId, setCategoryId] = useState<string>("new");
+	const [currentCategory, setCurrentCategory] =
+		useState<CategoryModel.getByIdResult | null>(null);
 
 	const resetForm = () => {
-		setToggleValue("new");
-		setOriginalImageUrl(null);
+		setCategoryId("new");
+		setCurrentCategory(null);
 		form.reset(undefined, {});
 		clearFiles();
 	};
 
-	const onToggleChange = (value: string) => {
-		if (value === "new") {
+	const onToggleChange = async (id: string) => {
+		if (id === "new") {
 			resetForm();
 		} else {
-			const selectedCategory = categories.find(
-				(category) => category.id === value,
-			);
-			if (selectedCategory) {
-				setToggleValue(selectedCategory.id);
-				setOriginalImageUrl(selectedCategory.image.url);
-				form.setFieldValue("name", selectedCategory.name);
-				form.setFieldValue("attributes.create", []);
-				form.setFieldValue("file", undefined);
-				clearFiles();
+			const { data, error } = await app.categories({ id }).get();
+			if (error) {
+				toast.error(
+					`Failed to fetch category with error ${error.status}: ${elysiaErrorToString(error)}`,
+				);
+				resetForm();
+				return;
 			}
+
+			setCategoryId(id);
+			setCurrentCategory(data);
+
+			form.setFieldValue("name", data.name);
+			form.setFieldValue("attributes.create", undefined);
+			form.setFieldValue(
+				"attributes.update",
+				data.attributes.map((attr) => ({
+					id: attr.id,
+					name: attr.name,
+					values: {
+						create: attr.values.map((v) => v.value),
+						delete: undefined,
+					},
+				})),
+			);
+			form.setFieldValue("file", undefined);
+			clearFiles();
 		}
 	};
 
 	const form = useForm({
 		schema:
-			toggleValue === "new" ? CategoryModel.postBody : CategoryModel.patchBody,
+			categoryId === "new" ? CategoryModel.postBody : CategoryModel.patchBody,
 		validationMode: "onSubmit",
 		defaultValues: {
-			name: toggleValue === "new" ? "" : (categories[0]?.name ?? ""),
+			name: "",
 			file: undefined,
 			attributes: {
 				create: undefined,
@@ -149,18 +166,14 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
 			},
 		},
 		onSubmit: async (values) => {
-			switch (toggleValue) {
+			switch (categoryId) {
 				case "new": {
 					const { error } = await app.categories.post(
 						values as CategoryModel.postBody,
 					);
 					if (error) {
-						const errorMessage =
-							typeof error.value === "string"
-								? error.value
-								: error.value.message;
 						toast.error(
-							`Failed to create category with error ${error.status}: ${errorMessage}`,
+							`Failed to create category with error ${error.status}: ${elysiaErrorToString(error)}`,
 						);
 						return;
 					}
@@ -170,17 +183,11 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
 				}
 
 				default: {
-					const { error } = await app
-						.categories({ id: toggleValue })
-						.patch(values as CategoryModel.patchBody);
-
+					const { error } = await handleUpdate(values);
 					if (error) {
-						const errorMessage =
-							typeof error.value === "string"
-								? error.value
-								: error.value.message;
+						console.log("error", error);
 						toast.error(
-							`Failed to update category with error ${error.status}: ${errorMessage}`,
+							`Failed to update category with error ${error.status}: ${elysiaErrorToString(error)}`,
 						);
 						return;
 					}
@@ -191,6 +198,36 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
 			}
 		},
 	});
+
+	const handleUpdate = async (values: CategoryModel.patchBody) => {
+		// Filter out duplicate attribute values to avoid conflicts
+		if (values.attributes?.update && currentCategory?.attributes) {
+			values.attributes.update = values.attributes.update.map((formAttr) => {
+				const existingAttr = currentCategory.attributes.find(
+					(attr) => attr.id === formAttr.id,
+				);
+				if (!existingAttr || !formAttr.values?.create) return formAttr;
+
+				// Remove values that already exist in the database
+				const existingValues = existingAttr.values.map((v) => v.value);
+				const filteredValues = formAttr.values.create.filter(
+					(value) => !existingValues.includes(value),
+				);
+
+				return {
+					...formAttr,
+					values: {
+						...formAttr.values,
+						create: filteredValues.length > 0 ? filteredValues : undefined,
+					},
+				};
+			});
+		}
+
+		return await app
+			.categories({ id: categoryId })
+			.patch({ ...values } as CategoryModel.patchBody);
+	};
 
 	const [{ files }, { getInputProps, clearFiles }] = useFileUpload({
 		maxFiles: 1,
@@ -210,7 +247,7 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
 				<Select
 					defaultValue="new"
 					onValueChange={(value) => onToggleChange(value)}
-					value={toggleValue}
+					value={categoryId}
 				>
 					<SelectTrigger className="w-45 capitalize">
 						<SelectValue placeholder="Select a category" />
@@ -285,38 +322,6 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
 										<form.AppField
 											mode="array"
 											name={`attributes.create[${index}].values`}
-											listeners={{
-												onChange: ({ value, fieldApi }) => {
-													// When values change, clear error state for removed indices
-													const currentLength = value?.length ?? 0;
-													const allFieldKeys = Object.keys(
-														form.state.fieldMeta,
-													);
-
-													// Find and clear metadata for indices that no longer exist
-													for (const key of allFieldKeys) {
-														const match = key.match(
-															new RegExp(
-																`attributes\\.create\\[${index}\\]\\.values\\[(\\d+)\\]`,
-															),
-														);
-														if (match) {
-															const idx = Number(match[1]);
-															if (idx >= currentLength) {
-																// This index no longer exists, clear its metadata
-																fieldApi.form.setFieldMeta(
-																	key as any,
-																	(prev) => ({
-																		...prev,
-																		errorMap: {},
-																		errors: [],
-																	}),
-																);
-															}
-														}
-													}
-												},
-											}}
 										>
 											{(avField) => (
 												<avField.Content className="col-span-4">
@@ -363,6 +368,92 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
 						)}
 					</form.AppField>
 
+					<form.AppField mode="array" name="attributes.update">
+						{(field) => (
+							<field.Field>
+								{field.state.value?.map((_, index) => (
+									// biome-ignore lint/suspicious/noArrayIndexKey: throw user from input field otherwise
+									<field.Content className="grid grid-cols-8 gap-4" key={index}>
+										<form.AppField name={`attributes.update[${index}].name`}>
+											{(aField) => (
+												<aField.Content className="col-span-3">
+													<aField.Input
+														onChange={(e) =>
+															aField.handleChange(e.target.value.toLowerCase())
+														}
+														placeholder="couleur"
+														type="text"
+													/>
+													<aField.Message />
+												</aField.Content>
+											)}
+										</form.AppField>
+										<form.AppField
+											mode="array"
+											name={`attributes.update[${index}].values.create`}
+										>
+											{(avField) => {
+												return (
+													<avField.Content className="col-span-4">
+														<avField.MultiSelect
+															creatable
+															maxCount={10}
+															onCreateNew={async (value) => {
+																avField.pushValue(value);
+																return {
+																	label: value.toLowerCase(),
+																	value: value.toLowerCase(),
+																};
+															}}
+															onRemove={(removedValue, valueIndex) => {
+																const currentDeletes =
+																	form.getFieldValue(
+																		`attributes.update[${index}].values.delete`,
+																	) || [];
+																const valueToDel = currentCategory?.attributes[
+																	index
+																]?.values.find((v) => v.value === removedValue);
+																if (!valueToDel) return;
+																form.setFieldValue(
+																	`attributes.update[${index}].values.delete`,
+																	[...currentDeletes, valueToDel.id],
+																);
+																avField.removeValue(valueIndex);
+															}}
+															value={[
+																...(avField.state.value?.map((v) => v) ?? []),
+															]}
+															options={[
+																...(avField.state.value?.map((v) => ({
+																	label: v,
+																	value: v,
+																})) ?? []),
+															]}
+															placeholder="Select or create attribute values"
+														/>
+														{avField.state.value?.map((v, j) => (
+															<form.AppField
+																key={v}
+																name={`attributes.update[${index}].values.create[${j}]`}
+															>
+																{(valueField) => <valueField.Message />}
+															</form.AppField>
+														))}
+														<avField.Message />
+													</avField.Content>
+												);
+											}}
+										</form.AppField>
+										<Button asChild onClick={() => field.removeValue(index)}>
+											<Trash2Icon className="col-span-1 w-full bg-red-900 text-black hover:bg-red-800 hover:text-black" />
+										</Button>
+									</field.Content>
+								))}
+								<field.Message />
+							</field.Field>
+						)}
+					</form.AppField>
+
 					<form.AppField name="file">
 						{(field) => (
 							<field.Field>
@@ -383,13 +474,13 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
 												type="file"
 											/>
 										</div>
-									) : originalImageUrl ? (
+									) : currentCategory?.image.url ? (
 										<div className="relative w-1/2">
 											<Image
 												alt="Category image"
 												className="aspect-square w-full rounded-md border-2 object-cover"
 												height={200}
-												src={originalImageUrl}
+												src={currentCategory.image.url}
 												width={200}
 											/>
 											<input

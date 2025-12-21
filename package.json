@@ -30,6 +30,7 @@
     "ultracite": "6.4.3"
   },
   "patchedDependencies": {
-    "@elysiajs/eden@1.4.5": "patches/@elysiajs%2Feden@1.4.5.patch"
+    "@elysiajs/eden@1.4.5": "patches/@elysiajs%2Feden@1.4.5.patch",
+    "@tanstack/form-core@1.27.5": "patches/@tanstack%2Fform-core@1.27.5.patch"
   }
 }
