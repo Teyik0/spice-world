@@ -19,17 +19,23 @@ import {
 	DrawerTrigger,
 } from "@spice-world/web/components/ui/drawer";
 import type { MultiSelectOption } from "@spice-world/web/components/ui/multi-select";
-import { Form, useForm } from "@spice-world/web/components/ui/tanstack-form";
 import {
-	ToggleGroup,
-	ToggleGroupItem,
-} from "@spice-world/web/components/ui/toggle-group";
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectLabel,
+	SelectTrigger,
+	SelectValue,
+} from "@spice-world/web/components/ui/select";
+import { Form, useForm } from "@spice-world/web/components/ui/tanstack-form";
 import { useFileUpload } from "@spice-world/web/hooks/use-file-upload";
 import { useIsMobile } from "@spice-world/web/hooks/use-mobile";
+import { app } from "@spice-world/web/lib/elysia";
 import { Edit2, ImageIcon, Trash2Icon } from "lucide-react";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 interface CategoryDialogProps {
 	categories: CategoryModel.getResult;
@@ -64,7 +70,7 @@ export const CategoryDialog = ({
 							done.
 						</DialogDescription>
 					</DialogHeader>
-					<CategoryForm categories={categories} setOpen={handleClose} />
+					<CategoryForm categories={categories} handleClose={handleClose} />
 				</DialogContent>
 			</Dialog>
 		);
@@ -84,7 +90,7 @@ export const CategoryDialog = ({
 						Add or delete categories here. Click save when you&apos;re done.
 					</DrawerDescription>
 				</DrawerHeader>
-				<CategoryForm categories={categories} setOpen={handleClose} />
+				<CategoryForm categories={categories} handleClose={handleClose} />
 				<DrawerFooter className="pt-2">
 					<DrawerClose asChild>
 						<Button variant="outline">Cancel</Button>
@@ -96,28 +102,45 @@ export const CategoryDialog = ({
 };
 
 interface CategoryFormProps {
-	setOpen: () => void;
+	handleClose: () => void;
 	categories: CategoryModel.getResult;
 }
 
-const CategoryForm = ({ categories }: CategoryFormProps) => {
-	const [_toggleValue, setToggleValue] = useState<
-		"create" | "update" | "delete"
-	>("create");
+const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
+	const [toggleValue, setToggleValue] = useState<string>("new");
+	const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
 
-	const pathname = usePathname();
-	const isNew = pathname.endsWith("new");
-
-	const onToggleChange = (toggleValue: "create" | "update" | "delete") => {
-		setToggleValue(toggleValue);
+	const resetForm = () => {
+		setToggleValue("new");
+		setOriginalImageUrl(null);
+		form.reset(undefined, {});
 		clearFiles();
 	};
 
+	const onToggleChange = (value: string) => {
+		if (value === "new") {
+			resetForm();
+		} else {
+			const selectedCategory = categories.find(
+				(category) => category.id === value,
+			);
+			if (selectedCategory) {
+				setToggleValue(selectedCategory.id);
+				setOriginalImageUrl(selectedCategory.image.url);
+				form.setFieldValue("name", selectedCategory.name);
+				form.setFieldValue("attributes.create", []);
+				form.setFieldValue("file", undefined);
+				clearFiles();
+			}
+		}
+	};
+
 	const form = useForm({
-		schema: isNew ? CategoryModel.postBody : CategoryModel.patchBody,
+		schema:
+			toggleValue === "new" ? CategoryModel.postBody : CategoryModel.patchBody,
 		validationMode: "onSubmit",
 		defaultValues: {
-			name: categories[0]?.name ?? "",
+			name: toggleValue === "new" ? "" : (categories[0]?.name ?? ""),
 			file: undefined,
 			attributes: {
 				create: undefined,
@@ -125,50 +148,46 @@ const CategoryForm = ({ categories }: CategoryFormProps) => {
 				delete: undefined,
 			},
 		},
-		onSubmit: (values) => {
-			console.log("✅ onSubmit called with values:", values);
-		},
-		onSubmitInvalid: ({ formApi, value }) => {
-			console.log("❌ Form validation failed");
-			console.log(
-				"Current values:",
-				JSON.stringify(value.attributes?.create, null, 2),
-			);
-
-			let hasRemovedAny = false;
-
-			// Remove empty values from arrays
-			for (const index in value.attributes?.create) {
-				const values = value.attributes.create[Number(index)]?.values;
-				if (!values) continue;
-
-				console.log(`Checking attribute[${index}].values:`, values);
-
-				// Loop backwards to avoid index shifting
-				for (let j = values.length - 1; j >= 0; j--) {
-					const val = values[j];
-					console.log(
-						`  [${j}]: "${val}" - isEmpty: ${!val || val.trim() === ""}`,
+		onSubmit: async (values) => {
+			switch (toggleValue) {
+				case "new": {
+					const { error } = await app.categories.post(
+						values as CategoryModel.postBody,
 					);
-
-					if (!val || val.trim() === "") {
-						console.log(`  -> Removing empty value at index ${j}`);
-						formApi.removeFieldValue(`attributes.create[${index}].values`, j);
-						hasRemovedAny = true;
+					if (error) {
+						const errorMessage =
+							typeof error.value === "string"
+								? error.value
+								: error.value.message;
+						toast.error(
+							`Failed to create category with error ${error.status}: ${errorMessage}`,
+						);
+						return;
 					}
+					toast.success("Category created successfully");
+					handleClose();
+					break;
 				}
-			}
 
-			console.log("Has removed any?", hasRemovedAny);
+				default: {
+					const { error } = await app
+						.categories({ id: toggleValue })
+						.patch(values as CategoryModel.patchBody);
 
-			// Only retry if we actually removed something
-			if (hasRemovedAny) {
-				setTimeout(() => {
-					console.log("Retrying submission after cleanup...");
-					formApi.handleSubmit();
-				}, 100);
-			} else {
-				console.log("No empty values found, stopping retry");
+					if (error) {
+						const errorMessage =
+							typeof error.value === "string"
+								? error.value
+								: error.value.message;
+						toast.error(
+							`Failed to update category with error ${error.status}: ${errorMessage}`,
+						);
+						return;
+					}
+					toast.success("Category updated successfully");
+					handleClose();
+					break;
+				}
 			}
 		},
 	});
@@ -188,24 +207,30 @@ const CategoryForm = ({ categories }: CategoryFormProps) => {
 	return (
 		<div>
 			<Form className="grid items-start gap-4 px-4 md:px-0" form={form}>
-				<ToggleGroup
-					className="flex w-full justify-start"
-					defaultValue="create"
-					onValueChange={(value) =>
-						onToggleChange(value as "create" | "update" | "delete")
-					}
-					type="single"
+				<Select
+					defaultValue="new"
+					onValueChange={(value) => onToggleChange(value)}
+					value={toggleValue}
 				>
-					<ToggleGroupItem aria-label="create" value="create" variant="outline">
-						Create
-					</ToggleGroupItem>
-					<ToggleGroupItem aria-label="update" value="update" variant="outline">
-						Update
-					</ToggleGroupItem>
-					<ToggleGroupItem aria-label="delete" value="delete" variant="outline">
-						Delete
-					</ToggleGroupItem>
-				</ToggleGroup>
+					<SelectTrigger className="w-45 capitalize">
+						<SelectValue placeholder="Select a category" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectGroup>
+							<SelectLabel>Category</SelectLabel>
+							<SelectItem value="new">New</SelectItem>
+							{categories.map((category) => (
+								<SelectItem
+									key={category.id}
+									value={category.id}
+									className="capitalize"
+								>
+									{category.name}
+								</SelectItem>
+							))}
+						</SelectGroup>
+					</SelectContent>
+				</Select>
 
 				<div className="flex flex-col gap-4">
 					<form.AppField name="name">
@@ -260,6 +285,38 @@ const CategoryForm = ({ categories }: CategoryFormProps) => {
 										<form.AppField
 											mode="array"
 											name={`attributes.create[${index}].values`}
+											listeners={{
+												onChange: ({ value, fieldApi }) => {
+													// When values change, clear error state for removed indices
+													const currentLength = value?.length ?? 0;
+													const allFieldKeys = Object.keys(
+														form.state.fieldMeta,
+													);
+
+													// Find and clear metadata for indices that no longer exist
+													for (const key of allFieldKeys) {
+														const match = key.match(
+															new RegExp(
+																`attributes\\.create\\[${index}\\]\\.values\\[(\\d+)\\]`,
+															),
+														);
+														if (match) {
+															const idx = Number(match[1]);
+															if (idx >= currentLength) {
+																// This index no longer exists, clear its metadata
+																fieldApi.form.setFieldMeta(
+																	key as any,
+																	(prev) => ({
+																		...prev,
+																		errorMap: {},
+																		errors: [],
+																	}),
+																);
+															}
+														}
+													}
+												},
+											}}
 										>
 											{(avField) => (
 												<avField.Content className="col-span-4">
@@ -312,20 +369,35 @@ const CategoryForm = ({ categories }: CategoryFormProps) => {
 								<field.Label>Image</field.Label>
 								<field.Content className="relative flex items-center justify-center">
 									{files.length > 0 && files[0]?.preview ? (
-										<>
+										<div className="relative w-1/2">
 											<Image
 												alt="Category image"
-												className="aspect-square w-1/2 rounded-md border-2 object-cover"
+												className="aspect-square w-full rounded-md border-2 object-cover"
 												height={200}
 												src={files[0].preview}
 												width={200}
 											/>
-											<field.Input
+											<input
 												{...getInputProps()}
-												className="absolute left-1/2 z-50 h-full w-1/2 -translate-x-1/2 cursor-pointer opacity-0"
-												type="image"
+												className="absolute inset-0 z-50 h-full w-full cursor-pointer opacity-0"
+												type="file"
 											/>
-										</>
+										</div>
+									) : originalImageUrl ? (
+										<div className="relative w-1/2">
+											<Image
+												alt="Category image"
+												className="aspect-square w-full rounded-md border-2 object-cover"
+												height={200}
+												src={originalImageUrl}
+												width={200}
+											/>
+											<input
+												{...getInputProps()}
+												className="absolute inset-0 z-50 h-full w-full cursor-pointer opacity-0"
+												type="file"
+											/>
+										</div>
 									) : (
 										<div className="relative flex cursor-pointer items-center justify-center rounded-md border-2 border-input border-dashed p-16">
 											<field.Input
@@ -356,7 +428,9 @@ const CategoryForm = ({ categories }: CategoryFormProps) => {
 				</div>
 
 				<div className="mt-4 grid grid-cols-4 justify-end gap-4">
-					<Button className="col-start-3">Reset</Button>
+					<Button className="col-start-3" type="button" onClick={resetForm}>
+						Reset
+					</Button>
 					<form.SubmitButton
 						className="col-span-1 col-start-4"
 						variant="outline"

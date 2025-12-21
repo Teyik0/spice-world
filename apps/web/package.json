@@ -11,6 +11,7 @@
 	},
 	"dependencies": {
 		"@elysiajs/eden": "^1.4.5",
+		"@radix-ui/react-select": "^2.2.6",
 		"@t3-oss/env-nextjs": "^0.13.10",
 		"@tanstack/react-form": "^1.27.5",
 		"@tanstack/react-store": "^0.8.0",

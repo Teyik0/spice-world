@@ -14,6 +14,17 @@ export const nameLowerPattern = t.String({
 	// 	"Name must be at least 3 characters long, and contain only lowercase letters (including accents) and spaces.",
 });
 
+/*
+Regex explanation:
+^[a-zà-ÿ0-9]     : string must start with a lowercase letter with latin char with accent (i.e éè) or number
+[a-zà-ÿ0-9 ]*    : followed by zero or more lowercase letters with latin char with accent (i.e éè), numbers or spaces
+$                : end of string
+*/
+export const nameLowerPatternWithNumber = t.String({
+	pattern: "^[a-zà-ÿ0-9][a-zà-ÿ0-9 ]*$",
+	minLength: 3,
+});
+
 export const uuid = t.String({ format: "uuid" });
 export type uuid = typeof uuid.static;
 

@@ -302,5 +302,5 @@ function FieldMessage(props: React.ComponentProps<typeof FieldError>) {
 		);
 	}
 
-	return <FieldError {...props} errors={errorsToShow} />;
+	return <FieldError className="text-xs" {...props} errors={errorsToShow} />;
 }

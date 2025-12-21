@@ -1,5 +1,5 @@
 import { t } from "elysia";
-import { nameLowerPattern } from "../shared";
+import { nameLowerPattern, nameLowerPatternWithNumber } from "../shared";
 import type { attributeService, attributeValueService } from "./service";
 
 export namespace AttributeModel {
@@ -14,7 +14,7 @@ export namespace AttributeModel {
 	export const postBody = t.Object({
 		name: nameLowerPattern,
 		categoryId: t.String({ format: "uuid" }),
-		values: t.Array(nameLowerPattern, {
+		values: t.Array(nameLowerPatternWithNumber, {
 			minItems: 1,
 		}),
 	});
@@ -32,7 +32,7 @@ export namespace AttributeModel {
 
 export namespace AttributeValueModel {
 	export const postBody = t.Object({
-		name: nameLowerPattern,
+		name: nameLowerPatternWithNumber,
 	});
 	export type postBody = typeof postBody.static;
 	export type postResult = typeof attributeValueService.post;
