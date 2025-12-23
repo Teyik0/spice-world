@@ -115,7 +115,6 @@ export async function resetTestDatabase(client: PrismaClient): Promise<void> {
 		client.image.deleteMany(),
 		client.attributeValue.deleteMany(),
 		client.attribute.deleteMany(),
-		client.tag.deleteMany(),
 		client.user.deleteMany(),
 	]);
 }

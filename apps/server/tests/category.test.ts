@@ -46,7 +46,7 @@ describe.concurrent("Category routes test", () => {
 	const postCategory = async (name: string, bunfile: BunFile) => {
 		const data = await api.categories.post({
 			name,
-			file: bunfile as File,
+			file: bunfile,
 		});
 		return data;
 	};
@@ -103,7 +103,7 @@ describe.concurrent("Category routes test", () => {
 			const bunfile = file(filePath);
 
 			const { error, status } = await api.categories.post({
-				file: bunfile as File,
+				file: bunfile,
 				name: "Hello",
 			});
 
@@ -118,7 +118,7 @@ describe.concurrent("Category routes test", () => {
 
 			const { error, status } = await api.categories.post({
 				name: "hello world!",
-				file: bunfile as File,
+				file: bunfile,
 			});
 
 			expect(status).toBe(422);
@@ -131,7 +131,7 @@ describe.concurrent("Category routes test", () => {
 			const bunfile = file(filePath);
 
 			const { error, status } = await api.categories.post({
-				file: bunfile as File,
+				file: bunfile,
 				name: "hello 5",
 			});
 
@@ -146,7 +146,7 @@ describe.concurrent("Category routes test", () => {
 			const name = "vêtements";
 			const { data, status } = await api.categories.post({
 				name,
-				file: bunfile as File,
+				file: bunfile,
 				attributes: {
 					create: [
 						{
@@ -176,7 +176,7 @@ describe.concurrent("Category routes test", () => {
 			const name = "spices category";
 			const { data, status } = await api.categories.post({
 				name,
-				file: bunfile as File,
+				file: bunfile,
 				attributes: {
 					create: [
 						{
@@ -238,7 +238,7 @@ describe.concurrent("Category routes test", () => {
 
 			const { error, status } = await api.categories.post({
 				name: "invalid attr category",
-				file: bunfile as File,
+				file: bunfile,
 				attributes: {
 					create: [
 						{
@@ -259,7 +259,7 @@ describe.concurrent("Category routes test", () => {
 
 			const { error, status } = await api.categories.post({
 				name: "empty values category",
-				file: bunfile as File,
+				file: bunfile,
 				attributes: {
 					create: [
 						{
@@ -280,7 +280,7 @@ describe.concurrent("Category routes test", () => {
 
 			const { data, status } = await api.categories.post({
 				name: "value with numbers category",
-				file: bunfile as File,
+				file: bunfile,
 				attributes: {
 					create: [
 						{
@@ -334,7 +334,7 @@ describe.concurrent("Category routes test", () => {
 			const { data: oldCategory, status: oldStatus } =
 				await api.categories.post({
 					name: "hello category",
-					file: file(filePath) as File,
+					file: file(filePath),
 				});
 
 			expect(oldStatus).toBe(201);
@@ -390,7 +390,7 @@ describe.concurrent("Category routes test", () => {
 				.categories({ id: category.data.id })
 				.patch({
 					name: category.data.name,
-					file: file(`${import.meta.dir}/public/garlic.webp`) as File,
+					file: file(`${import.meta.dir}/public/garlic.webp`),
 				});
 
 			expect(status).toBe(200);
@@ -411,7 +411,7 @@ describe.concurrent("Category routes test", () => {
 				.categories({ id: category.data.id })
 				.patch({
 					name: "new category",
-					file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+					file: file(`${import.meta.dir}/public/cumin.webp`),
 				});
 
 			expect(status).toBe(200);
@@ -455,7 +455,7 @@ describe.concurrent("Category routes test", () => {
 		test("should update category with multiple attribute operations", async () => {
 			const category = await api.categories.post({
 				name: "multi ops category",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				file: file(`${import.meta.dir}/public/cumin.webp`),
 				attributes: {
 					create: [
 						{
@@ -531,7 +531,7 @@ describe.concurrent("Category routes test", () => {
 		test("should update attribute name only", async () => {
 			const category = await api.categories.post({
 				name: "update name category",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				file: file(`${import.meta.dir}/public/cumin.webp`),
 				attributes: {
 					create: [
 						{
@@ -570,7 +570,7 @@ describe.concurrent("Category routes test", () => {
 		test("should delete attribute and cascade delete values", async () => {
 			const category = await api.categories.post({
 				name: "delete attr category",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				file: file(`${import.meta.dir}/public/cumin.webp`),
 				attributes: {
 					create: [
 						{
@@ -612,7 +612,7 @@ describe.concurrent("Category routes test", () => {
 		test("should error if creating attribute with duplicate name", async () => {
 			const category = await api.categories.post({
 				name: "duplicate create category",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				file: file(`${import.meta.dir}/public/cumin.webp`),
 				attributes: {
 					create: [
 						{
@@ -646,7 +646,7 @@ describe.concurrent("Category routes test", () => {
 		test("should error if updating attribute to duplicate name", async () => {
 			const category = await api.categories.post({
 				name: "duplicate update category",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				file: file(`${import.meta.dir}/public/cumin.webp`),
 				attributes: {
 					create: [
 						{
@@ -688,7 +688,7 @@ describe.concurrent("Category routes test", () => {
 		test("should update category name and attributes together", async () => {
 			const category = await api.categories.post({
 				name: "combined update category",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				file: file(`${import.meta.dir}/public/cumin.webp`),
 				attributes: {
 					create: [
 						{
@@ -726,7 +726,7 @@ describe.concurrent("Category routes test", () => {
 		test("should create new attribute values", async () => {
 			const category = await api.categories.post({
 				name: "category with values",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				file: file(`${import.meta.dir}/public/cumin.webp`),
 				attributes: {
 					create: [
 						{
@@ -772,7 +772,7 @@ describe.concurrent("Category routes test", () => {
 		test("should delete attribute values", async () => {
 			const category = await api.categories.post({
 				name: "category for deletion",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				file: file(`${import.meta.dir}/public/cumin.webp`),
 				attributes: {
 					create: [
 						{
@@ -817,7 +817,7 @@ describe.concurrent("Category routes test", () => {
 		test("should create and delete values in same operation", async () => {
 			const category = await api.categories.post({
 				name: "category for combined ops",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				file: file(`${import.meta.dir}/public/cumin.webp`),
 				attributes: {
 					create: [
 						{
@@ -865,7 +865,7 @@ describe.concurrent("Category routes test", () => {
 		test("should fail when creating duplicate value", async () => {
 			const category = await api.categories.post({
 				name: "category duplicate test",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				file: file(`${import.meta.dir}/public/cumin.webp`),
 				attributes: {
 					create: [
 						{
@@ -904,7 +904,7 @@ describe.concurrent("Category routes test", () => {
 		test("should fail when deleting non-existent value ID", async () => {
 			const category = await api.categories.post({
 				name: "category invalid id test",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				file: file(`${import.meta.dir}/public/cumin.webp`),
 				attributes: {
 					create: [
 						{
@@ -943,7 +943,7 @@ describe.concurrent("Category routes test", () => {
 		test("should update attribute name and values together", async () => {
 			const category = await api.categories.post({
 				name: "category combined update",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				file: file(`${import.meta.dir}/public/cumin.webp`),
 				attributes: {
 					create: [
 						{
@@ -989,7 +989,7 @@ describe.concurrent("Category routes test", () => {
 		test("should update only values without changing name", async () => {
 			const category = await api.categories.post({
 				name: "category values only",
-				file: file(`${import.meta.dir}/public/cumin.webp`) as File,
+				file: file(`${import.meta.dir}/public/cumin.webp`),
 				attributes: {
 					create: [
 						{

@@ -112,7 +112,6 @@ export const productService = {
 			include: {
 				category: true,
 				images: true,
-				tags: true,
 				variants: {
 					include: {
 						attributeValues: true,
@@ -134,7 +133,6 @@ export const productService = {
 		status: productStatus,
 		description,
 		categoryId,
-		tags,
 		variants,
 		images,
 	}: ProductModel.postBody) {
@@ -155,12 +153,6 @@ export const productService = {
 						description,
 						status: productStatus,
 						categoryId,
-						...(tags &&
-							tags.length > 0 && {
-								tags: {
-									connect: tags.map((tagId) => ({ id: tagId })),
-								},
-							}),
 						...(uploadedImages.length > 0 && {
 							images: {
 								createMany: {
@@ -176,7 +168,6 @@ export const productService = {
 					},
 					include: {
 						category: true,
-						tags: true,
 						images: true,
 					},
 				});
@@ -306,7 +297,6 @@ export const productService = {
 		status: productStatus,
 		description,
 		categoryId,
-		tags,
 		images,
 		variants,
 		uploadedImages,
@@ -324,17 +314,6 @@ export const productService = {
 						version: { increment: 1 },
 						status: productStatus,
 						category: categoryId ? { connect: { id: categoryId } } : undefined,
-						// Update with the new given tags
-						tags: {
-							...(tags?.add &&
-								tags.add.length > 0 && {
-									connect: tags.add.map((id) => ({ id })),
-								}),
-							...(tags?.remove &&
-								tags.remove.length > 0 && {
-									disconnect: tags.remove.map((id) => ({ id })),
-								}),
-						},
 						// Update with the new given images
 						images: {
 							...(uploadedImages &&
@@ -372,7 +351,6 @@ export const productService = {
 					},
 					include: {
 						images: true,
-						tags: true,
 					},
 				});
 

@@ -12,8 +12,8 @@ const _uploadFile = async (filename: string, file: File | BunFile) => {
 	const arrayBuffer = await file.arrayBuffer();
 	const buffer = Buffer.from(arrayBuffer);
 	const outputImageBuffer = await sharp(buffer)
-		.resize(200, 200)
-		.webp()
+		.resize(1000, 1000, { fit: "cover", withoutEnlargement: true })
+		.webp({ quality: 85 })
 		.toBuffer();
 
 	return await utapi.uploadFiles(

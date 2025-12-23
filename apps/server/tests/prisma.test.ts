@@ -35,7 +35,7 @@ describe.concurrent("Prisma client singleton", () => {
 		globalThis.__prisma = undefined;
 		const firstAccess = prisma.$connect;
 		const firstClient = globalThis.__prisma;
-		const secondAccess = prisma.tag;
+		const secondAccess = prisma.attribute;
 		const secondClient = globalThis.__prisma;
 
 		expect(firstClient).toBe(secondClient);

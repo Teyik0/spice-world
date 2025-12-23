@@ -16,7 +16,6 @@ import {
 	createDummyAttributes,
 } from "@spice-world/server/utils/dummy-attributes";
 import { createDummyProducts } from "@spice-world/server/utils/dummy-products";
-import { createDummyTags } from "@spice-world/server/utils/dummy-tags";
 import {
 	createUploadedFileData,
 	expectDefined,
@@ -31,7 +30,6 @@ describe.concurrent("Product routes test", () => {
 		variants: ProductVariant[];
 		images: Image[];
 	})[];
-	let testTags: Tag[];
 	let testAttributes: AttributeWithValues[];
 	let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
 
@@ -61,7 +59,6 @@ describe.concurrent("Product routes test", () => {
 
 		const { categories, products } = await createDummyProducts(testDb.client);
 		testAttributes = await createDummyAttributes(testDb.client);
-		testTags = await createDummyTags(testDb.client);
 		testCategories = categories;
 		testProducts = products;
 	});
@@ -189,14 +186,11 @@ describe.concurrent("Product routes test", () => {
 
 			const category = testCategories[0];
 			expectDefined(category);
-			const testTag0 = testTags[0];
-			expectDefined(testTag0);
 			const newProduct = {
 				name: "new spice",
 				description: "A new spice for testing",
 				categoryId: category.id,
 				status: "PUBLISHED" as const,
-				tags: [testTag0.id],
 				variants: [
 					{
 						price: 10.99,
@@ -214,9 +208,8 @@ describe.concurrent("Product routes test", () => {
 				description: newProduct.description,
 				categoryId: newProduct.categoryId,
 				status: newProduct.status,
-				tags: newProduct.tags,
 				variants: newProduct.variants,
-				images: [file(filePath1), file(filePath2)] as File[],
+				images: [file(filePath1), file(filePath2)],
 			});
 
 			expect(status).toBe(201);
@@ -235,16 +228,11 @@ describe.concurrent("Product routes test", () => {
 
 			const existingProduct = testProducts[0];
 			expectDefined(existingProduct);
-			const testTag0 = testTags[0];
-			const testTag1 = testTags[1];
-			expectDefined(testTag0);
-			expectDefined(testTag1);
 			const newProduct: ProductModel.postBody = {
 				name: existingProduct.name,
 				description: "A duplicate product name",
 				categoryId: existingProduct.id,
 				status: "PUBLISHED" as const,
-				tags: [testTag0.id, testTag1.id],
 				variants: [
 					{
 						price: 10.99,
@@ -262,7 +250,6 @@ describe.concurrent("Product routes test", () => {
 				description: newProduct.description,
 				categoryId: newProduct.categoryId,
 				status: newProduct.status,
-				tags: newProduct.tags,
 				variants: newProduct.variants,
 				images: newProduct.images,
 			});
@@ -274,11 +261,6 @@ describe.concurrent("Product routes test", () => {
 		it("should return an error if an attribute coming from another category is set", async () => {
 			const filePath1 = `${import.meta.dir}/public/cumin.webp`;
 			const filePath2 = `${import.meta.dir}/public/curcuma.jpg`;
-
-			const testTag0 = testTags[0];
-			expectDefined(testTag0);
-			const testTag1 = testTags[1];
-			expectDefined(testTag1);
 
 			const firstCategory = await testDb.client.category.findUnique({
 				where: { name: "spices" },
@@ -297,7 +279,6 @@ describe.concurrent("Product routes test", () => {
 				description: "Product with invalid attribute",
 				categoryId: firstCategory.id,
 				status: "PUBLISHED" as const,
-				tags: [testTag0.id, testTag1.id],
 				variants: [
 					{
 						price: 9.99,
@@ -317,7 +298,6 @@ describe.concurrent("Product routes test", () => {
 				description: newProduct.description,
 				categoryId: newProduct.categoryId,
 				status: newProduct.status,
-				tags: newProduct.tags,
 				variants: newProduct.variants,
 				images: newProduct.images,
 			});
@@ -349,10 +329,6 @@ describe.concurrent("Product routes test", () => {
 		it("should update the product successfully", async () => {
 			const testProduct = testProducts[0];
 			expectDefined(testProduct);
-			const testTag1 = testTags[1];
-			expectDefined(testTag1);
-			const testTag0 = testTags[0];
-			expectDefined(testTag0);
 
 			const variantToUpdate = testProduct.variants[0];
 			expectDefined(variantToUpdate);
@@ -361,9 +337,6 @@ describe.concurrent("Product routes test", () => {
 				name: "updated spice",
 				description: "an updated description",
 				status: "DRAFT" as const,
-				tags: {
-					add: [testTag1.id, testTag0.id],
-				},
 				variants: {
 					update: [
 						{
@@ -382,7 +355,6 @@ describe.concurrent("Product routes test", () => {
 					name: updatedProductData.name,
 					description: updatedProductData.description,
 					status: updatedProductData.status,
-					tags: updatedProductData.tags,
 					variants: updatedProductData.variants,
 					imagesCreate: updatedProductData.imagesCreate,
 				});
@@ -494,48 +466,6 @@ describe.concurrent("Product routes test", () => {
 			expectDefined(updatedImage);
 			expect(updatedImage.altText).toBe("updated alt text");
 			expect(updatedImage.isThumbnail).toBe(true);
-		});
-
-		it("should add and remove tags successfully", async () => {
-			const testProduct = testProducts[4];
-			expectDefined(testProduct);
-			const testTag0 = testTags[0];
-			const testTag1 = testTags[1];
-			expectDefined(testTag0);
-			expectDefined(testTag1);
-
-			// Add tags
-			const { data: dataWithTags, status: addStatus } = await api
-				.products({ id: testProduct.id })
-				.patch({
-					tags: {
-						add: [testTag0.id, testTag1.id],
-					},
-				});
-
-			expect(addStatus).toBe(200);
-			expectDefined(dataWithTags);
-			expect(dataWithTags.tags.length).toBeGreaterThanOrEqual(2);
-			expect(dataWithTags.tags.find((t) => t.id === testTag0.id)).toBeDefined();
-			expect(dataWithTags.tags.find((t) => t.id === testTag1.id)).toBeDefined();
-
-			// Remove one tag
-			const { data: dataWithoutTag, status: removeStatus } = await api
-				.products({ id: testProduct.id })
-				.patch({
-					tags: {
-						remove: [testTag0.id],
-					},
-				});
-
-			expect(removeStatus).toBe(200);
-			expectDefined(dataWithoutTag);
-			expect(
-				dataWithoutTag.tags.find((t) => t.id === testTag0.id),
-			).toBeUndefined();
-			expect(
-				dataWithoutTag.tags.find((t) => t.id === testTag1.id),
-			).toBeDefined();
 		});
 
 		it("should create new variants successfully", async () => {
@@ -695,58 +625,6 @@ describe.concurrent("Product routes test", () => {
 			expect(
 				data.variants.find((v) => v.id === variantToDelete.id),
 			).toBeUndefined();
-		});
-
-		it("should handle complex update with multiple operations", async () => {
-			const testProduct = testProducts[8];
-			expectDefined(testProduct);
-			const variantToUpdate = testProduct.variants[0];
-			expectDefined(variantToUpdate);
-			const imageToDelete = testProduct.images[0];
-			expectDefined(imageToDelete);
-			const testTag = testTags[0];
-			expectDefined(testTag);
-
-			const { data, status } = await api
-				.products({ id: testProduct.id })
-				.patch({
-					name: "complex updated product",
-					description: "updated with multiple operations",
-					status: "PUBLISHED",
-					tags: {
-						add: [testTag.id],
-					},
-					variants: {
-						update: [
-							{
-								id: variantToUpdate.id,
-								price: 99.99,
-								stock: 10,
-							},
-						],
-					},
-					images: {
-						delete: [imageToDelete.id],
-					},
-					imagesCreate: [file(filePath1)] as File[],
-				});
-
-			expect(status).toBe(200);
-			expectDefined(data);
-			expect(data.name).toBe("complex updated product");
-			expect(data.status).toBe("PUBLISHED");
-			expect(data.tags.find((t) => t.id === testTag.id)).toBeDefined();
-
-			const updatedVariant = data.variants.find(
-				(v) => v.id === variantToUpdate.id,
-			);
-			expectDefined(updatedVariant);
-			expect(updatedVariant.price).toBe(99.99);
-
-			expect(
-				data.images.find((img) => img.id === imageToDelete.id),
-			).toBeUndefined();
-			expect(data.images.length).toBe(testProduct.images.length);
 		});
 	});
 
