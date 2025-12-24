@@ -50,6 +50,7 @@ function BreadcrumbLink({
 
 function BreadcrumbPage({ className, ...props }: React.ComponentProps<"span">) {
 	return (
+		// biome-ignore lint: shadcn generated code
 		<span
 			data-slot="breadcrumb-page"
 			role="link"

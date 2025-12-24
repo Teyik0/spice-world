@@ -3,8 +3,8 @@ import { PasswordReset } from "@spice-world/emails/src/password-reset";
 import { ResetPassword } from "@spice-world/emails/src/reset-password";
 import { VerifyEmail } from "@spice-world/emails/src/spiceworld-welcome";
 import { prisma } from "@spice-world/server/lib/prisma";
-import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { betterAuth } from "better-auth/minimal";
 import { admin, openAPI } from "better-auth/plugins";
 import { Elysia } from "elysia";
 import { Resend } from "resend";
@@ -17,6 +17,7 @@ export const auth = betterAuth({
 		provider: "postgresql",
 	}),
 	trustedOrigins: ["http://localhost:3000", "http://localhost:3001"], // Both frontend and backend
+	experimental: { joins: true },
 	rateLimit: {
 		enabled: true,
 		window: 10, // time window in seconds
@@ -78,6 +79,15 @@ export const auth = betterAuth({
 					to: [newEmail],
 					subject: "Spice World - Confirmez votre nouvelle adresse email",
 					react: <ChangeEmailVerification verifyLink={url} />,
+				});
+			},
+			sendChangeEmailConfirmation: async ({ newEmail, url }) => {
+				await resend.emails.send({
+					from,
+					to: [newEmail],
+					subject:
+						"Spice World - Approuvez le changement vers votre nouvelle adresse email",
+					text: `Click the link to approve the change to ${newEmail}: ${url}`,
 				});
 			},
 		},

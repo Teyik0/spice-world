@@ -15,12 +15,7 @@ import { Select } from "@spice-world/web/components/ui/select";
 import { Switch } from "@spice-world/web/components/ui/switch";
 import { Textarea } from "@spice-world/web/components/ui/textarea";
 import { typeboxToStandardSchema } from "@spice-world/web/lib/utils";
-import {
-	createFormHook,
-	createFormHookContexts,
-	type FormApi,
-	type TStandardSchemaValidatorIssue,
-} from "@tanstack/react-form";
+import { createFormHook, createFormHookContexts } from "@tanstack/react-form";
 import type { TSchema } from "elysia";
 import { Loader2 } from "lucide-react";
 import type * as React from "react";

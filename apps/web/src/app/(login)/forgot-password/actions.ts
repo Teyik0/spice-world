@@ -18,7 +18,7 @@ export const forgotPasswordAction = actionClient
 	.inputSchema(typeboxToStandardSchema(forgotPasswordSchema))
 	.action(async ({ parsedInput: { email } }) => {
 		try {
-			await authClient.forgetPassword({
+			await authClient.requestPasswordReset({
 				email,
 				redirectTo: "http://localhost:3000/reset-password",
 			});

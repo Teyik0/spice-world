@@ -17,6 +17,9 @@
             "style": "interface"
           }
         }
+      },
+      "a11y": {
+        "useSemanticElements": "off"
       }
     }
   }

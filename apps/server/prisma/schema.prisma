@@ -24,6 +24,7 @@ model Account {
     createdAt             DateTime
     updatedAt             DateTime
 
+    @@index([userId])
     @@map("account")
 }
 
@@ -35,6 +36,7 @@ model Verification {
     createdAt  DateTime?
     updatedAt  DateTime?
 
+    @@index([identifier])
     @@map("verification")
 }
 
@@ -52,6 +54,7 @@ model Session {
     impersonatedBy String?
 
     @@unique([token])
+    @@index([userId])
     @@map("session")
 }
 

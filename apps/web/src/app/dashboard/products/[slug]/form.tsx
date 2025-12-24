@@ -2,7 +2,6 @@
 
 import type { CategoryModel } from "@spice-world/server/modules/categories/model";
 import { ProductModel } from "@spice-world/server/modules/products/model";
-import { Badge } from "@spice-world/web/components/ui/badge";
 import { Button } from "@spice-world/web/components/ui/button";
 import { Form, useForm } from "@spice-world/web/components/ui/tanstack-form";
 import { app, elysiaErrorToString } from "@spice-world/web/lib/elysia";
@@ -103,7 +102,7 @@ export const ProductForm = ({
 		router.push(`/dashboard/products/${data.slug}`);
 	};
 
-	const handleUpdate = async (values: ProductModel.patchBody) => {
+	const handleUpdate = async (_: ProductModel.patchBody) => {
 		// router.push(`/dashboard/products/${data.slug}`);
 	};
 

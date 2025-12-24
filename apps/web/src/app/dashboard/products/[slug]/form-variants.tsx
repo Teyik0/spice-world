@@ -236,7 +236,7 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 
 				toast.success("Attribute value created successfully");
 			}
-		} catch (error) {
+		} catch (_) {
 			toast.error("Failed to create attribute value");
 		}
 	};

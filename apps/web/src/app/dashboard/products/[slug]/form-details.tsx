@@ -9,7 +9,6 @@ import {
 	CardTitle,
 } from "@spice-world/web/components/ui/card";
 import {
-	Field,
 	FieldDescription,
 	FieldGroup,
 } from "@spice-world/web/components/ui/field";

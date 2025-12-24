@@ -880,7 +880,7 @@ describe.concurrent("Category routes test", () => {
 			const attributeId = category.data.attributes[0]?.id;
 			expectDefined(attributeId);
 
-			const { data, status, error } = await api
+			const { status, error } = await api
 				.categories({ id: category.data.id })
 				.patch({
 					name: category.data.name,
@@ -919,7 +919,7 @@ describe.concurrent("Category routes test", () => {
 			const attributeId = category.data.attributes[0]?.id;
 			expectDefined(attributeId);
 
-			const { data, status, error } = await api
+			const { status, error } = await api
 				.categories({ id: category.data.id })
 				.patch({
 					name: category.data.name,

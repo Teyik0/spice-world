@@ -62,6 +62,7 @@ function InputGroupAddon({
 	...props
 }: React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
 	return (
+		// biome-ignore lint: shadcn generated code
 		<div
 			role="group"
 			data-slot="input-group-addon"

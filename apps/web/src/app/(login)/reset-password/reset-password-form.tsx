@@ -140,8 +140,8 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
 									]);
 
 									// Render them with * and line breaks
-									return Array.from(errors).map((err, idx) => (
-										<span key={idx}>
+									return Array.from(errors).map((err) => (
+										<span key={err}>
 											* {err}
 											<br />
 										</span>
