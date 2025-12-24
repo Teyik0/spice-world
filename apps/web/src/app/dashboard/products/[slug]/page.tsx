@@ -5,14 +5,12 @@ import { ProductForm } from "./form";
 export default async function Page(props: {
 	params: Promise<{ slug: string }>;
 }) {
-	const [params, categoriesResponse, tagsResponse] = await Promise.all([
+	const [params, categoriesResponse] = await Promise.all([
 		props.params,
 		app.categories.get(),
-		app.tags.get(),
 	]);
 
 	const categories = categoriesResponse.data ?? [];
-	const tags = tagsResponse.data ?? [];
 
 	if (params.slug === "new") {
 		return (
@@ -27,7 +25,6 @@ export default async function Page(props: {
 						createdAt: new Date(),
 						updatedAt: new Date(),
 						version: 0,
-						tags: [],
 						category: categories[0]
 							? {
 									id: categories[0].id,
@@ -35,12 +32,11 @@ export default async function Page(props: {
 									imageId: categories[0].imageId,
 								}
 							: { id: "", name: "", imageId: "" },
-						categoryId: "",
+						categoryId: categories[0]?.id ?? "",
 						variants: [],
 						images: [],
 					}}
 					categories={categories}
-					tags={tags}
 				/>
 			</main>
 		);
@@ -50,7 +46,7 @@ export default async function Page(props: {
 	if (!product) redirect("/dashboard/products");
 	return (
 		<main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-			<ProductForm product={product} categories={categories} tags={tags} />
+			<ProductForm product={product} categories={categories} />
 		</main>
 	);
 }

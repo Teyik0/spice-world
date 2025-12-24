@@ -43,7 +43,7 @@ Spice World is a full-stack e-commerce solution designed for managing products w
 apps/
 ├── server/          # Elysia API backend
 │   ├── src/
-│   │   ├── modules/     # Products, Categories, Attributes, Tags
+│   │   ├── modules/     # Products, Categories, Attributes
 │   │   ├── plugins/     # Better Auth, Prisma error handling
 │   │   └── lib/         # Utilities, Prisma client, images
 │   └── prisma/
@@ -65,7 +65,6 @@ packages/
 - **Category** - Product categories with images
 - **Attribute** - Category-specific attributes (e.g., weight, origin)
 - **AttributeValue** - Specific values for attributes (e.g., "50g", "100g")
-- **Tag** - Product tags with custom badge colors
 - **Image** - Product and category images
 
 **Users & Auth:**
@@ -128,7 +127,7 @@ Product: "Paprika Powder"
 ├── GET /count         # Count by status
 ├── GET /:id           # Single product with variants
 ├── POST /             # Create with images + variants
-├── PATCH /:id         # Update product, variants, images, tags
+├── PATCH /:id         # Update product, variants, images
 └── DELETE /:id        # Delete product
 ```
 
@@ -153,15 +152,6 @@ Product: "Paprika Powder"
     ├── POST /:id      # Add value
     ├── PATCH /:id     # Update value
     └── DELETE /:id    # Delete value
-```
-
-### Tag Management
-```
-/tags
-├── GET /              # List all tags
-├── POST /             # Create
-├── PATCH /:id         # Update
-└── DELETE /:id        # Delete
 ```
 
 ---

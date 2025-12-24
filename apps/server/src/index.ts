@@ -6,7 +6,6 @@ import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { attributeRouter } from "@spice-world/server/modules/attributes";
 import { categoryRouter } from "@spice-world/server/modules/categories";
 import { productsRouter } from "@spice-world/server/modules/products";
-import { tagRouter } from "@spice-world/server/modules/tags";
 import { Elysia } from "elysia";
 import { betterAuthPlugin, OpenAPI } from "./plugins/better-auth.plugin.tsx";
 
@@ -94,7 +93,6 @@ const app = new Elysia()
 			);
 		}
 	})
-	.use(tagRouter)
 	.use(categoryRouter)
 	.use(attributeRouter)
 	.use(productsRouter)

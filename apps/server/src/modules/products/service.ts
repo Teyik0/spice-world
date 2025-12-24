@@ -16,9 +16,6 @@ Product: "Organic Paprika Powder"
 ├─ description: "Sweet Hungarian paprika. Adds vibrant color and mild flavor."
 ├─ categoryId: "cat_spices_001" → Category: "Spices"
 ├─ status: "PUBLISHED"
-├─ tags: [
-│   { id: "tag_organic", name: "organic", color: "#10b981" }
-│  ]
 ├─ images: [
 │   { url: "paprika.jpg", isThumbnail: true }
 │  ]

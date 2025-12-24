@@ -38,7 +38,9 @@ const MAX_FILE_SIZE = 1024 * 1024 * 3;
 
 interface ProductFormImagesProps {
 	isNew: boolean;
-	form: ReturnType<typeof useForm<typeof ProductModel.postBody>>;
+	form: ReturnType<
+		typeof useForm<typeof ProductModel.postBody | typeof ProductModel.patchBody>
+	>;
 }
 
 export const ProductFormImages = ({ isNew, form }: ProductFormImagesProps) => {

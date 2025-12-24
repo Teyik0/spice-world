@@ -31,19 +31,12 @@ export type CategoryErrors =
 export type ProductErrors =
 	| RouteErrors<typeof app.products>
 	| RouteErrors<ReturnType<typeof app.products>>;
-export type TagErrors =
-	| RouteErrors<typeof app.tags>
-	| RouteErrors<ReturnType<typeof app.tags>>;
 export type AttributeErrors =
 	| RouteErrors<typeof app.attributes>
 	| RouteErrors<ReturnType<typeof app.attributes>>;
 
 // Used to type Elysia errors in the frontend at components/elysia-error.tsx
-export type ElysiaAppError =
-	| CategoryErrors
-	| ProductErrors
-	| TagErrors
-	| AttributeErrors;
+export type ElysiaAppError = CategoryErrors | ProductErrors | AttributeErrors;
 
 export const elysiaErrorToString = (error: NonNullable<ElysiaAppError>) => {
 	const errorMessage =

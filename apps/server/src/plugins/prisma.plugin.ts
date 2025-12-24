@@ -5,7 +5,6 @@ import {
 } from "../prisma/internal/prismaNamespace";
 
 export type Entity =
-	| "Tag"
 	| "Category"
 	| "Product"
 	| "User"

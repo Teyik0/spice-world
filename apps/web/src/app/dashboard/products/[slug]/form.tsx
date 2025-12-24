@@ -2,11 +2,10 @@
 
 import type { CategoryModel } from "@spice-world/server/modules/categories/model";
 import { ProductModel } from "@spice-world/server/modules/products/model";
-import type { TagModel } from "@spice-world/server/modules/tags/model";
 import { Badge } from "@spice-world/web/components/ui/badge";
 import { Button } from "@spice-world/web/components/ui/button";
 import { Form, useForm } from "@spice-world/web/components/ui/tanstack-form";
-import { app } from "@spice-world/web/lib/elysia";
+import { app, elysiaErrorToString } from "@spice-world/web/lib/elysia";
 import { unknownError } from "@spice-world/web/lib/utils";
 import { useSetAtom } from "jotai";
 import { ChevronLeft } from "lucide-react";
@@ -15,127 +14,17 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { currentProductAtom, newProductAtom } from "../store";
+import { ProductFormClassification } from "./form-classification";
 import { ProductFormDetails } from "./form-details";
 import { ProductFormImages } from "./form-images";
-import { ProductFormOrganization } from "./form-org";
 import { ProductFormVariants } from "./form-variants";
-
-const createProduct = async (values: ProductModel.postBody) => {
-	const { data, error } = await app.products.post(values);
-
-	if (error) {
-		toast.error("Failed to create product");
-		return null;
-	}
-
-	if (data) {
-		toast.success("Product created successfully");
-		return data;
-	}
-
-	return null;
-};
-
-const updateProduct = async (
-	productId: string,
-	values: ProductModel.postBody,
-	initialVariants: ProductModel.getByIdResult["variants"],
-) => {
-	const currentVariants = values.variants;
-
-	const arraysEqual = (a: string[], b: string[]) => {
-		if (a.length !== b.length) return false;
-		const sortedA = [...a].sort();
-		const sortedB = [...b].sort();
-		return sortedA.every((val, idx) => val === sortedB[idx]);
-	};
-
-	const hasVariantChanged = (
-		current: (typeof currentVariants)[number],
-		original: (typeof initialVariants)[number],
-	) => {
-		return (
-			current.price !== original.price ||
-			current.sku !== original.sku ||
-			current.stock !== original.stock ||
-			current.currency !== original.currency ||
-			!arraysEqual(
-				current.attributeValueIds,
-				original.attributeValues.map((av) => av.id),
-			)
-		);
-	};
-
-	const variantOperations = {
-		create: currentVariants
-			.filter((v) => !("id" in v) || !v.id)
-			.map((v) => ({
-				price: v.price,
-				sku: v.sku,
-				stock: v.stock ?? 0,
-				currency: v.currency ?? "EUR",
-				attributeValueIds: v.attributeValueIds,
-			})),
-		update: currentVariants
-			.filter((v) => {
-				if (!("id" in v) || !v.id) return false;
-				const original = initialVariants.find(
-					(iv) => iv.id === (v as { id?: string }).id,
-				);
-				return original && hasVariantChanged(v, original);
-			})
-			.map((v) => ({
-				id: (v as { id?: string }).id as string,
-				price: v.price,
-				sku: v.sku,
-				stock: v.stock ?? 0,
-				currency: v.currency ?? "EUR",
-				attributeValueIds: v.attributeValueIds,
-			})),
-		delete: initialVariants
-			.filter(
-				(iv) =>
-					!currentVariants.find(
-						(cv) => "id" in cv && (cv as { id?: string }).id === iv.id,
-					),
-			)
-			.map((v) => v.id),
-	};
-
-	const hasVariantOperations =
-		variantOperations.create.length > 0 ||
-		variantOperations.update.length > 0 ||
-		variantOperations.delete.length > 0;
-
-	const { data, error } = await app.products({ id: productId }).patch({
-		name: values.name,
-		description: values.description,
-		status: values.status,
-		categoryId: values.categoryId,
-		...(hasVariantOperations && { variants: variantOperations }),
-	});
-
-	if (error) {
-		toast.error("Failed to update product");
-		return null;
-	}
-
-	if (data) {
-		toast.success("Product updated successfully");
-		return data;
-	}
-
-	return null;
-};
 
 export const ProductForm = ({
 	product,
 	categories,
-	tags,
 }: {
 	product: ProductModel.getByIdResult;
 	categories: CategoryModel.getResult;
-	tags: TagModel.getResult;
 }) => {
 	const router = useRouter();
 	const pathname = usePathname();
@@ -150,20 +39,19 @@ export const ProductForm = ({
 			name: product.name,
 			description: product.description,
 			status: product.status,
-			img: product.images[0]?.url ?? null,
+			img: product.images.find((img) => img.isThumbnail)?.url ?? null,
 			categoryId: product.categoryId,
 			slug: product.slug,
 		});
 	});
 
 	const form = useForm({
-		schema: ProductModel.postBody,
+		schema: isNew ? ProductModel.postBody : ProductModel.patchBody,
 		defaultValues: {
-			name: product.name ?? "",
-			description: product.description ?? "",
-			status: product.status ?? "DRAFT",
-			categoryId: product.categoryId || (categories[0]?.id ?? ""),
-			tags: product.tags.map((t) => t.id),
+			name: product.name,
+			description: product.description,
+			status: product.status,
+			categoryId: product.categoryId,
 			variants:
 				product.variants.length > 0
 					? product.variants.map((v) => ({
@@ -186,32 +74,38 @@ export const ProductForm = ({
 			images: [] as File[],
 		},
 		onSubmit: async (values) => {
+			console.log("try submit with", values);
 			try {
 				if (isNew) {
-					const data = await createProduct(values);
-					if (data) {
-						router.push(`/dashboard/products/${data.slug}`);
-					}
+					await handleCreate(values as ProductModel.postBody);
 				} else {
-					const data = await updateProduct(
-						product.id,
-						values,
-						product.variants || [],
-					);
-					if (data) {
-						router.push(`/dashboard/products/${data.slug}`);
-					}
+					await handleUpdate(values as ProductModel.patchBody);
 				}
 			} catch (error: unknown) {
-				unknownError(
+				const err = unknownError(
 					error,
 					isNew ? "Failed to create product" : "Failed to update product",
 				);
+				toast.error(elysiaErrorToString(err));
 			}
 		},
 	});
 
-	const hasStock = (form.store.state.values.variants?.[0]?.stock ?? 0) > 0;
+	const handleCreate = async (values: ProductModel.postBody) => {
+		const { data, error } = await app.products.post(values);
+		if (error) {
+			toast.error(
+				`Failed to create product with error ${error.status}: ${elysiaErrorToString(error)}`,
+			);
+			return;
+		}
+		toast.success("Product created successfully");
+		router.push(`/dashboard/products/${data.slug}`);
+	};
+
+	const handleUpdate = async (values: ProductModel.patchBody) => {
+		// router.push(`/dashboard/products/${data.slug}`);
+	};
 
 	return (
 		<Form
@@ -229,7 +123,7 @@ export const ProductForm = ({
 				<h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0 capitalize">
 					{form.store.state.values.name}
 				</h1>
-				{hasStock ? (
+				{/*{hasStock ? (
 					<Badge variant="outline" className="ml-auto sm:ml-0">
 						In stock
 					</Badge>
@@ -237,7 +131,7 @@ export const ProductForm = ({
 					<Badge variant="destructive" className="ml-auto sm:ml-0">
 						Out of stock
 					</Badge>
-				)}
+				)}*/}
 				<div className="hidden items-center gap-2 md:ml-auto md:flex">
 					<Button
 						variant="outline"
@@ -257,11 +151,10 @@ export const ProductForm = ({
 					<ProductFormVariants form={form} />
 				</div>
 				<div className="grid auto-rows-max items-start gap-4 lg:gap-8 min-w-xs">
-					<ProductFormOrganization
+					<ProductFormClassification
 						form={form}
 						isNew={isNew}
 						initialCategories={categories}
-						initialTags={tags}
 					/>
 					<ProductFormImages isNew={isNew} form={form} />
 				</div>

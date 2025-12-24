@@ -32,6 +32,7 @@ import { Form, useForm } from "@spice-world/web/components/ui/tanstack-form";
 import { useFileUpload } from "@spice-world/web/hooks/use-file-upload";
 import { useIsMobile } from "@spice-world/web/hooks/use-mobile";
 import { app, elysiaErrorToString } from "@spice-world/web/lib/elysia";
+import { unknownError } from "@spice-world/web/lib/utils";
 import { Edit2, ImageIcon, Trash2Icon } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -166,38 +167,41 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
 			},
 		},
 		onSubmit: async (values) => {
-			switch (categoryId) {
-				case "new": {
-					const { error } = await app.categories.post(
-						values as CategoryModel.postBody,
-					);
-					if (error) {
-						toast.error(
-							`Failed to create category with error ${error.status}: ${elysiaErrorToString(error)}`,
-						);
-						return;
+			try {
+				switch (categoryId) {
+					case "new": {
+						await handleCreate(values as CategoryModel.postBody);
+						break;
 					}
-					toast.success("Category created successfully");
-					handleClose();
-					break;
-				}
 
-				default: {
-					const { error } = await handleUpdate(values);
-					if (error) {
-						console.log("error", error);
-						toast.error(
-							`Failed to update category with error ${error.status}: ${elysiaErrorToString(error)}`,
-						);
-						return;
+					default: {
+						await handleUpdate(values as CategoryModel.patchBody);
+						break;
 					}
-					toast.success("Category updated successfully");
-					handleClose();
-					break;
 				}
+			} catch (error: unknown) {
+				const err = unknownError(
+					error,
+					categoryId === "new"
+						? "Failed to create category"
+						: "Failed to update category",
+				);
+				toast.error(elysiaErrorToString(err));
 			}
 		},
 	});
+
+	const handleCreate = async (values: CategoryModel.postBody) => {
+		const { error } = await app.categories.post(values);
+		if (error) {
+			toast.error(
+				`Failed to create category with error ${error.status}: ${elysiaErrorToString(error)}`,
+			);
+			return;
+		}
+		toast.success("Category created successfully");
+		handleClose();
+	};
 
 	const handleUpdate = async (values: CategoryModel.patchBody) => {
 		// Filter out duplicate attribute values to avoid conflicts
@@ -224,9 +228,32 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
 			});
 		}
 
-		return await app
-			.categories({ id: categoryId })
-			.patch({ ...values } as CategoryModel.patchBody);
+		const { error } = await app.categories({ id: categoryId }).patch(values);
+		if (error) {
+			toast.error(
+				`Failed to update category with error ${error.status}: ${elysiaErrorToString(error)}`,
+			);
+			return;
+		}
+		toast.success("Category updated successfully");
+		handleClose();
+	};
+
+	const handleDelete = async () => {
+		try {
+			const { error } = await app.categories({ id: categoryId }).delete();
+			if (error) {
+				toast.error(
+					`Failed to delete category with error ${error.status}: ${elysiaErrorToString(error)}`,
+				);
+				return;
+			}
+			toast.success("Category deleted successfully");
+			handleClose();
+		} catch (error: unknown) {
+			const err = unknownError(error, "Failed to delete category");
+			toast.error(elysiaErrorToString(err));
+		}
 	};
 
 	const [{ files }, { getInputProps, clearFiles }] = useFileUpload({
@@ -518,12 +545,22 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
 					</form.AppField>
 				</div>
 
-				<div className="mt-4 grid grid-cols-4 justify-end gap-4">
-					<Button className="col-start-3" type="button" onClick={resetForm}>
+				<div className={`mt-4 grid grid-cols-4 justify-end gap-4`}>
+					{categoryId !== "new" && (
+						<Button
+							className="-col-start-3"
+							type="button"
+							variant="destructive"
+							onClick={handleDelete}
+						>
+							Delete
+						</Button>
+					)}
+					<Button className="-col-start-2" type="button" onClick={resetForm}>
 						Reset
 					</Button>
 					<form.SubmitButton
-						className="col-span-1 col-start-4"
+						className="col-span-1 -col-start-1"
 						variant="outline"
 					>
 						Save

@@ -1,5 +1,4 @@
 import type { ProductModel } from "@spice-world/server/modules/products/model";
-import { ClientOnly } from "@spice-world/web/components/client-only";
 import { Button } from "@spice-world/web/components/ui/button";
 import { ButtonGroup } from "@spice-world/web/components/ui/button-group";
 import {
@@ -24,7 +23,7 @@ import {
 	VolumeOffIcon,
 } from "lucide-react";
 import { Suspense } from "react";
-import { AddProductButton, ProductItem } from "./product-item";
+import { AddProductButton, NewProductItem, ProductItem } from "./product-item";
 
 export async function SidebarRight({
 	products,
@@ -84,15 +83,11 @@ export async function SidebarRight({
 							</DropdownMenuContent>
 						</DropdownMenu>
 
-						<ClientOnly>
-							<AddProductButton />
-						</ClientOnly>
+						<AddProductButton />
 					</ButtonGroup>
 				</header>
 				<div className="flex-1 overflow-auto">
-					<ClientOnly>
-						<ProductItem />
-					</ClientOnly>
+					<NewProductItem />
 					{products?.map((product) => (
 						<ProductItem key={product.id} product={{ ...product, img: null }} />
 					))}
@@ -112,6 +107,7 @@ function ProductsSidebarSkeleton() {
 			</header>
 			<div className="flex-1 overflow-auto">
 				{Array.from({ length: 5 }).map((_, index) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: mandatory here
 					<div key={index} className="border-b p-4">
 						<Skeleton className="h-4 w-3/4 mb-2" />
 						<Skeleton className="h-3 w-full" />

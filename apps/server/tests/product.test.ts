@@ -8,7 +8,6 @@ import type {
 	Image,
 	Product,
 	ProductVariant,
-	Tag,
 } from "@spice-world/server/prisma/client";
 import { createTestDatabase } from "@spice-world/server/utils/db-manager";
 import {

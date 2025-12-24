@@ -2,7 +2,6 @@
 
 import type { CategoryModel } from "@spice-world/server/modules/categories/model";
 import type { ProductModel } from "@spice-world/server/modules/products/model";
-import type { TagModel } from "@spice-world/server/modules/tags/model";
 import {
 	Card,
 	CardContent,
@@ -11,7 +10,6 @@ import {
 	CardTitle,
 } from "@spice-world/web/components/ui/card";
 import { FieldGroup } from "@spice-world/web/components/ui/field";
-import type { MultiSelectOption } from "@spice-world/web/components/ui/multi-select";
 import {
 	SelectContent,
 	SelectItem,
@@ -20,10 +18,8 @@ import {
 } from "@spice-world/web/components/ui/select";
 import type { useForm } from "@spice-world/web/components/ui/tanstack-form";
 import { app } from "@spice-world/web/lib/elysia";
-import { generateRandomColor } from "@spice-world/web/lib/utils";
 import { useSetAtom } from "jotai";
 import { useState } from "react";
-import { toast } from "sonner";
 import {
 	currentProductAtom,
 	newProductAtom,
@@ -31,19 +27,19 @@ import {
 } from "../store";
 import { CategoryDialog } from "./category-dialog";
 
-interface ProductFormOrganizationProps {
-	form: ReturnType<typeof useForm<typeof ProductModel.postBody>>;
+interface ProductFormClassificationProps {
+	form: ReturnType<
+		typeof useForm<typeof ProductModel.postBody | typeof ProductModel.patchBody>
+	>;
 	isNew: boolean;
 	initialCategories: CategoryModel.getResult;
-	initialTags: TagModel.getResult;
 }
 
-export const ProductFormOrganization = ({
+export const ProductFormClassification = ({
 	form,
 	isNew,
 	initialCategories,
-	initialTags,
-}: ProductFormOrganizationProps) => {
+}: ProductFormClassificationProps) => {
 	const setSidebarProduct = useSetAtom(
 		isNew ? newProductAtom : currentProductAtom,
 	);
@@ -51,49 +47,11 @@ export const ProductFormOrganization = ({
 	const [categories, setCategories] =
 		useState<CategoryModel.getResult>(initialCategories);
 
-	const [tags, setTags] = useState<MultiSelectOption[]>(
-		initialTags.map((tag) => ({
-			label: tag.name,
-			value: tag.id,
-		})),
-	);
-
 	const fetchCategories = async () => {
 		const { data } = await app.categories.get();
 		if (data) {
 			setCategories(data);
 		}
-	};
-
-	const handleCreateTag = async (
-		name: string,
-	): Promise<MultiSelectOption | null> => {
-		try {
-			const normalizedName = name.toLowerCase().trim();
-			const { data, error } = await app.tags.post({
-				name: normalizedName,
-				badgeColor: generateRandomColor(),
-			});
-
-			if (error) {
-				toast.error(`Failed to create tag: ${error.value}`);
-				return null;
-			}
-
-			if (data) {
-				const newTag = {
-					label: data.name,
-					value: data.id,
-				};
-				setTags((prev) => [...prev, newTag]);
-				toast.success(`Tag "${data.name}" created successfully`);
-				return newTag;
-			}
-		} catch (err) {
-			toast.error("Failed to create tag");
-			console.error(err);
-		}
-		return null;
 	};
 
 	return (
@@ -107,7 +65,7 @@ export const ProductFormOrganization = ({
 					/>
 				</div>
 				<CardDescription>
-					Manage the product's category, tags and visibility status
+					Manage the product's category and visibility status
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -117,7 +75,10 @@ export const ProductFormOrganization = ({
 						validators={{
 							onChange: ({ value }) => {
 								setSidebarProduct((prev) => {
-									return { ...(prev as ProductItemProps), categoryId: value };
+									return {
+										...(prev as ProductItemProps),
+										categoryId: value ?? "",
+									};
 								});
 							},
 						}}
@@ -148,7 +109,10 @@ export const ProductFormOrganization = ({
 						validators={{
 							onChange: ({ value }) => {
 								setSidebarProduct((prev) => {
-									return { ...(prev as ProductItemProps), status: value };
+									return {
+										...(prev as ProductItemProps),
+										status: value ?? "DRAFT",
+									};
 								});
 							},
 						}}
@@ -166,21 +130,6 @@ export const ProductFormOrganization = ({
 										<SelectItem value="ARCHIVED">Archived</SelectItem>
 									</SelectContent>
 								</field.Select>
-								<field.Message />
-							</field.Field>
-						)}
-					</form.AppField>
-					<form.AppField name="tags">
-						{(field) => (
-							<field.Field>
-								<field.Label>Tags</field.Label>
-								<field.MultiSelect
-									options={tags}
-									placeholder="Select or create tags"
-									maxCount={5}
-									creatable
-									onCreateNew={handleCreateTag}
-								/>
 								<field.Message />
 							</field.Field>
 						)}

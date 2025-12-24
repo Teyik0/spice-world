@@ -25,7 +25,9 @@ export const ProductFormDetails = ({
 	form,
 	isNew,
 }: {
-	form: ReturnType<typeof useForm<typeof ProductModel.postBody>>;
+	form: ReturnType<
+		typeof useForm<typeof ProductModel.postBody | typeof ProductModel.patchBody>
+	>;
 	isNew: boolean;
 }) => {
 	const setSidebarProduct = useSetAtom(
@@ -46,20 +48,26 @@ export const ProductFormDetails = ({
 						validators={{
 							onChange: ({ value }) => {
 								setSidebarProduct((prev) => {
-									return { ...(prev as ProductItemProps), name: value };
+									return { ...(prev as ProductItemProps), name: value ?? "" };
 								});
 							},
 						}}
 					>
 						{(field) => (
-							<Field>
+							<field.Field>
 								<field.Label>Name</field.Label>
-								<field.Input placeholder="Coriandre" autoComplete="off" />
+								<field.Input
+									placeholder="Pepper"
+									autoComplete="off"
+									onChange={(e) =>
+										field.handleChange(e.target.value.toLowerCase())
+									}
+								/>
 								<FieldDescription>
 									The name of your product as it will appear to customers
 								</FieldDescription>
 								<field.Message />
-							</Field>
+							</field.Field>
 						)}
 					</form.AppField>
 					<form.AppField
@@ -67,13 +75,16 @@ export const ProductFormDetails = ({
 						validators={{
 							onChange: ({ value }) => {
 								setSidebarProduct((prev) => {
-									return { ...(prev as ProductItemProps), description: value };
+									return {
+										...(prev as ProductItemProps),
+										description: value ?? "",
+									};
 								});
 							},
 						}}
 					>
 						{(field) => (
-							<Field>
+							<field.Field>
 								<field.Label>Description</field.Label>
 								<field.Textarea
 									placeholder="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam auctor, nisl nec ultricies ultricies, nunc nisl ultricies nunc, nec ultricies nunc nisl nec nunc."
@@ -83,7 +94,7 @@ export const ProductFormDetails = ({
 									A detailed description of your product
 								</FieldDescription>
 								<field.Message />
-							</Field>
+							</field.Field>
 						)}
 					</form.AppField>
 				</FieldGroup>

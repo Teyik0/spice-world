@@ -150,17 +150,6 @@ describe("Load Testing", () => {
 		expect(stats.result.latency.percentiles["95"]).toBeLessThan(1_500_000); // 1.5s in microseconds
 	}, 30000);
 
-	test("GET /tags - should handle high load", async () => {
-		const stats = await runLoadTest("/tags", 100, "10s");
-		logLoadTestResults("GET /tags", 100, "10s", stats);
-
-		expect(stats.result.req2xx).toBe(0);
-		expect(stats.result.req4xx).toBe(0);
-		expect(stats.result.req5xx).toBe(0);
-		expect(stats.result.rps.mean).toBeGreaterThan(150);
-		expect(stats.result.latency.percentiles["95"]).toBeLessThan(1_500_000); // 1.5s in microseconds
-	}, 30000);
-
 	test("GET /attributes - should handle high load", async () => {
 		const stats = await runLoadTest("/attributes", 100, "10s");
 		logLoadTestResults("GET /attributes", 100, "10s", stats);
