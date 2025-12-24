@@ -95,8 +95,9 @@ export const productService = {
 		const limitClause = take !== undefined ? sql`LIMIT ${take}` : sql``;
 
 		const products = await sql<
-			Product[]
-		>`SELECT p.*${selectClause} FROM "Product" p ${whereClause}
+			(Product & { img: string | null })[]
+		>`SELECT p.*${selectClause}, (SELECT url FROM "Image" WHERE "productId" = p.id AND "isThumbnail" = true LIMIT 1) AS "img"
+		  FROM "Product" p ${whereClause}
 		  ORDER BY ${orderByClause} ${orderDirection} ${nullsClause} ${limitClause} ${offsetClause}`;
 
 		// We are using Bun.sql here because this query need to be performant for users
@@ -106,6 +107,23 @@ export const productService = {
 	async getById({ id }: uuidGuard) {
 		const product = await prisma.product.findUnique({
 			where: { id },
+			include: {
+				category: true,
+				images: true,
+				variants: {
+					include: {
+						attributeValues: true,
+					},
+				},
+			},
+		});
+
+		return product ?? status("Not Found", "Product not found");
+	},
+
+	async getBySlug({ slug }: { slug: string }) {
+		const product = await prisma.product.findUnique({
+			where: { slug },
 			include: {
 				category: true,
 				images: true,

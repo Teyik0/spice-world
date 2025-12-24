@@ -20,6 +20,10 @@ export const productsRouter = new Elysia({
 	.post("/", async ({ body }) => await productService.post(body), {
 		body: ProductModel.postBody,
 	})
+	.get(
+		"/slug/:slug",
+		async ({ params }) => await productService.getBySlug(params),
+	)
 	.guard({ params: uuidGuard })
 	.get("/:id", async ({ params }) => await productService.getById(params))
 	.state("imageKeys", null as null | string[])

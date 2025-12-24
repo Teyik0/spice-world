@@ -51,6 +51,7 @@ export const ProductForm = ({
 			description: product.description,
 			status: product.status,
 			categoryId: product.categoryId,
+			_version: product.version,
 			variants:
 				product.variants.length > 0
 					? product.variants.map((v) => ({
@@ -88,7 +89,81 @@ export const ProductForm = ({
 				toast.error(elysiaErrorToString(err));
 			}
 		},
+		onSubmitInvalid({ value, formApi }) {
+			toast.error("Invalid submit");
+			console.info(value);
+			console.info(formApi);
+		},
 	});
+
+	const transformVariants = (
+		formVariants: Array<{
+			id?: string;
+			price: number;
+			sku?: string;
+			stock: number;
+			currency: string;
+			attributeValueIds: string[];
+		}>,
+		originalVariants: typeof product.variants,
+	) => {
+		const create: Array<{
+			price: number;
+			sku?: string;
+			stock: number;
+			currency: string;
+			attributeValueIds: string[];
+		}> = [];
+		const update: Array<{
+			id: string;
+			price?: number;
+			sku?: string;
+			stock?: number;
+			currency?: string;
+			attributeValueIds?: string[];
+		}> = [];
+		const deleteIds: string[] = [];
+
+		// Find variants that were in original but not in form (deleted)
+		const formVariantIds = new Set(
+			formVariants.filter((v) => v.id).map((v) => v.id as string),
+		);
+		for (const orig of originalVariants) {
+			if (!formVariantIds.has(orig.id)) {
+				deleteIds.push(orig.id);
+			}
+		}
+
+		// Separate create vs update based on presence of id
+		for (const variant of formVariants) {
+			if (variant.id) {
+				// Existing variant - goes to update
+				update.push({
+					id: variant.id,
+					price: variant.price,
+					sku: variant.sku,
+					stock: variant.stock,
+					currency: variant.currency,
+					attributeValueIds: variant.attributeValueIds,
+				});
+			} else {
+				// New variant - goes to create
+				create.push({
+					price: variant.price,
+					sku: variant.sku,
+					stock: variant.stock,
+					currency: variant.currency,
+					attributeValueIds: variant.attributeValueIds,
+				});
+			}
+		}
+
+		return {
+			...(create.length > 0 && { create }),
+			...(update.length > 0 && { update }),
+			...(deleteIds.length > 0 && { delete: deleteIds }),
+		};
+	};
 
 	const handleCreate = async (values: ProductModel.postBody) => {
 		const { data, error } = await app.products.post(values);
@@ -102,8 +177,50 @@ export const ProductForm = ({
 		router.push(`/dashboard/products/${data.slug}`);
 	};
 
-	const handleUpdate = async (_: ProductModel.patchBody) => {
-		// router.push(`/dashboard/products/${data.slug}`);
+	const handleUpdate = async (values: ProductModel.patchBody) => {
+		// Transform variants array to nested operations
+		const variantOperations = transformVariants(
+			Array.isArray(values.variants) ? values.variants : [],
+			product.variants,
+		);
+
+		// Build patch payload
+		const patchData: ProductModel.patchBody = {
+			name: values.name,
+			description: values.description,
+			status: values.status,
+			categoryId: values.categoryId,
+			_version: values._version,
+			variants:
+				Object.keys(variantOperations).length > 0
+					? variantOperations
+					: undefined,
+			images: values.images,
+			imagesCreate: values.imagesCreate,
+		};
+
+		// Make API call with product ID
+		const { data, error } = await app
+			.products({ id: product.id })
+			.patch(patchData);
+
+		if (error) {
+			if (error.status === 409) {
+				toast.error(
+					"Product was modified by another user. Please refresh and try again.",
+				);
+				return;
+			}
+			toast.error(
+				`Failed to update product with error ${error.status}: ${elysiaErrorToString(error)}`,
+			);
+			return;
+		}
+
+		toast.success("Product updated successfully");
+
+		// Navigate to updated product (slug might have changed if name changed)
+		router.push(`/dashboard/products/${data.slug}`);
 	};
 
 	return (
@@ -155,7 +272,11 @@ export const ProductForm = ({
 						isNew={isNew}
 						initialCategories={categories}
 					/>
-					<ProductFormImages isNew={isNew} form={form} />
+					<ProductFormImages
+						isNew={isNew}
+						form={form}
+						existingImages={product.images}
+					/>
 				</div>
 			</div>
 

@@ -27,6 +27,7 @@ export const prismaErrorPlugin = (entity: Entity) =>
 
 		if (!(error instanceof PrismaClientKnownRequestError)) {
 			// Let elysia handle the error if it's not a Prisma error
+			console.error("Non-Prisma error ->", error);
 			return;
 		}
 

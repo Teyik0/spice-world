@@ -90,8 +90,7 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
 	const handleClick = () => {
 		// Prevent navigation if already on this product
 		if (isSelected) return;
-
-		router.push(`/dashboard/products/${product.slug}`, { scroll: false });
+		router.push(`/dashboard/products/${product.slug}`);
 	};
 
 	return (

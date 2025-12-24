@@ -89,7 +89,7 @@ export async function SidebarRight({
 				<div className="flex-1 overflow-auto">
 					<NewProductItem />
 					{products?.map((product) => (
-						<ProductItem key={product.id} product={{ ...product, img: null }} />
+						<ProductItem key={product.id} product={product} />
 					))}
 				</div>
 			</aside>

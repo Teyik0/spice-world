@@ -116,9 +116,11 @@ describe.concurrent("Product routes test", () => {
 			for (let i = 0; i < data.length - 1; i++) {
 				const current = data[i] as Product & {
 					minprice: number | null;
+					img: string | null;
 				};
 				const next = data[i + 1] as Product & {
 					minprice: number | null;
+					img: string | null;
 				};
 
 				// Skip comparison if either has no price (NULL values come last due to NULLS LAST)

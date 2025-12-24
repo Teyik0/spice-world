@@ -118,6 +118,7 @@ function FormMultiSelect(props: React.ComponentProps<typeof MultiSelect>) {
 	return (
 		<MultiSelect
 			{...props}
+			value={field.state.value ?? []}
 			onBlur={() => field.handleBlur()}
 			onValueChange={(value) => field.handleChange(value)}
 		/>

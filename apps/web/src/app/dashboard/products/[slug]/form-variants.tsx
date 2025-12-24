@@ -136,8 +136,6 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 				query: { categoryId },
 			});
 
-			console.log("Fetched attributes:", data); // DEBUG
-
 			if (error) {
 				toast.error(
 					`Failed to fetch attributes: ${elysiaErrorToString(error)}`,
