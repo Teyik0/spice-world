@@ -4,7 +4,7 @@ import type { Product } from "@spice-world/server/prisma/client";
 import { sql } from "bun";
 import { status } from "elysia";
 import type { UploadedFileData } from "uploadthing/types";
-import type { uuidGuard } from "../shared";
+import { uploadFileErrStatus, type uuidGuard } from "../shared";
 import { MAX_IMAGES_PER_PRODUCT, type ProductModel } from "./model";
 
 /*
@@ -155,7 +155,7 @@ export const productService = {
 		const { data: uploadMap, error: uploadError } =
 			await validateAndUploadFiles(images, imagesOps, name);
 		if (uploadError || !uploadMap) {
-			return status("Bad Gateway", uploadError ?? "Upload failed");
+			return uploadFileErrStatus({ message: uploadError });
 		}
 
 		try {
@@ -199,7 +199,7 @@ export const productService = {
 				]);
 
 				const createdVariants = await Promise.all(
-					variants.map((variant) => {
+					variants.create.map((variant) => {
 						// Validate attribute values belong to category and no duplicates per attribute
 						validateVariantAttributeValues(
 							variant.sku ?? "",
@@ -356,7 +356,7 @@ export const productService = {
 			name ?? currentProduct.name,
 		);
 		if (uploadErr || !uploadMap) {
-			return status("Bad Gateway", uploadErr ?? "Upload failed");
+			return uploadFileErrStatus({ message: uploadErr });
 		}
 
 		const oldKeysToDelete: string[] = [];
@@ -745,7 +745,7 @@ async function uploadValidFiles({
 		filesToUpload,
 	);
 	if (error || !uploaded) {
-		return { data: null, error: error ?? "Upload failed" };
+		return { data: null, error };
 	}
 
 	// Create mapping: fileIndex → uploaded file data

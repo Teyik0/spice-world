@@ -97,16 +97,7 @@ export namespace ProductModel {
 		description: t.String({ minLength: 1 }),
 		status: productStatus,
 		categoryId: uuid,
-		variants: t.Array(
-			t.Object({
-				price: t.Number({ minimum: 0 }),
-				sku: t.Optional(t.String()),
-				stock: t.Optional(t.Number({ minimum: 0, default: 0 })),
-				currency: t.Optional(t.String({ default: "EUR" })),
-				attributeValueIds: t.Array(uuid),
-			}),
-			{ minItems: 1 },
-		),
+		variants: t.Object({ create: t.Array(variantCreate, { minItems: 1 }) }),
 		images: t.Files({ minItems: 1, maxItems: MAX_IMAGES_PER_PRODUCT }),
 		imagesOps: t.Object({ create: imageCreate }),
 	});

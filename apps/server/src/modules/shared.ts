@@ -1,6 +1,5 @@
-import type { uploadFile } from "@spice-world/server/lib/images";
 import { status, t } from "elysia";
-
+import type { UploadFileResult } from "uploadthing/types";
 /*
 Regex explanation:
 ^[a-zà-ÿ]        : string must start with a lowercase letter with latin char with accent (i.e éè)
@@ -30,10 +29,10 @@ export const uuidGuard = t.Object({ id: uuid });
 export type uuidGuard = typeof uuidGuard.static;
 
 export const uploadFileErrStatus = (
-	fileError: Awaited<ReturnType<typeof uploadFile>>["error"],
+	fileError: UploadFileResult["error"] | { message: string },
 ) => {
-	return status(
+	throw status(
 		"Bad Gateway",
-		fileError ?? "Unknown error while uploading file",
+		fileError ?? "Unknown error while uploading file(s)",
 	);
 };

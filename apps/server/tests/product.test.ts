@@ -203,14 +203,16 @@ describe.concurrent("Product routes test", () => {
 				description: "A new spice for testing",
 				status: "PUBLISHED" as const,
 				categoryId: category.id,
-				variants: [
-					{
-						price: 10.99,
-						sku: "NEW-SPICE-001",
-						stock: 100,
-						attributeValueIds: [testAttributes[0]?.values[0]?.id as string],
-					},
-				],
+				variants: {
+					create: [
+						{
+							price: 10.99,
+							sku: "NEW-SPICE-001",
+							stock: 100,
+							attributeValueIds: [testAttributes[0]?.values[0]?.id as string],
+						},
+					],
+				},
 				images: [file(filePath1), file(filePath2)] as File[],
 				imagesOps: {
 					create: [
@@ -228,7 +230,7 @@ describe.concurrent("Product routes test", () => {
 			expect(data.description).toBe(newProduct.description);
 			expect(data.categoryId).toBe(newProduct.categoryId);
 			expect(data.status).toBe(newProduct.status);
-			expect(data.variants.length).toBe(newProduct.variants.length);
+			expect(data.variants.length).toBe(newProduct.variants.create.length);
 			expect(data.images.length).toBe(newProduct.images.length);
 			expect(data.images[0]?.isThumbnail).toBe(true);
 			expect(data.images[1]?.isThumbnail).toBe(false);
@@ -249,14 +251,16 @@ describe.concurrent("Product routes test", () => {
 					description: "First product for duplicate test",
 					categoryId: category.id,
 					status: "PUBLISHED",
-					variants: [
-						{
-							price: 10.99,
-							sku: "DUP-TEST-FIRST",
-							stock: 100,
-							attributeValueIds: [testAttributes[0]?.values[0]?.id as string],
-						},
-					],
+					variants: {
+						create: [
+							{
+								price: 10.99,
+								sku: "DUP-TEST-FIRST",
+								stock: 100,
+								attributeValueIds: [testAttributes[0]?.values[0]?.id as string],
+							},
+						],
+					},
 					images: [file(filePath1), file(filePath2)],
 					imagesOps: {
 						create: [
@@ -275,14 +279,16 @@ describe.concurrent("Product routes test", () => {
 				description: "Duplicate product name",
 				categoryId: category.id,
 				status: "PUBLISHED",
-				variants: [
-					{
-						price: 10.99,
-						sku: "DUP-TEST-SECOND",
-						stock: 100,
-						attributeValueIds: [testAttributes[0]?.values[0]?.id as string],
-					},
-				],
+				variants: {
+					create: [
+						{
+							price: 10.99,
+							sku: "DUP-TEST-SECOND",
+							stock: 100,
+							attributeValueIds: [testAttributes[0]?.values[0]?.id as string],
+						},
+					],
+				},
 				images: [file(filePath1), file(filePath2)],
 				imagesOps: {
 					create: [
@@ -317,17 +323,19 @@ describe.concurrent("Product routes test", () => {
 				description: "Product with invalid attribute",
 				categoryId: firstCategory.id,
 				status: "PUBLISHED" as const,
-				variants: [
-					{
-						price: 9.99,
-						sku: "INVALID-ATTR-001",
-						stock: 50,
-						attributeValueIds: [
-							firstCategory.attributes[0]?.values[0]?.id as string, // valid one
-							secondCategory.attributes[0]?.values[0]?.id as string, // INVALID → should trigger error
-						],
-					},
-				],
+				variants: {
+					create: [
+						{
+							price: 9.99,
+							sku: "INVALID-ATTR-001",
+							stock: 50,
+							attributeValueIds: [
+								firstCategory.attributes[0]?.values[0]?.id as string, // valid one
+								secondCategory.attributes[0]?.values[0]?.id as string, // INVALID → should trigger error
+							],
+						},
+					],
+				},
 				images: [file(filePath1), file(filePath2)] as File[],
 				imagesOps: {
 					create: [
@@ -359,14 +367,16 @@ describe.concurrent("Product routes test", () => {
 				description: "Product with non-existent category",
 				categoryId: nonExistentCategoryId,
 				status: "PUBLISHED",
-				variants: [
-					{
-						price: 8.99,
-						sku: "NO-CAT-001",
-						stock: 20,
-						attributeValueIds: [],
-					},
-				],
+				variants: {
+					create: [
+						{
+							price: 8.99,
+							sku: "NO-CAT-001",
+							stock: 20,
+							attributeValueIds: [],
+						},
+					],
+				},
 				images: [file(filePath1), file(filePath2)],
 				imagesOps: {
 					create: [{ fileIndex: 0, isThumbnail: true }, { fileIndex: 1 }],
@@ -396,17 +406,19 @@ describe.concurrent("Product routes test", () => {
 				description: "Product with duplicate attribute values",
 				categoryId: category.id,
 				status: "PUBLISHED",
-				variants: [
-					{
-						price: 7.99,
-						sku: "DUP-ATTR-001",
-						stock: 15,
-						attributeValueIds: [
-							firstAttribute.values[0]?.id as string,
-							firstAttribute.values[1]?.id as string, // Same attribute, different values
-						],
-					},
-				],
+				variants: {
+					create: [
+						{
+							price: 7.99,
+							sku: "DUP-ATTR-001",
+							stock: 15,
+							attributeValueIds: [
+								firstAttribute.values[0]?.id as string,
+								firstAttribute.values[1]?.id as string, // Same attribute, different values
+							],
+						},
+					],
+				},
 				images: [file(filePath1), file(filePath2)],
 				imagesOps: {
 					create: [{ fileIndex: 0, isThumbnail: true }, { fileIndex: 1 }],
@@ -440,26 +452,28 @@ describe.concurrent("Product routes test", () => {
 				description: "Product with multiple variants",
 				categoryId: category.id,
 				status: "PUBLISHED",
-				variants: [
-					{
-						price: 5.99,
-						sku: "MULTI-VAR-001",
-						stock: 50,
-						attributeValueIds: [attributes[0]?.values[0]?.id as string],
-					},
-					{
-						price: 9.99,
-						sku: "MULTI-VAR-002",
-						stock: 30,
-						attributeValueIds: [attributes[0]?.values[1]?.id as string],
-					},
-					{
-						price: 14.99,
-						sku: "MULTI-VAR-003",
-						stock: 20,
-						attributeValueIds: [attributes[0]?.values[2]?.id as string],
-					},
-				],
+				variants: {
+					create: [
+						{
+							price: 5.99,
+							sku: "MULTI-VAR-001",
+							stock: 50,
+							attributeValueIds: [attributes[0]?.values[0]?.id as string],
+						},
+						{
+							price: 9.99,
+							sku: "MULTI-VAR-002",
+							stock: 30,
+							attributeValueIds: [attributes[0]?.values[1]?.id as string],
+						},
+						{
+							price: 14.99,
+							sku: "MULTI-VAR-003",
+							stock: 20,
+							attributeValueIds: [attributes[0]?.values[2]?.id as string],
+						},
+					],
+				},
 				images: [file(filePath1), file(filePath2)],
 				imagesOps: {
 					create: [{ fileIndex: 0, isThumbnail: true }, { fileIndex: 1 }],
@@ -486,14 +500,16 @@ describe.concurrent("Product routes test", () => {
 				description: "Product with duplicate fileIndex",
 				categoryId: category.id,
 				status: "PUBLISHED",
-				variants: [
-					{
-						price: 10.99,
-						sku: "DUP-FILE-001",
-						stock: 100,
-						attributeValueIds: [testAttributes[0]?.values[0]?.id as string],
-					},
-				],
+				variants: {
+					create: [
+						{
+							price: 10.99,
+							sku: "DUP-FILE-001",
+							stock: 100,
+							attributeValueIds: [testAttributes[0]?.values[0]?.id as string],
+						},
+					],
+				},
 				images: [file(filePath1), file(filePath2)],
 				imagesOps: {
 					create: [
@@ -524,14 +540,16 @@ describe.concurrent("Product routes test", () => {
 				description: "Product with multiple thumbnails",
 				categoryId: category.id,
 				status: "PUBLISHED",
-				variants: [
-					{
-						price: 10.99,
-						sku: "MULTI-THUMB-001",
-						stock: 100,
-						attributeValueIds: [testAttributes[0]?.values[0]?.id as string],
-					},
-				],
+				variants: {
+					create: [
+						{
+							price: 10.99,
+							sku: "MULTI-THUMB-001",
+							stock: 100,
+							attributeValueIds: [testAttributes[0]?.values[0]?.id as string],
+						},
+					],
+				},
 				images: [file(filePath1), file(filePath2)],
 				imagesOps: {
 					create: [
@@ -562,14 +580,16 @@ describe.concurrent("Product routes test", () => {
 				description: "Product with out of bounds fileIndex",
 				categoryId: category.id,
 				status: "PUBLISHED",
-				variants: [
-					{
-						price: 10.99,
-						sku: "OOB-FILE-001",
-						stock: 100,
-						attributeValueIds: [testAttributes[0]?.values[0]?.id as string],
-					},
-				],
+				variants: {
+					create: [
+						{
+							price: 10.99,
+							sku: "OOB-FILE-001",
+							stock: 100,
+							attributeValueIds: [testAttributes[0]?.values[0]?.id as string],
+						},
+					],
+				},
 				images: [file(filePath1), file(filePath2)],
 				imagesOps: {
 					create: [
@@ -600,14 +620,16 @@ describe.concurrent("Product routes test", () => {
 				description: "Product with accented characters",
 				categoryId: category.id,
 				status: "PUBLISHED",
-				variants: [
-					{
-						price: 10.99,
-						sku: "SPECIAL-001",
-						stock: 100,
-						attributeValueIds: [testAttributes[0]?.values[0]?.id as string],
-					},
-				],
+				variants: {
+					create: [
+						{
+							price: 10.99,
+							sku: "SPECIAL-001",
+							stock: 100,
+							attributeValueIds: [testAttributes[0]?.values[0]?.id as string],
+						},
+					],
+				},
 				images: [file(filePath1), file(filePath2)],
 				imagesOps: {
 					create: [
@@ -635,14 +657,16 @@ describe.concurrent("Product routes test", () => {
 				description: "",
 				categoryId: category.id,
 				status: "PUBLISHED",
-				variants: [
-					{
-						price: 10.99,
-						sku: "NO-DESC-001",
-						stock: 100,
-						attributeValueIds: [testAttributes[0]?.values[0]?.id as string],
-					},
-				],
+				variants: {
+					create: [
+						{
+							price: 10.99,
+							sku: "NO-DESC-001",
+							stock: 100,
+							attributeValueIds: [testAttributes[0]?.values[0]?.id as string],
+						},
+					],
+				},
 				images: [file(filePath1), file(filePath2)],
 				imagesOps: {
 					create: [
@@ -691,16 +715,18 @@ describe.concurrent("Product routes test", () => {
 					description: "Original description",
 					categoryId: category.id,
 					status: "PUBLISHED",
-					variants: [
-						{
-							price: 10,
-							sku: "UPDATE-TEST-1",
-							stock: 50,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
+					variants: {
+						create: [
+							{
+								price: 10,
+								sku: "UPDATE-TEST-1",
+								stock: 50,
+								attributeValueIds: [
+									categoryAttributes[0]?.values[0]?.id as string,
+								],
+							},
+						],
+					},
 					images: files,
 					imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
 				});
@@ -759,16 +785,18 @@ describe.concurrent("Product routes test", () => {
 					description: "Test product for adding images",
 					categoryId: category.id,
 					status: "DRAFT",
-					variants: [
-						{
-							price: 10,
-							sku: "IMG-UPDATE-TEST",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
+					variants: {
+						create: [
+							{
+								price: 10,
+								sku: "IMG-UPDATE-TEST",
+								stock: 10,
+								attributeValueIds: [
+									categoryAttributes[0]?.values[0]?.id as string,
+								],
+							},
+						],
+					},
 					images: files,
 					imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
 				});
@@ -844,16 +872,18 @@ describe.concurrent("Product routes test", () => {
 					description: "Test product for deleting images",
 					categoryId: category.id,
 					status: "DRAFT",
-					variants: [
-						{
-							price: 10,
-							sku: "IMG-DELETE-TEST",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
+					variants: {
+						create: [
+							{
+								price: 10,
+								sku: "IMG-DELETE-TEST",
+								stock: 10,
+								attributeValueIds: [
+									categoryAttributes[0]?.values[0]?.id as string,
+								],
+							},
+						],
+					},
 					images: files,
 					imagesOps: {
 						create: [
@@ -902,16 +932,18 @@ describe.concurrent("Product routes test", () => {
 					description: "Test product for updating image metadata",
 					categoryId: category.id,
 					status: "DRAFT",
-					variants: [
-						{
-							price: 10,
-							sku: "META-UPDATE-TEST",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
+					variants: {
+						create: [
+							{
+								price: 10,
+								sku: "META-UPDATE-TEST",
+								stock: 10,
+								attributeValueIds: [
+									categoryAttributes[0]?.values[0]?.id as string,
+								],
+							},
+						],
+					},
 					images: files,
 					imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
 				});
@@ -1059,15 +1091,17 @@ describe.concurrent("Product routes test", () => {
 					description: "Test product for invalid attribute update",
 					categoryId: category.id,
 					status: "DRAFT",
-					variants: [
-						{
-							price: 25.99,
-							sku: "INVALID-ATTR-UPDATE-VAR",
-							stock: 75,
-							currency: "EUR",
-							attributeValueIds: validAttributeValueIds,
-						},
-					],
+					variants: {
+						create: [
+							{
+								price: 25.99,
+								sku: "INVALID-ATTR-UPDATE-VAR",
+								stock: 75,
+								currency: "EUR",
+								attributeValueIds: validAttributeValueIds,
+							},
+						],
+					},
 					images: files,
 					imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
 				});
@@ -1120,24 +1154,26 @@ describe.concurrent("Product routes test", () => {
 					description: "Test product for deleting variants",
 					categoryId: category.id,
 					status: "DRAFT",
-					variants: [
-						{
-							price: 10,
-							sku: "VAR-DELETE-1",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-						{
-							price: 20,
-							sku: "VAR-DELETE-2",
-							stock: 20,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[1]?.id as string,
-							],
-						},
-					],
+					variants: {
+						create: [
+							{
+								price: 10,
+								sku: "VAR-DELETE-1",
+								stock: 10,
+								attributeValueIds: [
+									categoryAttributes[0]?.values[0]?.id as string,
+								],
+							},
+							{
+								price: 20,
+								sku: "VAR-DELETE-2",
+								stock: 20,
+								attributeValueIds: [
+									categoryAttributes[0]?.values[1]?.id as string,
+								],
+							},
+						],
+					},
 					images: files,
 					imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
 				});
@@ -1316,24 +1352,26 @@ describe.concurrent("Product routes test", () => {
 					description: "Test product for delete all variants",
 					categoryId: category.id,
 					status: "DRAFT",
-					variants: [
-						{
-							price: 10,
-							sku: "DEL-ALL-VAR-1",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-						{
-							price: 20,
-							sku: "DEL-ALL-VAR-2",
-							stock: 20,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[1]?.id as string,
-							],
-						},
-					],
+					variants: {
+						create: [
+							{
+								price: 10,
+								sku: "DEL-ALL-VAR-1",
+								stock: 10,
+								attributeValueIds: [
+									categoryAttributes[0]?.values[0]?.id as string,
+								],
+							},
+							{
+								price: 20,
+								sku: "DEL-ALL-VAR-2",
+								stock: 20,
+								attributeValueIds: [
+									categoryAttributes[0]?.values[1]?.id as string,
+								],
+							},
+						],
+					},
 					images: files,
 					imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
 				});
@@ -1550,20 +1588,26 @@ describe.concurrent("Product routes test", () => {
 					description: "Product for category change test",
 					categoryId: spicesCategory.id,
 					status: "DRAFT",
-					variants: [
-						{
-							price: 10,
-							sku: "CAT-CHANGE-1",
-							stock: 10,
-							attributeValueIds: [spicesAttributes[0]?.values[0]?.id as string],
-						},
-						{
-							price: 20,
-							sku: "CAT-CHANGE-2",
-							stock: 20,
-							attributeValueIds: [spicesAttributes[0]?.values[1]?.id as string],
-						},
-					],
+					variants: {
+						create: [
+							{
+								price: 10,
+								sku: "CAT-CHANGE-1",
+								stock: 10,
+								attributeValueIds: [
+									spicesAttributes[0]?.values[0]?.id as string,
+								],
+							},
+							{
+								price: 20,
+								sku: "CAT-CHANGE-2",
+								stock: 20,
+								attributeValueIds: [
+									spicesAttributes[0]?.values[1]?.id as string,
+								],
+							},
+						],
+					},
 					images: files,
 					imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
 				});
@@ -1617,16 +1661,18 @@ describe.concurrent("Product routes test", () => {
 					description: "Product for image replacement test",
 					categoryId: category.id,
 					status: "DRAFT",
-					variants: [
-						{
-							price: 10,
-							sku: "IMG-REPLACE-1",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
+					variants: {
+						create: [
+							{
+								price: 10,
+								sku: "IMG-REPLACE-1",
+								stock: 10,
+								attributeValueIds: [
+									categoryAttributes[0]?.values[0]?.id as string,
+								],
+							},
+						],
+					},
 					images: files,
 					imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
 				});
@@ -1759,16 +1805,18 @@ describe.concurrent("Product routes test", () => {
 					description: "This product will be deleted",
 					categoryId: category.id,
 					status: "DRAFT",
-					variants: [
-						{
-							price: 10,
-							sku: "DELETE-TEST-1",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
+					variants: {
+						create: [
+							{
+								price: 10,
+								sku: "DELETE-TEST-1",
+								stock: 10,
+								attributeValueIds: [
+									categoryAttributes[0]?.values[0]?.id as string,
+								],
+							},
+						],
+					},
 					images: [file(filePath1), file(filePath2)],
 					imagesOps: {
 						create: [
