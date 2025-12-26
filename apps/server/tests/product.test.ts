@@ -711,7 +711,7 @@ describe.concurrent("Product routes test", () => {
 			const variantToUpdate = createdProduct.variants[0];
 			expectDefined(variantToUpdate);
 
-			const { data, status, error } = await api
+			const { data, status } = await api
 				.products({ id: createdProduct.id })
 				.patch({
 					name: "updated spice",
@@ -728,7 +728,6 @@ describe.concurrent("Product routes test", () => {
 					},
 				});
 
-			console.log(error?.value);
 			expect(status).toBe(200);
 			expectDefined(data);
 			expect(data.name).toBe("updated spice");
@@ -778,7 +777,7 @@ describe.concurrent("Product routes test", () => {
 			expectDefined(createdProduct);
 			const initialImageCount = createdProduct.images.length;
 
-			const { data, status, error } = await api
+			const { data, status } = await api
 				.products({ id: createdProduct.id })
 				.patch({
 					images: files,
@@ -790,7 +789,6 @@ describe.concurrent("Product routes test", () => {
 					},
 				});
 
-			console.log(error?.value);
 			expect(status).toBe(200);
 			expectDefined(data);
 			expect(data.images.length).toBe(initialImageCount + 2);
@@ -872,7 +870,7 @@ describe.concurrent("Product routes test", () => {
 			const imageToDelete = createdProduct.images[1]; // Delete non-thumbnail
 			expectDefined(imageToDelete);
 
-			const { data, status, error } = await api
+			const { data, status } = await api
 				.products({ id: createdProduct.id })
 				.patch({
 					imagesOps: {
@@ -880,7 +878,6 @@ describe.concurrent("Product routes test", () => {
 					},
 				});
 
-			console.log(error?.value);
 			expect(status).toBe(200);
 			expectDefined(data);
 			expect(data.images.length).toBe(1);
@@ -925,7 +922,7 @@ describe.concurrent("Product routes test", () => {
 			const imageToUpdate = createdProduct.images[0];
 			expectDefined(imageToUpdate);
 
-			const { data, status, error } = await api
+			const { data, status } = await api
 				.products({ id: createdProduct.id })
 				.patch({
 					imagesOps: {
@@ -939,7 +936,6 @@ describe.concurrent("Product routes test", () => {
 					},
 				});
 
-			console.log(error?.value);
 			expect(status).toBe(200);
 			expectDefined(data);
 			const updatedImage = data.images.find(
@@ -965,7 +961,7 @@ describe.concurrent("Product routes test", () => {
 				.map((attr) => attr.values[0]?.id)
 				.filter((id): id is string => id !== undefined);
 
-			const { data, status, error } = await api
+			const { data, status } = await api
 				.products({ id: testProduct.id })
 				.patch({
 					variants: {
@@ -981,7 +977,6 @@ describe.concurrent("Product routes test", () => {
 					},
 				});
 
-			console.log(error?.value);
 			expect(status).toBe(200);
 			expectDefined(data);
 			// Just verify the new variant exists, don't check exact count due to concurrent tests
@@ -1580,7 +1575,7 @@ describe.concurrent("Product routes test", () => {
 
 			// Change category to herbs (delete all variants + create new)
 			const allVariantIds = createdProduct.variants.map((v) => v.id);
-			const { data, status, error } = await api
+			const { data, status } = await api
 				.products({ id: createdProduct.id })
 				.patch({
 					categoryId: herbsCategory.id,
@@ -1599,7 +1594,6 @@ describe.concurrent("Product routes test", () => {
 					},
 				});
 
-			console.log(error?.value);
 			expect(status).toBe(200);
 			expectDefined(data);
 			expect(data.categoryId).toBe(herbsCategory.id);
@@ -1646,7 +1640,7 @@ describe.concurrent("Product routes test", () => {
 			const originalKey = originalImage.key;
 
 			// Replace the image file using update with fileIndex
-			const { data, status, error } = await api
+			const { data, status } = await api
 				.products({ id: createdProduct.id })
 				.patch({
 					images: files,
@@ -1662,7 +1656,6 @@ describe.concurrent("Product routes test", () => {
 					},
 				});
 
-			console.log(error?.value);
 			expect(status).toBe(200);
 			expectDefined(data);
 			expect(data.images.length).toBe(1);

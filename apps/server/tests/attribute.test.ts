@@ -230,7 +230,7 @@ describe.concurrent("Attribute routes test", () => {
 
 			const { error, status } = await api.attributes.post(newAttrData);
 
-			expect(status).toBe(409); // Foreign key constraint violation prisma P2003
+			expect(status).toBe(400); // Foreign key constraint violation prisma P2003
 			expect(error).not.toBeNull();
 			expect(error).not.toBeUndefined();
 		});
@@ -378,7 +378,7 @@ describe.concurrent("Attribute routes test", () => {
 					name: "france",
 				});
 
-			expect(status).toBe(409); // Foreign key constraint violation prisma P2003
+			expect(status).toBe(400); // Foreign key constraint violation prisma P2003
 			expect(error).not.toBeNull();
 			expect(error).not.toBeUndefined();
 		});
