@@ -2,7 +2,7 @@ import type {
 	Attribute,
 	AttributeValue,
 	PrismaClient,
-} from "../../src/prisma/client";
+} from "@spice-world/server/prisma/client";
 import { expectDefined } from "./helper";
 
 export type AttributeWithValues = Attribute & {
@@ -13,8 +13,9 @@ export type AttributeWithValues = Attribute & {
 export const createDummyAttributes = async (
 	prisma: PrismaClient,
 ): Promise<AttributeWithValues[]> => {
-	const categories = await prisma.category.findMany();
-	const firstCategory = categories[0];
+	const firstCategory = await prisma.category.findUniqueOrThrow({
+		where: { name: "spices" },
+	});
 	expectDefined(firstCategory);
 
 	const attribute1 = await prisma.attribute.create({
@@ -39,5 +40,21 @@ export const createDummyAttributes = async (
 		include: { values: true },
 	});
 
-	return [attribute1, attribute2];
+	const secondCategory = await prisma.category.findUniqueOrThrow({
+		where: { name: "herbs" },
+	});
+	expectDefined(secondCategory);
+
+	const attribute3 = await prisma.attribute.create({
+		data: {
+			name: "form", // relevant for herbs
+			categoryId: secondCategory.id,
+			values: {
+				create: [{ value: "fresh" }, { value: "dried" }, { value: "powdered" }],
+			},
+		},
+		include: { values: true },
+	});
+
+	return [attribute1, attribute2, attribute3];
 };

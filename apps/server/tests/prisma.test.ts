@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, test } from "bun:test";
-import { prisma } from "../src/lib/prisma";
+import { prisma } from "@spice-world/server/lib/prisma";
 
 describe.concurrent("Prisma client singleton", () => {
 	let originalPrisma: unknown;
@@ -35,7 +35,7 @@ describe.concurrent("Prisma client singleton", () => {
 		globalThis.__prisma = undefined;
 		const firstAccess = prisma.$connect;
 		const firstClient = globalThis.__prisma;
-		const secondAccess = prisma.tag;
+		const secondAccess = prisma.attribute;
 		const secondClient = globalThis.__prisma;
 
 		expect(firstClient).toBe(secondClient);

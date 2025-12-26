@@ -5,7 +5,6 @@ import {
 } from "../prisma/internal/prismaNamespace";
 
 export type Entity =
-	| "Tag"
 	| "Category"
 	| "Product"
 	| "User"
@@ -20,7 +19,10 @@ export const prismaErrorPlugin = (entity: Entity) =>
 	}).onError({ as: "scoped" }, ({ error, status }) => {
 		if (error instanceof PrismaClientUnknownRequestError) {
 			console.error("PrismaClientUnknownRequestError ->", error);
-			return status("Internal Server Error", error);
+			return status("Internal Server Error", {
+				message: "An unknown PrismaClientUnknownRequestError error occurred",
+				code: "UNKNOWN",
+			});
 		}
 
 		if (!(error instanceof PrismaClientKnownRequestError)) {
@@ -38,16 +40,28 @@ export const prismaErrorPlugin = (entity: Entity) =>
 
 			case "P2002": {
 				// Unique constraint violation
-				const field = (error.meta?.target as string[]) || ["field"];
+				const target = error.meta?.target as string[] | undefined;
+				const modelName = error.meta?.modelName as string | undefined;
+
+				if (!target || target.length === 0) {
+					return status("Conflict", {
+						message: `${modelName || entity} already exists`,
+						code: error.code,
+					});
+				}
+
+				// Use actual model name if available, otherwise use entity parameter
+				const actualEntity = modelName || entity;
+				const fields = target.join(", ");
 				return status("Conflict", {
-					message: `${entity} with this ${field.join(", ")} already exists`,
+					message: `${actualEntity} with this ${fields} already exists`,
 					code: error.code,
 				});
 			}
 
 			case "P2003": // Foreign key constraint violation
 				return status(
-					"Conflict",
+					"Bad Request",
 					`Related ${error.meta?.field_name || "entity"} does not exist`,
 				);
 

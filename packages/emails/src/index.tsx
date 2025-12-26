@@ -1,5 +1,6 @@
 import { render } from "@react-email/components";
 import { ChangeEmailVerification } from "./change-email-verification";
+import { PasswordReset } from "./password-reset";
 import { ResetPassword } from "./reset-password";
 import { VerifyEmail } from "./spiceworld-welcome";
 
@@ -27,6 +28,12 @@ export const renderChangeEmailVerification = async (props: {
 }): Promise<string> =>
 	await render(<ChangeEmailVerification verifyLink={props.verifyLink} />);
 
+/**
+ * Renders the password reset confirmation template to HTML string
+ */
+export const renderPasswordReset = async (): Promise<string> =>
+	await render(<PasswordReset />);
+
 // Export the component types for type safety
 export interface VerifyEmailProps {
 	verifyLink: string;
@@ -45,4 +52,5 @@ export const emailTemplates = {
 	verifyEmail: renderVerifyEmail,
 	resetPassword: renderResetPassword,
 	changeEmailVerification: renderChangeEmailVerification,
+	passwordReset: renderPasswordReset,
 } as const;

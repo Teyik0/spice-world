@@ -1,0 +1,22 @@
+{
+	"$schema": "https://ui.shadcn.com/schema.json",
+	"style": "new-york",
+	"rsc": true,
+	"tsx": true,
+	"tailwind": {
+		"config": "",
+		"css": "src/app/globals.css",
+		"baseColor": "zinc",
+		"cssVariables": true,
+		"prefix": ""
+	},
+	"iconLibrary": "lucide",
+	"aliases": {
+		"components": "@spice-world/web/components",
+		"utils": "@spice-world/web/lib/utils",
+		"ui": "@spice-world/web/components/ui",
+		"lib": "@spice-world/web/lib",
+		"hooks": "@spice-world/web/hooks"
+	},
+	"registries": {}
+}

@@ -1,22 +1,34 @@
-/** @jsxImportSource react */
 import { ChangeEmailVerification } from "@spice-world/emails/src/change-email-verification";
+import { PasswordReset } from "@spice-world/emails/src/password-reset";
 import { ResetPassword } from "@spice-world/emails/src/reset-password";
 import { VerifyEmail } from "@spice-world/emails/src/spiceworld-welcome";
-import { betterAuth } from "better-auth";
+import { prisma } from "@spice-world/server/lib/prisma";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { betterAuth } from "better-auth/minimal";
 import { admin, openAPI } from "better-auth/plugins";
 import { Elysia } from "elysia";
 import { Resend } from "resend";
-import { prisma } from "../lib/prisma";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const from = "Spice World <theosamarasinghe@gmail.com>";
+const from = "Spice World <noreply@teyik0.dev>";
 
 export const auth = betterAuth({
 	database: prismaAdapter(prisma, {
 		provider: "postgresql",
 	}),
-	trustedOrigins: ["http://localhost:5173"],
+	trustedOrigins: ["http://localhost:3000", "http://localhost:3001"], // Both frontend and backend
+	experimental: { joins: true },
+	rateLimit: {
+		enabled: true,
+		window: 10, // time window in seconds
+		max: 100, // max requests in the window
+		customRules: {
+			"/sign-in/email": {
+				window: 10,
+				max: 3,
+			},
+		},
+	},
 	emailAndPassword: {
 		enabled: true,
 		requireEmailVerification: true,
@@ -26,6 +38,14 @@ export const auth = betterAuth({
 				to: [user.email],
 				subject: "Spice World - Réinitialisez votre mot de passe",
 				react: <ResetPassword resetLink={url} />,
+			});
+		},
+		onPasswordReset: async ({ user }) => {
+			await resend.emails.send({
+				from,
+				to: [user.email],
+				subject: "Spice World - Votre mot de passe a été réinitialisé",
+				react: <PasswordReset />,
 			});
 		},
 	},
@@ -59,6 +79,15 @@ export const auth = betterAuth({
 					to: [newEmail],
 					subject: "Spice World - Confirmez votre nouvelle adresse email",
 					react: <ChangeEmailVerification verifyLink={url} />,
+				});
+			},
+			sendChangeEmailConfirmation: async ({ newEmail, url }) => {
+				await resend.emails.send({
+					from,
+					to: [newEmail],
+					subject:
+						"Spice World - Approuvez le changement vers votre nouvelle adresse email",
+					text: `Click the link to approve the change to ${newEmail}: ${url}`,
 				});
 			},
 		},

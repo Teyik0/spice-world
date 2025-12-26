@@ -6,14 +6,31 @@ export function expectDefined<T>(value: T): asserts value is NonNullable<T> {
 	expect(value).not.toBeNull();
 }
 
-export const createUploadedFileData = (file: File): UploadedFileData => ({
-	key: `mock-key-${Date.now()}-${Math.random()}`,
-	url: "https://mock-uploadthing.com/image.webp",
-	appUrl: "https://mock-uploadthing.com/image.webp",
-	ufsUrl: "https://mock-uploadthing.com/image.webp",
-	name: file.name,
-	size: file.size,
-	customId: null,
-	type: "image/webp",
-	fileHash: "mock-hash",
-});
+export const createUploadedFileData = (
+	files: File | File[],
+): UploadedFileData[] | UploadedFileData => {
+	if (Array.isArray(files)) {
+		return files.map((file) => ({
+			key: `mock-key-${Date.now()}-${Math.random()}`,
+			url: "https://mock-uploadthing.com/image.webp",
+			appUrl: "https://mock-uploadthing.com/image.webp",
+			ufsUrl: "https://mock-uploadthing.com/image.webp",
+			name: file.name,
+			size: file.size,
+			customId: null,
+			type: "image/webp",
+			fileHash: "mock-hash",
+		}));
+	}
+	return {
+		key: `mock-key-${Date.now()}-${Math.random()}`,
+		url: "https://mock-uploadthing.com/image.webp",
+		appUrl: "https://mock-uploadthing.com/image.webp",
+		ufsUrl: "https://mock-uploadthing.com/image.webp",
+		name: files.name,
+		size: files.size,
+		customId: null,
+		type: "image/webp",
+		fileHash: "mock-hash",
+	};
+};

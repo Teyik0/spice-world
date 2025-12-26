@@ -3,12 +3,11 @@ import { openapi } from "@elysiajs/openapi";
 import { opentelemetry } from "@elysiajs/opentelemetry";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
+import { attributeRouter } from "@spice-world/server/modules/attributes";
+import { categoryRouter } from "@spice-world/server/modules/categories";
+import { productsRouter } from "@spice-world/server/modules/products";
 import { Elysia } from "elysia";
-import { betterAuthPlugin, OpenAPI } from "./plugins/better-auth.plugin";
-import { attributeRouter } from "./routes/attribute.router";
-import { categoryRouter } from "./routes/category.router";
-import { productsRouter } from "./routes/product.router";
-import { tagRouter } from "./routes/tag.router";
+import { betterAuthPlugin, OpenAPI } from "./plugins/better-auth.plugin.tsx";
 
 declare module "bun" {
 	interface Env {
@@ -62,8 +61,8 @@ const app = new Elysia()
 	)
 	.use(
 		cors({
-			origin: ["http://localhost:3000", "http://localhost:5173"],
-			methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+			origin: ["http://localhost:3000", "http://localhost:3001"],
+			methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 			credentials: true,
 			allowedHeaders: ["Content-Type", "Authorization"],
 		}),
@@ -94,11 +93,10 @@ const app = new Elysia()
 			);
 		}
 	})
-	.use(tagRouter)
 	.use(categoryRouter)
 	.use(attributeRouter)
 	.use(productsRouter)
-	.listen(3000);
+	.listen(Bun.env.PORT ?? 3001);
 
 export type App = typeof app;
 

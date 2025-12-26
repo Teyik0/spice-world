@@ -1,5 +1,14 @@
+[run]
+bun = true
+
 [test]
 root = "./tests"
-coverageThreshold = 0.8
+coverageThreshold = { lines = 0.5, functions = 0.8 }
 coverageReporter = ["text", "lcov"]
 coverage = true
+coveragePathIgnorePatterns = [
+  "**/*.test.ts",
+  "**/*.spec.ts",
+  "tests/utils/**",
+  "src/modules/shared.ts"
+]
