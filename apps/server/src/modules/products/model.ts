@@ -71,7 +71,7 @@ export namespace ProductModel {
 
 	const variantCreate = t.Object({
 		price: t.Number({ minimum: 0 }),
-		sku: t.Optional(t.String()),
+		sku: t.Optional(t.String({ minLength: 3 })),
 		stock: t.Optional(t.Number({ minimum: 0, default: 0 })),
 		currency: t.Optional(t.String({ default: "EUR" })),
 		attributeValueIds: t.Array(uuid),
@@ -80,7 +80,7 @@ export namespace ProductModel {
 	const variantUpdate = t.Object({
 		id: uuid,
 		price: t.Optional(t.Number({ minimum: 0 })),
-		sku: t.Optional(t.String()),
+		sku: t.Optional(t.String({ minLength: 3 })),
 		stock: t.Optional(t.Number({ minimum: 0 })),
 		currency: t.Optional(t.String()),
 		attributeValueIds: t.Optional(t.Array(uuid)),
@@ -102,7 +102,9 @@ export namespace ProductModel {
 		imagesOps: t.Object({ create: imageCreate }),
 	});
 	export type postBody = typeof postBody.static;
-	export type postResult = Awaited<ReturnType<typeof productService.post>>;
+	export type postResult = Awaited<
+		ReturnType<typeof productService.post>
+	>["response"];
 
 	export const patchBody = t.Object({
 		name: t.Optional(nameLowerPattern),
@@ -117,4 +119,5 @@ export namespace ProductModel {
 		_version: t.Optional(t.Number()),
 	});
 	export type patchBody = typeof patchBody.static;
+	export type patchResult = Awaited<ReturnType<typeof productService.patch>>;
 }

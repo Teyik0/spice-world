@@ -58,7 +58,7 @@ export const ProductFormClassification = ({
 		<Card className="rounded-md">
 			<CardHeader>
 				<div className="flex items-center justify-between">
-					<CardTitle>Organization</CardTitle>
+					<CardTitle>Classification</CardTitle>
 					<CategoryDialog
 						categories={categories}
 						onCategoryChange={fetchCategories}

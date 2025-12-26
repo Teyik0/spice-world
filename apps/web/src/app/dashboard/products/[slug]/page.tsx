@@ -19,7 +19,7 @@ export default async function Page(props: {
 					product={{
 						id: "new",
 						slug: "new",
-						name: "New product",
+						name: "new product",
 						description: "",
 						status: "DRAFT",
 						createdAt: new Date(),

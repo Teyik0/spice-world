@@ -158,6 +158,24 @@ export const productService = {
 			return uploadFileErrStatus({ message: uploadError });
 		}
 
+		// Validate and ensure exactly one thumbnail for POST
+		const thumbnailCount = imagesOps.create.filter(
+			(op) => op.isThumbnail === true,
+		).length;
+		if (thumbnailCount > 1) {
+			throw status("Bad Request", {
+				message: `Only one image can be set as thumbnail (${thumbnailCount} found)`,
+				code: "POST_MULTIPLE_THUMBNAILS",
+			});
+		}
+
+		// If no thumbnail is set, automatically set the first image as thumbnail
+		const hasNoThumbnail = thumbnailCount === 0;
+		if (hasNoThumbnail && imagesOps.create.length > 0) {
+			// biome-ignore lint/style/noNonNullAssertion: imagesOps.create[0] is mandatory in the model
+			imagesOps.create[0]!.isThumbnail = true;
+		}
+
 		try {
 			const product = await prisma.$transaction(async (tx) => {
 				const productPromise = tx.product.create({
@@ -218,6 +236,9 @@ export const productService = {
 									connect: variant.attributeValueIds.map((id) => ({ id })),
 								},
 							},
+							include: {
+								attributeValues: true,
+							},
 						});
 					}),
 				);
@@ -264,7 +285,7 @@ export const productService = {
 
 		// 2. Version check (optimistic locking)
 		if (_version !== undefined && currentProduct.version !== _version) {
-			return status(
+			throw status(
 				"Conflict",
 				`Product has been modified. Expected version ${_version}, current is ${currentProduct.version}`,
 			);
@@ -274,7 +295,7 @@ export const productService = {
 		if (categoryId && categoryId !== currentProduct.categoryId) {
 			// Category is changing - enforce atomic variant replacement
 			if (!variants) {
-				return status("Bad Request", {
+				throw status("Bad Request", {
 					message:
 						"Changing category requires providing variants operations (delete all existing + create at least one new).",
 					code: "CATEGORY_CHANGE_REQUIRES_VARIANTS",
@@ -287,7 +308,7 @@ export const productService = {
 
 			// Must delete ALL existing variants
 			if (deleteCount !== currentVariantCount) {
-				return status("Bad Request", {
+				throw status("Bad Request", {
 					message: `Changing category requires deleting ALL existing variants. Expected to delete ${currentVariantCount} variants, but only ${deleteCount} provided.`,
 					code: "CATEGORY_CHANGE_REQUIRES_DELETE_ALL",
 				});
@@ -295,7 +316,7 @@ export const productService = {
 
 			// Must create at least 1 new variant
 			if (createCount < 1) {
-				return status("Bad Request", {
+				throw status("Bad Request", {
 					message:
 						"Changing category requires creating at least one new variant with attributes from the new category.",
 					code: "CATEGORY_CHANGE_REQUIRES_CREATE",
@@ -313,7 +334,7 @@ export const productService = {
 			const finalVariantCount = currentVariantCount - deleteCount + createCount;
 
 			if (finalVariantCount < 1) {
-				return status("Bad Request", {
+				throw status("Bad Request", {
 					message: `Product must have at least 1 variant. Current: ${currentVariantCount}, deleting: ${deleteCount}, creating: ${createCount}`,
 					code: "INSUFFICIENT_VARIANTS",
 				});
@@ -329,14 +350,14 @@ export const productService = {
 			const newTotal = currentCount + createCount - deleteCount;
 
 			if (newTotal > MAX_IMAGES_PER_PRODUCT) {
-				return status(
+				throw status(
 					"Bad Request",
 					`Maximum ${MAX_IMAGES_PER_PRODUCT} images per product. Current: ${currentCount}, adding: ${createCount}, deleting: ${deleteCount}`,
 				);
 			}
 
 			if (newTotal < 1) {
-				return status(
+				throw status(
 					"Bad Request",
 					"Product must have at least 1 image. Cannot delete all images.",
 				);
@@ -374,6 +395,9 @@ export const productService = {
 						...(productStatus !== undefined && { status: productStatus }),
 						...(categoryId && { category: { connect: { id: categoryId } } }),
 						version: { increment: 1 },
+					},
+					include: {
+						category: true,
 					},
 				});
 

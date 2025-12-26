@@ -52,8 +52,19 @@ export const ProductForm = ({
 			status: product.status,
 			categoryId: product.categoryId,
 			_version: product.version,
-			variants:
-				product.variants.length > 0
+			variants: {
+				create: isNew
+					? [
+							{
+								price: 0,
+								sku: "",
+								stock: 0,
+								currency: "EUR",
+								attributeValueIds: [],
+							},
+						]
+					: undefined,
+				update: !isNew
 					? product.variants.map((v) => ({
 							id: v.id,
 							price: v.price,
@@ -62,24 +73,55 @@ export const ProductForm = ({
 							currency: v.currency,
 							attributeValueIds: v.attributeValues.map((av) => av.id),
 						}))
-					: [
-							{
-								price: 0,
-								sku: "",
-								stock: 0,
-								currency: "EUR",
-								attributeValueIds: [],
-							},
-						],
-			images: [] as File[],
+					: undefined,
+				delete: undefined,
+			},
+			images: undefined,
+			imagesOps: {
+				create: undefined,
+				update: undefined,
+				delete: undefined,
+			},
 		},
 		onSubmit: async (values) => {
 			console.log("try submit with", values);
 			try {
+				let data: ProductModel.postResult | ProductModel.patchResult;
 				if (isNew) {
-					await handleCreate(values as ProductModel.postBody);
+					data = await handleCreate(values as ProductModel.postBody);
 				} else {
-					await handleUpdate(values as ProductModel.patchBody);
+					data = await handleUpdate(values as ProductModel.patchBody);
+					form.setFieldValue("_version", data.version);
+					form.setFieldValue("variants", {
+						create: undefined,
+						update: data.variants.map((v) => ({
+							id: v.id,
+							price: v.price,
+							sku: v.sku ?? undefined,
+							stock: v.stock,
+							currency: v.currency,
+							attributeValueIds: v.attributeValues.map((av) => av.id),
+						})),
+						delete: undefined,
+					});
+					form.setFieldValue("images", undefined);
+					form.setFieldValue("imagesOps", {
+						create: undefined,
+						update: undefined,
+						delete: undefined,
+					});
+				}
+				setSidebarProduct({
+					name: data.name,
+					description: data.description,
+					status: data.status,
+					img: data.images.find((img) => img.isThumbnail)?.url ?? null,
+					categoryId: data.categoryId,
+					slug: data.slug,
+				});
+
+				if (data.slug !== product.slug) {
+					router.push(`/dashboard/products/${data.slug}`);
 				}
 			} catch (error: unknown) {
 				const err = unknownError(
@@ -92,78 +134,10 @@ export const ProductForm = ({
 		onSubmitInvalid({ value, formApi }) {
 			toast.error("Invalid submit");
 			console.info(value);
-			console.info(formApi);
+			// @ts-expect-error
+			console.info("formapi", formApi.state);
 		},
 	});
-
-	const transformVariants = (
-		formVariants: Array<{
-			id?: string;
-			price: number;
-			sku?: string;
-			stock: number;
-			currency: string;
-			attributeValueIds: string[];
-		}>,
-		originalVariants: typeof product.variants,
-	) => {
-		const create: Array<{
-			price: number;
-			sku?: string;
-			stock: number;
-			currency: string;
-			attributeValueIds: string[];
-		}> = [];
-		const update: Array<{
-			id: string;
-			price?: number;
-			sku?: string;
-			stock?: number;
-			currency?: string;
-			attributeValueIds?: string[];
-		}> = [];
-		const deleteIds: string[] = [];
-
-		// Find variants that were in original but not in form (deleted)
-		const formVariantIds = new Set(
-			formVariants.filter((v) => v.id).map((v) => v.id as string),
-		);
-		for (const orig of originalVariants) {
-			if (!formVariantIds.has(orig.id)) {
-				deleteIds.push(orig.id);
-			}
-		}
-
-		// Separate create vs update based on presence of id
-		for (const variant of formVariants) {
-			if (variant.id) {
-				// Existing variant - goes to update
-				update.push({
-					id: variant.id,
-					price: variant.price,
-					sku: variant.sku,
-					stock: variant.stock,
-					currency: variant.currency,
-					attributeValueIds: variant.attributeValueIds,
-				});
-			} else {
-				// New variant - goes to create
-				create.push({
-					price: variant.price,
-					sku: variant.sku,
-					stock: variant.stock,
-					currency: variant.currency,
-					attributeValueIds: variant.attributeValueIds,
-				});
-			}
-		}
-
-		return {
-			...(create.length > 0 && { create }),
-			...(update.length > 0 && { update }),
-			...(deleteIds.length > 0 && { delete: deleteIds }),
-		};
-	};
 
 	const handleCreate = async (values: ProductModel.postBody) => {
 		const { data, error } = await app.products.post(values);
@@ -171,56 +145,24 @@ export const ProductForm = ({
 			toast.error(
 				`Failed to create product with error ${error.status}: ${elysiaErrorToString(error)}`,
 			);
-			return;
+			throw error;
 		}
 		toast.success("Product created successfully");
-		router.push(`/dashboard/products/${data.slug}`);
+		return data;
 	};
 
 	const handleUpdate = async (values: ProductModel.patchBody) => {
-		// Transform variants array to nested operations
-		const variantOperations = transformVariants(
-			Array.isArray(values.variants) ? values.variants : [],
-			product.variants,
-		);
-
-		// Build patch payload
-		const patchData: ProductModel.patchBody = {
-			name: values.name,
-			description: values.description,
-			status: values.status,
-			categoryId: values.categoryId,
-			_version: values._version,
-			variants:
-				Object.keys(variantOperations).length > 0
-					? variantOperations
-					: undefined,
-			images: values.images,
-			imagesCreate: values.imagesCreate,
-		};
-
-		// Make API call with product ID
 		const { data, error } = await app
 			.products({ id: product.id })
-			.patch(patchData);
-
+			.patch(values);
 		if (error) {
-			if (error.status === 409) {
-				toast.error(
-					"Product was modified by another user. Please refresh and try again.",
-				);
-				return;
-			}
 			toast.error(
 				`Failed to update product with error ${error.status}: ${elysiaErrorToString(error)}`,
 			);
-			return;
+			throw error;
 		}
-
 		toast.success("Product updated successfully");
-
-		// Navigate to updated product (slug might have changed if name changed)
-		router.push(`/dashboard/products/${data.slug}`);
+		return data;
 	};
 
 	return (

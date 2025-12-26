@@ -60,15 +60,14 @@ export const ProductFormImages = ({
 
 	const [api, setApi] = useState<CarouselApi>();
 	const [current, setCurrent] = useState(0);
-
-	// Track existing images and their operations
 	const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
-	const [imageUpdates, setImageUpdates] = useState<
-		Map<string, { altText?: string; isThumbnail?: boolean }>
-	>(new Map());
-	const [visibleExistingImages, setVisibleExistingImages] = useState(
-		existingImages.filter((img) => !imagesToDelete.includes(img.id)),
-	);
+	const [imagesToUpdate, setImagesToUpdate] = useState<
+		Array<{
+			id: string;
+			isThumbnail?: boolean;
+			altText?: string;
+		}>
+	>([]);
 
 	const [
 		{ files, isDragging, errors },
@@ -94,10 +93,34 @@ export const ProductFormImages = ({
 				.map((f) => f.file)
 				.filter((f): f is File => f instanceof File);
 
-			// Update form state
+			// Update form state with files array
 			form.setFieldValue("images", fileObjects);
+
+			// Build imagesOps.create array with fileIndex references
+			if (updatedFiles.length > 0) {
+				const imagesOpsCreate = updatedFiles.map((f, index) => ({
+					fileIndex: index,
+					altText: f.file.name,
+					isThumbnail: f.isThumbnail ?? false,
+				}));
+
+				form.setFieldValue("imagesOps.create", imagesOpsCreate);
+			} else {
+				// Clear imagesOps.create if no files
+				form.setFieldValue("imagesOps.create", undefined);
+			}
 		},
 	});
+
+	// Sync image operations (update/delete) with form state
+	useEffect(() => {
+		if (imagesToUpdate.length > 0) {
+			form.setFieldValue("imagesOps.update", imagesToUpdate);
+		}
+		if (imagesToDelete.length > 0) {
+			form.setFieldValue("imagesOps.delete", imagesToDelete);
+		}
+	}, [imagesToUpdate, imagesToDelete, form]);
 
 	// Track carousel state
 	useEffect(() => {
@@ -110,155 +133,76 @@ export const ProductFormImages = ({
 		});
 	}, [api]);
 
-	// Update visible existing images when deletes change
-	useEffect(() => {
-		setVisibleExistingImages(
-			existingImages.filter((img) => !imagesToDelete.includes(img.id)),
-		);
-	}, [imagesToDelete, existingImages]);
-
-	// Watch for form values changing back to initial state (form reset)
-	const formValues = form.store.state.values;
-
-	useEffect(() => {
-		if (!isNew) {
-			// For updates, if both images and imagesCreate are undefined/empty, it means form was reset
-			const formImagesValue = formValues.images;
-			// @ts-expect-error - imagesCreate only exists on patchBody, not postBody
-			const formImagesCreateValue = formValues.imagesCreate;
-
-			const hasNoImageChanges =
-				!formImagesValue ||
-				(typeof formImagesValue === "object" &&
-					!Array.isArray(formImagesValue) &&
-					Object.keys(formImagesValue).length === 0);
-			const hasNoNewImages =
-				!formImagesCreateValue ||
-				(Array.isArray(formImagesCreateValue) &&
-					formImagesCreateValue.length === 0);
-
-			if (
-				hasNoImageChanges &&
-				hasNoNewImages &&
-				(imagesToDelete.length > 0 || imageUpdates.size > 0 || files.length > 0)
-			) {
-				// Form was reset, clear our local state
-				setImagesToDelete([]);
-				setImageUpdates(new Map());
-				clearFiles();
-			}
-		}
-	}, [
-		formValues,
-		isNew,
-		imagesToDelete.length,
-		imageUpdates.size,
-		files.length,
-		clearFiles,
-	]);
-
-	// Update form with image operations for PATCH
-	useEffect(() => {
-		if (!isNew) {
-			// For updates, we need to track operations separately
-			const updates = Array.from(imageUpdates.entries()).map(
-				([id, changes]) => ({
-					id,
-					...changes,
-				}),
-			);
-
-			form.setFieldValue("images", {
-				...(updates.length > 0 && { update: updates }),
-				...(imagesToDelete.length > 0 && { delete: imagesToDelete }),
-			});
-
-			// New files go to imagesCreate
-			const newFiles = files
-				.map((f) => f.file)
-				.filter((f): f is File => f instanceof File);
-			if (newFiles.length > 0) {
-				form.setFieldValue("imagesCreate", newFiles);
-			}
-		} else {
-			// For new products, images are just files
-			const fileObjects = files
-				.map((f) => f.file)
-				.filter((f): f is File => f instanceof File);
-			form.setFieldValue("images", fileObjects);
-		}
-	}, [files, imagesToDelete, imageUpdates, isNew, form]);
-
-	// Update sidebar thumbnail
+	// Using useEffect to avoid state updates during render
 	useEffect(() => {
 		const fileObjects = files
 			.map((f) => f.file)
 			.filter((f): f is File => f instanceof File);
 
-		// Use first new file or first existing image as thumbnail
-		const thumbnailUrl = fileObjects[0]
-			? URL.createObjectURL(fileObjects[0])
-			: visibleExistingImages.find((img) => img.isThumbnail)?.url ||
-				visibleExistingImages[0]?.url ||
-				null;
-
 		setSidebarProduct((prev) => {
 			return {
 				...(prev as ProductItemProps),
-				img: thumbnailUrl,
+				img: fileObjects[0] ? URL.createObjectURL(fileObjects[0]) : null,
 			};
 		});
-	}, [files, visibleExistingImages, setSidebarProduct]);
+	}, [files, setSidebarProduct]);
 
-	// Handlers for existing images
-	const handleDeleteExistingImage = (imageId: string) => {
-		setImagesToDelete((prev) => [...prev, imageId]);
+	// Helper to check if an existing image is currently the thumbnail
+	const isExistingImageThumbnail = (imageId: string): boolean => {
+		const updateEntry = imagesToUpdate.find((img) => img.id === imageId);
+		if (updateEntry) {
+			// If there's an update entry, use that value
+			return updateEntry.isThumbnail ?? false;
+		}
+		// Otherwise, use the original value
+		const originalImage = existingImages.find((img) => img.id === imageId);
+		return originalImage?.isThumbnail ?? false;
 	};
 
-	const handleToggleExistingThumbnail = (imageId: string) => {
-		// Clear all other thumbnails (both existing and new files)
-		const newUpdates = new Map(imageUpdates);
+	const handleThumbnailChange = (imageId: string, isExisting: boolean) => {
+		if (isExisting) {
+			// Update existing images: set selected as thumbnail, remove thumbnail from others
+			setImagesToUpdate((prev) => {
+				const updates = new Map(prev.map((img) => [img.id, img]));
 
-		// Clear thumbnails from all new uploaded files
-		files.forEach((file) => {
-			if (file.isThumbnail) {
-				// We can't directly modify the files, but the MultiSelect will clear when we set existing as thumbnail
-			}
-		});
+				// For all existing images, set isThumbnail accordingly
+				for (const existingImg of existingImages) {
+					if (existingImg.id === imageId) {
+						// This one becomes the thumbnail
+						updates.set(imageId, {
+							id: imageId,
+							isThumbnail: true,
+							altText: updates.get(imageId)?.altText,
+						});
+					} else if (
+						existingImg.isThumbnail ||
+						updates.get(existingImg.id)?.isThumbnail
+					) {
+						// Remove thumbnail from other images that were or are thumbnails
+						updates.set(existingImg.id, {
+							id: existingImg.id,
+							isThumbnail: false,
+							altText: updates.get(existingImg.id)?.altText,
+						});
+					}
+				}
 
-		// Set all existing images to not thumbnail except the selected one
-		for (const img of existingImages) {
-			if (img.id === imageId) {
-				newUpdates.set(imageId, {
-					...newUpdates.get(imageId),
-					isThumbnail: true,
-				});
-			} else if (img.isThumbnail || newUpdates.get(img.id)?.isThumbnail) {
-				newUpdates.set(img.id, {
-					...newUpdates.get(img.id),
-					isThumbnail: false,
-				});
-			}
+				return Array.from(updates.values());
+			});
+		} else {
+			// It's a new file, use the existing setThumbnail from useFileUpload
+			setThumbnail(imageId);
 		}
-
-		setImageUpdates(newUpdates);
 	};
 
-	const handleToggleNewFileThumbnail = (fileId: string) => {
-		// Set thumbnail on new file
-		setThumbnail(fileId);
-
-		// Clear thumbnails from all existing images
-		const newUpdates = new Map(imageUpdates);
-		for (const img of existingImages) {
-			if (img.isThumbnail || newUpdates.get(img.id)?.isThumbnail) {
-				newUpdates.set(img.id, {
-					...newUpdates.get(img.id),
-					isThumbnail: false,
-				});
-			}
+	const handleDeleteImage = (imageId: string, isExisting: boolean) => {
+		if (isExisting) {
+			// Add to delete list
+			setImagesToDelete((prev) => [...prev, imageId]);
+		} else {
+			// It's a new file, remove from files
+			removeFile(imageId);
 		}
-		setImageUpdates(newUpdates);
 	};
 
 	return (
@@ -278,7 +222,9 @@ export const ProductFormImages = ({
 						className="sr-only"
 						aria-label="Upload image files"
 					/>
-					{visibleExistingImages.length > 0 || files.length > 0 ? (
+					{files.length > 0 ||
+					existingImages.filter((img) => !imagesToDelete.includes(img.id))
+						.length > 0 ? (
 						<>
 							<Carousel
 								opts={{
@@ -289,82 +235,13 @@ export const ProductFormImages = ({
 								className="w-full"
 							>
 								<span className="absolute top-3 left-3 z-50 text-xs font-bold bg-background/80 backdrop-blur-sm rounded px-2 py-1">
-									{current} / {visibleExistingImages.length + files.length}
+									{current} /{" "}
+									{files.length +
+										existingImages.filter(
+											(img) => !imagesToDelete.includes(img.id),
+										).length}
 								</span>
 								<CarouselContent>
-									{/* Existing images first */}
-									{visibleExistingImages.map((existingImg, index) => {
-										const updates = imageUpdates.get(existingImg.id);
-										const isThumbnail =
-											updates?.isThumbnail ?? existingImg.isThumbnail;
-
-										return (
-											<CarouselItem
-												key={existingImg.id}
-												className="flex justify-center relative h-full basis-full"
-											>
-												<Image
-													alt={existingImg.altText || "Product image"}
-													className="aspect-square w-full rounded-md object-cover"
-													height="100"
-													width="100"
-													src={existingImg.url}
-												/>
-												<div className="absolute top-2 right-2 flex gap-2">
-													<Button
-														type="button"
-														size="icon"
-														className={`size-8 rounded-full backdrop-blur-sm transition-all group ${
-															isThumbnail
-																? "bg-yellow-500/90 hover:bg-yellow-500"
-																: "bg-background/80 hover:bg-background"
-														}`}
-														onClick={() =>
-															handleToggleExistingThumbnail(existingImg.id)
-														}
-														title={
-															isThumbnail
-																? "Current thumbnail"
-																: "Set as thumbnail"
-														}
-													>
-														<Star
-															className={`size-4 transition-transform group-hover:scale-125 ${
-																isThumbnail
-																	? "fill-white text-white"
-																	: "text-yellow-600"
-															}`}
-														/>
-														<span className="sr-only">
-															{isThumbnail
-																? "Current thumbnail"
-																: "Set as thumbnail"}
-														</span>
-													</Button>
-													<Button
-														type="button"
-														size="icon"
-														className="size-8 rounded-full bg-background/80 hover:bg-background backdrop-blur-sm transition-colors group"
-														onClick={() =>
-															handleDeleteExistingImage(existingImg.id)
-														}
-													>
-														<Trash2Icon className="size-4 text-red-600 transition-transform group-hover:scale-125" />
-														<span className="sr-only">Delete image</span>
-													</Button>
-												</div>
-												<div className="absolute bottom-2 bg-background/80 backdrop-blur-sm rounded px-2 py-1">
-													<p className="truncate text-xs font-medium">
-														Image {index + 1}
-													</p>
-													<p className="text-xs text-muted-foreground">
-														Existing
-													</p>
-												</div>
-											</CarouselItem>
-										);
-									})}
-									{/* New uploads */}
 									{files.map((fileItem) => (
 										<CarouselItem
 											key={fileItem.id}
@@ -392,7 +269,7 @@ export const ProductFormImages = ({
 															: "bg-background/80 hover:bg-background"
 													}`}
 													onClick={() =>
-														handleToggleNewFileThumbnail(fileItem.id)
+														handleThumbnailChange(fileItem.id, false)
 													}
 													title={
 														fileItem.isThumbnail
@@ -417,7 +294,7 @@ export const ProductFormImages = ({
 													type="button"
 													size="icon"
 													className="size-8 rounded-full bg-background/80 hover:bg-background backdrop-blur-sm transition-colors group"
-													onClick={() => removeFile(fileItem.id)}
+													onClick={() => handleDeleteImage(fileItem.id, false)}
 												>
 													<Trash2Icon className="size-4 text-red-600 transition-transform group-hover:scale-125" />
 													<span className="sr-only">Delete image</span>
@@ -433,6 +310,68 @@ export const ProductFormImages = ({
 											</div>
 										</CarouselItem>
 									))}
+									{existingImages
+										.filter((img) => !imagesToDelete.includes(img.id))
+										.map((fileItem) => (
+											<CarouselItem
+												key={fileItem.id}
+												className="flex justify-center relative h-full basis-full"
+											>
+												<Image
+													alt={fileItem.altText ?? "Product image"}
+													className="aspect-square w-full rounded-md object-cover"
+													height="100"
+													width="100"
+													src={fileItem.url}
+												/>
+												<div className="absolute top-2 right-2 flex gap-2">
+													<Button
+														type="button"
+														size="icon"
+														className={`size-8 rounded-full backdrop-blur-sm transition-all group ${
+															isExistingImageThumbnail(fileItem.id)
+																? "bg-yellow-500/90 hover:bg-yellow-500"
+																: "bg-background/80 hover:bg-background"
+														}`}
+														onClick={() =>
+															handleThumbnailChange(fileItem.id, true)
+														}
+														title={
+															isExistingImageThumbnail(fileItem.id)
+																? "Current thumbnail"
+																: "Set as thumbnail"
+														}
+													>
+														<Star
+															className={`size-4 transition-transform group-hover:scale-125 ${
+																isExistingImageThumbnail(fileItem.id)
+																	? "fill-white text-white"
+																	: "text-yellow-600"
+															}`}
+														/>
+														<span className="sr-only">
+															{isExistingImageThumbnail(fileItem.id)
+																? "Current thumbnail"
+																: "Set as thumbnail"}
+														</span>
+													</Button>
+													<Button
+														type="button"
+														size="icon"
+														className="size-8 rounded-full bg-background/80 hover:bg-background backdrop-blur-sm transition-colors group"
+														onClick={() => handleDeleteImage(fileItem.id, true)}
+													>
+														<Trash2Icon className="size-4 text-red-600 transition-transform group-hover:scale-125" />
+														<span className="sr-only">Delete image</span>
+													</Button>
+												</div>
+												<div className="absolute bottom-2 bg-background/80 backdrop-blur-sm rounded px-2 py-1">
+													<p className="truncate text-xs font-medium">
+														{fileItem.altText || "Image"}
+													</p>
+												</div>
+											</CarouselItem>
+										))}
 								</CarouselContent>
 								<CarouselPrevious
 									type="button"
@@ -444,7 +383,7 @@ export const ProductFormImages = ({
 								/>
 							</Carousel>
 							<div className="grid grid-cols-2 items-center justify-between gap-2">
-								{visibleExistingImages.length + files.length < MAX_IMAGES && (
+								{files.length < MAX_IMAGES && (
 									<Button
 										type="button"
 										variant="outline"
@@ -459,12 +398,7 @@ export const ProductFormImages = ({
 									type="button"
 									variant="outline"
 									size="sm"
-									onClick={() => {
-										// Clear new uploads
-										clearFiles();
-										// Mark all existing images for deletion
-										setImagesToDelete(existingImages.map((img) => img.id));
-									}}
+									onClick={clearFiles}
 								>
 									<XIcon className="-ms-0.5 h-3.5 w-3.5 opacity-60" />
 									Remove all

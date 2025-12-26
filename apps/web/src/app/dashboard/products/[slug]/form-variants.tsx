@@ -37,6 +37,7 @@ import {
 } from "@spice-world/web/components/ui/table";
 import type { useForm } from "@spice-world/web/components/ui/tanstack-form";
 import { app, elysiaErrorToString } from "@spice-world/web/lib/elysia";
+import { useStore } from "@tanstack/react-form";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -119,11 +120,47 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 	const [pendingValueName, setPendingValueName] = useState<string>("");
 	const [currentVariantIndex, setCurrentVariantIndex] = useState<number>(0);
 
-	const categoryId = form.store.state.values.categoryId;
-	const variants = form.store.state.values.variants;
+	const categoryId = useStore(form.store, (state) => state.values.categoryId);
+	const variants = useStore(form.store, (state) => state.values.variants);
 
-	// Ensure variants is always an array
-	const variantsArray = Array.isArray(variants) ? variants : [];
+	// Type guard to check if variants has update/delete (patchBody)
+	const isPatchVariants = (
+		v: typeof variants,
+	): v is {
+		create?: Array<{
+			price: number;
+			sku?: string;
+			stock?: number;
+			currency?: string;
+			attributeValueIds: string[];
+		}>;
+		update?: Array<{
+			id: string;
+			price?: number;
+			sku?: string;
+			stock?: number;
+			currency?: string;
+			attributeValueIds?: string[];
+		}>;
+		delete?: string[];
+	} => {
+		return v !== undefined && typeof v === "object" && !("0" in v);
+	};
+
+	// Extract variants from the operations structure
+	// For display purposes, we merge create + update arrays
+	const variantsArray = useMemo(() => {
+		if (!variants) return [];
+
+		if (isPatchVariants(variants)) {
+			const createVariants = variants.create || [];
+			const updateVariants = variants.update || [];
+			return [...updateVariants, ...createVariants];
+		}
+
+		// It's postBody - variants.create is the array
+		return variants.create || [];
+	}, [variants]);
 
 	useEffect(() => {
 		const fetchAttributes = async () => {
@@ -150,16 +187,15 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 		fetchAttributes();
 	}, [categoryId]);
 
-	const attributeOptions = useMemo(
-		(): MultiSelectOption[] =>
-			attributes.flatMap((attr) =>
-				attr.values.map((val) => ({
-					label: `${attr.name}: ${val.value}`,
-					value: val.id,
-				})),
-			),
-		[attributes],
-	);
+	const attributeOptions = useMemo((): MultiSelectOption[] => {
+		const options = attributes.flatMap((attr) =>
+			attr.values.map((val) => ({
+				label: `${attr.name}: ${val.value}`,
+				value: val.id,
+			})),
+		);
+		return options;
+	}, [attributes]);
 
 	// Build lookup map: valueId -> attributeId
 	const valueToAttributeMap = useMemo(() => {
@@ -225,12 +261,40 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 				}
 
 				// Auto-select the newly created value
-				const currentValues =
-					variantsArray[currentVariantIndex]?.attributeValueIds || [];
-				form.setFieldValue(
-					`variants[${currentVariantIndex}].attributeValueIds`,
-					[...currentValues, data.id],
-				);
+				const variant = variantsArray[currentVariantIndex];
+				if (variant && variants) {
+					const currentValues = variant.attributeValueIds || [];
+					const newValues = [...currentValues, data.id];
+
+					if (isPatchVariants(variants)) {
+						// Determine if this is a create or update variant
+						const variantId = "id" in variant ? variant.id : undefined;
+						const updateIndex = variants.update?.findIndex(
+							(v) => v.id === variantId,
+						);
+						const createIndex = variants.create?.findIndex(
+							(_, i) =>
+								i === currentVariantIndex - (variants.update?.length || 0),
+						);
+
+						if (updateIndex !== undefined && updateIndex >= 0) {
+							form.setFieldValue(
+								`variants.update[${updateIndex as number}].attributeValueIds`,
+								newValues,
+							);
+						} else if (createIndex !== undefined && createIndex >= 0) {
+							form.setFieldValue(
+								`variants.create[${createIndex as number}].attributeValueIds`,
+								newValues,
+							);
+						}
+					} else {
+						form.setFieldValue(
+							`variants.create[${currentVariantIndex}].attributeValueIds`,
+							newValues,
+						);
+					}
+				}
 
 				toast.success("Attribute value created successfully");
 			}
@@ -241,15 +305,59 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 
 	const handleAddVariant = (e: React.MouseEvent<HTMLButtonElement>) => {
 		e.preventDefault();
-		form.setFieldValue("variants", [...variantsArray, DEFAULT_VARIANT]);
+		if (!variants) return;
+
+		if (isPatchVariants(variants)) {
+			const currentCreate = variants.create || [];
+			form.setFieldValue("variants.create", [
+				...currentCreate,
+				DEFAULT_VARIANT,
+			]);
+		} else {
+			// For postBody, we need to update the entire variants object
+			const currentCreate = variants.create || [];
+			form.setFieldValue("variants", {
+				create: [...currentCreate, DEFAULT_VARIANT],
+			});
+		}
 	};
 
 	const handleRemoveVariant = (index: number) => {
-		if (variantsArray.length <= 1) return;
-		const updatedVariants = variantsArray.filter(
-			(_: unknown, i: number) => i !== index,
-		);
-		form.setFieldValue("variants", updatedVariants);
+		if (variantsArray.length <= 1 || !variants) return;
+
+		const variant = variantsArray[index];
+		if (!variant) return;
+
+		if (isPatchVariants(variants)) {
+			// Check if it's an update variant (has id) or create variant (no id)
+			const variantId = "id" in variant ? variant.id : undefined;
+			if (variantId) {
+				// It's an existing variant - add to delete list
+				const currentDeletes = variants.delete || [];
+				form.setFieldValue("variants.delete", [...currentDeletes, variantId]);
+
+				// Also remove from update list
+				const updatedUpdate = (variants.update || []).filter(
+					(v) => v.id !== variantId,
+				);
+				form.setFieldValue("variants.update", updatedUpdate);
+			} else {
+				// It's a new variant - just remove from create list
+				const createIndex = index - (variants.update?.length || 0);
+				const updatedCreate = (variants.create || []).filter(
+					(_, i) => i !== createIndex,
+				);
+				form.setFieldValue("variants.create", updatedCreate);
+			}
+		} else {
+			// postBody - update the entire variants object
+			const updatedCreate = (variants.create || []).filter(
+				(_, i) => i !== index,
+			);
+			form.setFieldValue("variants", {
+				create: updatedCreate,
+			});
+		}
 	};
 
 	return (
@@ -272,22 +380,35 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{variantsArray.map(
-							(
-								variant: {
-									id?: string;
-									sku?: string;
-									price?: number;
-									stock?: number;
-									attributeValueIds?: string[];
-								},
-								index: number,
-							) => (
-								<TableRow key={variant.id || index}>
+						{variantsArray.map((variant, index) => {
+							const variantId = "id" in variant ? variant.id : undefined;
+							let fieldPrefix:
+								| `variants.create[${number}]`
+								| `variants.update[${number}]`;
+
+							if (isPatchVariants(variants)) {
+								const isUpdate = variantId !== undefined;
+								const updateIndex = isUpdate
+									? variants.update?.findIndex((v) => v.id === variantId)
+									: -1;
+								const createIndex = !isUpdate
+									? index - (variants.update?.length || 0)
+									: -1;
+
+								if (isUpdate) {
+									fieldPrefix = `variants.update[${updateIndex as number}]`;
+								} else {
+									fieldPrefix = `variants.create[${createIndex}]`;
+								}
+							} else {
+								// postBody - all variants are in create array
+								fieldPrefix = `variants.create[${index}]`;
+							}
+
+							return (
+								<TableRow key={variantId ?? `new-${index}`}>
 									<TableCell className="min-w-50">
-										<form.AppField
-											name={`variants[${index}].attributeValueIds`}
-										>
+										<form.AppField name={`${fieldPrefix}.attributeValueIds`}>
 											{(field) => (
 												<div className="flex flex-col gap-1">
 													<field.MultiSelect
@@ -320,21 +441,14 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 															field.handleChange(newValues);
 														}}
 													/>
-													{field.state.value?.map((v, j) => (
-														<form.AppField
-															key={v}
-															name={`variants[${index}].attributeValueIds[${j}]`}
-														>
-															{(valueField) => <valueField.Message />}
-														</form.AppField>
-													))}
 													<field.Message />
 												</div>
 											)}
 										</form.AppField>
 									</TableCell>
+
 									<TableCell>
-										<form.AppField name={`variants[${index}].sku`}>
+										<form.AppField name={`${fieldPrefix}.sku`}>
 											{(field) => (
 												<div className="flex flex-col gap-1">
 													<field.Input
@@ -347,8 +461,9 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 											)}
 										</form.AppField>
 									</TableCell>
+
 									<TableCell>
-										<form.AppField name={`variants[${index}].price`}>
+										<form.AppField name={`${fieldPrefix}.price`}>
 											{(field) => (
 												<>
 													<field.Input
@@ -366,8 +481,9 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 											)}
 										</form.AppField>
 									</TableCell>
+
 									<TableCell>
-										<form.AppField name={`variants[${index}].stock`}>
+										<form.AppField name={`${fieldPrefix}.stock`}>
 											{(field) => (
 												<>
 													<field.Input
@@ -384,6 +500,7 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 											)}
 										</form.AppField>
 									</TableCell>
+
 									<TableCell>
 										<Button
 											type="button"
@@ -398,8 +515,8 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 										</Button>
 									</TableCell>
 								</TableRow>
-							),
-						)}
+							);
+						})}
 					</TableBody>
 				</Table>
 			</CardContent>

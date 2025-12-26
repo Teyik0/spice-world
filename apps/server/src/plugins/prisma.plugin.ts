@@ -40,9 +40,21 @@ export const prismaErrorPlugin = (entity: Entity) =>
 
 			case "P2002": {
 				// Unique constraint violation
-				const field = (error.meta?.target as string[]) || ["field"];
+				const target = error.meta?.target as string[] | undefined;
+				const modelName = error.meta?.modelName as string | undefined;
+
+				if (!target || target.length === 0) {
+					return status("Conflict", {
+						message: `${modelName || entity} already exists`,
+						code: error.code,
+					});
+				}
+
+				// Use actual model name if available, otherwise use entity parameter
+				const actualEntity = modelName || entity;
+				const fields = target.join(", ");
 				return status("Conflict", {
-					message: `${entity} with this ${field.join(", ")} already exists`,
+					message: `${actualEntity} with this ${fields} already exists`,
 					code: error.code,
 				});
 			}

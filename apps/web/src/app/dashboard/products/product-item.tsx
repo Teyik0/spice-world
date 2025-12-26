@@ -12,7 +12,11 @@ import { useAtom, useAtomValue } from "jotai";
 import { MinusIcon, PlusIcon } from "lucide-react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { newProductAtom, type ProductItemProps } from "./store";
+import {
+	currentProductAtom,
+	newProductAtom,
+	type ProductItemProps,
+} from "./store";
 
 export const NewProductItem = () => {
 	const router = useRouter();
@@ -82,10 +86,17 @@ export const NewProductItem = () => {
 };
 
 export const ProductItem = ({ product }: { product: ProductItemProps }) => {
+	const currentProduct = useAtomValue(currentProductAtom);
 	const router = useRouter();
 	const pathname = usePathname();
 
 	const isSelected = pathname.includes(product.slug);
+
+	// Use currentProductAtom ONLY if this item is selected
+	const displayProduct =
+		isSelected && currentProduct?.slug === product.slug
+			? currentProduct
+			: product;
 
 	const handleClick = () => {
 		// Prevent navigation if already on this product
@@ -100,9 +111,9 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
 			text-sm leading-tight last:border-b-0 ${isSelected ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""}`}
 			onClick={handleClick}
 		>
-			{product.img && (
+			{displayProduct.img && (
 				<Image
-					src={product.img}
+					src={displayProduct.img}
 					alt={`${product.name} Image`}
 					width={48}
 					height={48}
@@ -112,18 +123,18 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
 			<div className="flex flex-col items-start gap-1.5 min-w-0 flex-1">
 				<div className="flex w-full items-center gap-2">
 					<span className="first-letter:capitalize truncate">
-						{product.name}
+						{displayProduct.name}
 					</span>
 					<Badge
 						variant="secondary"
 						className="bg-blue-500 text-white font-semibold dark:bg-blue-600 ml-auto text-xs shrink-0"
 					>
-						{product.status.toLowerCase()}
+						{displayProduct.status.toLowerCase()}
 					</Badge>
 				</div>
 				<span className="font-medium text-muted-foreground text-xs text-left truncate w-full">
 					{(() => {
-						const desc = product.description || "";
+						const desc = displayProduct.description;
 						const maxChars = 50;
 						return desc && desc.length > maxChars
 							? `${desc.slice(0, maxChars)}...`

@@ -1,4 +1,5 @@
 import type { ProductModel } from "@spice-world/server/modules/products/model";
+import { ClientOnly } from "@spice-world/web/components/client-only";
 import { Button } from "@spice-world/web/components/ui/button";
 import { ButtonGroup } from "@spice-world/web/components/ui/button-group";
 import {
@@ -83,11 +84,15 @@ export async function SidebarRight({
 							</DropdownMenuContent>
 						</DropdownMenu>
 
-						<AddProductButton />
+						<ClientOnly>
+							<AddProductButton />
+						</ClientOnly>
 					</ButtonGroup>
 				</header>
 				<div className="flex-1 overflow-auto">
-					<NewProductItem />
+					<ClientOnly>
+						<NewProductItem />
+					</ClientOnly>
 					{products?.map((product) => (
 						<ProductItem key={product.id} product={product} />
 					))}
