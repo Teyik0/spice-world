@@ -26,52 +26,23 @@ export const productsRouter = new Elysia({
 	)
 	.guard({ params: uuidGuard })
 	.get("/:id", async ({ params }) => await productService.getById(params))
-	.state("imageKeys", null as null | string[])
-	.onAfterResponse(async ({ store }) => {
-		// cleanup patch and delete
-		if (!store.imageKeys) return;
-
-		const { success } = await utapi.deleteFiles(store.imageKeys);
-		if (!success) {
-			console.warn(`Failed to delete images ${store.imageKeys}`);
-		}
-
-		store.imageKeys = null; // Reset imageKey to null
-	})
 	.patch(
 		"/:id",
-		async ({ params, body, store }) => {
-			const { data, error } = await productService.beforePatchUploadImages({
+		async ({ params, body }) => {
+			return productService.patch({
 				id: params.id,
-				_version: body._version,
-				name: body.name,
-				images: body.images,
-				imagesCreate: body.imagesCreate,
-			});
-
-			if (error) return error;
-
-			// Only delete images that are in the delete list
-			if (body.images?.delete && body.images.delete.length > 0) {
-				const imagesToDelete = data.oldImages.filter((img) =>
-					body.images?.delete?.includes(img.id),
-				);
-				store.imageKeys = imagesToDelete.map((img) => img.key);
-			}
-
-			const product = await productService.patch({
-				...params,
 				...body,
-				uploadedImages: data.uploadedImages,
 			});
-			return product;
 		},
 		{
 			body: ProductModel.patchBody,
 		},
 	)
-	.delete("/:id", async ({ params, store }) => {
+	.delete("/:id", async ({ params }) => {
 		const product = await productService.delete(params);
-		store.imageKeys = product.images.map((img) => img.key);
+		// Cleanup images after deletion
+		if (product.images.length > 0) {
+			await utapi.deleteFiles(product.images.map((img) => img.key));
+		}
 		return status(200);
 	});

@@ -27,7 +27,6 @@ export const prismaErrorPlugin = (entity: Entity) =>
 
 		if (!(error instanceof PrismaClientKnownRequestError)) {
 			// Let elysia handle the error if it's not a Prisma error
-			console.error("Non-Prisma error ->", error);
 			return;
 		}
 
@@ -50,7 +49,7 @@ export const prismaErrorPlugin = (entity: Entity) =>
 
 			case "P2003": // Foreign key constraint violation
 				return status(
-					"Conflict",
+					"Bad Request",
 					`Related ${error.meta?.field_name || "entity"} does not exist`,
 				);
 

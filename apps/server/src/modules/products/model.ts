@@ -42,44 +42,32 @@ export namespace ProductModel {
 	});
 	export type countQuery = typeof countQuery.static;
 
-	export const postBody = t.Object({
-		name: nameLowerPattern,
-		description: t.String(),
-		status: productStatus,
-		categoryId: uuid,
-		variants: t.Array(
-			t.Object({
-				price: t.Number({ minimum: 0 }),
-				sku: t.Optional(t.String()),
-				stock: t.Optional(t.Number({ minimum: 0, default: 0 })),
-				currency: t.Optional(t.String({ default: "EUR" })),
-				attributeValueIds: t.Array(uuid),
-			}),
-			{ minItems: 1 },
-		),
-		images: t.Files({
-			minItems: 1,
-			maxItems: MAX_IMAGES_PER_PRODUCT,
+	export const imageCreate = t.Array(
+		t.Object({
+			fileIndex: t.Number({ minimum: 0, maximum: MAX_IMAGES_PER_PRODUCT - 1 }),
+			altText: t.Optional(t.String()),
+			isThumbnail: t.Optional(t.Boolean({ default: false })),
 		}),
-	});
-	export type postBody = typeof postBody.static;
-	export type postResult = Awaited<ReturnType<typeof productService.post>>;
-
-	const imageUpdate = t.Object({
-		id: uuid,
-		altText: t.Optional(t.String()),
-		isThumbnail: t.Optional(t.Boolean()),
-	});
-
+		{ minItems: 1, maxItems: MAX_IMAGES_PER_PRODUCT },
+	);
 	export const imageOperations = t.Object({
-		// create option can't be added here due to multipart/form-data limitation
-		update: t.Optional(t.Array(imageUpdate)),
+		create: t.Optional(imageCreate),
+		update: t.Optional(
+			t.Array(
+				t.Object({
+					id: uuid,
+					fileIndex: t.Optional(
+						t.Number({ minimum: 0, maximum: MAX_IMAGES_PER_PRODUCT - 1 }),
+					), // If present = replace file
+					altText: t.Optional(t.String()),
+					isThumbnail: t.Optional(t.Boolean({ default: false })),
+				}),
+				{ minItems: 1, maxItems: MAX_IMAGES_PER_PRODUCT },
+			),
+		),
 		delete: t.Optional(t.Array(uuid)),
 	});
 	export type imageOperations = typeof imageOperations.static;
-	export const imagesCreate = t.Optional(
-		t.Files({ maxItems: MAX_IMAGES_PER_PRODUCT }),
-	);
 
 	const variantCreate = t.Object({
 		price: t.Number({ minimum: 0 }),
@@ -104,13 +92,36 @@ export namespace ProductModel {
 		delete: t.Optional(t.Array(uuid)),
 	});
 
+	export const postBody = t.Object({
+		name: nameLowerPattern,
+		description: t.String({ minLength: 1 }),
+		status: productStatus,
+		categoryId: uuid,
+		variants: t.Array(
+			t.Object({
+				price: t.Number({ minimum: 0 }),
+				sku: t.Optional(t.String()),
+				stock: t.Optional(t.Number({ minimum: 0, default: 0 })),
+				currency: t.Optional(t.String({ default: "EUR" })),
+				attributeValueIds: t.Array(uuid),
+			}),
+			{ minItems: 1 },
+		),
+		images: t.Files({ minItems: 1, maxItems: MAX_IMAGES_PER_PRODUCT }),
+		imagesOps: t.Object({ create: imageCreate }),
+	});
+	export type postBody = typeof postBody.static;
+	export type postResult = Awaited<ReturnType<typeof productService.post>>;
+
 	export const patchBody = t.Object({
 		name: t.Optional(nameLowerPattern),
 		description: t.Optional(t.String()),
 		status: t.Optional(productStatus),
-		categoryId: t.Optional(t.String({ format: "uuid" })),
-		images: t.Optional(imageOperations),
-		imagesCreate: imagesCreate, // Mandatory because can't be nested in multipart/form-data
+		categoryId: t.Optional(uuid),
+		images: t.Optional(
+			t.Files({ minItems: 1, maxItems: MAX_IMAGES_PER_PRODUCT }),
+		),
+		imagesOps: t.Optional(imageOperations),
 		variants: t.Optional(variantOperations),
 		_version: t.Optional(t.Number()),
 	});

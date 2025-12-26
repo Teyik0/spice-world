@@ -150,13 +150,12 @@ export const productService = {
 		categoryId,
 		variants,
 		images,
+		imagesOps,
 	}: ProductModel.postBody) {
-		const { data: uploadedImages, error: uploadError } = await uploadFiles(
-			name,
-			images,
-		);
-		if (uploadError || !uploadedImages) {
-			return status("Bad Gateway", uploadError);
+		const { data: uploadMap, error: uploadError } =
+			await validateAndUploadFiles(images, imagesOps, name);
+		if (uploadError || !uploadMap) {
+			return status("Bad Gateway", uploadError ?? "Upload failed");
 		}
 
 		try {
@@ -168,18 +167,22 @@ export const productService = {
 						description,
 						status: productStatus,
 						categoryId,
-						...(uploadedImages.length > 0 && {
-							images: {
-								createMany: {
-									data: uploadedImages.map((img, index) => ({
-										key: img.key,
-										url: img.ufsUrl,
-										altText: `$nameimage $index + 1`,
-										isThumbnail: index === 0, // First image is thumbnail by default
-									})),
-								},
+						images: {
+							createMany: {
+								data: imagesOps.create.map((op) => {
+									const file = uploadMap.get(op.fileIndex);
+									if (!file) {
+										throw new Error(`File not found for index ${op.fileIndex}`);
+									}
+									return {
+										key: file.key,
+										url: file.ufsUrl,
+										altText: op.altText ?? `${name} image`,
+										isThumbnail: op.isThumbnail ?? false,
+									};
+								}),
 							},
-						}),
+						},
 					},
 					include: {
 						category: true,
@@ -191,21 +194,17 @@ export const productService = {
 					productPromise,
 					tx.attributeValue.findMany({
 						where: { attribute: { categoryId } },
-						select: { id: true },
+						select: { id: true, attributeId: true },
 					}),
 				]);
 
-				const allowedAttributeValueIds = new Set(
-					allowedAttributeValues.map((a) => a.id),
-				);
-
 				const createdVariants = await Promise.all(
 					variants.map((variant) => {
-						// This check if an attribute ID from another category is set, which is forbidden
+						// Validate attribute values belong to category and no duplicates per attribute
 						validateVariantAttributeValues(
 							variant.sku ?? "",
 							variant.attributeValueIds,
-							allowedAttributeValueIds,
+							allowedAttributeValues,
 						);
 						// createMany does not handle connect
 						return tx.productVariant.create({
@@ -213,8 +212,8 @@ export const productService = {
 								productId: product.id,
 								price: variant.price,
 								sku: variant.sku,
-								stock: variant.stock || 0,
-								currency: variant.currency || "EUR",
+								stock: variant.stock ?? 0,
+								currency: variant.currency ?? "EUR",
 								attributeValues: {
 									connect: variant.attributeValueIds.map((id) => ({ id })),
 								},
@@ -231,79 +230,13 @@ export const productService = {
 			return status("Created", product);
 		} catch (err: unknown) {
 			// Cleanup uploaded files
-			uploadedImages.length > 0 &&
-				(await utapi.deleteFiles(uploadedImages.map((img) => img.key)));
+			if (uploadMap.size > 0) {
+				await utapi.deleteFiles(
+					Array.from(uploadMap.values()).map((file) => file.key),
+				);
+			}
 			throw err;
 		}
-	},
-
-	async beforePatchUploadImages({
-		id,
-		images,
-		_version,
-		name,
-		imagesCreate,
-	}: uuidGuard & {
-		images: ProductModel.imageOperations | undefined;
-		imagesCreate: File[] | undefined;
-		_version: number | undefined;
-		name: string | undefined;
-	}) {
-		const product = await prisma.product.findUniqueOrThrow({
-			where: { id },
-			select: {
-				images: true,
-				name: true,
-				version: true,
-			},
-		});
-		if (imagesCreate && imagesCreate.length > 0) {
-			if (_version !== undefined && product.version !== _version) {
-				return {
-					data: null,
-					error: status(
-						"Conflict",
-						`Product has been modified. Expected version $_version, current is $product.version`,
-					),
-				};
-			}
-
-			// Validate total image count
-			const deleteCount = images?.delete?.length ?? 0;
-			const currentCount = product.images.length;
-			const newTotal = currentCount - deleteCount + imagesCreate.length;
-
-			if (newTotal > MAX_IMAGES_PER_PRODUCT) {
-				return {
-					data: null,
-					error: status(
-						"Bad Request",
-						`Maximum $MAX_IMAGES_PER_PRODUCTimages per product. Current: $currentCount, attempting to add: $imagesCreate.length, deleting: $deleteCount`,
-					),
-				};
-			}
-
-			const { data: uploadedImages, error: uploadError } = await uploadFiles(
-				name ?? product.name,
-				imagesCreate,
-			);
-
-			if (uploadError || !uploadedImages) {
-				return {
-					data: null,
-					error: status("Bad Gateway", uploadError ?? "Upload failed"),
-				};
-			}
-
-			return {
-				data: { uploadedImages, oldImages: product.images },
-				error: null,
-			};
-		}
-		return {
-			data: { uploadedImages: null, oldImages: product.images },
-			error: null,
-		};
 	},
 
 	async patch({
@@ -313,72 +246,219 @@ export const productService = {
 		description,
 		categoryId,
 		images,
+		imagesOps,
 		variants,
-		uploadedImages,
-	}: ProductModel.patchBody &
-		uuidGuard & { uploadedImages: UploadedFileData[] | null }) {
+		_version,
+	}: ProductModel.patchBody & uuidGuard) {
+		// 1. Get current product for name, version, category, and variants check
+		const currentProduct = await prisma.product.findUniqueOrThrow({
+			where: { id },
+			select: {
+				name: true,
+				version: true,
+				images: true,
+				categoryId: true,
+				_count: { select: { variants: true } },
+			},
+		});
+
+		// 2. Version check (optimistic locking)
+		if (_version !== undefined && currentProduct.version !== _version) {
+			return status(
+				"Conflict",
+				`Product has been modified. Expected version ${_version}, current is ${currentProduct.version}`,
+			);
+		}
+
+		// 2b. Validate category change (requires atomic delete all + create new)
+		if (categoryId && categoryId !== currentProduct.categoryId) {
+			// Category is changing - enforce atomic variant replacement
+			if (!variants) {
+				return status("Bad Request", {
+					message:
+						"Changing category requires providing variants operations (delete all existing + create at least one new).",
+					code: "CATEGORY_CHANGE_REQUIRES_VARIANTS",
+				});
+			}
+
+			const deleteCount = variants.delete?.length ?? 0;
+			const createCount = variants.create?.length ?? 0;
+			const currentVariantCount = currentProduct._count.variants;
+
+			// Must delete ALL existing variants
+			if (deleteCount !== currentVariantCount) {
+				return status("Bad Request", {
+					message: `Changing category requires deleting ALL existing variants. Expected to delete ${currentVariantCount} variants, but only ${deleteCount} provided.`,
+					code: "CATEGORY_CHANGE_REQUIRES_DELETE_ALL",
+				});
+			}
+
+			// Must create at least 1 new variant
+			if (createCount < 1) {
+				return status("Bad Request", {
+					message:
+						"Changing category requires creating at least one new variant with attributes from the new category.",
+					code: "CATEGORY_CHANGE_REQUIRES_CREATE",
+				});
+			}
+
+			// Attribute validation will happen later in transaction with new categoryId
+		}
+
+		// 2c. Validate variant count (only if NOT changing category)
+		if (variants && (!categoryId || categoryId === currentProduct.categoryId)) {
+			const currentVariantCount = currentProduct._count.variants;
+			const deleteCount = variants.delete?.length ?? 0;
+			const createCount = variants.create?.length ?? 0;
+			const finalVariantCount = currentVariantCount - deleteCount + createCount;
+
+			if (finalVariantCount < 1) {
+				return status("Bad Request", {
+					message: `Product must have at least 1 variant. Current: ${currentVariantCount}, deleting: ${deleteCount}, creating: ${createCount}`,
+					code: "INSUFFICIENT_VARIANTS",
+				});
+			}
+		}
+
+		// 3. Validate image operations
+		if (imagesOps) {
+			// 3a. Validate total image count
+			const currentCount = currentProduct.images.length;
+			const createCount = imagesOps.create?.length ?? 0;
+			const deleteCount = imagesOps.delete?.length ?? 0;
+			const newTotal = currentCount + createCount - deleteCount;
+
+			if (newTotal > MAX_IMAGES_PER_PRODUCT) {
+				return status(
+					"Bad Request",
+					`Maximum ${MAX_IMAGES_PER_PRODUCT} images per product. Current: ${currentCount}, adding: ${createCount}, deleting: ${deleteCount}`,
+				);
+			}
+
+			if (newTotal < 1) {
+				return status(
+					"Bad Request",
+					"Product must have at least 1 image. Cannot delete all images.",
+				);
+			}
+
+			// 3b. Validate image operations (duplicates, thumbnails)
+			// validateImagesOps throws exceptions if validation fails
+			if (images && images.length > 0) {
+				validateImagesOps(images, imagesOps);
+			}
+		}
+
+		// 4. Validate and upload files
+		const { data: uploadMap, error: uploadErr } = await validateAndUploadFiles(
+			images,
+			imagesOps,
+			name ?? currentProduct.name,
+		);
+		if (uploadErr || !uploadMap) {
+			return status("Bad Gateway", uploadErr ?? "Upload failed");
+		}
+
+		const oldKeysToDelete: string[] = [];
 		try {
 			const product = await prisma.$transaction(async (tx) => {
-				// 1. - Update base product
+				// 1. Update base product
 				const updatedProduct = await tx.product.update({
 					where: { id },
 					data: {
-						name,
-						slug: name ? name.toLowerCase().replace(/s+/g, "-") : undefined,
-						description,
+						...(name && {
+							name,
+							slug: name.toLowerCase().replace(/\s+/g, "-"),
+						}),
+						...(description !== undefined && { description }),
+						...(productStatus !== undefined && { status: productStatus }),
+						...(categoryId && { category: { connect: { id: categoryId } } }),
 						version: { increment: 1 },
-						status: productStatus,
-						category: categoryId ? { connect: { id: categoryId } } : undefined,
-						// Update with the new given images
-						images: {
-							...(uploadedImages &&
-								uploadedImages.length > 0 && {
-									createMany: {
-										data: uploadedImages.map((img) => ({
-											key: img.key,
-											url: img.ufsUrl,
-											altText: img.name,
-											isThumbnail: false, // Don't automatically make new images thumbnails
-										})),
-									},
-								}),
-
-							...(images?.update &&
-								images.update.length > 0 && {
-									update: images.update.map((img) => ({
-										where: { id: img.id },
-										data: {
-											...(img.altText !== undefined && {
-												altText: img.altText,
-											}),
-											...(img.isThumbnail !== undefined && {
-												isThumbnail: img.isThumbnail,
-											}),
-										},
-									})),
-								}),
-
-							...(images?.delete &&
-								images.delete.length > 0 && {
-									deleteMany: { id: { in: images.delete } },
-								}),
-						},
-					},
-					include: {
-						images: true,
 					},
 				});
 
+				// 2. CREATE new images
+				if (imagesOps?.create && imagesOps.create.length > 0) {
+					await tx.image.createMany({
+						data: imagesOps.create.map((op) => {
+							const file = uploadMap.get(op.fileIndex);
+							if (!file) {
+								throw new Error(`File not found for index ${op.fileIndex}`);
+							}
+							return {
+								productId: id,
+								key: file.key,
+								url: file.ufsUrl,
+								altText: op.altText || `${updatedProduct.name} image`,
+								isThumbnail: op.isThumbnail ?? false,
+							};
+						}),
+					});
+				}
+
+				// 3. UPDATE images (metadata or file replacement)
+				if (imagesOps?.update && imagesOps.update.length > 0) {
+					for (const op of imagesOps.update) {
+						if (op.fileIndex !== undefined) {
+							// Replace file + update metadata
+							const oldImg = await tx.image.findUnique({
+								where: { id: op.id },
+								select: { key: true },
+							});
+							if (oldImg) {
+								oldKeysToDelete.push(oldImg.key);
+							}
+
+							const file = uploadMap.get(op.fileIndex);
+							if (!file) {
+								throw new Error(`File not found for index ${op.fileIndex}`);
+							}
+
+							await tx.image.update({
+								where: { id: op.id },
+								data: {
+									key: file.key,
+									url: file.ufsUrl,
+									...(op.altText !== undefined && { altText: op.altText }),
+									...(op.isThumbnail !== undefined && {
+										isThumbnail: op.isThumbnail,
+									}),
+								},
+							});
+						} else {
+							// Metadata only update
+							await tx.image.update({
+								where: { id: op.id },
+								data: {
+									...(op.altText !== undefined && { altText: op.altText }),
+									...(op.isThumbnail !== undefined && {
+										isThumbnail: op.isThumbnail,
+									}),
+								},
+							});
+						}
+					}
+				}
+
+				// 4. DELETE images
+				if (imagesOps?.delete && imagesOps.delete.length > 0) {
+					const toDelete = await tx.image.findMany({
+						where: { id: { in: imagesOps.delete }, productId: id },
+						select: { key: true },
+					});
+					oldKeysToDelete.push(...toDelete.map((img) => img.key));
+
+					await tx.image.deleteMany({
+						where: { id: { in: imagesOps.delete } },
+					});
+				}
+
 				const promises = [];
 				if (variants) {
-					const allowedAttributeValueIds = new Set(
-						(
-							await tx.attributeValue.findMany({
-								where: { attribute: { categoryId: updatedProduct.categoryId } },
-								select: { id: true },
-							})
-						).map((v) => v.id),
-					);
+					const allowedAttributeValues = await tx.attributeValue.findMany({
+						where: { attribute: { categoryId: updatedProduct.categoryId } },
+						select: { id: true, attributeId: true },
+					});
 
 					if (variants.delete && variants.delete.length > 0) {
 						promises.push(
@@ -390,11 +470,14 @@ export const productService = {
 
 					if (variants.update && variants.update.length > 0) {
 						variants.update.forEach((variant) => {
-							validateVariantAttributeValues(
-								variant.id,
-								variant.attributeValueIds,
-								allowedAttributeValueIds,
-							);
+							// Only validate if attributeValueIds are being updated
+							if (variant.attributeValueIds !== undefined) {
+								validateVariantAttributeValues(
+									variant.sku ?? variant.id, // Use SKU if provided, otherwise ID for error messages
+									variant.attributeValueIds,
+									allowedAttributeValues,
+								);
+							}
 							promises.push(
 								tx.productVariant.update({
 									where: { id: variant.id },
@@ -428,7 +511,7 @@ export const productService = {
 							validateVariantAttributeValues(
 								variant.sku ?? "",
 								variant.attributeValueIds,
-								allowedAttributeValueIds,
+								allowedAttributeValues,
 							);
 							promises.push(
 								tx.productVariant.create({
@@ -452,23 +535,38 @@ export const productService = {
 				}
 
 				await Promise.all([...promises]);
-				const updatedVariants = await tx.productVariant.findMany({
-					where: { productId: id },
-					include: {
-						attributeValues: true,
-					},
-				});
+
+				// Get updated variants and images
+				const [updatedVariants, updatedImages] = await Promise.all([
+					tx.productVariant.findMany({
+						where: { productId: id },
+						include: {
+							attributeValues: true,
+						},
+					}),
+					tx.image.findMany({
+						where: { productId: id },
+					}),
+				]);
 
 				return {
 					...updatedProduct,
 					variants: updatedVariants,
+					images: updatedImages,
 				};
 			});
+
+			// Cleanup old files after successful transaction
+			if (oldKeysToDelete.length > 0) {
+				await utapi.deleteFiles(oldKeysToDelete);
+			}
+
 			return product;
 		} catch (err: unknown) {
-			if (uploadedImages && uploadedImages.length > 0) {
-				await Promise.all(
-					uploadedImages.map((img) => utapi.deleteFiles(img.key)),
+			// Cleanup newly uploaded files if transaction failed
+			if (uploadMap.size > 0) {
+				await utapi.deleteFiles(
+					Array.from(uploadMap.values()).map((file) => file.key),
 				);
 			}
 			throw err;
@@ -488,20 +586,229 @@ export const productService = {
 function validateVariantAttributeValues(
 	variantSkuOrId: string,
 	attributeValueIds: string[] | undefined,
-	allowedAttributeValueIds: Set<string>,
+	allowedAttributeValues: Array<{ id: string; attributeId: string }>,
 ) {
 	if (!attributeValueIds || attributeValueIds.length === 0) return;
 
-	const invalidIds = attributeValueIds.filter(
-		(id) => !allowedAttributeValueIds.has(id),
-	);
+	// Check that all IDs are valid
+	const allowedIds = new Set(allowedAttributeValues.map((a) => a.id));
+	const invalidIds = attributeValueIds.filter((id) => !allowedIds.has(id));
 
 	if (invalidIds.length > 0) {
-		throw status(
-			"Bad Request",
-			`Invalid attribute values for variant ${variantSkuOrId}: ${invalidIds.join(
+		throw status("Bad Request", {
+			message: `Invalid attribute values for variant ${variantSkuOrId}: ${invalidIds.join(
 				", ",
 			)}. Attribute values should match product category.`,
+			code: "VVA1",
+		});
+	}
+
+	// Check that there are no multiple values for the same attribute
+	const attributeIdMap = new Map<string, string>();
+
+	for (const valueId of attributeValueIds) {
+		const attrValue = allowedAttributeValues.find((a) => a.id === valueId);
+		if (!attrValue) continue; // Already checked above
+
+		const existingValueId = attributeIdMap.get(attrValue.attributeId);
+		if (existingValueId) {
+			throw status("Bad Request", {
+				message: `Variant ${variantSkuOrId} has multiple values for the same attribute. Found both ${existingValueId} and ${valueId}.`,
+				code: "VVA2",
+			});
+		}
+
+		attributeIdMap.set(attrValue.attributeId, valueId);
+	}
+}
+
+async function validateAndUploadFiles(
+	images: File[] | undefined,
+	imagesOps: ProductModel.imageOperations | undefined,
+	productName: string,
+) {
+	if (!images?.length || !imagesOps) {
+		return { data: new Map<number, UploadedFileData>(), error: null };
+	}
+	const referencedIndices = validateImagesOps(images, imagesOps);
+	return await uploadValidFiles({
+		referencedIndices,
+		images,
+		productName,
+	});
+}
+
+function validateImagesOps(
+	images: File[],
+	imagesOps: ProductModel.imageOperations,
+) {
+	const imgOpsCreate = validateImgOpsCreateUpdate(imagesOps.create);
+	if (!imgOpsCreate.isValid) {
+		if (imgOpsCreate.hasDuplicateFileIndex) {
+			throw status("Bad Request", {
+				message: `Duplicate fileIndex values at imagesOps.create, indices: ${imgOpsCreate.duplicateFileIndices.join(
+					", ",
+				)}`,
+				code: "VIO1",
+			});
+		}
+		if (imgOpsCreate.hasMultipleThumbnails) {
+			throw status("Bad Request", {
+				message: `Multiple thumbnails set at imagesOps.create (${imgOpsCreate.thumbnailCount} found)`,
+				code: "VIO2",
+			});
+		}
+	}
+
+	const imgOpsUpdate = validateImgOpsCreateUpdate(imagesOps.update);
+	if (!imgOpsUpdate.isValid) {
+		if (imgOpsUpdate.hasDuplicateFileIndex) {
+			throw status("Bad Request", {
+				message: `Duplicate fileIndex values at imagesOps.update, indices: ${imgOpsUpdate.duplicateFileIndices.join(
+					", ",
+				)}`,
+				code: "VIO3",
+			});
+		}
+		if (imgOpsUpdate.hasMultipleThumbnails) {
+			throw status("Bad Request", {
+				message: `Multiple thumbnails set at imagesOps.update (${imgOpsUpdate.thumbnailCount} found)`,
+				code: "VIO4",
+			});
+		}
+	}
+
+	// Check overlap between create and update
+	const createFileIndices = imagesOps.create?.map((op) => op.fileIndex) ?? [];
+	const updateFileIndices =
+		imagesOps.update
+			?.filter((op) => op.fileIndex !== undefined)
+			.map((op) => op.fileIndex as number) ?? [];
+	const overlap = createFileIndices.filter((idx) =>
+		updateFileIndices.includes(idx),
+	);
+	if (overlap.length > 0) {
+		throw status("Bad Request", {
+			message: `Duplicate fileIndex ${overlap.join(", ")} used in both create and update`,
+			code: "VIO5",
+		});
+	}
+
+	// Check only one thumbnail across create and update
+	const totalThumbnailCount =
+		imgOpsCreate.thumbnailCount + imgOpsUpdate.thumbnailCount;
+	if (totalThumbnailCount > 1) {
+		throw status("Bad Request", {
+			message: `Multiple thumbnails across create and update operations (${totalThumbnailCount} found)`,
+			code: "VIO6",
+		});
+	}
+
+	// Collect all referenced indices (no duplicates after validation)
+	// And validate indices are within bounds
+	const allReferencedIndices = [...createFileIndices, ...updateFileIndices];
+	for (const idx of allReferencedIndices) {
+		if (idx >= images.length) {
+			throw status("Bad Request", {
+				message: `Invalid fileIndex ${idx}. Only ${images.length} files provided.`,
+				code: "VIO7",
+			});
+		}
+	}
+
+	return allReferencedIndices;
+}
+
+interface UploadValidFilesProps {
+	referencedIndices: number[];
+	images: File[];
+	productName: string;
+}
+async function uploadValidFiles({
+	referencedIndices,
+	images,
+	productName,
+}: UploadValidFilesProps): Promise<
+	| { data: Map<number, UploadedFileData>; error: null }
+	| { data: null; error: string }
+> {
+	// If nothing to upload return early
+	if (referencedIndices.length === 0) {
+		return { data: new Map<number, UploadedFileData>(), error: null };
+	}
+
+	// Upload only referenced files
+	const sortedIndices = referencedIndices.sort((a, b) => a - b);
+	const filesToUpload = sortedIndices.map((idx) => images[idx] as File);
+	const { data: uploaded, error } = await uploadFiles(
+		productName,
+		filesToUpload,
+	);
+	if (error || !uploaded) {
+		return { data: null, error: error ?? "Upload failed" };
+	}
+
+	// Create mapping: fileIndex → uploaded file data
+	const uploadMap = new Map<number, UploadedFileData>();
+	uploaded.forEach((file, i) => {
+		uploadMap.set(sortedIndices[i] as number, file);
+	});
+
+	return { data: uploadMap, error: null };
+}
+
+function validateImgOpsCreateUpdate(
+	items:
+		| typeof ProductModel.imageCreate.static
+		| (typeof ProductModel.imageOperations.static)["update"]
+		| undefined,
+): {
+	hasDuplicateFileIndex: boolean;
+	hasMultipleThumbnails: boolean;
+	duplicateFileIndices: number[]; // which fileIndex values are repeated
+	thumbnailCount: number; // total count of items with isThumbnail: true
+	isValid: boolean; // true only if NO duplicates AND at most one thumbnail
+} {
+	if (!items || items.length === 0) {
+		return {
+			hasDuplicateFileIndex: false,
+			hasMultipleThumbnails: false,
+			duplicateFileIndices: [],
+			thumbnailCount: 0,
+			isValid: true,
+		};
+	}
+
+	const fileIndexCount = new Map<number, number>();
+	let thumbnailCount = 0;
+
+	for (const item of items) {
+		// Count thumbnails for ALL items (including metadata-only updates)
+		if (item.isThumbnail === true) {
+			thumbnailCount++;
+		}
+
+		// Count fileIndex only for items that have one
+		if (item.fileIndex === undefined || item.fileIndex === null) continue;
+		fileIndexCount.set(
+			item.fileIndex,
+			(fileIndexCount.get(item.fileIndex) || 0) + 1,
 		);
 	}
+
+	const duplicateFileIndices = Array.from(fileIndexCount.entries())
+		.filter(([_, count]) => count > 1)
+		.map(([fileIndex]) => fileIndex);
+
+	const hasDuplicateFileIndex = duplicateFileIndices.length > 0;
+	const hasMultipleThumbnails = thumbnailCount > 1;
+	const isValid = !hasDuplicateFileIndex && !hasMultipleThumbnails;
+
+	return {
+		hasDuplicateFileIndex,
+		hasMultipleThumbnails,
+		duplicateFileIndices,
+		thumbnailCount,
+		isValid,
+	};
 }
