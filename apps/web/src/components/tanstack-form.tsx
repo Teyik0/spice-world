@@ -17,8 +17,9 @@ import { Textarea } from "@spice-world/web/components/ui/textarea";
 import { typeboxToStandardSchema } from "@spice-world/web/lib/utils";
 import { createFormHook, createFormHookContexts } from "@tanstack/react-form";
 import type { TSchema } from "elysia";
-import { Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import type * as React from "react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export const { fieldContext, useFieldContext, formContext, useFormContext } =
 	createFormHookContexts();
@@ -262,7 +263,12 @@ function FieldDescription({
 	);
 }
 
-function FieldMessage(props: React.ComponentProps<typeof FieldError>) {
+function FieldMessage({
+	variant = "inline",
+	...props
+}: React.ComponentProps<typeof FieldError> & {
+	variant?: "tooltip" | "inline";
+}) {
 	const field = useFieldContext<string>();
 
 	const hasSubmitError = field.state.meta.errorMap.onSubmit;
@@ -295,6 +301,24 @@ function FieldMessage(props: React.ComponentProps<typeof FieldError>) {
 			typeof err === "string"
 				? { message: err }
 				: (err as { message?: string }),
+		);
+	}
+
+	if (variant === "tooltip") {
+		const errorMessage = errorsToShow
+			.map((err) => err.message)
+			.filter(Boolean)
+			.join(", ");
+
+		return (
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<AlertCircle className="h-4 w-4 text-destructive cursor-help" />
+				</TooltipTrigger>
+				<TooltipContent side="right" className="max-w-xs bg-red-900 z-50">
+					<p className="text-xs text-white font-semibold">{errorMessage}</p>
+				</TooltipContent>
+			</Tooltip>
 		);
 	}
 

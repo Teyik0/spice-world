@@ -2,8 +2,8 @@
 
 import type { CategoryModel } from "@spice-world/server/modules/categories/model";
 import { ProductModel } from "@spice-world/server/modules/products/model";
+import { Form, useForm } from "@spice-world/web/components/tanstack-form";
 import { Button } from "@spice-world/web/components/ui/button";
-import { Form, useForm } from "@spice-world/web/components/ui/tanstack-form";
 import { app, elysiaErrorToString } from "@spice-world/web/lib/elysia";
 import { unknownError } from "@spice-world/web/lib/utils";
 import { useSetAtom } from "jotai";
@@ -57,7 +57,7 @@ export const ProductForm = ({
 					? [
 							{
 								price: 0,
-								sku: "",
+								sku: undefined,
 								stock: 0,
 								currency: "EUR",
 								attributeValueIds: [],
@@ -79,7 +79,14 @@ export const ProductForm = ({
 			images: undefined,
 			imagesOps: {
 				create: undefined,
-				update: undefined,
+				update: !isNew
+					? product.images.map((img) => ({
+							altText: img.altText ?? undefined,
+							isThumbnail: img.isThumbnail,
+							id: img.id,
+							fileIndex: undefined,
+						}))
+					: undefined,
 				delete: undefined,
 			},
 		},

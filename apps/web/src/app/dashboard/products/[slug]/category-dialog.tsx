@@ -1,4 +1,5 @@
 import { CategoryModel } from "@spice-world/server/modules/categories/model";
+import { Form, useForm } from "@spice-world/web/components/tanstack-form";
 import { Button } from "@spice-world/web/components/ui/button";
 import {
 	Dialog,
@@ -28,7 +29,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@spice-world/web/components/ui/select";
-import { Form, useForm } from "@spice-world/web/components/ui/tanstack-form";
 import { useFileUpload } from "@spice-world/web/hooks/use-file-upload";
 import { useIsMobile } from "@spice-world/web/hooks/use-mobile";
 import { app, elysiaErrorToString } from "@spice-world/web/lib/elysia";

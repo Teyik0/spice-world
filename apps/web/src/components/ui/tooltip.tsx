@@ -37,8 +37,11 @@ function TooltipContent({
 	className,
 	sideOffset = 0,
 	children,
+	variant = "destructive",
 	...props
-}: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+}: React.ComponentProps<typeof TooltipPrimitive.Content> & {
+	variant?: "destructive" | "default";
+}) {
 	return (
 		<TooltipPrimitive.Portal>
 			<TooltipPrimitive.Content
@@ -51,7 +54,9 @@ function TooltipContent({
 				{...props}
 			>
 				{children}
-				<TooltipPrimitive.Arrow className="bg-foreground fill-foreground z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px]" />
+				<TooltipPrimitive.Arrow
+					className={`${variant === "destructive" ? "bg-red-900 fill-red-900" : "bg-foreground fill-foreground"} z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px]`}
+				/>
 			</TooltipPrimitive.Content>
 		</TooltipPrimitive.Portal>
 	);

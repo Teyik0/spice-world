@@ -2,6 +2,7 @@
 
 import type { CategoryModel } from "@spice-world/server/modules/categories/model";
 import type { ProductModel } from "@spice-world/server/modules/products/model";
+import type { useForm } from "@spice-world/web/components/tanstack-form";
 import {
 	Card,
 	CardContent,
@@ -16,7 +17,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@spice-world/web/components/ui/select";
-import type { useForm } from "@spice-world/web/components/ui/tanstack-form";
 import { app } from "@spice-world/web/lib/elysia";
 import { useSetAtom } from "jotai";
 import { useState } from "react";

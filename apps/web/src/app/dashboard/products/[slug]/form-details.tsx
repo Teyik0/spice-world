@@ -1,6 +1,7 @@
 "use client";
 
 import type { ProductModel } from "@spice-world/server/modules/products/model";
+import type { useForm } from "@spice-world/web/components/tanstack-form";
 import {
 	Card,
 	CardContent,
@@ -12,7 +13,6 @@ import {
 	FieldDescription,
 	FieldGroup,
 } from "@spice-world/web/components/ui/field";
-import type { useForm } from "@spice-world/web/components/ui/tanstack-form";
 import { useSetAtom } from "jotai";
 import {
 	currentProductAtom,

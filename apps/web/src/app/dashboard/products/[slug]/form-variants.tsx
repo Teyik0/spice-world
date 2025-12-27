@@ -2,6 +2,7 @@
 
 import type { AttributeModel } from "@spice-world/server/modules/attributes/model";
 import type { ProductModel } from "@spice-world/server/modules/products/model";
+import type { useForm } from "@spice-world/web/components/tanstack-form";
 import { Button } from "@spice-world/web/components/ui/button";
 import {
 	Card,
@@ -35,7 +36,6 @@ import {
 	TableHeader,
 	TableRow,
 } from "@spice-world/web/components/ui/table";
-import type { useForm } from "@spice-world/web/components/ui/tanstack-form";
 import { app, elysiaErrorToString } from "@spice-world/web/lib/elysia";
 import { useStore } from "@tanstack/react-form";
 import { PlusCircle, Trash2 } from "lucide-react";
@@ -441,7 +441,7 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 															field.handleChange(newValues);
 														}}
 													/>
-													<field.Message />
+													<field.Message variant="tooltip" />
 												</div>
 											)}
 										</form.AppField>
@@ -450,13 +450,15 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 									<TableCell>
 										<form.AppField name={`${fieldPrefix}.sku`}>
 											{(field) => (
-												<div className="flex flex-col gap-1">
+												<div className="relative flex flex-col gap-1">
 													<field.Input
 														type="text"
 														placeholder="SKU-001"
 														className="min-w-25"
 													/>
-													<field.Message />
+													<div className="absolute -top-1.5 -right-1.5 z-10">
+														<field.Message variant="tooltip" />
+													</div>
 												</div>
 											)}
 										</form.AppField>
@@ -465,7 +467,7 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 									<TableCell>
 										<form.AppField name={`${fieldPrefix}.price`}>
 											{(field) => (
-												<>
+												<div className="relative flex flex-col gap-1">
 													<field.Input
 														type="number"
 														placeholder="0.00"
@@ -476,8 +478,10 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 															field.handleChange(Number(e.target.value))
 														}
 													/>
-													<field.Message />
-												</>
+													<div className="absolute -top-1.5 -right-1.5 z-10">
+														<field.Message variant="tooltip" />
+													</div>
+												</div>
 											)}
 										</form.AppField>
 									</TableCell>
@@ -485,7 +489,7 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 									<TableCell>
 										<form.AppField name={`${fieldPrefix}.stock`}>
 											{(field) => (
-												<>
+												<div className="relative flex flex-col gap-1">
 													<field.Input
 														type="number"
 														placeholder="0"
@@ -495,8 +499,10 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 															field.handleChange(Number(e.target.value))
 														}
 													/>
-													<field.Message />
-												</>
+													<div className="absolute -top-1.5 -right-1.5 z-10">
+														<field.Message variant="tooltip" />
+													</div>
+												</div>
 											)}
 										</form.AppField>
 									</TableCell>
