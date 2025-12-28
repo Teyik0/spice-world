@@ -1,5 +1,6 @@
 "use client";
 
+import { Form, useForm } from "@spice-world/web/components/tanstack-form";
 import {
 	Card,
 	CardContent,
@@ -9,7 +10,6 @@ import {
 } from "@spice-world/web/components/ui/card";
 import { FieldGroup } from "@spice-world/web/components/ui/field";
 import { Input } from "@spice-world/web/components/ui/input";
-import { Form, useForm } from "@spice-world/web/components/ui/tanstack-form";
 import { authClient } from "@spice-world/web/lib/utils";
 import { useStore } from "@tanstack/react-store";
 import { t } from "elysia";

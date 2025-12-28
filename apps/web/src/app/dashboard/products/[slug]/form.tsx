@@ -79,14 +79,7 @@ export const ProductForm = ({
 			images: undefined,
 			imagesOps: {
 				create: undefined,
-				update: !isNew
-					? product.images.map((img) => ({
-							altText: img.altText ?? undefined,
-							isThumbnail: img.isThumbnail,
-							id: img.id,
-							fileIndex: undefined,
-						}))
-					: undefined,
+				update: undefined,
 				delete: undefined,
 			},
 		},

@@ -42,16 +42,16 @@ export namespace ProductModel {
 	});
 	export type countQuery = typeof countQuery.static;
 
-	export const imageCreate = t.Array(
-		t.Object({
-			fileIndex: t.Number({ minimum: 0, maximum: MAX_IMAGES_PER_PRODUCT - 1 }),
-			altText: t.Optional(t.String()),
-			isThumbnail: t.Optional(t.Boolean({ default: false })),
-		}),
-		{ minItems: 1, maxItems: MAX_IMAGES_PER_PRODUCT },
-	);
+	export const imageCreate = t.Object({
+		fileIndex: t.Number({ minimum: 0, maximum: MAX_IMAGES_PER_PRODUCT - 1 }),
+		altText: t.Optional(t.String()),
+		isThumbnail: t.Optional(t.Boolean({ default: false })),
+	});
+
 	export const imageOperations = t.Object({
-		create: t.Optional(imageCreate),
+		create: t.Optional(
+			t.Array(imageCreate, { maxItems: MAX_IMAGES_PER_PRODUCT }),
+		),
 		update: t.Optional(
 			t.Array(
 				t.Object({
@@ -62,7 +62,7 @@ export namespace ProductModel {
 					altText: t.Optional(t.String()),
 					isThumbnail: t.Optional(t.Boolean({ default: false })),
 				}),
-				{ minItems: 1, maxItems: MAX_IMAGES_PER_PRODUCT },
+				{ maxItems: MAX_IMAGES_PER_PRODUCT },
 			),
 		),
 		delete: t.Optional(t.Array(uuid)),
@@ -99,7 +99,12 @@ export namespace ProductModel {
 		categoryId: uuid,
 		variants: t.Object({ create: t.Array(variantCreate, { minItems: 1 }) }),
 		images: t.Files({ minItems: 1, maxItems: MAX_IMAGES_PER_PRODUCT }),
-		imagesOps: t.Object({ create: imageCreate }),
+		imagesOps: t.Object({
+			create: t.Array(imageCreate, {
+				minItems: 1,
+				maxItems: MAX_IMAGES_PER_PRODUCT,
+			}),
+		}),
 	});
 	export type postBody = typeof postBody.static;
 	export type postResult = Awaited<
@@ -116,7 +121,7 @@ export namespace ProductModel {
 		),
 		imagesOps: t.Optional(imageOperations),
 		variants: t.Optional(variantOperations),
-		_version: t.Optional(t.Number()),
+		_version: t.Optional(t.Numeric()),
 	});
 	export type patchBody = typeof patchBody.static;
 	export type patchResult = Awaited<ReturnType<typeof productService.patch>>;

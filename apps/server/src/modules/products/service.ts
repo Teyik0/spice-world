@@ -403,6 +403,17 @@ export const productService = {
 
 				// 2. CREATE new images
 				if (imagesOps?.create && imagesOps.create.length > 0) {
+					// If creating a new thumbnail, reset all existing thumbnails first
+					const hasNewThumbnail = imagesOps.create.some(
+						(op) => op.isThumbnail === true,
+					);
+					if (hasNewThumbnail) {
+						await tx.image.updateMany({
+							where: { productId: id },
+							data: { isThumbnail: false },
+						});
+					}
+
 					await tx.image.createMany({
 						data: imagesOps.create.map((op) => {
 							const file = uploadMap.get(op.fileIndex);
@@ -422,6 +433,17 @@ export const productService = {
 
 				// 3. UPDATE images (metadata or file replacement)
 				if (imagesOps?.update && imagesOps.update.length > 0) {
+					// If setting a new thumbnail, reset all existing thumbnails first
+					const hasNewThumbnail = imagesOps.update.some(
+						(op) => op.isThumbnail === true,
+					);
+					if (hasNewThumbnail) {
+						await tx.image.updateMany({
+							where: { productId: id },
+							data: { isThumbnail: false },
+						});
+					}
+
 					for (const op of imagesOps.update) {
 						if (op.fileIndex !== undefined) {
 							// Replace file + update metadata
@@ -783,7 +805,7 @@ async function uploadValidFiles({
 
 function validateImgOpsCreateUpdate(
 	items:
-		| typeof ProductModel.imageCreate.static
+		| (typeof ProductModel.imageOperations.static)["create"]
 		| (typeof ProductModel.imageOperations.static)["update"]
 		| undefined,
 ): {

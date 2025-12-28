@@ -37,7 +37,7 @@ function TooltipContent({
 	className,
 	sideOffset = 0,
 	children,
-	variant = "destructive",
+	variant = "default",
 	...props
 }: React.ComponentProps<typeof TooltipPrimitive.Content> & {
 	variant?: "destructive" | "default";
