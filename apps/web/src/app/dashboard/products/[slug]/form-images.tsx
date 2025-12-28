@@ -159,11 +159,12 @@ export const ProductFormImages = ({
 		}
 
 		// Créer les nouvelles images
-		const newImgs: UnifiedImage[] = selectedFiles.map((file) => ({
+		const needsThumbnail = files.length === 0;
+		const newImgs: UnifiedImage[] = selectedFiles.map((file, index) => ({
 			id: crypto.randomUUID(),
 			url: URL.createObjectURL(file),
 			altText: file.name,
-			isThumbnail: files.length === 0, // First image is thumbnail
+			isThumbnail: needsThumbnail && index === 0, // Only first new image is thumbnail if none exist
 			state: "toCreate",
 			file,
 		}));
