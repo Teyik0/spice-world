@@ -10,7 +10,7 @@ import { useSetAtom } from "jotai";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { currentProductAtom, newProductAtom } from "../store";
 import { ProductFormClassification } from "./form-classification";
@@ -32,6 +32,14 @@ export const ProductForm = ({
 	const setSidebarProduct = useSetAtom(
 		isNew ? newProductAtom : currentProductAtom,
 	);
+
+	// Key pour reset le formulaire (incrémenté quand on clique sur Discard)
+	const [formResetKey, setFormResetKey] = useState(0);
+
+	const handleDiscard = () => {
+		form.reset();
+		setFormResetKey((k) => k + 1);
+	};
 
 	useEffect(() => {
 		setSidebarProduct({
@@ -195,7 +203,7 @@ export const ProductForm = ({
 						variant="outline"
 						size="sm"
 						type="button"
-						onClick={() => form.reset()}
+						onClick={handleDiscard}
 					>
 						Discard
 					</Button>
@@ -215,6 +223,7 @@ export const ProductForm = ({
 						initialCategories={categories}
 					/>
 					<ProductFormImages
+						key={formResetKey}
 						isNew={isNew}
 						form={form}
 						existingImages={product.images}
@@ -227,7 +236,7 @@ export const ProductForm = ({
 					type="button"
 					variant="outline"
 					size="sm"
-					onClick={() => form.reset()}
+					onClick={handleDiscard}
 				>
 					Discard
 				</Button>
