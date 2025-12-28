@@ -11,7 +11,7 @@ export default async function middleware(req: NextRequest) {
 	});
 
 	if (error) {
-		return NextResponse.redirect(new URL("/", req.url));
+		return NextResponse.redirect(new URL("/signin", req.url));
 	}
 
 	const requestHeaders = new Headers(req.headers);
@@ -25,5 +25,20 @@ export default async function middleware(req: NextRequest) {
 }
 
 export const config = {
-	matcher: ["/dashboard/:path*"],
+	// Applique le middleware UNIQUEMENT aux routes protégées (dashboard)
+	// Exclut: /signin, /signup, /forgot-password, /reset-password, /api, /_next, /favicon.ico, etc.
+	matcher: [
+		/*
+		 * Match all request paths except for the ones starting with:
+		 * - signin (route publique)
+		 * - signup (route publique)
+		 * - forgot-password (route publique)
+		 * - reset-password (route publique)
+		 * - api (API routes)
+		 * - _next/static (static files)
+		 * - _next/image (image optimization files)
+		 * - favicon.ico (favicon file)
+		 */
+		"/((?!signin|signup|forgot-password|reset-password|api|_next/static|_next/image|favicon.ico).*)",
+	],
 };

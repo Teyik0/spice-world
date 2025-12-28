@@ -30,7 +30,7 @@ export default async function LayoutProducts({
 					<Breadcrumb>
 						<BreadcrumbList>
 							<BreadcrumbItem className="hidden md:block">
-								<BreadcrumbLink href="/dashboard">Spice World</BreadcrumbLink>
+								<BreadcrumbLink href="/">Spice World</BreadcrumbLink>
 							</BreadcrumbItem>
 							<BreadcrumbSeparator className="hidden md:block" />
 							<BreadcrumbItem>

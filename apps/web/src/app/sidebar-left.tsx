@@ -38,22 +38,22 @@ import { useEffect, useState } from "react";
 const navItems = [
 	{
 		title: "Dashboard",
-		url: "/dashboard",
+		url: "/",
 		icon: ChartSpline,
 	},
 	{
 		title: "Products",
-		url: "/dashboard/products",
+		url: "/products",
 		icon: Boxes,
 	},
 	{
 		title: "Users",
-		url: "/dashboard/users",
+		url: "/users",
 		icon: UserCircle,
 	},
 	{
 		title: "Orders",
-		url: "/dashboard/orders",
+		url: "/orders",
 		icon: BringToFront,
 	},
 ];
@@ -78,7 +78,7 @@ export function AppSidebar({ login }: { login: Session }) {
 				{/* Header with logo */}
 				<header className="p-2">
 					<Link
-						href="/dashboard"
+						href="/"
 						className="flex items-center justify-center h-8 w-8 bg-sidebar-primary text-sidebar-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
 					>
 						<Command className="h-5 w-5" />

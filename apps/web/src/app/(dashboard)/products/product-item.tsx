@@ -23,24 +23,21 @@ export const NewProductItem = () => {
 	const pathname = usePathname();
 	const newProduct = useAtomValue(newProductAtom);
 
-	// Only show on /dashboard/products or /dashboard/products/new
-	if (
-		pathname !== "/dashboard/products" &&
-		pathname !== "/dashboard/products/new"
-	) {
+	// Only show on /products or /products/new
+	if (pathname !== "/products" && pathname !== "/products/new") {
 		return null;
 	}
 
 	// Don't show if there's no newProduct state
 	if (!newProduct) return null;
 
-	const isSelected = pathname === "/dashboard/products/new";
+	const isSelected = pathname === "/products/new";
 
 	const handleClick = () => {
 		// Prevent navigation if already on new product page
 		if (isSelected) return;
 
-		router.push("/dashboard/products/new", { scroll: false });
+		router.push("/products/new", { scroll: false });
 	};
 
 	return (
@@ -101,7 +98,7 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
 	const handleClick = () => {
 		// Prevent navigation if already on this product
 		if (isSelected) return;
-		router.push(`/dashboard/products/${product.slug}`);
+		router.push(`/products/${product.slug}`);
 	};
 
 	return (
@@ -153,15 +150,15 @@ export const AddProductButton = () => {
 	const handleClick = (reset: boolean = false) => {
 		if (reset) {
 			setNewProduct(null);
-			router.push("/dashboard/products");
+			router.push("/products");
 			return;
 		}
 		/*
 		  We can't setNewProduct with default value here as there is two cases:
 				- Click the AddProductButton
-				- Direct Navigation to /dashboard/products/
+				- Direct Navigation to /products/
 		 */
-		router.push("/dashboard/products/new");
+		router.push("/products/new");
 	};
 
 	return (

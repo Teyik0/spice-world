@@ -121,7 +121,7 @@ export const ProductForm = ({
 				});
 
 				if (data.slug !== product.slug) {
-					router.push(`/dashboard/products/${data.slug}`);
+					router.push(`/products/${data.slug}`);
 				}
 			} catch (error: unknown) {
 				const err = unknownError(
@@ -172,7 +172,7 @@ export const ProductForm = ({
 		>
 			<div className="flex items-center gap-4">
 				<Button variant="outline" size="icon" className="h-7 w-7" asChild>
-					<Link href="/dashboard/products">
+					<Link href="/products">
 						<ChevronLeft className="h-4 w-4" />
 						<span className="sr-only">Back</span>
 					</Link>
