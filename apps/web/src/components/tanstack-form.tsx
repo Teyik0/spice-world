@@ -315,7 +315,11 @@ function FieldMessage({
 				<TooltipTrigger asChild>
 					<AlertCircle className="h-4 w-4 text-destructive cursor-help" />
 				</TooltipTrigger>
-				<TooltipContent side="right" className="max-w-xs bg-red-900 z-50">
+				<TooltipContent
+					variant="destructive"
+					side="right"
+					className="max-w-xs bg-red-900 z-50"
+				>
 					<p className="text-xs text-white font-semibold">{errorMessage}</p>
 				</TooltipContent>
 			</Tooltip>

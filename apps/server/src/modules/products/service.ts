@@ -275,10 +275,23 @@ export const productService = {
 		const currentProduct = await prisma.product.findUniqueOrThrow({
 			where: { id },
 			select: {
+				// Fields for comparison
 				name: true,
+				description: true,
+				status: true,
 				version: true,
-				images: true,
 				categoryId: true,
+				slug: true,
+				createdAt: true,
+				updatedAt: true,
+				// Relations for return
+				category: true,
+				images: true,
+				variants: {
+					include: {
+						attributeValues: true,
+					},
+				},
 				_count: { select: { variants: true } },
 			},
 		});
@@ -289,6 +302,105 @@ export const productService = {
 				"Conflict",
 				`Product has been modified. Expected version ${_version}, current is ${currentProduct.version}`,
 			);
+		}
+
+		const hasProductFieldChanges =
+			(name !== undefined && name !== currentProduct.name) ||
+			(description !== undefined &&
+				description !== currentProduct.description) ||
+			(productStatus !== undefined &&
+				productStatus !== currentProduct.status) ||
+			(categoryId !== undefined && categoryId !== currentProduct.categoryId);
+
+		const hasRealImageUpdates =
+			imagesOps?.update?.some((updateOp) => {
+				const currentImage = currentProduct.images.find(
+					(img) => img.id === updateOp.id,
+				);
+				if (!currentImage) {
+					throw status("Not Found", {
+						message: `Image with id ${updateOp.id} not found in product ${id}`,
+						code: "IMAGE_NOT_FOUND",
+					});
+				}
+
+				const altTextChanged =
+					updateOp.altText !== undefined &&
+					updateOp.altText !== currentImage.altText;
+				const thumbnailChanged =
+					updateOp.isThumbnail !== undefined &&
+					updateOp.isThumbnail !== currentImage.isThumbnail;
+				const fileChanged = updateOp.fileIndex !== undefined; // Nouveau fichier
+
+				return altTextChanged || thumbnailChanged || fileChanged;
+			}) ?? false;
+
+		const hasImageChanges =
+			(imagesOps?.create && imagesOps.create.length > 0) ||
+			(imagesOps?.delete && imagesOps.delete.length > 0);
+
+		const hasRealVariantUpdates =
+			variants?.update?.some((updateOp) => {
+				const currentVariant = currentProduct.variants.find(
+					(v) => v.id === updateOp.id,
+				);
+
+				if (!currentVariant) {
+					throw status("Not Found", {
+						message: `Variant with id ${updateOp.id} not found in product ${id}`,
+						code: "VARIANT_NOT_FOUND",
+					});
+				}
+
+				const priceChanged =
+					updateOp.price !== undefined &&
+					updateOp.price !== currentVariant.price;
+
+				const skuChanged =
+					updateOp.sku !== undefined && updateOp.sku !== currentVariant.sku;
+
+				const stockChanged =
+					updateOp.stock !== undefined &&
+					updateOp.stock !== currentVariant.stock;
+
+				const currencyChanged =
+					updateOp.currency !== undefined &&
+					updateOp.currency !== currentVariant.currency;
+
+				let attrValuesChanged = false;
+				if (updateOp.attributeValueIds !== undefined) {
+					const currentAttrIds = currentVariant.attributeValues
+						.map((av) => av.id)
+						.sort();
+					const newAttrIds = [...updateOp.attributeValueIds].sort();
+
+					attrValuesChanged =
+						currentAttrIds.length !== newAttrIds.length ||
+						currentAttrIds.some((id, index) => id !== newAttrIds[index]);
+				}
+
+				return (
+					priceChanged ||
+					skuChanged ||
+					stockChanged ||
+					currencyChanged ||
+					attrValuesChanged
+				);
+			}) ?? false;
+
+		const hasVariantChanges =
+			(variants?.create && variants.create.length > 0) ||
+			(variants?.delete && variants.delete.length > 0);
+
+		if (
+			!hasProductFieldChanges &&
+			!hasRealImageUpdates &&
+			!hasImageChanges &&
+			!hasRealVariantUpdates &&
+			!hasVariantChanges
+		) {
+			const { _count, ...result } = currentProduct;
+			return result;
 		}
 
 		// 2b. Validate category change (requires atomic delete all + create new)
@@ -343,6 +455,7 @@ export const productService = {
 
 		// 3. Validate image operations
 		if (imagesOps) {
+			ensureThumbnailAfterDelete(currentProduct.images, imagesOps);
 			// 3a. Validate total image count
 			const currentCount = currentProduct.images.length;
 			const createCount = imagesOps.create?.length ?? 0;
@@ -857,4 +970,43 @@ function validateImgOpsCreateUpdate(
 		thumbnailCount,
 		isValid,
 	};
+}
+
+function ensureThumbnailAfterDelete(
+	currentImages: ProductModel.patchResult["images"],
+	imagesOps: ProductModel.imageOperations | undefined,
+) {
+	if (!imagesOps?.delete || imagesOps.delete.length === 0) return;
+
+	const currentThumbnail = currentImages.find((img) => img.isThumbnail);
+	const willDeleteThumbnail =
+		currentThumbnail && imagesOps.delete.includes(currentThumbnail.id);
+
+	const willSetNewThumbnail =
+		imagesOps.create?.some((op) => op.isThumbnail) ||
+		imagesOps.update?.some((op) => op.isThumbnail === true);
+
+	if (willDeleteThumbnail && !willSetNewThumbnail) {
+		const deletedIds = new Set(imagesOps.delete);
+		const firstRemaining = currentImages.find((img) => !deletedIds.has(img.id));
+
+		if (firstRemaining) {
+			if (!imagesOps.update) {
+				imagesOps.update = [];
+			}
+
+			const existingUpdate = imagesOps.update.find(
+				(op) => op.id === firstRemaining.id,
+			);
+
+			if (existingUpdate) {
+				existingUpdate.isThumbnail = true;
+			} else {
+				imagesOps.update.push({
+					id: firstRemaining.id,
+					isThumbnail: true,
+				});
+			}
+		}
+	}
 }

@@ -212,7 +212,7 @@ export const ProductFormImages = ({
 	const handleDeleteImg = (imgId: string) => {
 		const imgToDelete = files.find((img) => img.id === imgId);
 		if (imgToDelete && imgToDelete.state !== "toCreate") {
-			// @ts-expect-error - imagesOps.delete exist here
+			// @ts-expect-error - imagesOps.delete exist
 			form.pushFieldValue("imagesOps.delete", imgId);
 		}
 		setFiles((prev) => {
