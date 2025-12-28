@@ -54,6 +54,32 @@ export const ProductFormClassification = ({
 		}
 	};
 
+	const handleCategoryChange = (newCategoryId: string) => {
+		const currentCategoryId = form.getFieldValue("categoryId");
+
+		if (currentCategoryId && currentCategoryId !== newCategoryId) {
+			// Get existing variant IDs
+			const variantsUpdate = form.getFieldValue("variants.update");
+			const existingIds = variantsUpdate?.map((v) => v.id) || [];
+
+			form.setFieldValue("variants", {
+				delete: existingIds,
+				update: [],
+				create: [
+					{
+						price: 0,
+						sku: undefined,
+						stock: 0,
+						currency: "EUR",
+						attributeValueIds: [],
+					},
+				],
+			});
+		}
+
+		form.setFieldValue("categoryId", newCategoryId);
+	};
+
 	return (
 		<Card className="rounded-md">
 			<CardHeader>
@@ -86,7 +112,7 @@ export const ProductFormClassification = ({
 						{(field) => (
 							<field.Field>
 								<field.Label>Category</field.Label>
-								<field.Select>
+								<field.Select onValueChange={(id) => handleCategoryChange(id)}>
 									<SelectTrigger>
 										<SelectValue placeholder="Select category" />
 									</SelectTrigger>

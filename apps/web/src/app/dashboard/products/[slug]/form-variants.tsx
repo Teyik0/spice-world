@@ -3,6 +3,10 @@
 import type { AttributeModel } from "@spice-world/server/modules/attributes/model";
 import type { ProductModel } from "@spice-world/server/modules/products/model";
 import type { useForm } from "@spice-world/web/components/tanstack-form";
+import {
+	type AttributeGroup,
+	AttributeSelect,
+} from "@spice-world/web/components/ui/attribute-select";
 import { Button } from "@spice-world/web/components/ui/button";
 import {
 	Card,
@@ -20,7 +24,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@spice-world/web/components/ui/dialog";
-import type { MultiSelectOption } from "@spice-world/web/components/ui/multi-select";
 import {
 	Select,
 	SelectContent,
@@ -187,48 +190,22 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 		fetchAttributes();
 	}, [categoryId]);
 
-	const attributeOptions = useMemo((): MultiSelectOption[] => {
-		const options = attributes.flatMap((attr) =>
-			attr.values.map((val) => ({
-				label: `${attr.name}: ${val.value}`,
-				value: val.id,
+	const attributeGroups = useMemo((): AttributeGroup[] => {
+		return attributes.map((attr) => ({
+			attributeId: attr.id,
+			attributeName: attr.name,
+			values: attr.values.map((val) => ({
+				id: val.id,
+				value: val.value,
 			})),
-		);
-		return options;
+		}));
 	}, [attributes]);
-
-	// Build lookup map: valueId -> attributeId
-	const valueToAttributeMap = useMemo(() => {
-		const map = new Map<string, string>();
-		for (const attr of attributes) {
-			for (const val of attr.values) {
-				map.set(val.id, attr.id);
-			}
-		}
-		return map;
-	}, [attributes]);
-
-	// Validation function to ensure one value per attribute
-	const validateOneValuePerAttribute = (selectedValueIds: string[]) => {
-		const seenAttributes = new Set<string>();
-
-		for (const valueId of selectedValueIds) {
-			const attributeId = valueToAttributeMap.get(valueId);
-			if (!attributeId) continue;
-
-			if (seenAttributes.has(attributeId)) {
-				const attr = attributes.find((a) => a.id === attributeId);
-				return `Cannot select multiple values from "${attr?.name}". Please select only one value per attribute.`;
-			}
-			seenAttributes.add(attributeId);
-		}
-
-		return undefined;
-	};
 
 	// Handler to initiate creation of new attribute value
 	const handleCreateNew = (variantIndex: number) => {
-		return async (valueName: string): Promise<MultiSelectOption | null> => {
+		return async (
+			valueName: string,
+		): Promise<{ id: string; value: string } | null> => {
 			setPendingValueName(valueName);
 			setCurrentVariantIndex(variantIndex);
 			setIsAttributeSelectorOpen(true);
@@ -411,8 +388,9 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 										<form.AppField name={`${fieldPrefix}.attributeValueIds`}>
 											{(field) => (
 												<div className="flex flex-col gap-1">
-													<field.MultiSelect
-														options={attributeOptions}
+													<AttributeSelect
+														groups={attributeGroups}
+														value={field.state.value}
 														placeholder={
 															isLoadingAttributes
 																? "Loading..."
@@ -432,14 +410,9 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 														creatable={true}
 														onCreateNew={handleCreateNew(index)}
 														onValueChange={(newValues) => {
-															const error =
-																validateOneValuePerAttribute(newValues);
-															if (error) {
-																toast.error(error);
-																return;
-															}
 															field.handleChange(newValues);
 														}}
+														onBlur={field.handleBlur}
 													/>
 													<field.Message variant="tooltip" />
 												</div>
