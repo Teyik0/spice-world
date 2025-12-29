@@ -14,7 +14,7 @@
 		"db:reset": "bunx prisma migrate reset"
 	},
 	"dependencies": {
-		"@elysiajs/cors": "^1.4.0",
+		"@elysiajs/cors": "^1.4.1",
 		"@elysiajs/eden": "catalog:",
 		"@elysiajs/openapi": "^1.4.13",
 		"@elysiajs/opentelemetry": "^1.4.10",

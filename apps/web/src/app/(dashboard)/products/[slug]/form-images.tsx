@@ -264,7 +264,7 @@ export const ProductFormImages = ({
 	};
 
 	return (
-		<Card className="overflow-hidden rounded-md min-w-xs">
+		<Card className="overflow-hidden rounded-md">
 			<CardHeader>
 				<CardTitle>Product Images</CardTitle>
 				<CardDescription>
