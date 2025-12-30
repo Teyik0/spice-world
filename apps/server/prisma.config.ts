@@ -2,6 +2,6 @@ import { defineConfig } from "prisma/config";
 
 export default defineConfig({
 	datasource: {
-		url: Bun.env.DATABASE_URL as string,
+		url: Bun.env.DATABASE_URL,
 	},
 });

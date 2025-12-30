@@ -9,19 +9,6 @@ import { productsRouter } from "@spice-world/server/modules/products";
 import { Elysia } from "elysia";
 import { betterAuthPlugin, OpenAPI } from "./plugins/better-auth.plugin.tsx";
 
-declare module "bun" {
-	interface Env {
-		DATABASE_URL: string | undefined;
-		UPLOADTHING_TOKEN: string;
-		UPLOADTHING_SECRET: string;
-		BETTER_AUTH_SECRET: string;
-		BETTER_AUTH_URL: string;
-		GOOGLE_CLIENT_ID: string;
-		GOOGLE_CLIENT_SECRET: string;
-		RESEND_API_KEY: string;
-	}
-}
-
 const formattedDate = () =>
 	new Date().toLocaleString("en-US", {
 		year: "numeric",
@@ -95,11 +82,7 @@ const app = new Elysia()
 	})
 	.use(categoryRouter)
 	.use(attributeRouter)
-	.use(productsRouter)
-	.listen(Bun.env.PORT ?? 3001);
+	.use(productsRouter);
 
+export default app;
 export type App = typeof app;
-
-console.log(
-	`🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`,
-);

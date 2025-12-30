@@ -41,4 +41,5 @@ export const config = {
 		 */
 		"/((?!signin|signup|forgot-password|reset-password|api|_next/static|_next/image|favicon.ico).*)",
 	],
+	runtime: "nodejs",
 };

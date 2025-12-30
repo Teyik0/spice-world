@@ -9,7 +9,7 @@ import { admin, openAPI } from "better-auth/plugins";
 import { Elysia } from "elysia";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(Bun.env.RESEND_API_KEY);
 const from = "Spice World <noreply@teyik0.dev>";
 
 export const auth = betterAuth({
@@ -99,8 +99,8 @@ export const auth = betterAuth({
 	},
 	socialProviders: {
 		google: {
-			clientId: process.env.GOOGLE_CLIENT_ID as string,
-			clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+			clientId: Bun.env.GOOGLE_CLIENT_ID as string,
+			clientSecret: Bun.env.GOOGLE_CLIENT_SECRET,
 		},
 	},
 	plugins: [openAPI(), admin()],
