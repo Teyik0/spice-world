@@ -4,6 +4,9 @@ import { PrismaClient } from "../prisma/client";
 
 const prismaClientSingleton = () => {
 	const connectionString = Bun.env.DATABASE_URL;
+	if (!connectionString) {
+		throw new Error("DATABASE_URL environment variable is not defined");
+	}
 	const adapter =
 		Bun.env.NODE_ENV !== "production"
 			? new PrismaPg({ connectionString })
