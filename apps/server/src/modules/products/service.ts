@@ -70,7 +70,7 @@ export const productService = {
 		if (name) conditions.push(sql`p.name ILIKE ${`%${name}%`}`);
 		if (categories?.length) {
 			conditions.push(
-				sql`p."categoryId" IN (SELECT id FROM "Category" WHERE name IN (${categories}))`,
+				sql`p."categoryId" IN (SELECT id FROM "Category" WHERE name IN ${sql(categories)})`,
 			);
 		}
 

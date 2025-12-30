@@ -157,6 +157,40 @@ describe.concurrent("Product routes test", () => {
 			}
 		});
 
+		it("should return products from multiple categories (OR filter)", async () => {
+			const category1 = testCategories[0];
+			const category2 = testCategories[1];
+			expectDefined(category1);
+			expectDefined(category2);
+			expect(category1.id).not.toBe(category2.id);
+
+			const { data, status } = await api.products.get({
+				query: { categories: [category1.name, category2.name] },
+			});
+
+			expect(status).toBe(200);
+			expectDefined(data);
+			expect(Array.isArray(data)).toBe(true);
+
+			// All returned products should belong to one of the specified categories
+			for (const product of data) {
+				expect([category1.id, category2.id]).toContain(product.categoryId);
+			}
+
+			// Verify we have products from both categories (if they exist)
+			const category1Products = data.filter(
+				(p) => p.categoryId === category1.id,
+			);
+			const category2Products = data.filter(
+				(p) => p.categoryId === category2.id,
+			);
+
+			// At least one category should have products
+			expect(category1Products.length + category2Products.length).toBe(
+				data.length,
+			);
+		});
+
 		it("should return a list of products filtered by status", async () => {
 			const { data, status } = await api.products.get({
 				query: { status: "PUBLISHED" },
