@@ -20,7 +20,7 @@ import { unknownError } from "@spice-world/web/lib/utils";
 import { useSetAtom } from "jotai";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { revalidateProductsLayout } from "../../actions";
@@ -39,7 +39,9 @@ export const ProductForm = ({
 }) => {
 	const router = useRouter();
 	const pathname = usePathname();
+	const searchParams = useSearchParams();
 	const isNew = pathname.endsWith("new");
+	const queryString = searchParams.toString();
 
 	const setSidebarProduct = useSetAtom(
 		isNew ? newProductAtom : currentProductAtom,
@@ -143,7 +145,9 @@ export const ProductForm = ({
 				await revalidateProductsLayout();
 
 				if (data.slug !== product.slug) {
-					router.push(`/products/${data.slug}`);
+					router.push(
+						`/products/${data.slug}${queryString ? `?${queryString}` : ""}`,
+					);
 				}
 			} catch (error: unknown) {
 				const err = unknownError(
@@ -194,7 +198,7 @@ export const ProductForm = ({
 			}
 			toast.success("Product deleted successfully");
 			await revalidateProductsLayout();
-			router.push("/products");
+			router.push(`/products${queryString ? `?${queryString}` : ""}`);
 		} catch (error: unknown) {
 			const err = unknownError(error, "Failed to delete product");
 			toast.error(elysiaErrorToString(err));
@@ -209,7 +213,7 @@ export const ProductForm = ({
 			<div className="grid gap-4 w-full md:grid-cols-[1fr_320px] lg:grid-cols-[1fr_1fr_320px] lg:gap-4">
 				<div className="flex gap-3 md:col-span-1 lg:col-span-2 items-center">
 					<Button variant="outline" size="icon" className="h-7 w-7" asChild>
-						<Link href="/products">
+						<Link href={`/products${queryString ? `?${queryString}` : ""}`}>
 							<ChevronLeft className="h-4 w-4" />
 							<span className="sr-only">Back</span>
 						</Link>
