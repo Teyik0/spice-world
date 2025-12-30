@@ -5,11 +5,12 @@ import { ClientOnly } from "@spice-world/web/components/client-only";
 import { Button } from "@spice-world/web/components/ui/button";
 import { useAtom, useAtomValue } from "jotai";
 import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
-import { BulkActionsBar } from "./bulk-actions";
+import { sidebarExpandedAtom } from "../store";
+import { BulkActionsBar } from "./bulk-menu";
 import { AddProductButton, NewProductItem, ProductItem } from "./product-item";
 import { ProductsTable } from "./products-table";
 import { ProductsSearchBar } from "./search-bar";
-import { selectedProductIdsAtom, sidebarExpandedAtom } from "./store";
+import { selectedProductIdsAtom } from "./store";
 
 interface Category {
 	id: string;

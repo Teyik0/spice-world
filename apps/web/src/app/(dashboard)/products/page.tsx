@@ -1,6 +1,5 @@
 import { app } from "@spice-world/web/lib/elysia";
 import { ProductsSidebar } from "./products-sidebar";
-import { ProductsSidebarWrapper } from "./products-sidebar-wrapper";
 import { productsSearchParamsCache } from "./search-params";
 
 export default async function ProductsPage({
@@ -26,11 +25,6 @@ export default async function ProductsPage({
 	]);
 
 	return (
-		<ProductsSidebarWrapper>
-			<ProductsSidebar
-				products={products ?? []}
-				categories={categories ?? []}
-			/>
-		</ProductsSidebarWrapper>
+		<ProductsSidebar products={products ?? []} categories={categories ?? []} />
 	);
 }

@@ -25,6 +25,5 @@ export interface ProductItemProps {
 export const currentProductAtom = atom<ProductItemProps | null>(null);
 export const newProductAtom = atom<ProductItemProps | null>(null);
 
-export const sidebarExpandedAtom = atom<boolean>(false);
 export const selectedProductIdsAtom = atom<Set<string>>(new Set<string>());
 export const productsRefreshKeyAtom = atom<number>(0);

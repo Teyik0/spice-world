@@ -7,6 +7,7 @@ import {
 	BreadcrumbSeparator,
 } from "@spice-world/web/components/ui/breadcrumb";
 import {
+	Sidebar,
 	SidebarInset,
 	SidebarTrigger,
 } from "@spice-world/web/components/ui/sidebar";
@@ -39,7 +40,12 @@ export default async function LayoutProducts({
 				<section className="p-6">{product}</section>
 			</SidebarInset>
 
-			{children}
+			<Sidebar
+				side="right"
+				className="overflow-hidden *:data-[sidebar=sidebar]:flex-row"
+			>
+				{children}
+			</Sidebar>
 		</>
 	);
 }
