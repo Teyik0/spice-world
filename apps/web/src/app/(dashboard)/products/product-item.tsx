@@ -11,7 +11,8 @@ import {
 import { useAtom, useAtomValue } from "jotai";
 import { MinusIcon, PlusIcon } from "lucide-react";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { statusVariants } from "./products-table";
 import {
 	currentProductAtom,
 	newProductAtom,
@@ -21,6 +22,7 @@ import {
 export const NewProductItem = () => {
 	const router = useRouter();
 	const pathname = usePathname();
+	const searchParams = useSearchParams();
 	const newProduct = useAtomValue(newProductAtom);
 
 	// Only show on /products or /products/new
@@ -37,7 +39,10 @@ export const NewProductItem = () => {
 		// Prevent navigation if already on new product page
 		if (isSelected) return;
 
-		router.push("/products/new", { scroll: false });
+		const params = searchParams.toString();
+		router.push(`/products/new${params ? `?${params}` : ""}`, {
+			scroll: false,
+		});
 	};
 
 	return (
@@ -86,6 +91,7 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
 	const currentProduct = useAtomValue(currentProductAtom);
 	const router = useRouter();
 	const pathname = usePathname();
+	const searchParams = useSearchParams();
 
 	const isSelected = pathname.includes(product.slug);
 
@@ -98,7 +104,9 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
 	const handleClick = () => {
 		// Prevent navigation if already on this product
 		if (isSelected) return;
-		router.push(`/products/${product.slug}`);
+
+		const params = searchParams.toString();
+		router.push(`/products/${product.slug}${params ? `?${params}` : ""}`);
 	};
 
 	return (
@@ -123,8 +131,8 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
 						{displayProduct.name}
 					</span>
 					<Badge
-						variant="secondary"
-						className="bg-blue-500 text-white font-semibold dark:bg-blue-600 ml-auto text-xs shrink-0"
+						variant={statusVariants[product.status]}
+						className="ml-auto text-xs shrink-0"
 					>
 						{displayProduct.status.toLowerCase()}
 					</Badge>
@@ -146,19 +154,16 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
 export const AddProductButton = () => {
 	const [newProduct, setNewProduct] = useAtom(newProductAtom);
 	const router = useRouter();
+	const searchParams = useSearchParams();
 
 	const handleClick = (reset: boolean = false) => {
+		const params = searchParams.toString();
 		if (reset) {
 			setNewProduct(null);
-			router.push("/products");
+			router.push(`/products${params ? `?${params}` : ""}`);
 			return;
 		}
-		/*
-		  We can't setNewProduct with default value here as there is two cases:
-				- Click the AddProductButton
-				- Direct Navigation to /products/
-		 */
-		router.push("/products/new");
+		router.push(`/products/new${params ? `?${params}` : ""}`);
 	};
 
 	return (

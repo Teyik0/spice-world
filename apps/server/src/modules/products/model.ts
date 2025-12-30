@@ -125,4 +125,11 @@ export namespace ProductModel {
 	});
 	export type patchBody = typeof patchBody.static;
 	export type patchResult = Awaited<ReturnType<typeof productService.patch>>;
+
+	export const bulkPatchBody = t.Object({
+		ids: t.Array(uuid, { minItems: 1 }),
+		status: t.Optional(productStatus),
+		categoryId: t.Optional(uuid),
+	});
+	export type bulkPatchBody = typeof bulkPatchBody.static;
 }

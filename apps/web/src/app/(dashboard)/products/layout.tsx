@@ -7,22 +7,17 @@ import {
 	BreadcrumbSeparator,
 } from "@spice-world/web/components/ui/breadcrumb";
 import {
-	Sidebar,
 	SidebarInset,
 	SidebarTrigger,
 } from "@spice-world/web/components/ui/sidebar";
-import { app } from "@spice-world/web/lib/elysia";
-import { SidebarRight } from "./sidebar-right";
 
 export default async function LayoutProducts({
 	children,
+	product,
 }: {
 	children: React.ReactNode;
+	product: React.ReactNode;
 }) {
-	const { data: products } = await app.products.get({
-		query: { take: 100, skip: 0, status: undefined },
-	});
-
 	return (
 		<>
 			<SidebarInset>
@@ -41,15 +36,10 @@ export default async function LayoutProducts({
 					<SidebarTrigger className="-mr-1 ml-auto rotate-180" />
 				</header>
 
-				<section className="p-6">{children}</section>
+				<section className="p-6">{product}</section>
 			</SidebarInset>
 
-			<Sidebar
-				side="right"
-				className="overflow-hidden *:data-[sidebar=sidebar]:flex-row"
-			>
-				<SidebarRight products={products ?? []} />
-			</Sidebar>
+			{children}
 		</>
 	);
 }

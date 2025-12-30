@@ -740,6 +740,17 @@ export const productService = {
 
 		return deletedProduct;
 	},
+
+	async bulkPatch({ ids, status, categoryId }: ProductModel.bulkPatchBody) {
+		const result = await prisma.product.updateMany({
+			where: { id: { in: ids } },
+			data: {
+				...(status && { status }),
+				...(categoryId && { categoryId }),
+			},
+		});
+		return result;
+	},
 };
 
 function validateVariantAttributeValues(
