@@ -742,14 +742,33 @@ export const productService = {
 	},
 
 	async bulkPatch({ ids, status, categoryId }: ProductModel.bulkPatchBody) {
-		const result = await prisma.product.updateMany({
-			where: { id: { in: ids } },
-			data: {
-				...(status && { status }),
-				...(categoryId && { categoryId }),
-			},
+		return prisma.$transaction(async (tx) => {
+			const result = await tx.product.updateMany({
+				where: { id: { in: ids } },
+				data: {
+					...(status && { status }),
+					...(categoryId && { categoryId }),
+				},
+			});
+
+			if (categoryId) {
+				const variants = await tx.productVariant.findMany({
+					where: { productId: { in: ids } },
+					select: { id: true },
+				});
+
+				await Promise.all(
+					variants.map((v) =>
+						tx.productVariant.update({
+							where: { id: v.id },
+							data: { attributeValues: { set: [] } },
+						}),
+					),
+				);
+			}
+
+			return result;
 		});
-		return result;
 	},
 };
 
