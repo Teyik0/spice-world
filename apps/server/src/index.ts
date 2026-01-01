@@ -30,7 +30,7 @@ const app = new Elysia()
 					new OTLPTraceExporter({
 						url: "https://api.axiom.co/v1/traces",
 						headers: {
-							Authorization: `Bearer ${Bun.env.AXIOM_TOKEN}`,
+							Authorization: `Bearer ${process.env.AXIOM_TOKEN}`,
 							"X-Axiom-Dataset": "spice-world",
 						},
 					}),
