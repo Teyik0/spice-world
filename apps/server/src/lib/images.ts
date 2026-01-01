@@ -1,5 +1,5 @@
+import { ResizeFit, Transformer } from "@napi-rs/image";
 import type { BunFile } from "bun";
-import sharp from "sharp";
 import { UTApi } from "uploadthing/server";
 import type { UploadedFileData } from "uploadthing/types";
 
@@ -10,13 +10,13 @@ export const utapi = new UTApi({
 const _uploadFile = async (filename: string, file: File | BunFile) => {
 	const arrayBuffer = await file.arrayBuffer();
 	const buffer = Buffer.from(arrayBuffer);
-	const outputImageBuffer = await sharp(buffer)
-		.resize(1000, 1000, { fit: "cover", withoutEnlargement: true })
-		.webp({ quality: 85 })
-		.toBuffer();
+	const transformer = new Transformer(buffer);
+	const outputBuffer = await transformer
+		.resize({ width: 1000, height: 1000, fit: ResizeFit.Cover })
+		.webp(85);
 
 	return await utapi.uploadFiles(
-		new File([outputImageBuffer.buffer as ArrayBuffer], `${filename}.webp`),
+		new File([new Uint8Array(outputBuffer)], `${filename}.webp`),
 	);
 };
 

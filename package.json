@@ -27,7 +27,7 @@
     "@types/bun": "^1.3.5",
     "lefthook": "^2.0.13",
     "typescript": "^5.9.3",
-    "ultracite": "6.5.0"
+    "ultracite": "7.0.1"
   },
   "patchedDependencies": {
     "@tanstack/form-core@1.27.5": "patches/@tanstack%2Fform-core@1.27.5.patch"
