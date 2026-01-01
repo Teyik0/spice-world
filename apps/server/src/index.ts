@@ -82,7 +82,8 @@ const app = new Elysia()
 	})
 	.use(categoryRouter)
 	.use(attributeRouter)
-	.use(productsRouter)
-	.listen(Bun.env.PORT ?? 3001);
+	.use(productsRouter);
+// .listen(Bun.env.PORT ?? 3001);
 
+export default app;
 export type App = typeof app;
