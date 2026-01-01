@@ -5,7 +5,7 @@ import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { attributeRouter } from "@spice-world/server/modules/attributes";
 import { categoryRouter } from "@spice-world/server/modules/categories";
-import { productsRouter } from "@spice-world/server/modules/products";
+// import { productsRouter } from "@spice-world/server/modules/products"; // TODO: Fix Bun sql import for Vercel
 import { Elysia } from "elysia";
 import { betterAuthPlugin, OpenAPI } from "./plugins/better-auth.plugin.tsx";
 
@@ -81,8 +81,8 @@ const app = new Elysia()
 		}
 	})
 	.use(categoryRouter)
-	.use(attributeRouter)
-	.use(productsRouter);
+	.use(attributeRouter);
+// .use(productsRouter); // TODO: Re-enable after fixing Bun sql
 // .listen(Bun.env.PORT ?? 3001);
 
 export default app;
