@@ -10,6 +10,8 @@
 		"test": "bun test --randomize --concurrent --bail",
 		"build": "bunx prisma generate && bun build --compile --minify-whitespace --minify-syntax --target bun --outfile dist/server src/index.ts",
 		"start": "PORT=3001 ./dist/server",
+		"build:vercel": "bunx prisma generate && bun build --minify-whitespace --minify-syntax --target bun --outdir dist src/index.ts",
+		"start:vercel": "PORT=3001 bun run ./dist/index.js",
 		"db:start": "bunx prisma dev",
 		"db:reset": "bunx prisma migrate reset"
 	},
