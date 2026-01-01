@@ -2,6 +2,7 @@
 	"name": "@spice-world/emails",
 	"version": "0.1.0",
 	"private": true,
+	"type": "module",
 	"scripts": {
 		"build": "email build",
 		"dev": "email dev -p 3005 --dir src",
