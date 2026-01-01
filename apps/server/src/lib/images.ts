@@ -4,7 +4,7 @@ import { UTApi } from "uploadthing/server";
 import type { UploadedFileData } from "uploadthing/types";
 
 export const utapi = new UTApi({
-	token: Bun.env.UPLOADTHING_TOKEN,
+	token: process.env.UPLOADTHING_TOKEN,
 });
 
 const _uploadFile = async (filename: string, file: File | BunFile) => {
