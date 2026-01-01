@@ -1,13 +1,13 @@
 import { cors } from "@elysiajs/cors";
-import { openapi } from "@elysiajs/openapi";
-import { opentelemetry } from "@elysiajs/opentelemetry";
-import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
-import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
+// import { openapi } from "@elysiajs/openapi";
+// import { opentelemetry } from "@elysiajs/opentelemetry";
+// import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
+// import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { attributeRouter } from "@spice-world/server/modules/attributes";
 import { categoryRouter } from "@spice-world/server/modules/categories";
 // import { productsRouter } from "@spice-world/server/modules/products"; // TODO: Fix Bun sql import for Vercel
 import { Elysia } from "elysia";
-import { betterAuthPlugin, OpenAPI } from "./plugins/better-auth.plugin.tsx";
+import { betterAuthPlugin } from "./plugins/better-auth.plugin.tsx";
 
 const formattedDate = () =>
 	new Date().toLocaleString("en-US", {
@@ -23,29 +23,29 @@ const formattedDate = () =>
 let startTime = performance.now();
 
 const app = new Elysia()
-	.use(
-		opentelemetry({
-			spanProcessors: [
-				new BatchSpanProcessor(
-					new OTLPTraceExporter({
-						url: "https://api.axiom.co/v1/traces",
-						headers: {
-							Authorization: `Bearer ${process.env.AXIOM_TOKEN}`,
-							"X-Axiom-Dataset": "spice-world",
-						},
-					}),
-				),
-			],
-		}),
-	)
-	.use(
-		openapi({
-			documentation: {
-				components: await OpenAPI.components,
-				paths: await OpenAPI.getPaths(),
-			},
-		}),
-	)
+	// .use(
+	// 	opentelemetry({
+	// 		spanProcessors: [
+	// 			new BatchSpanProcessor(
+	// 				new OTLPTraceExporter({
+	// 					url: "https://api.axiom.co/v1/traces",
+	// 					headers: {
+	// 						Authorization: `Bearer ${process.env.AXIOM_TOKEN}`,
+	// 						"X-Axiom-Dataset": "spice-world",
+	// 					},
+	// 				}),
+	// 			),
+	// 		],
+	// 	}),
+	// )
+	// .use(
+	// 	openapi({
+	// 		documentation: {
+	// 			components: await OpenAPI.components,
+	// 			paths: await OpenAPI.getPaths(),
+	// 		},
+	// 	}),
+	// )
 	.use(
 		cors({
 			origin: ["http://localhost:3000", "http://localhost:3001"],
