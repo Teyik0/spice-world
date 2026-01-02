@@ -18,6 +18,7 @@ await Bun.build({
 		whitespace: true,
 	},
 	target: "bun",
+	format: "esm",
 });
 
 // Make Bun treat index.js as ESM inside the function mount
@@ -31,9 +32,8 @@ await writeFile(
 	join(funcDir, ".vc-config.json"),
 	JSON.stringify(
 		{
-			runtime: "nodejs22.x",
+			runtime: "nodejs24.x",
 			handler: "index.js",
-			launcherType: "Nodejs",
 			shouldAddHelpers: true,
 		},
 		null,
