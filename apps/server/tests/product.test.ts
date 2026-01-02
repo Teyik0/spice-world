@@ -108,7 +108,7 @@ describe.concurrent("Product routes test", () => {
 
 		it("should return a list of products sorted by price", async () => {
 			const { data, status } = await api.products.get({
-				query: { sortBy: "price", sortDir: "asc" },
+				query: { sortBy: "priceMin", sortDir: "asc" },
 			});
 
 			expect(status).toBe(200);
@@ -124,18 +124,12 @@ describe.concurrent("Product routes test", () => {
 
 			// Verify the returned products are sorted by minPrice (ascending)
 			for (let i = 0; i < data.length - 1; i++) {
-				const current = data[i] as Product & {
-					minprice: number | null;
-					img: string | null;
-				};
-				const next = data[i + 1] as Product & {
-					minprice: number | null;
-					img: string | null;
-				};
+				const current = data[i] as ProductModel.getResult[number];
+				const next = data[i + 1] as ProductModel.getResult[number];
 
 				// Skip comparison if either has no price (NULL values come last due to NULLS LAST)
-				if (current.minprice !== null && next.minprice !== null) {
-					expect(current.minprice).toBeLessThanOrEqual(next.minprice);
+				if (current.priceMin !== null && next.priceMin !== null) {
+					expect(current.priceMin).toBeLessThanOrEqual(next.priceMin);
 				}
 			}
 		});

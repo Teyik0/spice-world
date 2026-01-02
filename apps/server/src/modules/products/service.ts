@@ -67,7 +67,10 @@ export const productService = {
 
 		const conditions = [];
 		if (status) conditions.push(sql`p.status = ${status}`);
-		if (name) conditions.push(sql`p.name ILIKE ${`%${name}%`}`);
+		if (name)
+			conditions.push(
+				sql`to_tsvector('french', p.name) @@ plainto_tsquery('french', ${name})`,
+			);
 		if (categories?.length) {
 			conditions.push(
 				sql`p."categoryId" IN (SELECT id FROM "Category" WHERE name IN ${sql(categories)})`,
@@ -82,23 +85,41 @@ export const productService = {
 					)
 				: sql``;
 
-		const orderByClause =
-			orderByField === "price" ? sql`minprice` : sql`p.${sql(orderByField)}`;
-		const selectClause =
-			orderByField === "price"
-				? sql`, (SELECT MIN(price) FROM "ProductVariant" WHERE "productId" = p.id) AS minprice`
-				: sql``;
-		const nullsClause = orderByField === "price" ? sql`NULLS LAST` : sql``; // If product has no productVariants
+		const isPriceSort =
+			orderByField === "priceMin" || orderByField === "priceMax";
+		const orderByClause = isPriceSort
+			? sql`v_agg.${sql(orderByField)}`
+			: sql`p.${sql(orderByField)}`;
+		const nullsClause = isPriceSort ? sql`NULLS LAST` : sql``;
 
 		const orderDirection = direction === "asc" ? sql`ASC` : sql`DESC`;
 		const offsetClause = skip !== undefined ? sql`OFFSET ${skip}` : sql``;
 		const limitClause = take !== undefined ? sql`LIMIT ${take}` : sql``;
 
 		const products = await sql<
-			(Product & { img: string | null })[]
-		>`SELECT p.*${selectClause}, (SELECT url FROM "Image" WHERE "productId" = p.id AND "isThumbnail" = true LIMIT 1) AS "img"
-		  FROM "Product" p ${whereClause}
-		  ORDER BY ${orderByClause} ${orderDirection} ${nullsClause} ${limitClause} ${offsetClause}`;
+			(Product & {
+				img: string | null;
+				priceMin: number | null;
+				priceMax: number | null;
+				totalStock: number;
+			})[]
+		>`SELECT
+			p.*,
+			(SELECT url FROM "Image" WHERE "productId" = p.id AND "isThumbnail" = true LIMIT 1) AS "img",
+			v_agg."priceMin",
+			v_agg."priceMax",
+			v_agg."totalStock"
+		FROM "Product" p
+		LEFT JOIN LATERAL (
+			SELECT
+				MIN(price) FILTER (WHERE stock > 0) AS "priceMin",
+				MAX(price) FILTER (WHERE stock > 0) AS "priceMax",
+				COALESCE(SUM(stock), 0)::int AS "totalStock"
+			FROM "ProductVariant"
+			WHERE "productId" = p.id
+		) v_agg ON true
+		${whereClause}
+		ORDER BY ${orderByClause} ${orderDirection} ${nullsClause} ${limitClause} ${offsetClause}`;
 
 		// We are using Bun.sql here because this query need to be performant for users
 		return [...products]; // erase array extra properties given by Bun.sql

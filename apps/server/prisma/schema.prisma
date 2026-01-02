@@ -152,6 +152,8 @@ model Image {
     productId String?
 
     category Category?
+
+    @@index([productId, isThumbnail])
 }
 
 // Product: Base product without variations (e.g., "Poivre")
@@ -175,6 +177,10 @@ model Product {
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+
+    // @@index([name], type: Gin) not possible with prisma, setted in migration.sql manually
+    @@index([status])
+    @@index([categoryId])
 }
 
 // ProductVariant: Specific variation of a product with unique attributes, price, and stock
@@ -196,6 +202,9 @@ model ProductVariant {
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+
+    @@index([productId])
+    @@index([productId, stock, price])
 }
 
 enum ProductStatus {
