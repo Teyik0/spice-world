@@ -1,6 +1,7 @@
 "use client";
 
 import type { ProductModel } from "@spice-world/server/modules/products/model";
+import { ClientOnly } from "@spice-world/web/components/client-only";
 import { Badge } from "@spice-world/web/components/ui/badge";
 import { Checkbox } from "@spice-world/web/components/ui/checkbox";
 import {
@@ -11,10 +12,10 @@ import {
 	TableHeader,
 	TableRow,
 } from "@spice-world/web/components/ui/table";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
-import { selectedProductIdsAtom } from "./store";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { newProductAtom, selectedProductIdsAtom } from "./store";
 
 interface Category {
 	id: string;
@@ -33,6 +34,76 @@ export const statusVariants: Record<
 	PUBLISHED: "default",
 	DRAFT: "secondary",
 	ARCHIVED: "outline",
+};
+
+const getCategoryName = (categoryId: string, categories: Category[]) => {
+	return categories.find((c) => c.id === categoryId)?.name ?? "-";
+};
+
+const NewProductTableRow = ({ categories }: { categories: Category[] }) => {
+	const router = useRouter();
+	const pathname = usePathname();
+	const searchParams = useSearchParams();
+	const newProduct = useAtomValue(newProductAtom);
+
+	if (!newProduct) return null;
+
+	const isSelected = pathname === "/products/new";
+
+	const handleClick = () => {
+		if (isSelected) return;
+		const params = searchParams.toString();
+		router.push(`/products/new${params ? `?${params}` : ""}`, {
+			scroll: false,
+		});
+	};
+
+	const firstLetter = (newProduct.name || "N")[0]?.toUpperCase() || "N";
+
+	return (
+		<TableRow
+			data-state={isSelected ? "selected" : undefined}
+			className="cursor-pointer"
+			onClick={handleClick}
+		>
+			<TableCell onClick={(e) => e.stopPropagation()}>
+				<Checkbox disabled aria-label="New product" />
+			</TableCell>
+			<TableCell>
+				{newProduct.img ? (
+					<Image
+						src={newProduct.img}
+						alt="New Product"
+						width={48}
+						height={48}
+						className="rounded-md object-cover"
+					/>
+				) : (
+					<div className="size-10 rounded-md bg-primary flex items-center justify-center text-muted font-medium">
+						{firstLetter}
+					</div>
+				)}
+			</TableCell>
+			<TableCell className="font-medium">
+				{newProduct.name || "New product"}
+			</TableCell>
+			<TableCell>
+				<Badge
+					variant="secondary"
+					className="bg-blue-500 text-white font-semibold dark:bg-blue-600"
+				>
+					{newProduct.status.toLowerCase()}
+				</Badge>
+			</TableCell>
+			<TableCell>
+				{getCategoryName(newProduct.categoryId, categories)}
+			</TableCell>
+			<TableCell className="text-muted-foreground">-</TableCell>
+			<TableCell>
+				<Badge variant="outline">-</Badge>
+			</TableCell>
+		</TableRow>
+	);
 };
 
 export function ProductsTable({ products, categories }: ProductsTableProps) {
@@ -57,10 +128,6 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 	const allSelected =
 		products.length > 0 && selectedIds.size === products.length;
 	const someSelected = selectedIds.size > 0 && !allSelected;
-
-	const getCategoryName = (categoryId: string) => {
-		return categories.find((c) => c.id === categoryId)?.name ?? "-";
-	};
 
 	const handleRowClick = (slug: string) => {
 		const params = searchParams.toString();
@@ -87,6 +154,9 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 				</TableRow>
 			</TableHeader>
 			<TableBody>
+				<ClientOnly>
+					<NewProductTableRow categories={categories} />
+				</ClientOnly>
 				{products.map((product) => (
 					<TableRow
 						key={product.id}
@@ -120,7 +190,9 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 								{product.status.toLowerCase()}
 							</Badge>
 						</TableCell>
-						<TableCell>{getCategoryName(product.categoryId)}</TableCell>
+						<TableCell>
+							{getCategoryName(product.categoryId, categories)}
+						</TableCell>
 						<TableCell className="text-muted-foreground">-</TableCell>
 						<TableCell>
 							<Badge variant="outline">-</Badge>

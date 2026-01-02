@@ -30,6 +30,11 @@ import { ProductFormDetails } from "./form-details";
 import { ProductFormImages } from "./form-images";
 import { ProductFormVariants } from "./form-variants";
 
+interface AttributeValueInfo {
+	attributeId: string;
+	values: string[];
+}
+
 export const ProductForm = ({
 	product,
 	categories,
@@ -47,9 +52,12 @@ export const ProductForm = ({
 		isNew ? newProductAtom : currentProductAtom,
 	);
 
-	// Key pour reset le formulaire (incrémenté quand on clique sur Discard)
 	const [formResetKey, setFormResetKey] = useState(0);
 	const [isDeleting, setIsDeleting] = useState(false);
+	const [showCategoryWarning, setShowCategoryWarning] = useState(false);
+	const [attributesToRemove, setAttributesToRemove] = useState<
+		AttributeValueInfo[]
+	>([]);
 
 	const handleDiscard = () => {
 		form.reset();
@@ -66,6 +74,89 @@ export const ProductForm = ({
 			slug: product.slug,
 		});
 	});
+
+	const getAttributesToRemove = (): AttributeValueInfo[] => {
+		const attributeMap = new Map<string, Set<string>>();
+
+		for (const variant of product.variants) {
+			for (const attrValue of variant.attributeValues) {
+				const attrId = attrValue.attributeId;
+				if (!attributeMap.has(attrId)) {
+					attributeMap.set(attrId, new Set());
+				}
+				attributeMap.get(attrId)?.add(attrValue.value);
+			}
+		}
+
+		return Array.from(attributeMap.entries()).map(([attributeId, values]) => ({
+			attributeId,
+			values: Array.from(values),
+		}));
+	};
+
+	const hasCategoryChanged = () => {
+		const currentCategoryId = form.getFieldValue("categoryId");
+		return currentCategoryId !== product.categoryId;
+	};
+
+	const hasExistingAttributeValues = () => {
+		return product.variants.some(
+			(v) => v.attributeValues && v.attributeValues.length > 0,
+		);
+	};
+
+	const executeSubmit = async () => {
+		const values = form.store.state.values;
+		try {
+			let data: ProductModel.postResult | ProductModel.patchResult;
+			if (isNew) {
+				data = await handleCreate(values as ProductModel.postBody);
+			} else {
+				data = await handleUpdate(values as ProductModel.patchBody);
+				form.setFieldValue("_version", data.version);
+				form.setFieldValue("variants", {
+					create: undefined,
+					update: data.variants.map((v) => ({
+						id: v.id,
+						price: v.price,
+						sku: v.sku ?? undefined,
+						stock: v.stock,
+						currency: v.currency,
+						attributeValueIds: v.attributeValues.map((av) => av.id),
+					})),
+					delete: undefined,
+				});
+				form.setFieldValue("images", undefined);
+				form.setFieldValue("imagesOps", {
+					create: undefined,
+					update: undefined,
+					delete: undefined,
+				});
+			}
+			setSidebarProduct({
+				name: data.name,
+				description: data.description,
+				status: data.status,
+				img: data.images.find((img) => img.isThumbnail)?.url ?? null,
+				categoryId: data.categoryId,
+				slug: data.slug,
+			});
+
+			await revalidateProductsLayout();
+
+			if (data.slug !== product.slug) {
+				router.push(
+					`/products/${data.slug}${queryString ? `?${queryString}` : ""}`,
+				);
+			}
+		} catch (error: unknown) {
+			const err = unknownError(
+				error,
+				isNew ? "Failed to create product" : "Failed to update product",
+			);
+			toast.error(elysiaErrorToString(err));
+		}
+	};
 
 	const form = useForm({
 		schema: isNew ? ProductModel.postBody : ProductModel.patchBody,
@@ -106,61 +197,23 @@ export const ProductForm = ({
 				delete: undefined,
 			},
 		},
-		onSubmit: async (values) => {
-			try {
-				let data: ProductModel.postResult | ProductModel.patchResult;
-				if (isNew) {
-					data = await handleCreate(values as ProductModel.postBody);
-				} else {
-					data = await handleUpdate(values as ProductModel.patchBody);
-					form.setFieldValue("_version", data.version);
-					form.setFieldValue("variants", {
-						create: undefined,
-						update: data.variants.map((v) => ({
-							id: v.id,
-							price: v.price,
-							sku: v.sku ?? undefined,
-							stock: v.stock,
-							currency: v.currency,
-							attributeValueIds: v.attributeValues.map((av) => av.id),
-						})),
-						delete: undefined,
-					});
-					form.setFieldValue("images", undefined);
-					form.setFieldValue("imagesOps", {
-						create: undefined,
-						update: undefined,
-						delete: undefined,
-					});
-				}
-				setSidebarProduct({
-					name: data.name,
-					description: data.description,
-					status: data.status,
-					img: data.images.find((img) => img.isThumbnail)?.url ?? null,
-					categoryId: data.categoryId,
-					slug: data.slug,
-				});
-
-				await revalidateProductsLayout();
-
-				if (data.slug !== product.slug) {
-					router.push(
-						`/products/${data.slug}${queryString ? `?${queryString}` : ""}`,
-					);
-				}
-			} catch (error: unknown) {
-				const err = unknownError(
-					error,
-					isNew ? "Failed to create product" : "Failed to update product",
-				);
-				toast.error(elysiaErrorToString(err));
+		onSubmit: async () => {
+			if (!isNew && hasCategoryChanged() && hasExistingAttributeValues()) {
+				setAttributesToRemove(getAttributesToRemove());
+				setShowCategoryWarning(true);
+				return;
 			}
+			await executeSubmit();
 		},
 		onSubmitInvalid() {
 			toast.error("Invalid submit");
 		},
 	});
+
+	const handleConfirmCategoryChange = async () => {
+		setShowCategoryWarning(false);
+		await executeSubmit();
+	};
 
 	const handleCreate = async (values: ProductModel.postBody) => {
 		const { data, error } = await app.products.post(values);
@@ -327,6 +380,47 @@ export const ProductForm = ({
 					<form.SubmitButton size="sm">Save Product</form.SubmitButton>
 				</div>
 			</Form>
+
+			<Dialog open={showCategoryWarning} onOpenChange={setShowCategoryWarning}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Change category?</DialogTitle>
+						<DialogDescription>
+							Changing the category will delete all existing variants and their
+							attribute values. This action cannot be undone.
+						</DialogDescription>
+					</DialogHeader>
+
+					{attributesToRemove.length > 0 && (
+						<div className="space-y-3 max-h-60 overflow-y-auto">
+							<p className="text-sm font-medium">
+								The following attributes will be removed:
+							</p>
+							{attributesToRemove.map((attr) => (
+								<div key={attr.attributeId} className="flex flex-wrap gap-1">
+									{attr.values.map((value) => (
+										<Badge key={value} variant="secondary">
+											{value}
+										</Badge>
+									))}
+								</div>
+							))}
+						</div>
+					)}
+
+					<DialogFooter>
+						<Button
+							variant="outline"
+							onClick={() => setShowCategoryWarning(false)}
+						>
+							Cancel
+						</Button>
+						<Button variant="destructive" onClick={handleConfirmCategoryChange}>
+							Change category
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</section>
 	);
 };

@@ -25,11 +25,6 @@ export const NewProductItem = () => {
 	const searchParams = useSearchParams();
 	const newProduct = useAtomValue(newProductAtom);
 
-	// Only show on /products or /products/new
-	if (pathname !== "/products" && pathname !== "/products/new") {
-		return null;
-	}
-
 	// Don't show if there's no newProduct state
 	if (!newProduct) return null;
 
@@ -45,6 +40,8 @@ export const NewProductItem = () => {
 		});
 	};
 
+	const firstLetter = newProduct.name[0]?.toUpperCase() ?? "N";
+
 	return (
 		<button
 			type="button"
@@ -52,7 +49,7 @@ export const NewProductItem = () => {
 			text-sm leading-tight last:border-b-0 ${isSelected ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""}`}
 			onClick={handleClick}
 		>
-			{newProduct.img && (
+			{newProduct.img ? (
 				<Image
 					src={newProduct.img}
 					alt="New Product Image"
@@ -60,6 +57,10 @@ export const NewProductItem = () => {
 					height={48}
 					className="rounded-md shrink-0 object-cover"
 				/>
+			) : (
+				<div className="size-10 rounded-md bg-primary flex items-center justify-center text-muted font-medium shrink-0">
+					{firstLetter}
+				</div>
 			)}
 			<div className="flex flex-col items-start gap-1.5 min-w-0 flex-1">
 				<div className="flex w-full items-center gap-2">
