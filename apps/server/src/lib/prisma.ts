@@ -7,10 +7,14 @@ const prismaClientSingleton = () => {
 	if (!connectionString) {
 		throw new Error("DATABASE_URL environment variable is not defined");
 	}
-	const adapter =
-		process.env.NODE_ENV !== "production"
-			? new PrismaPg({ connectionString })
-			: new PrismaNeon({ connectionString });
+	const isNeon = connectionString.includes("neon.tech");
+
+	const adapter = isNeon
+		? new PrismaNeon({
+				connectionString,
+			})
+		: new PrismaPg({ connectionString });
+
 	return new PrismaClient({
 		adapter,
 	});

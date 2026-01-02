@@ -1,29 +1,43 @@
-FROM oven/bun:latest AS build
+FROM oven/bun:latest AS builder
 
 WORKDIR /ws
 
-COPY ./package.json ./bunfig.toml ./bun.lock ./
-COPY ./apps/server/package.json ./apps/server/package.json
+COPY ./package.json ./bunfig.toml ./bun.lock ./tsconfig.base.json ./tsconfig.json ./
+COPY ./patches ./patches
 
-RUN bun install
+COPY ./apps/server/package.json ./apps/server/package.json
+COPY ./apps/server/tsconfig.json ./apps/server/tsconfig.json
+
+COPY ./packages/emails/package.json ./packages/emails/package.json
+COPY ./packages/emails/tsconfig.json ./packages/emails/tsconfig.json
+
+COPY ./apps/web/package.json ./apps/web/package.json
+COPY ./apps/web/tsconfig.json ./apps/web/tsconfig.json
+
+
+RUN bun install --frozen-lockfile --ignore-scripts
 
 COPY ./apps/server/src ./apps/server/src
 COPY ./apps/server/prisma ./apps/server/prisma
+COPY ./packages/emails/src ./packages/emails/src
+COPY ./apps/server/build.ts ./apps/server/build.ts
 
 WORKDIR /ws/apps/server
 
 ENV NODE_ENV=production
 
-RUN bun run prisma generate && bun run build
+RUN bun run build
 
-FROM gcr.io/distroless/base
+FROM gcr.io/distroless/cc-debian12
 
 WORKDIR /app
 
-COPY --from=builder /app/dist /app/dist
+COPY --from=builder /ws/apps/server/dist/server /app/server
+COPY --from=builder /ws/apps/server/dist/*.node /app/node_modules/@napi-rs/image/
 
-ENV NODE_ENV=production
+ENV NODE_PATH=/app/node_modules
+ENV PORT=3001
 
-CMD ["bun", "run", "start"]
+CMD ["/app/server"]
 
-EXPOSE 3000
+EXPOSE 3001

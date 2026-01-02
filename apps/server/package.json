@@ -8,10 +8,8 @@
 	"scripts": {
 		"dev": "prisma generate && PORT=3001 bun run --bun --watch --cpu-prof --cpu-prof-name '@spice-world/server' --inspect --title '@spice-world/server' src/index.ts",
 		"test": "bun test --randomize --concurrent --bail",
-		"build": "bunx prisma generate && bun build --compile --minify-whitespace --minify-syntax --target bun --outfile dist/server src/index.ts",
+		"build": "bunx prisma generate && bun run build.ts",
 		"start": "PORT=3001 ./dist/server",
-		"build:vercel": "bunx prisma generate && bun run build.ts",
-		"start:vercel": "PORT=3001 bun run ./dist/index.js",
 		"db:start": "bunx prisma dev",
 		"db:reset": "bunx prisma migrate reset"
 	},
