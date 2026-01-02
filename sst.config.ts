@@ -1,8 +1,6 @@
 /// <reference path="./.sst/platform/config.d.ts" />
-
 // biome-ignore-all lint/correctness/noUndeclaredVariables: sst specific
 // biome-ignore-all lint/suspicious/useAwait: sst specific
-
 export default $config({
   app(input) {
     return {
@@ -16,10 +14,10 @@ export default $config({
           apiToken: process.env.VERCEL_API_TOKEN,
           team: "team_jKy3xXivkDGmI01SAr9Bo9d1",
         },
+        aws: "7.15.0",
       },
     };
   },
-
   async run() {
     const neonProject = new neon.Project("spice-world-db", {
       name: "spice-world-db",
@@ -38,14 +36,12 @@ export default $config({
       branchId: devBranch.id,
       type: "read_write",
     });
-
     const database = new sst.Linkable("Database", {
       properties: {
         prodConnectionString: neonProject.connectionUri,
         devConnectionString: $interpolate`postgresql://${neonProject.databaseUser}:${neonProject.databasePassword}@${devEndpoint.host}/${neonProject.databaseName}?sslmode=require`,
       },
     });
-
     const serverSecrets = Object.values({
       uploadthingToken: new sst.Secret("UPLOADTHING_TOKEN"),
       betterAuthSecret: new sst.Secret("BETTER_AUTH_SECRET"),
@@ -53,7 +49,6 @@ export default $config({
       googleClientSecret: new sst.Secret("GOOGLE_CLIENT_SECRET"),
       resendApiKey: new sst.Secret("RESEND_API_KEY"),
     });
-
     new vercel.Project("spice-world-server", {
       name: "spice-world-server",
       framework: "elysia",
@@ -65,7 +60,6 @@ export default $config({
         repo: "Teyik0/spice-world",
       },
     });
-
     // Buggy - vercel provider bugs - set once and then commented
     // new vercel.ProjectEnvironmentVariables("spice-world-server-env", {
     //   projectId: spiceWorldServer.id,
@@ -87,7 +81,6 @@ export default $config({
     //     },
     //   ],
     // });
-
     // Auto-start dev servers
     new sst.x.DevCommand("Server", {
       dev: {
@@ -97,7 +90,6 @@ export default $config({
         title: "Elysia Server",
       },
     });
-
     new sst.x.DevCommand("Dashboard", {
       dev: {
         autostart: true,
@@ -106,7 +98,6 @@ export default $config({
         title: "Next.js Web",
       },
     });
-
     return {
       database,
       secrets: serverSecrets,

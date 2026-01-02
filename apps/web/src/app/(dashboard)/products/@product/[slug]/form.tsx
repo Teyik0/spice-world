@@ -209,121 +209,124 @@ export const ProductForm = ({
 
 	const hasStock = product.variants.some((variant) => variant.stock > 0);
 	return (
-		<Form form={form} className="flex flex-col mx-auto max-w-236">
-			<div className="grid gap-4 w-full md:grid-cols-[1fr_320px] lg:grid-cols-[1fr_1fr_320px] lg:gap-4">
-				<div className="flex gap-3 md:col-span-1 lg:col-span-2 items-center">
-					<Button variant="outline" size="icon" className="h-7 w-7" asChild>
-						<Link href={`/products${queryString ? `?${queryString}` : ""}`}>
-							<ChevronLeft className="h-4 w-4" />
-							<span className="sr-only">Back</span>
-						</Link>
-					</Button>
+		<section className="w-full p-6 @container">
+			<Form form={form} className="flex flex-col mx-auto max-w-260">
+				<div className="grid gap-6 w-full @sm:grid-cols-[1fr_320px] @lg:grid-cols-[600px_320px] @xl:@lg:grid-cols-5">
+					<div className="flex gap-3 @md:col-span-1 @lg:col-span-2 @xl:col-span-3 items-center">
+						<Button variant="outline" size="icon" className="h-7 w-7" asChild>
+							<Link href={`/products${queryString ? `?${queryString}` : ""}`}>
+								<ChevronLeft className="h-4 w-4" />
+								<span className="sr-only">Back</span>
+							</Link>
+						</Button>
 
-					<h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0 capitalize">
-						{form.store.state.values.name}
-					</h1>
-					{hasStock ? (
-						<Badge variant="outline" className="ml-auto sm:ml-0 text-xs">
-							In stock
-						</Badge>
-					) : (
-						<Badge variant="destructive" className="ml-auto sm:ml-0 text-xs">
-							Out of stock
-						</Badge>
-					)}
+						<h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0 capitalize">
+							{form.store.state.values.name}
+						</h1>
+						{hasStock ? (
+							<Badge variant="outline" className="ml-auto sm:ml-0 text-xs">
+								In stock
+							</Badge>
+						) : (
+							<Badge variant="destructive" className="ml-auto sm:ml-0 text-xs">
+								Out of stock
+							</Badge>
+						)}
+					</div>
+
+					{/* Boutons d'action (desktop) */}
+					<div className="flex justify-end gap-3 @xl:col-span-2">
+						{!isNew && (
+							<Dialog>
+								<DialogTrigger asChild>
+									<Button variant="destructive" size="sm" type="button">
+										Delete
+									</Button>
+								</DialogTrigger>
+								<DialogContent>
+									<DialogHeader>
+										<DialogTitle>Delete product?</DialogTitle>
+										<DialogDescription>
+											This action cannot be undone.
+										</DialogDescription>
+									</DialogHeader>
+									<DialogFooter>
+										<DialogClose asChild>
+											<Button variant="outline" disabled={isDeleting}>
+												Cancel
+											</Button>
+										</DialogClose>
+										<Button
+											variant="destructive"
+											onClick={() => handleDelete()}
+											disabled={isDeleting}
+										>
+											{isDeleting ? (
+												<>
+													<Loader2 className="animate-spin" size={16} />{" "}
+													Deleting...
+												</>
+											) : (
+												"Delete"
+											)}
+										</Button>
+									</DialogFooter>
+								</DialogContent>
+							</Dialog>
+						)}
+						<Button
+							variant="outline"
+							size="sm"
+							type="button"
+							onClick={handleDiscard}
+						>
+							Discard
+						</Button>
+						<form.SubmitButton size="sm">Save Product</form.SubmitButton>
+					</div>
+
+					<div className="grid @xl:col-span-3 gap-6">
+						<ProductFormDetails form={form} isNew={isNew} />
+						<ProductFormVariants form={form} />
+					</div>
+					<div className="grid @xl:col-span-2 gap-6">
+						<ProductFormClassification
+							form={form}
+							isNew={isNew}
+							initialCategories={categories}
+						/>
+						<ProductFormImages
+							key={formResetKey}
+							isNew={isNew}
+							form={form}
+							existingImages={product.images}
+						/>
+					</div>
 				</div>
 
-				{/* Boutons d'action (desktop) */}
-				<div className="md:col-span-1 lg:col-span-1 flex justify-end gap-3">
+				{/* Boutons d'action (mobile) */}
+				<div className="flex items-center justify-center gap-2 md:hidden">
 					{!isNew && (
-						<Dialog>
-							<DialogTrigger asChild>
-								<Button variant="destructive" size="sm" type="button">
-									Delete
-								</Button>
-							</DialogTrigger>
-							<DialogContent>
-								<DialogHeader>
-									<DialogTitle>Delete product?</DialogTitle>
-									<DialogDescription>
-										This action cannot be undone.
-									</DialogDescription>
-								</DialogHeader>
-								<DialogFooter>
-									<DialogClose asChild>
-										<Button variant="outline" disabled={isDeleting}>
-											Cancel
-										</Button>
-									</DialogClose>
-									<Button
-										variant="destructive"
-										onClick={() => handleDelete()}
-										disabled={isDeleting}
-									>
-										{isDeleting ? (
-											<>
-												<Loader2 className="animate-spin" size={16} />{" "}
-												Deleting...
-											</>
-										) : (
-											"Delete"
-										)}
-									</Button>
-								</DialogFooter>
-							</DialogContent>
-						</Dialog>
+						<Button
+							variant="destructive"
+							size="sm"
+							type="button"
+							onClick={handleDelete}
+						>
+							Delete
+						</Button>
 					)}
 					<Button
+						type="button"
 						variant="outline"
 						size="sm"
-						type="button"
 						onClick={handleDiscard}
 					>
 						Discard
 					</Button>
 					<form.SubmitButton size="sm">Save Product</form.SubmitButton>
 				</div>
-				<div className="grid auto-rows-max items-start gap-4 lg:col-span-2 min-w-xs">
-					<ProductFormDetails form={form} isNew={isNew} />
-					<ProductFormVariants form={form} />
-				</div>
-				<div className="grid auto-rows-max items-start gap-4 min-w-xs">
-					<ProductFormClassification
-						form={form}
-						isNew={isNew}
-						initialCategories={categories}
-					/>
-					<ProductFormImages
-						key={formResetKey}
-						isNew={isNew}
-						form={form}
-						existingImages={product.images}
-					/>
-				</div>
-			</div>
-
-			{/* Boutons d'action (mobile) */}
-			<div className="flex items-center justify-center gap-2 md:hidden">
-				{!isNew && (
-					<Button
-						variant="destructive"
-						size="sm"
-						type="button"
-						onClick={handleDelete}
-					>
-						Delete
-					</Button>
-				)}
-				<Button
-					type="button"
-					variant="outline"
-					size="sm"
-					onClick={handleDiscard}
-				>
-					Discard
-				</Button>
-				<form.SubmitButton size="sm">Save Product</form.SubmitButton>
-			</div>
-		</Form>
+			</Form>
+		</section>
 	);
 };

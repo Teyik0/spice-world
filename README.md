@@ -1,5 +1,7 @@
 ### Environnement
 ```bash
+bun install
+bunx sst install
 # Development (votre username)
 bun sst:dev
 # Crée : spice-world-db-teyik0

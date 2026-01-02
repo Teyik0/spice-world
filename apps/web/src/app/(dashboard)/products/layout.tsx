@@ -37,7 +37,7 @@ export default async function LayoutProducts({
 					<SidebarTrigger className="-mr-1 ml-auto rotate-180" />
 				</header>
 
-				<section className="p-6">{product}</section>
+				{product}
 			</SidebarInset>
 
 			<Sidebar

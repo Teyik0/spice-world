@@ -345,15 +345,15 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 					Add product variants with attributes and manage stock
 				</CardDescription>
 			</CardHeader>
-			<CardContent>
+			<CardContent className="w-0 min-w-full overflow-x-auto">
 				<Table>
 					<TableHeader>
 						<TableRow>
 							<TableHead>Attributes</TableHead>
-							<TableHead className="w-25">SKU</TableHead>
+							<TableHead className="w-20">SKU</TableHead>
 							<TableHead className="w-20">Price (€)</TableHead>
 							<TableHead className="w-20">Stock</TableHead>
-							<TableHead className="w-12.5" />
+							<TableHead className="w-8" />
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -384,7 +384,7 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 
 							return (
 								<TableRow key={variantId ?? `new-${index}`}>
-									<TableCell className="min-w-50">
+									<TableCell className="min-w-40">
 										<form.AppField name={`${fieldPrefix}.attributeValueIds`}>
 											{(field) => (
 												<div className="flex flex-col gap-1">
@@ -427,7 +427,7 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 													<field.Input
 														type="text"
 														placeholder="SKU-001"
-														className="min-w-25"
+														className="w-20"
 													/>
 													<div className="absolute -top-1.5 -right-1.5 z-10">
 														<field.Message variant="tooltip" />
