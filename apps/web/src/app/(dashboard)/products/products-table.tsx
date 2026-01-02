@@ -149,7 +149,8 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 					<TableHead>Name</TableHead>
 					<TableHead>Status</TableHead>
 					<TableHead>Category</TableHead>
-					<TableHead>Price</TableHead>
+					<TableHead>Price (min)</TableHead>
+					<TableHead>Price (max)</TableHead>
 					<TableHead>Stock</TableHead>
 				</TableRow>
 			</TableHeader>
@@ -193,9 +194,14 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 						<TableCell>
 							{getCategoryName(product.categoryId, categories)}
 						</TableCell>
-						<TableCell className="text-muted-foreground">-</TableCell>
+						<TableCell className="text-muted-foreground">
+							{product.priceMin}€
+						</TableCell>
+						<TableCell className="text-muted-foreground">
+							{product.priceMax}€
+						</TableCell>
 						<TableCell>
-							<Badge variant="outline">-</Badge>
+							<Badge variant="outline">{product.totalStock}</Badge>
 						</TableCell>
 					</TableRow>
 				))}

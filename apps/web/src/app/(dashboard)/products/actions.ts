@@ -3,5 +3,5 @@
 import { revalidatePath } from "next/cache";
 
 export async function revalidateProductsLayout() {
-	revalidatePath("/products", "layout");
+	revalidatePath("/products", "page");
 }

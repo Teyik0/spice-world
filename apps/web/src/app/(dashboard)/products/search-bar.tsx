@@ -100,7 +100,8 @@ export function ProductsSearchBar({ categories }: { categories: Category[] }) {
 		name: "Name",
 		createdAt: "Created",
 		updatedAt: "Updated",
-		price: "Price",
+		priceMin: "Price (min)",
+		priceMax: "Price (max)",
 	};
 
 	return (

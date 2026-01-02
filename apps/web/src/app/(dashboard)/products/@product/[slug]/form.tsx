@@ -133,15 +133,7 @@ export const ProductForm = ({
 					delete: undefined,
 				});
 			}
-			setSidebarProduct({
-				name: data.name,
-				description: data.description,
-				status: data.status,
-				img: data.images.find((img) => img.isThumbnail)?.url ?? null,
-				categoryId: data.categoryId,
-				slug: data.slug,
-			});
-
+			setSidebarProduct(null);
 			await revalidateProductsLayout();
 
 			if (data.slug !== product.slug) {

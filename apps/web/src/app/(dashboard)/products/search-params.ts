@@ -11,7 +11,8 @@ export const sortByOptions = [
 	"name",
 	"createdAt",
 	"updatedAt",
-	"price",
+	"priceMin",
+	"priceMax",
 ] as const;
 export const sortDirOptions = ["asc", "desc"] as const;
 
