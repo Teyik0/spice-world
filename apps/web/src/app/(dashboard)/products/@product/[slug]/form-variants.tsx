@@ -152,6 +152,7 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 
 	// Extract variants from the operations structure
 	// For display purposes, we merge create + update arrays
+	// biome-ignore lint/correctness/useExhaustiveDependencies: ok
 	const variantsArray = useMemo(() => {
 		if (!variants) return [];
 

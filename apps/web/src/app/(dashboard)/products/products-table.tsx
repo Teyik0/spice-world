@@ -99,6 +99,7 @@ const NewProductTableRow = ({ categories }: { categories: Category[] }) => {
 				{getCategoryName(newProduct.categoryId, categories)}
 			</TableCell>
 			<TableCell className="text-muted-foreground">-</TableCell>
+			<TableCell className="text-muted-foreground">-</TableCell>
 			<TableCell>
 				<Badge variant="outline">-</Badge>
 			</TableCell>
