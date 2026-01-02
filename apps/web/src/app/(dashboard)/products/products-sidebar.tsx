@@ -3,9 +3,9 @@
 import type { ProductModel } from "@spice-world/server/modules/products/model";
 import { ClientOnly } from "@spice-world/web/components/client-only";
 import { Button } from "@spice-world/web/components/ui/button";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
-import { sidebarExpandedAtom } from "../store";
+import { useSidebarExpanded } from "../sidebar-provider";
 import { BulkActionsBar } from "./bulk-menu";
 import { AddProductButton, NewProductItem, ProductItem } from "./product-item";
 import { ProductsTable } from "./products-table";
@@ -26,7 +26,7 @@ export function ProductsSidebar({
 	products,
 	categories,
 }: ProductsSidebarProps) {
-	const [expanded, setExpanded] = useAtom(sidebarExpandedAtom);
+	const [expanded, setExpanded] = useSidebarExpanded();
 	const selectedIds = useAtomValue(selectedProductIdsAtom);
 	const selectedIdsArray = Array.from(selectedIds);
 
