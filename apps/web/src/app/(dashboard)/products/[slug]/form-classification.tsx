@@ -24,7 +24,7 @@ import {
 	currentProductAtom,
 	newProductAtom,
 	type ProductItemProps,
-} from "../../store";
+} from "../store";
 import { CategoryDialog } from "./category-dialog";
 
 interface ProductFormClassificationProps {

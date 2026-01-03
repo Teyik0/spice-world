@@ -109,6 +109,7 @@ const NewProductTableRow = ({ categories }: { categories: Category[] }) => {
 
 export function ProductsTable({ products, categories }: ProductsTableProps) {
 	const router = useRouter();
+	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const [selectedIds, setSelectedIds] = useAtom(selectedProductIdsAtom);
 
@@ -159,53 +160,60 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 				<ClientOnly>
 					<NewProductTableRow categories={categories} />
 				</ClientOnly>
-				{products.map((product) => (
-					<TableRow
-						key={product.id}
-						data-state={selectedIds.has(product.id) ? "selected" : undefined}
-						className="cursor-pointer"
-						onClick={() => handleRowClick(product.slug)}
-					>
-						<TableCell onClick={(e) => e.stopPropagation()}>
-							<Checkbox
-								checked={selectedIds.has(product.id)}
-								onCheckedChange={(checked) => toggleOne(product.id, !!checked)}
-								aria-label={`Select ${product.name}`}
-							/>
-						</TableCell>
-						<TableCell>
-							{product.img ? (
-								<Image
-									src={product.img}
-									alt={product.name}
-									width={48}
-									height={48}
-									className="rounded-md object-cover"
+				{products.map((product) => {
+					const isActive = pathname.includes(product.slug);
+					return (
+						<TableRow
+							key={product.id}
+							data-state={
+								isActive || selectedIds.has(product.id) ? "selected" : undefined
+							}
+							className="cursor-pointer"
+							onClick={() => handleRowClick(product.slug)}
+						>
+							<TableCell onClick={(e) => e.stopPropagation()}>
+								<Checkbox
+									checked={selectedIds.has(product.id)}
+									onCheckedChange={(checked) =>
+										toggleOne(product.id, !!checked)
+									}
+									aria-label={`Select ${product.name}`}
 								/>
-							) : (
-								<div className="size-10 rounded-md bg-muted" />
-							)}
-						</TableCell>
-						<TableCell className="font-medium">{product.name}</TableCell>
-						<TableCell>
-							<Badge variant={statusVariants[product.status]}>
-								{product.status.toLowerCase()}
-							</Badge>
-						</TableCell>
-						<TableCell>
-							{getCategoryName(product.categoryId, categories)}
-						</TableCell>
-						<TableCell className="text-muted-foreground">
-							{product.priceMin}€
-						</TableCell>
-						<TableCell className="text-muted-foreground">
-							{product.priceMax}€
-						</TableCell>
-						<TableCell>
-							<Badge variant="outline">{product.totalStock}</Badge>
-						</TableCell>
-					</TableRow>
-				))}
+							</TableCell>
+							<TableCell>
+								{product.img ? (
+									<Image
+										src={product.img}
+										alt={product.name}
+										width={48}
+										height={48}
+										className="rounded-md object-cover"
+									/>
+								) : (
+									<div className="size-10 rounded-md bg-muted" />
+								)}
+							</TableCell>
+							<TableCell className="font-medium">{product.name}</TableCell>
+							<TableCell>
+								<Badge variant={statusVariants[product.status]}>
+									{product.status.toLowerCase()}
+								</Badge>
+							</TableCell>
+							<TableCell>
+								{getCategoryName(product.categoryId, categories)}
+							</TableCell>
+							<TableCell className="text-muted-foreground">
+								{product.priceMin}€
+							</TableCell>
+							<TableCell className="text-muted-foreground">
+								{product.priceMax}€
+							</TableCell>
+							<TableCell>
+								<Badge variant="outline">{product.totalStock}</Badge>
+							</TableCell>
+						</TableRow>
+					);
+				})}
 				{products.length === 0 && (
 					<TableRow>
 						<TableCell

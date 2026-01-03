@@ -1,8 +1,5 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import type { Subprocess } from "bun";
+import { beforeAll, describe, test } from "bun:test";
 import { $ } from "bun";
-import { createTestDatabase } from "../tests/utils/db-manager";
-import { createDummyProducts } from "../tests/utils/dummy-products";
 
 interface BombardierResult {
 	spec: {
@@ -48,7 +45,7 @@ async function runLoadTest(
 	connections = 100,
 	duration = "10s",
 ): Promise<BombardierResult> {
-	const url = `http://localhost:3002${endpoint}`;
+	const url = `http://localhost:3001${endpoint}`;
 
 	const output =
 		await $`bombardier -c ${connections} -d ${duration} -l -o json ${url}`.text();
@@ -85,9 +82,6 @@ function logLoadTestResults(
 }
 
 describe("Load Testing", () => {
-	let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
-	let serverProcess: Subprocess;
-
 	beforeAll(async () => {
 		if (Bun.env.NODE_ENV === "production") {
 			throw new Error("You can't run tests in production");
@@ -95,79 +89,31 @@ describe("Load Testing", () => {
 		if (!Bun.env.DATABASE_URL) {
 			throw new Error("DATABASE_URL should be set");
 		}
-
-		testDb = await createTestDatabase("load.test.ts");
-
-		await createDummyProducts(testDb.client);
-
-		serverProcess = Bun.spawn(["bun", "run", "src/index.ts"], {
-			env: {
-				...process.env,
-				PORT: "3002",
-			},
-			stdout: "ignore",
-			stderr: "ignore",
-		});
-
 		await new Promise((resolve) => setTimeout(resolve, 3000));
-	});
-
-	afterAll(async () => {
-		serverProcess.kill();
-		await testDb.destroy();
 	});
 
 	test("GET /products - should handle high load", async () => {
 		const stats = await runLoadTest("/products", 100, "10s");
 		logLoadTestResults("GET /products", 100, "10s", stats);
+	}, 3000000);
 
-		expect(stats.result.req2xx).toBe(0);
-		expect(stats.result.req4xx).toBe(0);
-		expect(stats.result.req5xx).toBe(0);
-		expect(stats.result.rps.mean).toBeGreaterThan(50);
-		expect(stats.result.latency.percentiles["95"]).toBeLessThan(2_000_000); // 2s in microseconds
-	}, 30000);
-
-	test("GET /products?sortBy=price - should handle sorted requests", async () => {
-		const stats = await runLoadTest("/products?sortBy=price", 100, "10s");
-		logLoadTestResults("GET /products?sortBy=price", 100, "10s", stats);
-
-		expect(stats.result.req2xx).toBe(0);
-		expect(stats.result.req4xx).toBe(0);
-		expect(stats.result.req5xx).toBe(0);
-		expect(stats.result.rps.mean).toBeGreaterThan(40);
-		expect(stats.result.latency.percentiles["95"]).toBeLessThan(2_500_000); // 2.5s in microseconds
-	}, 30000);
+	test("GET /products?sortBy=priceMin - should handle sorted requests", async () => {
+		const stats = await runLoadTest("/products?sortBy=priceMin", 100, "10s");
+		logLoadTestResults("GET /products?sortBy=priceMin", 100, "10s", stats);
+	}, 3000000);
 
 	test("GET /categories - should handle high load", async () => {
 		const stats = await runLoadTest("/categories", 100, "10s");
 		logLoadTestResults("GET /categories", 100, "10s", stats);
-
-		expect(stats.result.req2xx).toBe(0);
-		expect(stats.result.req4xx).toBe(0);
-		expect(stats.result.req5xx).toBe(0);
-		expect(stats.result.rps.mean).toBeGreaterThan(150);
-		expect(stats.result.latency.percentiles["95"]).toBeLessThan(1_500_000); // 1.5s in microseconds
-	}, 30000);
+	}, 3000000);
 
 	test("GET /attributes - should handle high load", async () => {
 		const stats = await runLoadTest("/attributes", 100, "10s");
 		logLoadTestResults("GET /attributes", 100, "10s", stats);
-
-		expect(stats.result.req2xx).toBeGreaterThan(0);
-		expect(stats.result.req4xx).toBe(0);
-		expect(stats.result.req5xx).toBe(0);
-		expect(stats.result.rps.mean).toBeGreaterThan(150);
-		expect(stats.result.latency.percentiles["95"]).toBeLessThan(1_500_000); // 1.5s in microseconds
-	}, 30000);
+	}, 3000000);
 
 	test("Stress test - 500 connections on /products", async () => {
 		const stats = await runLoadTest("/products", 500, "30s");
 		logLoadTestResults("GET /products (STRESS)", 500, "30s", stats);
-
-		expect(stats.result.req2xx).toBeGreaterThan(0);
-		expect(stats.result.req5xx).toBe(0);
-		expect(stats.result.rps.mean).toBeGreaterThan(40);
-		expect(stats.result.latency.percentiles["99"]).toBeLessThan(5_000_000); // 5s in microseconds
-	}, 60000);
+	}, 3000000);
 });

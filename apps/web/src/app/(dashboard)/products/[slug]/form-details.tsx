@@ -18,7 +18,7 @@ import {
 	currentProductAtom,
 	newProductAtom,
 	type ProductItemProps,
-} from "../../store";
+} from "../store";
 
 export const ProductFormDetails = ({
 	form,

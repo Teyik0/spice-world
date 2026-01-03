@@ -20,7 +20,6 @@ import {
 import { app } from "@spice-world/web/lib/elysia";
 import { useSetAtom } from "jotai";
 import { CheckIcon, Loader2Icon, XIcon } from "lucide-react";
-
 import { useState, useTransition } from "react";
 import { revalidateProductsLayout } from "./actions";
 import { productStatusOptions } from "./search-params";
@@ -84,10 +83,10 @@ export function BulkActionsBar({
 				categoryId: pendingChanges.categoryId,
 			});
 			if (!error) {
-				await revalidateProductsLayout();
 				setSelectedIds(new Set<string>());
 				setPendingChanges({});
 				setShowConfirmDialog(false);
+				await revalidateProductsLayout();
 			}
 		});
 	};

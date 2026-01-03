@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useQueryStates } from "nuqs";
 import { useDebouncedCallback } from "use-debounce";
+import { revalidateProductsLayout } from "./actions";
 import {
 	productStatusOptions,
 	productsSearchParams,
@@ -46,16 +47,18 @@ export function ProductsSearchBar({ categories }: { categories: Category[] }) {
 		shallow: false,
 	});
 
-	const debouncedSearch = useDebouncedCallback((name: string) => {
+	const debouncedSearch = useDebouncedCallback(async (name: string) => {
 		setSearchParams({ name, skip: 0 });
+		await revalidateProductsLayout();
 	}, 300);
 
-	const handleStatusChange = (status: string | null) => {
+	const handleStatusChange = async (status: string | null) => {
 		const validStatus = productStatusOptions.find((s) => s === status);
 		setSearchParams({ status: validStatus ?? null, skip: 0 });
+		await revalidateProductsLayout();
 	};
 
-	const handleCategoryToggle = (categoryName: string) => {
+	const handleCategoryToggle = async (categoryName: string) => {
 		const current = searchParams.categories ?? [];
 		const newCategories = current.includes(categoryName)
 			? current.filter((c) => c !== categoryName)
@@ -64,21 +67,24 @@ export function ProductsSearchBar({ categories }: { categories: Category[] }) {
 			categories: newCategories.length > 0 ? newCategories : null,
 			skip: 0,
 		});
+		await revalidateProductsLayout();
 	};
 
-	const handleSortByChange = (
+	const handleSortByChange = async (
 		sortBy: (typeof sortByOptions)[number] | null,
 	) => {
 		setSearchParams({ sortBy: sortBy ?? "name" });
+		await revalidateProductsLayout();
 	};
 
-	const handleSortDirToggle = () => {
+	const handleSortDirToggle = async () => {
 		setSearchParams({
 			sortDir: searchParams.sortDir === "asc" ? "desc" : "asc",
 		});
+		await revalidateProductsLayout();
 	};
 
-	const handleClearFilters = () => {
+	const handleClearFilters = async () => {
 		setSearchParams({
 			name: "",
 			status: null,
@@ -87,6 +93,7 @@ export function ProductsSearchBar({ categories }: { categories: Category[] }) {
 			sortDir: "asc",
 			skip: 0,
 		});
+		await revalidateProductsLayout();
 	};
 
 	const hasActiveFilters =

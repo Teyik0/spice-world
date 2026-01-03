@@ -34,7 +34,7 @@ import {
 	currentProductAtom,
 	newProductAtom,
 	type ProductItemProps,
-} from "../../store";
+} from "../store";
 
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE = 1024 * 1024 * 3;

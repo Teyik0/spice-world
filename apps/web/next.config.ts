@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
 			{
 				hostname: "tlwuosttpx.ufs.sh",
 			},
+			{
+				hostname: "picsum.photos",
+			},
 		],
 	},
 };

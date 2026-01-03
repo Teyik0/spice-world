@@ -3,6 +3,7 @@ import { prisma } from "@spice-world/server/lib/prisma";
 import type { Product } from "@spice-world/server/prisma/client";
 import { sql } from "bun";
 import { status } from "elysia";
+import { LRUCache } from "lru-cache";
 import type { UploadedFileData } from "uploadthing/types";
 import { uploadFileErrStatus, type uuidGuard } from "../shared";
 import { MAX_IMAGES_PER_PRODUCT, type ProductModel } from "./model";
@@ -52,6 +53,13 @@ Product: "Organic Paprika Powder"
    ]
 */
 
+// biome-ignore lint/suspicious/noExplicitAny: ok
+const localCache = new LRUCache<string, any>({
+	max: 500, // Max 500 entries
+	ttl: 1000 * 60 * 10, // 10 minutes TTL
+	updateAgeOnGet: true,
+});
+
 export const productService = {
 	async get({
 		name,
@@ -62,6 +70,21 @@ export const productService = {
 		sortBy,
 		sortDir,
 	}: ProductModel.getQuery) {
+		const cacheKey =
+			`products:${sortBy ?? "default"}:${sortDir}:${skip}:${take}:` +
+			`${name ?? ""}:${status ?? ""}:${categories?.join(",") ?? ""}`;
+
+		type getResult = Product & {
+			img: string | null;
+			priceMin: number | null;
+			priceMax: number | null;
+			totalStock: number;
+		};
+
+		if (localCache.has(cacheKey)) {
+			return localCache.get(cacheKey) as getResult[];
+		}
+
 		const direction = sortDir ?? "asc";
 		const orderByField = sortBy ?? "name";
 
@@ -96,14 +119,7 @@ export const productService = {
 		const offsetClause = skip !== undefined ? sql`OFFSET ${skip}` : sql``;
 		const limitClause = take !== undefined ? sql`LIMIT ${take}` : sql``;
 
-		const products = await sql<
-			(Product & {
-				img: string | null;
-				priceMin: number | null;
-				priceMax: number | null;
-				totalStock: number;
-			})[]
-		>`SELECT
+		const products = await sql<getResult[]>`SELECT
 			p.*,
 			(SELECT url FROM "Image" WHERE "productId" = p.id AND "isThumbnail" = true LIMIT 1) AS "img",
 			v_agg."priceMin",
@@ -121,6 +137,7 @@ export const productService = {
 		${whereClause}
 		ORDER BY ${orderByClause} ${orderDirection} ${nullsClause} ${limitClause} ${offsetClause}`;
 
+		localCache.set(cacheKey, [...products]);
 		// We are using Bun.sql here because this query need to be performant for users
 		return [...products]; // erase array extra properties given by Bun.sql
 	},
@@ -173,6 +190,8 @@ export const productService = {
 		images,
 		imagesOps,
 	}: ProductModel.postBody) {
+		localCache.clear();
+
 		const { data: uploadMap, error: uploadError } =
 			await validateAndUploadFiles(images, imagesOps, name);
 		if (uploadError || !uploadMap) {
@@ -292,6 +311,8 @@ export const productService = {
 		variants,
 		_version,
 	}: ProductModel.patchBody & uuidGuard) {
+		localCache.clear();
+
 		// 1. Get current product for name, version, category, and variants check
 		const currentProduct = await prisma.product.findUniqueOrThrow({
 			where: { id },
@@ -763,6 +784,8 @@ export const productService = {
 	},
 
 	async bulkPatch({ ids, status, categoryId }: ProductModel.bulkPatchBody) {
+		localCache.clear();
+
 		return prisma.$transaction(async (tx) => {
 			const result = await tx.product.updateMany({
 				where: { id: { in: ids } },

@@ -32,6 +32,7 @@
 		"better-auth": "^1.4.10",
 		"elysia": "catalog:",
 		"file-type": "^21.2.0",
+		"lru-cache": "^11.2.4",
 		"pg": "^8.16.3",
 		"react": "catalog:",
 		"resend": "^6.6.0",
@@ -39,6 +40,7 @@
 		"ws": "^8.18.3"
 	},
 	"devDependencies": {
+		"@faker-js/faker": "^10.1.0",
 		"@spice-world/emails": "workspace:*",
 		"@types/react": "catalog:",
 		"@types/ws": "^8.18.1",

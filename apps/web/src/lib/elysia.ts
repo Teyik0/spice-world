@@ -6,6 +6,7 @@ import { env } from "./utils";
 export const app = treaty<App>(env.NEXT_PUBLIC_BETTER_AUTH_URL, {
 	fetch: {
 		credentials: "include", // automatic includes cookies in requests
+		cache: "no-store", // disable Next.js cache for fetch requests
 	},
 });
 
