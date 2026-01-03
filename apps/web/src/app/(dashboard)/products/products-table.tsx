@@ -13,8 +13,10 @@ import {
 	TableRow,
 } from "@spice-world/web/components/ui/table";
 import { useAtom, useAtomValue } from "jotai";
+import { Loader2Icon } from "lucide-react";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import type { RefObject } from "react";
 import { useSidebarScroll } from "../sidebar-provider";
 import { newProductAtom, selectedProductIdsAtom } from "./store";
 
@@ -26,6 +28,9 @@ interface Category {
 interface ProductsTableProps {
 	products: ProductModel.getResult;
 	categories: Category[];
+	loadMoreRef?: RefObject<HTMLDivElement | null>;
+	isFetchingNextPage?: boolean;
+	hasNextPage?: boolean;
 }
 
 export const statusVariants: Record<
@@ -110,7 +115,12 @@ const NewProductTableRow = ({ categories }: { categories: Category[] }) => {
 	);
 };
 
-export function ProductsTable({ products, categories }: ProductsTableProps) {
+export function ProductsTable({
+	products,
+	categories,
+	loadMoreRef,
+	isFetchingNextPage,
+}: ProductsTableProps) {
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
@@ -224,10 +234,24 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 				{products.length === 0 && (
 					<TableRow>
 						<TableCell
-							colSpan={7}
+							colSpan={8}
 							className="text-center text-muted-foreground"
 						>
 							No products found
+						</TableCell>
+					</TableRow>
+				)}
+				{loadMoreRef && (
+					<TableRow>
+						<TableCell colSpan={8} className="h-10 p-0">
+							<div
+								ref={loadMoreRef}
+								className="flex items-center justify-center h-full"
+							>
+								{isFetchingNextPage && (
+									<Loader2Icon className="size-4 animate-spin text-muted-foreground" />
+								)}
+							</div>
 						</TableCell>
 					</TableRow>
 				)}

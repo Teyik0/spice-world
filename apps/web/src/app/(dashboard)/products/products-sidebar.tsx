@@ -4,14 +4,19 @@ import type { ProductModel } from "@spice-world/server/modules/products/model";
 import { ClientOnly } from "@spice-world/web/components/client-only";
 import { Button } from "@spice-world/web/components/ui/button";
 import { useAtomValue } from "jotai";
-import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
-import { useEffect } from "react";
+import {
+	Loader2Icon,
+	PanelLeftCloseIcon,
+	PanelLeftOpenIcon,
+} from "lucide-react";
+import { useEffect, useRef } from "react";
 import { useSidebarExpanded, useSidebarScroll } from "../sidebar-provider";
 import { BulkActionsBar } from "./bulk-menu";
 import { AddProductButton, NewProductItem, ProductItem } from "./product-item";
 import { ProductsTable } from "./products-table";
 import { ProductsSearchBar } from "./search-bar";
 import { selectedProductIdsAtom } from "./store";
+import { useProductsInfinite } from "./use-products-infinite";
 
 interface Category {
 	id: string;
@@ -19,22 +24,50 @@ interface Category {
 }
 
 interface ProductsSidebarProps {
-	products: ProductModel.getResult;
+	initialProducts: ProductModel.getResult;
 	categories: Category[];
 }
 
 export function ProductsSidebar({
-	products,
+	initialProducts,
 	categories,
 }: ProductsSidebarProps) {
 	const [expanded, setExpanded] = useSidebarExpanded();
 	const { scrollRef, restoreScrollPosition } = useSidebarScroll();
 	const selectedIds = useAtomValue(selectedProductIdsAtom);
 	const selectedIdsArray = Array.from(selectedIds);
+	const loadMoreRef = useRef<HTMLDivElement>(null);
+
+	const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+		useProductsInfinite(initialProducts);
+
+	const products = data?.pages.flat() ?? [];
 
 	useEffect(() => {
 		restoreScrollPosition();
 	});
+
+	useEffect(() => {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+					fetchNextPage();
+				}
+			},
+			{ threshold: 0.1 },
+		);
+
+		const currentRef = loadMoreRef.current;
+		if (currentRef) {
+			observer.observe(currentRef);
+		}
+
+		return () => {
+			if (currentRef) {
+				observer.unobserve(currentRef);
+			}
+		};
+	}, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
 	return (
 		<aside
@@ -70,7 +103,13 @@ export function ProductsSidebar({
 
 			<div ref={scrollRef} className="flex-1 overflow-auto">
 				{expanded ? (
-					<ProductsTable products={products} categories={categories} />
+					<ProductsTable
+						products={products}
+						categories={categories}
+						loadMoreRef={loadMoreRef}
+						isFetchingNextPage={isFetchingNextPage}
+						hasNextPage={hasNextPage}
+					/>
 				) : (
 					<>
 						<ClientOnly>
@@ -84,6 +123,14 @@ export function ProductsSidebar({
 								No products found
 							</div>
 						)}
+						<div
+							ref={loadMoreRef}
+							className="h-10 flex items-center justify-center"
+						>
+							{isFetchingNextPage && (
+								<Loader2Icon className="size-4 animate-spin text-muted-foreground" />
+							)}
+						</div>
 					</>
 				)}
 			</div>

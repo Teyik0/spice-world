@@ -1,6 +1,6 @@
 import { app } from "@spice-world/web/lib/elysia";
 import { redirect } from "next/navigation";
-import { LayoutProducts } from "../page";
+import { INITIAL_PAGE_SIZE, LayoutProducts } from "../page";
 import { ProductsSidebar } from "../products-sidebar";
 import { productsSearchParamsCache } from "../search-params";
 import { ProductForm } from "./form";
@@ -19,8 +19,8 @@ export default async function ProductPage({
 			app.products.get({
 				query: {
 					name: queryParams.name || undefined,
-					skip: queryParams.skip,
-					take: queryParams.take,
+					skip: 0,
+					take: INITIAL_PAGE_SIZE,
 					status: queryParams.status ?? undefined,
 					categories: queryParams.categories ?? undefined,
 					sortBy: queryParams.sortBy,
@@ -38,7 +38,7 @@ export default async function ProductPage({
 			<LayoutProducts
 				sidebar={
 					<ProductsSidebar
-						products={products ?? []}
+						initialProducts={products ?? []}
 						categories={categories ?? []}
 					/>
 				}
@@ -79,7 +79,7 @@ export default async function ProductPage({
 		<LayoutProducts
 			sidebar={
 				<ProductsSidebar
-					products={products ?? []}
+					initialProducts={products ?? []}
 					categories={categories ?? []}
 				/>
 			}

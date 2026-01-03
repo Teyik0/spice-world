@@ -13,6 +13,7 @@
 		"@elysiajs/eden": "^1.4.6",
 		"@t3-oss/env-nextjs": "^0.13.10",
 		"@tanstack/react-form": "^1.27.5",
+		"@tanstack/react-query": "^5.90.16",
 		"@tanstack/react-store": "^0.8.0",
 		"better-auth": "^1.4.10",
 		"class-variance-authority": "^0.7.1",

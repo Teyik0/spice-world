@@ -16,7 +16,8 @@ import { PackageIcon } from "lucide-react";
 import { ProductsSidebar } from "./products-sidebar";
 import { productsSearchParamsCache } from "./search-params";
 
-// Parallel routes don't support revalidatePath & layout can't pass searchParams.
+export const INITIAL_PAGE_SIZE = 25;
+
 export function LayoutProducts({
 	sidebar,
 	product,
@@ -65,8 +66,8 @@ export default async function ProductsPage({
 		app.products.get({
 			query: {
 				name: params.name || undefined,
-				skip: params.skip,
-				take: params.take,
+				skip: 0,
+				take: INITIAL_PAGE_SIZE,
 				status: params.status ?? undefined,
 				categories: params.categories ?? undefined,
 				sortBy: params.sortBy,
@@ -76,12 +77,11 @@ export default async function ProductsPage({
 		app.categories.get(),
 	]);
 
-	// Parallel routes don't support revalidatePath & layout can't pass searchParams.
 	return (
 		<LayoutProducts
 			sidebar={
 				<ProductsSidebar
-					products={products ?? []}
+					initialProducts={products ?? []}
 					categories={categories ?? []}
 				/>
 			}
