@@ -5,7 +5,8 @@ import { ClientOnly } from "@spice-world/web/components/client-only";
 import { Button } from "@spice-world/web/components/ui/button";
 import { useAtomValue } from "jotai";
 import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
-import { useSidebarExpanded } from "../sidebar-provider";
+import { useEffect } from "react";
+import { useSidebarExpanded, useSidebarScroll } from "../sidebar-provider";
 import { BulkActionsBar } from "./bulk-menu";
 import { AddProductButton, NewProductItem, ProductItem } from "./product-item";
 import { ProductsTable } from "./products-table";
@@ -27,8 +28,13 @@ export function ProductsSidebar({
 	categories,
 }: ProductsSidebarProps) {
 	const [expanded, setExpanded] = useSidebarExpanded();
+	const { scrollRef, restoreScrollPosition } = useSidebarScroll();
 	const selectedIds = useAtomValue(selectedProductIdsAtom);
 	const selectedIdsArray = Array.from(selectedIds);
+
+	useEffect(() => {
+		restoreScrollPosition();
+	});
 
 	return (
 		<aside
@@ -62,7 +68,7 @@ export function ProductsSidebar({
 				/>
 			)}
 
-			<div className="flex-1 overflow-auto">
+			<div ref={scrollRef} className="flex-1 overflow-auto">
 				{expanded ? (
 					<ProductsTable products={products} categories={categories} />
 				) : (

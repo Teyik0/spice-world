@@ -15,6 +15,7 @@ import {
 import { useAtom, useAtomValue } from "jotai";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSidebarScroll } from "../sidebar-provider";
 import { newProductAtom, selectedProductIdsAtom } from "./store";
 
 interface Category {
@@ -45,6 +46,7 @@ const NewProductTableRow = ({ categories }: { categories: Category[] }) => {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const newProduct = useAtomValue(newProductAtom);
+	const { saveScrollPosition } = useSidebarScroll();
 
 	if (!newProduct) return null;
 
@@ -52,6 +54,7 @@ const NewProductTableRow = ({ categories }: { categories: Category[] }) => {
 
 	const handleClick = () => {
 		if (isSelected) return;
+		saveScrollPosition();
 		const params = searchParams.toString();
 		router.push(`/products/new${params ? `?${params}` : ""}`, {
 			scroll: false,
@@ -112,6 +115,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const [selectedIds, setSelectedIds] = useAtom(selectedProductIdsAtom);
+	const { saveScrollPosition } = useSidebarScroll();
 
 	const toggleAll = (checked: boolean) => {
 		setSelectedIds(checked ? new Set(products.map((p) => p.id)) : new Set());
@@ -132,8 +136,11 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 	const someSelected = selectedIds.size > 0 && !allSelected;
 
 	const handleRowClick = (slug: string) => {
+		saveScrollPosition();
 		const params = searchParams.toString();
-		router.push(`/products/${slug}${params ? `?${params}` : ""}`);
+		router.push(`/products/${slug}${params ? `?${params}` : ""}`, {
+			scroll: false,
+		});
 	};
 
 	return (

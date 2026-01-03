@@ -12,6 +12,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { MinusIcon, PlusIcon } from "lucide-react";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSidebarScroll } from "../sidebar-provider";
 import { statusVariants } from "./products-table";
 import {
 	currentProductAtom,
@@ -24,16 +25,15 @@ export const NewProductItem = () => {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const newProduct = useAtomValue(newProductAtom);
+	const { saveScrollPosition } = useSidebarScroll();
 
-	// Don't show if there's no newProduct state
 	if (!newProduct) return null;
 
 	const isSelected = pathname === "/products/new";
 
 	const handleClick = () => {
-		// Prevent navigation if already on new product page
 		if (isSelected) return;
-
+		saveScrollPosition();
 		const params = searchParams.toString();
 		router.push(`/products/new${params ? `?${params}` : ""}`, {
 			scroll: false,
@@ -93,21 +93,22 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
+	const { saveScrollPosition } = useSidebarScroll();
 
 	const isSelected = pathname.includes(product.slug);
 
-	// Use currentProductAtom ONLY if this item is selected
 	const displayProduct =
 		isSelected && currentProduct?.slug === product.slug
 			? currentProduct
 			: product;
 
 	const handleClick = () => {
-		// Prevent navigation if already on this product
 		if (isSelected) return;
-
+		saveScrollPosition();
 		const params = searchParams.toString();
-		router.push(`/products/${product.slug}${params ? `?${params}` : ""}`);
+		router.push(`/products/${product.slug}${params ? `?${params}` : ""}`, {
+			scroll: false,
+		});
 	};
 
 	return (

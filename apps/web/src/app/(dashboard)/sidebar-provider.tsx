@@ -1,18 +1,14 @@
 "use client";
 
 import { SidebarProvider } from "@spice-world/web/components/ui/sidebar";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createContext, type ReactNode, useContext, useState } from "react";
-
-export const queryClient = new QueryClient({
-	defaultOptions: {
-		queries: {
-			staleTime: 1000 * 60 * 5, // 5 min
-			refetchOnWindowFocus: false,
-			retry: 1,
-		},
-	},
-});
+import {
+	createContext,
+	type ReactNode,
+	useCallback,
+	useContext,
+	useRef,
+	useState,
+} from "react";
 
 const SIDEBAR_WIDTH_COLLAPSED = "350px";
 const SIDEBAR_WIDTH_EXPANDED = "600px";
@@ -27,6 +23,9 @@ function setCookie(name: string, value: string) {
 interface SidebarContextValue {
 	expanded: boolean;
 	setExpanded: (value: boolean) => void;
+	scrollRef: React.RefObject<HTMLDivElement | null>;
+	saveScrollPosition: () => void;
+	restoreScrollPosition: () => void;
 }
 
 const SidebarContext = createContext<SidebarContextValue | null>(null);
@@ -41,6 +40,20 @@ export function useSidebarExpanded() {
 	return [context.expanded, context.setExpanded] as const;
 }
 
+export function useSidebarScroll() {
+	const context = useContext(SidebarContext);
+	if (!context) {
+		throw new Error(
+			"useSidebarScroll must be used within SidebarRightProvider",
+		);
+	}
+	return {
+		scrollRef: context.scrollRef,
+		saveScrollPosition: context.saveScrollPosition,
+		restoreScrollPosition: context.restoreScrollPosition,
+	};
+}
+
 export function SidebarRightProvider({
 	children,
 	initialExpanded,
@@ -49,27 +62,47 @@ export function SidebarRightProvider({
 	initialExpanded: boolean;
 }) {
 	const [expanded, setExpandedState] = useState(initialExpanded);
+	const scrollRef = useRef<HTMLDivElement | null>(null);
+	const scrollPositionRef = useRef<number>(0);
 
 	const setExpanded = (value: boolean) => {
 		setExpandedState(value);
 		setCookie(COOKIE_NAME, String(value));
 	};
 
+	const saveScrollPosition = useCallback(() => {
+		if (scrollRef.current) {
+			scrollPositionRef.current = scrollRef.current.scrollTop;
+		}
+	}, []);
+
+	const restoreScrollPosition = useCallback(() => {
+		if (scrollRef.current) {
+			scrollRef.current.scrollTop = scrollPositionRef.current;
+		}
+	}, []);
+
 	return (
-		<QueryClientProvider client={queryClient}>
-			<SidebarContext.Provider value={{ expanded, setExpanded }}>
-				<SidebarProvider
-					style={
-						{
-							"--sidebar-width": expanded
-								? SIDEBAR_WIDTH_EXPANDED
-								: SIDEBAR_WIDTH_COLLAPSED,
-						} as React.CSSProperties
-					}
-				>
-					{children}
-				</SidebarProvider>
-			</SidebarContext.Provider>
-		</QueryClientProvider>
+		<SidebarContext.Provider
+			value={{
+				expanded,
+				setExpanded,
+				scrollRef,
+				saveScrollPosition,
+				restoreScrollPosition,
+			}}
+		>
+			<SidebarProvider
+				style={
+					{
+						"--sidebar-width": expanded
+							? SIDEBAR_WIDTH_EXPANDED
+							: SIDEBAR_WIDTH_COLLAPSED,
+					} as React.CSSProperties
+				}
+			>
+				{children}
+			</SidebarProvider>
+		</SidebarContext.Provider>
 	);
 }
