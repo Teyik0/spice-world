@@ -18,12 +18,13 @@ import {
 	DropdownMenuTrigger,
 } from "@spice-world/web/components/ui/dropdown-menu";
 import { app } from "@spice-world/web/lib/elysia";
-import { useSetAtom } from "jotai";
+import { useAtom } from "jotai";
 import { CheckIcon, Loader2Icon, XIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { revalidateProductsLayout } from "./actions";
-import { productStatusOptions } from "./search-params";
-import { selectedProductIdsAtom } from "./store";
+import { revalidateProductsLayout } from "../actions";
+import { productStatusOptions } from "../search-params";
+import { selectedProductIdsAtom } from "../store";
 
 interface Category {
 	id: string;
@@ -37,17 +38,12 @@ interface PendingChanges {
 }
 
 interface BulkActionsBarProps {
-	selectedCount: number;
-	selectedIds: string[];
 	categories: Category[];
 }
 
-export function BulkActionsBar({
-	selectedCount,
-	selectedIds,
-	categories,
-}: BulkActionsBarProps) {
-	const setSelectedIds = useSetAtom(selectedProductIdsAtom);
+export function BulkActionsBar({ categories }: BulkActionsBarProps) {
+	const router = useRouter();
+	const [selectedIds, setSelectedIds] = useAtom(selectedProductIdsAtom);
 	const [isPending, startTransition] = useTransition();
 	const [pendingChanges, setPendingChanges] = useState<PendingChanges>({});
 	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -78,7 +74,7 @@ export function BulkActionsBar({
 	const handleConfirm = () => {
 		startTransition(async () => {
 			const { error } = await app.products.bulk.patch({
-				ids: selectedIds,
+				ids: Array.from(selectedIds),
 				status: pendingChanges.status,
 				categoryId: pendingChanges.categoryId,
 			});
@@ -87,6 +83,7 @@ export function BulkActionsBar({
 				setPendingChanges({});
 				setShowConfirmDialog(false);
 				await revalidateProductsLayout();
+				router.refresh();
 			}
 		});
 	};
@@ -105,7 +102,7 @@ export function BulkActionsBar({
 			<div className="flex items-center gap-2 p-3 border-b bg-muted/50 flex-wrap">
 				{isPending && <Loader2Icon className="size-4 animate-spin" />}
 				<span className="text-sm text-muted-foreground">
-					{selectedCount} selected
+					{selectedIds.size} selected
 				</span>
 
 				<DropdownMenu>
@@ -200,8 +197,8 @@ export function BulkActionsBar({
 					<DialogHeader>
 						<DialogTitle>Confirm Bulk Edit</DialogTitle>
 						<DialogDescription>
-							You are about to modify {selectedCount} product
-							{selectedCount > 1 ? "s" : ""}. This action cannot be undone.
+							You are about to modify {selectedIds.size} product
+							{selectedIds.size > 1 ? "s" : ""}. This action cannot be undone.
 						</DialogDescription>
 					</DialogHeader>
 

@@ -21,10 +21,10 @@ import { useSetAtom } from "jotai";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { revalidateProductsLayout } from "../actions";
-import { currentProductAtom, newProductAtom } from "../store";
+import { revalidateProductsLayout } from "../../actions";
+import { currentProductAtom, newProductAtom } from "../../store";
 import { ProductFormClassification } from "./form-classification";
 import { ProductFormDetails } from "./form-details";
 import { ProductFormImages } from "./form-images";
@@ -53,7 +53,6 @@ export const ProductForm = ({
 	);
 
 	const [formResetKey, setFormResetKey] = useState(0);
-	const [isDeleting, setIsDeleting] = useState(false);
 	const [showCategoryWarning, setShowCategoryWarning] = useState(false);
 	const [attributesToRemove, setAttributesToRemove] = useState<
 		AttributeValueInfo[]
@@ -233,23 +232,25 @@ export const ProductForm = ({
 		return data;
 	};
 
+	const [isDeleting, startTransition] = useTransition();
 	const handleDelete = async () => {
-		setIsDeleting(true);
-		try {
-			const { error } = await app.products({ id: product.id }).delete();
-			if (error) {
-				toast.error(`Failed to delete product: ${elysiaErrorToString(error)}`);
-				return;
+		startTransition(async () => {
+			try {
+				const { error } = await app.products({ id: product.id }).delete();
+				if (error) {
+					toast.error(
+						`Failed to delete product: ${elysiaErrorToString(error)}`,
+					);
+					return;
+				}
+				toast.success("Product deleted successfully");
+				await revalidateProductsLayout();
+				router.push(`/products${queryString ? `?${queryString}` : ""}`);
+			} catch (error: unknown) {
+				const err = unknownError(error, "Failed to delete product");
+				toast.error(elysiaErrorToString(err));
 			}
-			toast.success("Product deleted successfully");
-			await revalidateProductsLayout();
-			router.push(`/products${queryString ? `?${queryString}` : ""}`);
-		} catch (error: unknown) {
-			const err = unknownError(error, "Failed to delete product");
-			toast.error(elysiaErrorToString(err));
-		} finally {
-			setIsDeleting(false);
-		}
+		});
 	};
 
 	const hasStock = product.variants.some((variant) => variant.stock > 0);

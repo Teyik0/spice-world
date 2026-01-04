@@ -11,43 +11,32 @@ import {
 import { useAtom, useAtomValue } from "jotai";
 import { MinusIcon, PlusIcon } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useSidebarScroll } from "../sidebar-provider";
-import { statusVariants } from "./products-table";
 import {
 	currentProductAtom,
 	newProductAtom,
 	type ProductItemProps,
-} from "./store";
+} from "../store";
+import { statusVariants } from "./products-table";
 
 export const NewProductItem = () => {
-	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const newProduct = useAtomValue(newProductAtom);
-	const { saveScrollPosition } = useSidebarScroll();
 
 	if (!newProduct) return null;
 
 	const isSelected = pathname === "/products/new";
-
-	const handleClick = () => {
-		if (isSelected) return;
-		saveScrollPosition();
-		const params = searchParams.toString();
-		router.push(`/products/new${params ? `?${params}` : ""}`, {
-			scroll: false,
-		});
-	};
-
+	const params = searchParams.toString();
+	const href = `/products/new${params ? `?${params}` : ""}`;
 	const firstLetter = newProduct.name[0]?.toUpperCase() ?? "N";
 
 	return (
-		<button
-			type="button"
+		<Link
+			href={href}
 			className={`w-full cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex items-start gap-3 border-b p-3
 			text-sm leading-tight last:border-b-0 ${isSelected ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""}`}
-			onClick={handleClick}
 		>
 			{newProduct.img ? (
 				<Image
@@ -84,39 +73,29 @@ export const NewProductItem = () => {
 					})()}
 				</span>
 			</div>
-		</button>
+		</Link>
 	);
 };
 
 export const ProductItem = ({ product }: { product: ProductItemProps }) => {
 	const currentProduct = useAtomValue(currentProductAtom);
-	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
-	const { saveScrollPosition } = useSidebarScroll();
 
 	const isSelected = pathname.includes(product.slug);
+	const params = searchParams.toString();
+	const href = `/products/${product.slug}${params ? `?${params}` : ""}`;
 
 	const displayProduct =
 		isSelected && currentProduct?.slug === product.slug
 			? currentProduct
 			: product;
 
-	const handleClick = () => {
-		if (isSelected) return;
-		saveScrollPosition();
-		const params = searchParams.toString();
-		router.push(`/products/${product.slug}${params ? `?${params}` : ""}`, {
-			scroll: false,
-		});
-	};
-
 	return (
-		<button
-			type="button"
+		<Link
+			href={href}
 			className={`w-full cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex items-start gap-3 border-b p-3
 			text-sm leading-tight last:border-b-0 ${isSelected ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""}`}
-			onClick={handleClick}
 		>
 			{displayProduct.img && (
 				<Image
@@ -149,7 +128,7 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
 					})()}
 				</span>
 			</div>
-		</button>
+		</Link>
 	);
 };
 

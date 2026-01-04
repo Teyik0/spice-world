@@ -30,12 +30,11 @@ import {
 } from "lucide-react";
 import { useQueryStates } from "nuqs";
 import { useDebouncedCallback } from "use-debounce";
-import { revalidateProductsLayout } from "./actions";
 import {
 	productStatusOptions,
 	productsSearchParams,
 	sortByOptions,
-} from "./search-params";
+} from "../search-params";
 
 interface Category {
 	id: string;
@@ -48,14 +47,16 @@ export function ProductsSearchBar({ categories }: { categories: Category[] }) {
 	});
 
 	const debouncedSearch = useDebouncedCallback(async (name: string) => {
-		setSearchParams({ name, skip: 0 });
-		await revalidateProductsLayout();
+		await setSearchParams({ name, skip: 0 });
 	}, 300);
 
 	const handleStatusChange = async (status: string | null) => {
 		const validStatus = productStatusOptions.find((s) => s === status);
-		setSearchParams({ status: validStatus ?? null, skip: 0 });
-		await revalidateProductsLayout();
+		console.log("first - before setSearchParams", {
+			newStatus: validStatus,
+			currentStatus: searchParams.status,
+		});
+		await setSearchParams({ status: validStatus ?? null, skip: 0 });
 	};
 
 	const handleCategoryToggle = async (categoryName: string) => {
@@ -63,29 +64,26 @@ export function ProductsSearchBar({ categories }: { categories: Category[] }) {
 		const newCategories = current.includes(categoryName)
 			? current.filter((c) => c !== categoryName)
 			: [...current, categoryName];
-		setSearchParams({
+		await setSearchParams({
 			categories: newCategories.length > 0 ? newCategories : null,
 			skip: 0,
 		});
-		await revalidateProductsLayout();
 	};
 
 	const handleSortByChange = async (
 		sortBy: (typeof sortByOptions)[number] | null,
 	) => {
-		setSearchParams({ sortBy: sortBy ?? "name" });
-		await revalidateProductsLayout();
+		await setSearchParams({ sortBy: sortBy ?? "name" });
 	};
 
 	const handleSortDirToggle = async () => {
-		setSearchParams({
+		await setSearchParams({
 			sortDir: searchParams.sortDir === "asc" ? "desc" : "asc",
 		});
-		await revalidateProductsLayout();
 	};
 
 	const handleClearFilters = async () => {
-		setSearchParams({
+		await setSearchParams({
 			name: "",
 			status: null,
 			categories: null,
@@ -93,7 +91,6 @@ export function ProductsSearchBar({ categories }: { categories: Category[] }) {
 			sortDir: "asc",
 			skip: 0,
 		});
-		await revalidateProductsLayout();
 	};
 
 	const hasActiveFilters =

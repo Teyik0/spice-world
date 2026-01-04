@@ -1,6 +1,7 @@
 import {
 	createSearchParamsCache,
 	parseAsArrayOf,
+	parseAsIndex,
 	parseAsInteger,
 	parseAsString,
 	parseAsStringLiteral,
@@ -18,7 +19,7 @@ export const sortDirOptions = ["asc", "desc"] as const;
 
 export const productsSearchParams = {
 	name: parseAsString.withDefault(""),
-	skip: parseAsInteger.withDefault(0),
+	skip: parseAsIndex.withDefault(0),
 	take: parseAsInteger.withDefault(100),
 	status: parseAsStringLiteral(productStatusOptions),
 	categories: parseAsArrayOf(parseAsString),

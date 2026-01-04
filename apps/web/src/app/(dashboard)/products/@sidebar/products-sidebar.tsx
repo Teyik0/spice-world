@@ -3,19 +3,17 @@
 import type { ProductModel } from "@spice-world/server/modules/products/model";
 import { ClientOnly } from "@spice-world/web/components/client-only";
 import { Button } from "@spice-world/web/components/ui/button";
-import { useAtomValue } from "jotai";
 import {
 	Loader2Icon,
 	PanelLeftCloseIcon,
 	PanelLeftOpenIcon,
 } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { useSidebarExpanded, useSidebarScroll } from "../sidebar-provider";
+import { useSidebarExpanded } from "../../sidebar-provider";
 import { BulkActionsBar } from "./bulk-menu";
 import { AddProductButton, NewProductItem, ProductItem } from "./product-item";
 import { ProductsTable } from "./products-table";
 import { ProductsSearchBar } from "./search-bar";
-import { selectedProductIdsAtom } from "./store";
 import { useProductsInfinite } from "./use-products-infinite";
 
 interface Category {
@@ -33,18 +31,12 @@ export function ProductsSidebar({
 	categories,
 }: ProductsSidebarProps) {
 	const [expanded, setExpanded] = useSidebarExpanded();
-	const { scrollRef, restoreScrollPosition } = useSidebarScroll();
-	const selectedIds = useAtomValue(selectedProductIdsAtom);
-	const selectedIdsArray = Array.from(selectedIds);
 	const loadMoreRef = useRef<HTMLDivElement>(null);
 
-	const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+	const { products, fetchNextPage, hasNextPage, isFetchingNextPage } =
 		useProductsInfinite(initialProducts);
-
-	const products = data?.pages.flat() ?? [];
-
-	useEffect(() => {
-		restoreScrollPosition();
+	console.log("ProductsSidebar scroll render:", {
+		productsCount: products?.length,
 	});
 
 	useEffect(() => {
@@ -93,23 +85,18 @@ export function ProductsSidebar({
 				</Button>
 			</header>
 
-			{selectedIds.size > 0 && (
-				<BulkActionsBar
-					selectedCount={selectedIds.size}
-					selectedIds={selectedIdsArray}
-					categories={categories}
-				/>
-			)}
-
-			<div ref={scrollRef} className="flex-1 overflow-auto">
+			<div className="flex-1 overflow-auto">
 				{expanded ? (
-					<ProductsTable
-						products={products}
-						categories={categories}
-						loadMoreRef={loadMoreRef}
-						isFetchingNextPage={isFetchingNextPage}
-						hasNextPage={hasNextPage}
-					/>
+					<>
+						<BulkActionsBar categories={categories} />
+						<ProductsTable
+							products={products}
+							categories={categories}
+							loadMoreRef={loadMoreRef}
+							isFetchingNextPage={isFetchingNextPage}
+							hasNextPage={hasNextPage}
+						/>
+					</>
 				) : (
 					<>
 						<ClientOnly>

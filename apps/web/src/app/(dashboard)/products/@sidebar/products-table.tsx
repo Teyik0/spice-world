@@ -15,10 +15,10 @@ import {
 import { useAtom, useAtomValue } from "jotai";
 import { Loader2Icon } from "lucide-react";
 import Image from "next/image";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { RefObject } from "react";
-import { useSidebarScroll } from "../sidebar-provider";
-import { newProductAtom, selectedProductIdsAtom } from "./store";
+import { newProductAtom, selectedProductIdsAtom } from "../store";
 
 interface Category {
 	id: string;
@@ -47,37 +47,31 @@ const getCategoryName = (categoryId: string, categories: Category[]) => {
 };
 
 const NewProductTableRow = ({ categories }: { categories: Category[] }) => {
-	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const newProduct = useAtomValue(newProductAtom);
-	const { saveScrollPosition } = useSidebarScroll();
 
 	if (!newProduct) return null;
 
 	const isSelected = pathname === "/products/new";
-
-	const handleClick = () => {
-		if (isSelected) return;
-		saveScrollPosition();
-		const params = searchParams.toString();
-		router.push(`/products/new${params ? `?${params}` : ""}`, {
-			scroll: false,
-		});
-	};
-
+	const params = searchParams.toString();
+	const href = `/products/new${params ? `?${params}` : ""}`;
 	const firstLetter = (newProduct.name || "N")[0]?.toUpperCase() || "N";
 
 	return (
 		<TableRow
 			data-state={isSelected ? "selected" : undefined}
-			className="cursor-pointer"
-			onClick={handleClick}
+			className="cursor-pointer group relative"
 		>
-			<TableCell onClick={(e) => e.stopPropagation()}>
+			<Link
+				href={href}
+				className="absolute inset-0 z-0"
+				aria-label="View new product"
+			/>
+			<TableCell onClick={(e) => e.stopPropagation()} className="relative z-10">
 				<Checkbox disabled aria-label="New product" />
 			</TableCell>
-			<TableCell>
+			<TableCell className="relative z-10">
 				{newProduct.img ? (
 					<Image
 						src={newProduct.img}
@@ -92,10 +86,10 @@ const NewProductTableRow = ({ categories }: { categories: Category[] }) => {
 					</div>
 				)}
 			</TableCell>
-			<TableCell className="font-medium">
+			<TableCell className="font-medium relative z-10">
 				{newProduct.name || "New product"}
 			</TableCell>
-			<TableCell>
+			<TableCell className="relative z-10">
 				<Badge
 					variant="secondary"
 					className="bg-blue-500 text-white font-semibold dark:bg-blue-600"
@@ -103,12 +97,12 @@ const NewProductTableRow = ({ categories }: { categories: Category[] }) => {
 					{newProduct.status.toLowerCase()}
 				</Badge>
 			</TableCell>
-			<TableCell>
+			<TableCell className="relative z-10">
 				{getCategoryName(newProduct.categoryId, categories)}
 			</TableCell>
-			<TableCell className="text-muted-foreground">-</TableCell>
-			<TableCell className="text-muted-foreground">-</TableCell>
-			<TableCell>
+			<TableCell className="text-muted-foreground relative z-10">-</TableCell>
+			<TableCell className="text-muted-foreground relative z-10">-</TableCell>
+			<TableCell className="relative z-10">
 				<Badge variant="outline">-</Badge>
 			</TableCell>
 		</TableRow>
@@ -121,11 +115,9 @@ export function ProductsTable({
 	loadMoreRef,
 	isFetchingNextPage,
 }: ProductsTableProps) {
-	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const [selectedIds, setSelectedIds] = useAtom(selectedProductIdsAtom);
-	const { saveScrollPosition } = useSidebarScroll();
 
 	const toggleAll = (checked: boolean) => {
 		setSelectedIds(checked ? new Set(products.map((p) => p.id)) : new Set());
@@ -144,14 +136,6 @@ export function ProductsTable({
 	const allSelected =
 		products.length > 0 && selectedIds.size === products.length;
 	const someSelected = selectedIds.size > 0 && !allSelected;
-
-	const handleRowClick = (slug: string) => {
-		saveScrollPosition();
-		const params = searchParams.toString();
-		router.push(`/products/${slug}${params ? `?${params}` : ""}`, {
-			scroll: false,
-		});
-	};
 
 	return (
 		<Table>
@@ -179,16 +163,25 @@ export function ProductsTable({
 				</ClientOnly>
 				{products.map((product) => {
 					const isActive = pathname.includes(product.slug);
+					const params = searchParams.toString();
+					const href = `/products/${product.slug}${params ? `?${params}` : ""}`;
 					return (
 						<TableRow
 							key={product.id}
 							data-state={
 								isActive || selectedIds.has(product.id) ? "selected" : undefined
 							}
-							className="cursor-pointer"
-							onClick={() => handleRowClick(product.slug)}
+							className="cursor-pointer group relative"
 						>
-							<TableCell onClick={(e) => e.stopPropagation()}>
+							<Link
+								href={href}
+								className="absolute inset-0 z-0"
+								aria-label={`View ${product.name}`}
+							/>
+							<TableCell
+								onClick={(e) => e.stopPropagation()}
+								className="relative z-10"
+							>
 								<Checkbox
 									checked={selectedIds.has(product.id)}
 									onCheckedChange={(checked) =>
@@ -197,7 +190,7 @@ export function ProductsTable({
 									aria-label={`Select ${product.name}`}
 								/>
 							</TableCell>
-							<TableCell>
+							<TableCell className="relative z-10">
 								{product.img ? (
 									<Image
 										src={product.img}
@@ -210,22 +203,24 @@ export function ProductsTable({
 									<div className="size-10 rounded-md bg-muted" />
 								)}
 							</TableCell>
-							<TableCell className="font-medium">{product.name}</TableCell>
-							<TableCell>
+							<TableCell className="font-medium relative z-10">
+								{product.name}
+							</TableCell>
+							<TableCell className="relative z-10">
 								<Badge variant={statusVariants[product.status]}>
 									{product.status.toLowerCase()}
 								</Badge>
 							</TableCell>
-							<TableCell>
+							<TableCell className="relative z-10">
 								{getCategoryName(product.categoryId, categories)}
 							</TableCell>
-							<TableCell className="text-muted-foreground">
+							<TableCell className="text-muted-foreground relative z-10">
 								{product.priceMin}€
 							</TableCell>
-							<TableCell className="text-muted-foreground">
+							<TableCell className="text-muted-foreground relative z-10">
 								{product.priceMax}€
 							</TableCell>
-							<TableCell>
+							<TableCell className="relative z-10">
 								<Badge variant="outline">{product.totalStock}</Badge>
 							</TableCell>
 						</TableRow>
