@@ -42,9 +42,7 @@ interface Category {
 }
 
 export function ProductsSearchBar({ categories }: { categories: Category[] }) {
-	const [searchParams, setSearchParams] = useQueryStates(productsSearchParams, {
-		shallow: false,
-	});
+	const [searchParams, setSearchParams] = useQueryStates(productsSearchParams);
 
 	const debouncedSearch = useDebouncedCallback(async (name: string) => {
 		await setSearchParams({ name, skip: 0 });
@@ -52,10 +50,6 @@ export function ProductsSearchBar({ categories }: { categories: Category[] }) {
 
 	const handleStatusChange = async (status: string | null) => {
 		const validStatus = productStatusOptions.find((s) => s === status);
-		console.log("first - before setSearchParams", {
-			newStatus: validStatus,
-			currentStatus: searchParams.status,
-		});
 		await setSearchParams({ status: validStatus ?? null, skip: 0 });
 	};
 

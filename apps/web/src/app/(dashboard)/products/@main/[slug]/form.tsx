@@ -23,7 +23,6 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { revalidateProductsLayout } from "../../actions";
 import { currentProductAtom, newProductAtom } from "../../store";
 import { ProductFormClassification } from "./form-classification";
 import { ProductFormDetails } from "./form-details";
@@ -133,7 +132,6 @@ export const ProductForm = ({
 				});
 			}
 			setSidebarProduct(null);
-			await revalidateProductsLayout();
 
 			if (data.slug !== product.slug) {
 				router.push(
@@ -244,7 +242,6 @@ export const ProductForm = ({
 					return;
 				}
 				toast.success("Product deleted successfully");
-				await revalidateProductsLayout();
 				router.push(`/products${queryString ? `?${queryString}` : ""}`);
 			} catch (error: unknown) {
 				const err = unknownError(error, "Failed to delete product");

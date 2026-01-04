@@ -17,12 +17,12 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@spice-world/web/components/ui/dropdown-menu";
-import { app } from "@spice-world/web/lib/elysia";
+import { app, elysiaErrorToString } from "@spice-world/web/lib/elysia";
+import { unknownError } from "@spice-world/web/lib/utils";
 import { useAtom } from "jotai";
 import { CheckIcon, Loader2Icon, XIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { revalidateProductsLayout } from "../actions";
+import { toast } from "sonner";
 import { productStatusOptions } from "../search-params";
 import { selectedProductIdsAtom } from "../store";
 
@@ -42,12 +42,9 @@ interface BulkActionsBarProps {
 }
 
 export function BulkActionsBar({ categories }: BulkActionsBarProps) {
-	const router = useRouter();
 	const [selectedIds, setSelectedIds] = useAtom(selectedProductIdsAtom);
-	const [isPending, startTransition] = useTransition();
-	const [pendingChanges, setPendingChanges] = useState<PendingChanges>({});
-	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
+	const [pendingChanges, setPendingChanges] = useState<PendingChanges>({});
 	const hasPendingChanges =
 		pendingChanges.status !== undefined ||
 		pendingChanges.categoryId !== undefined;
@@ -67,23 +64,33 @@ export function BulkActionsBar({ categories }: BulkActionsBarProps) {
 		}));
 	};
 
+	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 	const handleApplyChanges = () => {
 		setShowConfirmDialog(true);
 	};
 
+	const [isPending, startTransition] = useTransition();
 	const handleConfirm = () => {
 		startTransition(async () => {
-			const { error } = await app.products.bulk.patch({
-				ids: Array.from(selectedIds),
-				status: pendingChanges.status,
-				categoryId: pendingChanges.categoryId,
-			});
-			if (!error) {
+			try {
+				const { error } = await app.products.bulk.patch({
+					ids: Array.from(selectedIds),
+					status: pendingChanges.status,
+					categoryId: pendingChanges.categoryId,
+				});
+				if (error) {
+					toast.error(
+						`Failed to bulk update products with error ${error.status}: ${elysiaErrorToString(error)}`,
+					);
+					throw error;
+				}
+				toast.success("Product created successfully");
 				setSelectedIds(new Set<string>());
 				setPendingChanges({});
 				setShowConfirmDialog(false);
-				await revalidateProductsLayout();
-				router.refresh();
+			} catch (error: unknown) {
+				const err = unknownError(error, "Failed to bulk update products");
+				toast.error(elysiaErrorToString(err));
 			}
 		});
 	};

@@ -13,8 +13,7 @@ import {
 } from "@spice-world/web/components/ui/table";
 import { useAtom, useAtomValue } from "jotai";
 import Image from "next/image";
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { newProductAtom, selectedProductIdsAtom } from "../store";
 
 interface Category {
@@ -44,6 +43,7 @@ const NewProductTableRow = ({ categories }: { categories: Category[] }) => {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const newProduct = useAtomValue(newProductAtom);
+	const router = useRouter();
 
 	if (!newProduct) return null;
 
@@ -54,14 +54,14 @@ const NewProductTableRow = ({ categories }: { categories: Category[] }) => {
 
 	return (
 		<TableRow
+			role="link"
 			data-state={isSelected ? "selected" : undefined}
 			className="cursor-pointer group relative"
+			onClick={() => router.push(href)}
+			onKeyDown={(e) =>
+				(e.key === "Enter" || e.key === " ") && router.push(href)
+			}
 		>
-			<Link
-				href={href}
-				className="absolute inset-0 z-0"
-				aria-label="View new product"
-			/>
 			<TableCell onClick={(e) => e.stopPropagation()} className="relative z-10">
 				<Checkbox disabled aria-label="New product" />
 			</TableCell>
@@ -104,9 +104,11 @@ const NewProductTableRow = ({ categories }: { categories: Category[] }) => {
 };
 
 export function ProductsTable({ products, categories }: ProductsTableProps) {
+	const [selectedIds, setSelectedIds] = useAtom(selectedProductIdsAtom);
+
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
-	const [selectedIds, setSelectedIds] = useAtom(selectedProductIdsAtom);
+	const router = useRouter();
 
 	const toggleAll = (checked: boolean) => {
 		setSelectedIds(checked ? new Set(products.map((p) => p.id)) : new Set());
@@ -154,17 +156,17 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 					const href = `/products/${product.slug}${params ? `?${params}` : ""}`;
 					return (
 						<TableRow
+							role="link"
 							key={product.id}
 							data-state={
 								isActive || selectedIds.has(product.id) ? "selected" : undefined
 							}
 							className="cursor-pointer group relative"
+							onClick={() => router.push(href)}
+							onKeyDown={(e) =>
+								(e.key === "Enter" || e.key === " ") && router.push(href)
+							}
 						>
-							<Link
-								href={href}
-								className="absolute inset-0 z-0"
-								aria-label={`View ${product.name}`}
-							/>
 							<TableCell
 								onClick={(e) => e.stopPropagation()}
 								className="relative z-10"

@@ -112,7 +112,7 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
 						{displayProduct.name}
 					</span>
 					<Badge
-						variant={statusVariants[product.status]}
+						variant={statusVariants[displayProduct.status]}
 						className="ml-auto text-xs shrink-0"
 					>
 						{displayProduct.status.toLowerCase()}
