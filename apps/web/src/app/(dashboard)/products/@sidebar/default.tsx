@@ -25,9 +25,6 @@ export default async function ProductsSidebarSlot({
 		}),
 		app.categories.get(),
 	]);
-	console.log("fetched products and categories for sidebar slot", {
-		productsCount: products?.length,
-	});
 
 	return (
 		<ProductsSidebar

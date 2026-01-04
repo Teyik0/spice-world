@@ -1,14 +1,12 @@
 "use client";
 
 import type { ProductModel } from "@spice-world/server/modules/products/model";
-import { ClientOnly } from "@spice-world/web/components/client-only";
 import { Button } from "@spice-world/web/components/ui/button";
 import {
 	Loader2Icon,
 	PanelLeftCloseIcon,
 	PanelLeftOpenIcon,
 } from "lucide-react";
-import { useEffect, useRef } from "react";
 import { useSidebarExpanded } from "../../sidebar-provider";
 import { BulkActionsBar } from "./bulk-menu";
 import { AddProductButton, NewProductItem, ProductItem } from "./product-item";
@@ -31,35 +29,8 @@ export function ProductsSidebar({
 	categories,
 }: ProductsSidebarProps) {
 	const [expanded, setExpanded] = useSidebarExpanded();
-	const loadMoreRef = useRef<HTMLDivElement>(null);
-
-	const { products, fetchNextPage, hasNextPage, isFetchingNextPage } =
+	const { products, ref, isFetching, containerRef } =
 		useProductsInfinite(initialProducts);
-	console.log("ProductsSidebar scroll render:", {
-		productsCount: products?.length,
-	});
-
-	useEffect(() => {
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
-					fetchNextPage();
-				}
-			},
-			{ threshold: 0.1 },
-		);
-
-		const currentRef = loadMoreRef.current;
-		if (currentRef) {
-			observer.observe(currentRef);
-		}
-
-		return () => {
-			if (currentRef) {
-				observer.unobserve(currentRef);
-			}
-		};
-	}, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
 	return (
 		<aside
@@ -68,9 +39,7 @@ export function ProductsSidebar({
 		>
 			<header className="p-3 border-b h-16 items-center flex gap-2">
 				<ProductsSearchBar categories={categories} />
-				<ClientOnly>
-					<AddProductButton />
-				</ClientOnly>
+				<AddProductButton />
 				<Button
 					variant="ghost"
 					size="icon"
@@ -85,23 +54,15 @@ export function ProductsSidebar({
 				</Button>
 			</header>
 
-			<div className="flex-1 overflow-auto">
+			<div ref={containerRef} className="flex-1 overflow-auto">
 				{expanded ? (
 					<>
 						<BulkActionsBar categories={categories} />
-						<ProductsTable
-							products={products}
-							categories={categories}
-							loadMoreRef={loadMoreRef}
-							isFetchingNextPage={isFetchingNextPage}
-							hasNextPage={hasNextPage}
-						/>
+						<ProductsTable products={products} categories={categories} />
 					</>
 				) : (
 					<>
-						<ClientOnly>
-							<NewProductItem />
-						</ClientOnly>
+						<NewProductItem />
 						{products?.map((product) => (
 							<ProductItem key={product.id} product={product} />
 						))}
@@ -110,16 +71,13 @@ export function ProductsSidebar({
 								No products found
 							</div>
 						)}
-						<div
-							ref={loadMoreRef}
-							className="h-10 flex items-center justify-center"
-						>
-							{isFetchingNextPage && (
-								<Loader2Icon className="size-4 animate-spin text-muted-foreground" />
-							)}
-						</div>
 					</>
 				)}
+				<div ref={ref} className="h-10 flex items-center justify-center">
+					{isFetching && (
+						<Loader2Icon className="size-4 animate-spin text-muted-foreground" />
+					)}
+				</div>
 			</div>
 		</aside>
 	);

@@ -3,48 +3,62 @@
 import type { ProductModel } from "@spice-world/server/modules/products/model";
 import { app } from "@spice-world/web/lib/elysia";
 import { useQueryStates } from "nuqs";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useInView } from "react-intersection-observer";
 import { productsSearchParams } from "../search-params";
+import { INITIAL_PAGE_SIZE } from "./default";
 
 export const PAGE_SIZE = 25;
 
 export function useProductsInfinite(initialProducts: ProductModel.getResult) {
+	const scrollRef = useRef<HTMLDivElement>(null);
+	const [ref, inView] = useInView({ threshold: 0 });
+	const setRef = useCallback(
+		(node: HTMLDivElement | null) => {
+			ref(node);
+			scrollRef.current = node;
+		},
+		[ref],
+	);
+	const scrollContainerRef = useRef<HTMLDivElement>(null);
+
 	const [params] = useQueryStates(productsSearchParams);
+	const refParams = useRef(params);
 	const [pages, setPages] = useState<ProductModel.getResult[]>([
 		initialProducts,
 	]);
-	const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
 	const [hasNextPage, setHasNextPage] = useState(
 		initialProducts.length >= PAGE_SIZE,
 	);
 
-	const paramsKey = JSON.stringify([
-		params.name,
-		params.status,
-		params.categories,
-		params.sortBy,
-		params.sortDir,
-	]);
-	const prevParamsKey = useRef(paramsKey);
-	const prevInitialProducts = useRef(initialProducts);
-
 	useEffect(() => {
-		const paramsChanged = prevParamsKey.current !== paramsKey;
-		const initialDataChanged = prevInitialProducts.current !== initialProducts;
+		const hasParamsChanged = refParams.current !== params;
+		if (!hasParamsChanged) return;
+		app.products
+			.get({
+				query: {
+					name: params.name || undefined,
+					skip: 0,
+					take: INITIAL_PAGE_SIZE,
+					status: params.status ?? undefined,
+					categories: params.categories ?? undefined,
+					sortBy: params.sortBy,
+					sortDir: params.sortDir,
+				},
+			})
+			.then(({ data }) => {
+				setPages([data ?? []]);
+				setHasNextPage(data ? data.length >= PAGE_SIZE : false);
+				scrollContainerRef?.current?.scrollTo({ top: 0, behavior: "smooth" });
+			});
 
-		if (paramsChanged || initialDataChanged) {
-			setPages([initialProducts]);
-			setHasNextPage(initialProducts.length >= PAGE_SIZE);
-			prevParamsKey.current = paramsKey;
-			prevInitialProducts.current = initialProducts;
-		}
-	}, [paramsKey, initialProducts]);
+		refParams.current = params;
+	}, [params]);
 
+	const [isFetchingNextPage, startTransition] = useTransition();
 	const fetchNextPage = useCallback(async () => {
 		if (isFetchingNextPage || !hasNextPage) return;
-
-		setIsFetchingNextPage(true);
-		try {
+		startTransition(async () => {
 			const skip = pages.length * PAGE_SIZE;
 			const { data } = await app.products.get({
 				query: {
@@ -61,15 +75,17 @@ export function useProductsInfinite(initialProducts: ProductModel.getResult) {
 			const newPage = data ?? [];
 			setPages((prev) => [...prev, newPage]);
 			setHasNextPage(newPage.length >= PAGE_SIZE);
-		} finally {
-			setIsFetchingNextPage(false);
-		}
+		});
 	}, [isFetchingNextPage, hasNextPage, pages.length, params]);
+
+	useEffect(() => {
+		if (inView && hasNextPage) fetchNextPage();
+	}, [inView, hasNextPage, fetchNextPage]);
 
 	return {
 		products: pages.flat(),
-		fetchNextPage,
-		hasNextPage,
-		isFetchingNextPage,
+		isFetching: isFetchingNextPage,
+		ref: setRef,
+		containerRef: scrollContainerRef,
 	};
 }

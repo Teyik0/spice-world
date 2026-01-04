@@ -1,7 +1,6 @@
 "use client";
 
 import type { ProductModel } from "@spice-world/server/modules/products/model";
-import { ClientOnly } from "@spice-world/web/components/client-only";
 import { Badge } from "@spice-world/web/components/ui/badge";
 import { Checkbox } from "@spice-world/web/components/ui/checkbox";
 import {
@@ -13,11 +12,9 @@ import {
 	TableRow,
 } from "@spice-world/web/components/ui/table";
 import { useAtom, useAtomValue } from "jotai";
-import { Loader2Icon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import type { RefObject } from "react";
 import { newProductAtom, selectedProductIdsAtom } from "../store";
 
 interface Category {
@@ -28,9 +25,6 @@ interface Category {
 interface ProductsTableProps {
 	products: ProductModel.getResult;
 	categories: Category[];
-	loadMoreRef?: RefObject<HTMLDivElement | null>;
-	isFetchingNextPage?: boolean;
-	hasNextPage?: boolean;
 }
 
 export const statusVariants: Record<
@@ -109,12 +103,7 @@ const NewProductTableRow = ({ categories }: { categories: Category[] }) => {
 	);
 };
 
-export function ProductsTable({
-	products,
-	categories,
-	loadMoreRef,
-	isFetchingNextPage,
-}: ProductsTableProps) {
+export function ProductsTable({ products, categories }: ProductsTableProps) {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const [selectedIds, setSelectedIds] = useAtom(selectedProductIdsAtom);
@@ -158,9 +147,7 @@ export function ProductsTable({
 				</TableRow>
 			</TableHeader>
 			<TableBody>
-				<ClientOnly>
-					<NewProductTableRow categories={categories} />
-				</ClientOnly>
+				<NewProductTableRow categories={categories} />
 				{products.map((product) => {
 					const isActive = pathname.includes(product.slug);
 					const params = searchParams.toString();
@@ -233,20 +220,6 @@ export function ProductsTable({
 							className="text-center text-muted-foreground"
 						>
 							No products found
-						</TableCell>
-					</TableRow>
-				)}
-				{loadMoreRef && (
-					<TableRow>
-						<TableCell colSpan={8} className="h-10 p-0">
-							<div
-								ref={loadMoreRef}
-								className="flex items-center justify-center h-full"
-							>
-								{isFetchingNextPage && (
-									<Loader2Icon className="size-4 animate-spin text-muted-foreground" />
-								)}
-							</div>
 						</TableCell>
 					</TableRow>
 				)}
