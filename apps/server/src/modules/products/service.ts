@@ -74,7 +74,7 @@ export const productService = {
 			`products:${sortBy ?? "default"}:${sortDir}:${skip}:${take}:` +
 			`${name ?? ""}:${status ?? ""}:${categories?.join(",") ?? ""}`;
 
-		type getResult = Product & {
+		type getProduct = Product & {
 			img: string | null;
 			priceMin: number | null;
 			priceMax: number | null;
@@ -82,7 +82,7 @@ export const productService = {
 		};
 
 		if (localCache.has(cacheKey)) {
-			return localCache.get(cacheKey) as getResult[];
+			return localCache.get(cacheKey) as getProduct[];
 		}
 
 		const direction = sortDir ?? "asc";
@@ -119,7 +119,7 @@ export const productService = {
 		const offsetClause = skip !== undefined ? sql`OFFSET ${skip}` : sql``;
 		const limitClause = take !== undefined ? sql`LIMIT ${take}` : sql``;
 
-		const products = await sql<getResult[]>`SELECT
+		const products = await sql<getProduct[]>`SELECT
 			p.*,
 			(SELECT url FROM "Image" WHERE "productId" = p.id AND "isThumbnail" = true LIMIT 1) AS "img",
 			v_agg."priceMin",

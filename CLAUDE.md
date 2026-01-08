@@ -47,7 +47,6 @@ Better Auth provides `user`, `isLogin`, `isAdmin` macros in routes
 The server exports `export type App = typeof app`
 Frontend uses Eden Treaty for end-to-end type-safe API calls
 
-
 ## Running the project
 
 **Start development environment**
@@ -72,3 +71,10 @@ bun run format # Auto-fix with Biome (ultracite)
 cd apps/server && bun run tsc --noEmit
 cd apps/web && bun run tsc --noEmit
 ```
+
+## Response plan
+
+1. Provide your initial answer
+2. Generate 3-5 question that would expose error in your answer. Always try to think out the box and think of the current architecture.
+3. Answer yourself each verification question independently
+4. Provide you final revised answer based on the verification

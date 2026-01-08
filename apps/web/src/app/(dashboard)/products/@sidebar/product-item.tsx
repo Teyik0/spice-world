@@ -100,7 +100,7 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
 			{displayProduct.img && (
 				<Image
 					src={displayProduct.img}
-					alt={`${product.name} Image`}
+					alt={product.name}
 					width={48}
 					height={48}
 					className="rounded-md shrink-0 object-cover"

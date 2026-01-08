@@ -23,7 +23,12 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { currentProductAtom, newProductAtom } from "../../store";
+import {
+	currentProductAtom,
+	newProductAtom,
+	productPagesAtom,
+} from "../../store";
+import { revalidateProductPath } from "./action";
 import { ProductFormClassification } from "./form-classification";
 import { ProductFormDetails } from "./form-details";
 import { ProductFormImages } from "./form-images";
@@ -56,6 +61,7 @@ export const ProductForm = ({
 	const [attributesToRemove, setAttributesToRemove] = useState<
 		AttributeValueInfo[]
 	>([]);
+	const setPages = useSetAtom(productPagesAtom);
 
 	const handleDiscard = () => {
 		form.reset();
@@ -132,6 +138,46 @@ export const ProductForm = ({
 				});
 			}
 			setSidebarProduct(null);
+			await revalidateProductPath(); // make discard work after any update
+			// update product in the sidebar list
+			setPages((pages) => {
+				const pageIndex = pages.findIndex((page) =>
+					page.some((p) => p.slug === data.slug),
+				);
+
+				if (pageIndex === -1) return pages; // product not found
+
+				const newPages = [...pages];
+				if (!newPages[pageIndex]) return pages;
+				newPages[pageIndex] = newPages[pageIndex].map((p) =>
+					// need to use id here in case slug has changed
+					p.slug === data.slug
+						? {
+								name: data.name,
+								status: data.status,
+								createdAt: data.createdAt,
+								updatedAt: data.updatedAt,
+								id: p.id,
+								slug: data.slug,
+								description: data.description,
+								categoryId: data.categoryId,
+								version: data.version,
+								img: data.images.find((img) => img.isThumbnail)?.url ?? p.img,
+								priceMin: data.variants.reduce(
+									(min, v) => (v.price < min ? v.price : min),
+									data.variants[0]?.price ?? 0,
+								),
+								priceMax: data.variants.reduce(
+									(max, v) => (v.price > max ? v.price : max),
+									data.variants[0]?.price ?? 0,
+								),
+								totalStock: data.variants.reduce((sum, v) => sum + v.stock, 0),
+							}
+						: p,
+				);
+
+				return newPages;
+			});
 
 			if (data.slug !== product.slug) {
 				router.push(
