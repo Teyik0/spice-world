@@ -75,6 +75,65 @@ const localCache = new LRUCache<string, any>({
 	updateAgeOnGet: true,
 });
 
+/**
+ * Invalidate product listing cache entries by pattern matching.
+ * Cache key format: products:{sortBy}:{sortDir}:{skip}:{take}:{name}:{status}:{categories}
+ *
+ * @param options - Filter options for surgical invalidation
+ * @param options.categoryIds - Invalidate entries containing these category IDs
+ * @param options.statuses - Invalidate entries with these statuses
+ *
+ * If no options provided, clears entire cache (fallback for complex operations)
+ */
+function invalidateProductListings(options?: {
+	categoryIds?: string[];
+	statuses?: string[];
+}) {
+	if (!options || (!options.categoryIds?.length && !options.statuses?.length)) {
+		localCache.clear();
+		return;
+	}
+
+	// Get all cache keys
+	const keysToDelete: string[] = [];
+
+	for (const key of localCache.keys()) {
+		if (!key.startsWith("products:")) continue;
+
+		// Key format: products:{sortBy}:{sortDir}:{skip}:{take}:{name}:{status}:{categories}
+		const parts = key.split(":");
+		const keyStatus = parts[6] ?? "";
+		const keyCategories = parts[7] ?? "";
+
+		let shouldInvalidate = false;
+
+		// Invalidate if status matches or key has no status filter (affects all)
+		if (options.statuses?.length) {
+			if (keyStatus === "" || options.statuses.includes(keyStatus)) {
+				shouldInvalidate = true;
+			}
+		}
+
+		// Invalidate if category matches or key has no category filter
+		if (options.categoryIds?.length) {
+			if (
+				keyCategories === "" ||
+				options.categoryIds.some((catId) => keyCategories.includes(catId))
+			) {
+				shouldInvalidate = true;
+			}
+		}
+
+		if (shouldInvalidate) {
+			keysToDelete.push(key);
+		}
+	}
+
+	for (const key of keysToDelete) {
+		localCache.delete(key);
+	}
+}
+
 export const productService = {
 	async get({
 		name,
@@ -204,8 +263,6 @@ export const productService = {
 		images,
 		imagesOps,
 	}: ProductModel.postBody) {
-		localCache.clear();
-
 		const { data: uploadMap, error: uploadError } =
 			await validateAndUploadFiles(images, imagesOps, name);
 		if (uploadError || !uploadMap) {
@@ -342,6 +399,13 @@ export const productService = {
 					variants: createdVariants,
 				};
 			});
+
+			// Invalidate cache entries for this category and status
+			invalidateProductListings({
+				categoryIds: [categoryId],
+				statuses: [finalStatus],
+			});
+
 			return status("Created", product);
 		} catch (err: unknown) {
 			if (uploadMap.size > 0) {
@@ -364,8 +428,6 @@ export const productService = {
 		variants,
 		_version,
 	}: ProductModel.patchBody & uuidGuard) {
-		localCache.clear();
-
 		// 1. Fetch current product state
 		const currentProduct = await prisma.product.findUniqueOrThrow({
 			where: { id },
@@ -381,6 +443,7 @@ export const productService = {
 				category: {
 					select: {
 						id: true,
+						name: true,
 						attributes: { select: { id: true } },
 					},
 				},
@@ -500,7 +563,7 @@ export const productService = {
 			!hasVariantChanges
 		) {
 			const { _count, category, ...result } = currentProduct;
-			return { ...result, category: { id: category.id, name: "" } };
+			return { ...result, category: { id: category.id, name: category.name } };
 		}
 
 		// 4. Category change validation
@@ -585,6 +648,7 @@ export const productService = {
 				where: { id: newCategoryId },
 				select: {
 					id: true,
+					name: true,
 					attributes: { select: { id: true } },
 				},
 			});
@@ -847,6 +911,19 @@ export const productService = {
 				await utapi.deleteFiles(oldKeysToDelete);
 			}
 
+			// Invalidate cache - include old and new category/status if changed
+			const categoryIds = [currentProduct.categoryId];
+			if (categoryId && categoryId !== currentProduct.categoryId) {
+				categoryIds.push(categoryId);
+			}
+
+			const statuses = [currentProduct.status];
+			if (finalStatus !== currentProduct.status) {
+				statuses.push(finalStatus);
+			}
+
+			invalidateProductListings({ categoryIds, statuses });
+
 			return product;
 		} catch (err: unknown) {
 			if (uploadMap.size > 0) {
@@ -862,6 +939,12 @@ export const productService = {
 		const deletedProduct = await prisma.product.delete({
 			where: { id: id },
 			include: { images: true },
+		});
+
+		// Invalidate cache for the deleted product's category and status
+		invalidateProductListings({
+			categoryIds: [deletedProduct.categoryId],
+			statuses: [deletedProduct.status],
 		});
 
 		return deletedProduct;
