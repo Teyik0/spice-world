@@ -149,7 +149,7 @@ export const ProductForm = ({
 			if (isNew) {
 				setNewProduct(null);
 			}
-			await revalidateProductPath(); // make discard work after any update
+			await revalidateProductPath(data.slug); // make discard work after any update
 
 			// Update sidebar list
 			const buildSidebarProduct = (existingImg?: string | null) => ({

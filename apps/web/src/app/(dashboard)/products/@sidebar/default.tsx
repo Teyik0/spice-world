@@ -26,10 +26,7 @@ export default async function ProductsSidebarSlot({
 
 	return (
 		<ProductsHydrator initialProducts={products ?? []}>
-			<ProductsSidebar
-				initialProducts={products ?? []}
-				categories={categories ?? []}
-			/>
+			<ProductsSidebar categories={categories ?? []} />
 		</ProductsHydrator>
 	);
 }

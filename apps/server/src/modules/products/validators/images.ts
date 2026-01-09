@@ -123,7 +123,7 @@ export function validateImagesOps(
 
 	const allReferencedIndices = [...createFileIndices, ...updateFileIndices];
 	for (const idx of allReferencedIndices) {
-		if (idx >= images.length) {
+		if (idx < 0 || idx >= images.length) {
 			throw status("Bad Request", {
 				message: `Invalid fileIndex ${idx}. Only ${images.length} files provided.`,
 				code: "VIO7",

@@ -12,10 +12,6 @@
 	"dependencies": {
 		"@elysiajs/eden": "^1.4.6",
 		"@t3-oss/env-nextjs": "^0.13.10",
-		"@tanstack/db": "^0.5.16",
-		"@tanstack/query-core": "^5.90.16",
-		"@tanstack/query-db-collection": "^1.0.12",
-		"@tanstack/react-db": "^0.1.60",
 		"@tanstack/react-form": "^1.27.5",
 		"@tanstack/react-store": "^0.8.0",
 		"better-auth": "^1.4.10",
@@ -23,7 +19,7 @@
 		"clsx": "^2.1.1",
 		"cmdk": "^1.1.1",
 		"embla-carousel-react": "^8.6.0",
-		"framer-motion": "^12.24.7",
+		"framer-motion": "^12.25.0",
 		"jotai": "^2.16.1",
 		"lucide-react": "^0.562.0",
 		"next": "16.1.1",
@@ -36,7 +32,7 @@
 		"react-intersection-observer": "^10.0.0",
 		"sonner": "^2.0.7",
 		"tailwind-merge": "^3.4.0",
-		"use-debounce": "^10.0.6",
+		"use-debounce": "^10.1.0",
 		"vaul": "^1.1.2"
 	},
 	"devDependencies": {

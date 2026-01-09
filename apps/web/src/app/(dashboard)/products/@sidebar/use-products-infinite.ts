@@ -37,8 +37,8 @@ export function useProductsInfinite() {
 	);
 
 	useEffect(() => {
-		const hasParamsChanged = refParams.current === paramsKey;
-		if (hasParamsChanged) return;
+		const paramsUnchanged = refParams.current === paramsKey;
+		if (paramsUnchanged) return;
 		app.products
 			.get({
 				query: {

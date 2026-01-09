@@ -55,6 +55,7 @@ const NewProductTableRow = ({ categories }: { categories: Category[] }) => {
 	return (
 		<TableRow
 			role="link"
+			tabIndex={0}
 			data-state={isSelected ? "selected" : undefined}
 			className="cursor-pointer group relative"
 			onClick={() => router.push(href)}
@@ -158,6 +159,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 					return (
 						<TableRow
 							role="link"
+							tabIndex={0}
 							key={product.id}
 							data-state={
 								isActive || selectedIds.has(product.id) ? "selected" : undefined

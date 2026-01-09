@@ -102,6 +102,7 @@ export const ProductFormImages = ({
 		})),
 	);
 
+	//biome-ignore lint/correctness/useExhaustiveDependencies: acnowledged
 	useEffect(() => {
 		// Sync product card on sidebar
 		const newThum = files.find((img) => img.isThumbnail);

@@ -2,12 +2,18 @@
 
 import { SidebarProvider } from "@spice-world/web/components/ui/sidebar";
 import { useMediaQuery } from "@spice-world/web/hooks/use-media-query";
-import { createContext, type ReactNode, useContext, useState } from "react";
+import {
+	type CSSProperties,
+	createContext,
+	type ReactNode,
+	useContext,
+	useState,
+} from "react";
 import { setSidebarExpanded } from "./cookies";
 
 const SIDEBAR_WIDTH_COLLAPSED = "350px";
 const SIDEBAR_WIDTH_EXPANDED = "600px";
-const SIDEBAR_WIDTH_EXPANDED_XL = "800px";
+const SIDEBAR_WIDTH_EXPANDED_2XL = "800px";
 
 interface SidebarContextValue {
 	expanded: boolean;
@@ -34,16 +40,16 @@ export function SidebarRightProvider({
 	initialExpanded: boolean;
 }) {
 	const [expanded, setExpandedState] = useState(initialExpanded);
-	const isXl = useMediaQuery("(min-width: 1536px)"); // Tailwind's '2xl' breakpoint
+	const is2xl = useMediaQuery("(min-width: 1536px)"); // Tailwind's '2xl' breakpoint
 
 	const setExpanded = (value: boolean) => {
 		setExpandedState(value);
-		setSidebarExpanded(value);
+		void setSidebarExpanded(value);
 	};
 
 	const sidebarWidth = expanded
-		? isXl
-			? SIDEBAR_WIDTH_EXPANDED_XL
+		? is2xl
+			? SIDEBAR_WIDTH_EXPANDED_2XL
 			: SIDEBAR_WIDTH_EXPANDED
 		: SIDEBAR_WIDTH_COLLAPSED;
 
@@ -58,7 +64,7 @@ export function SidebarRightProvider({
 				style={
 					{
 						"--sidebar-width": sidebarWidth,
-					} as React.CSSProperties
+					} as CSSProperties
 				}
 			>
 				{children}

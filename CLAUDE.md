@@ -87,7 +87,7 @@ cd apps/web && bun run tsc --noEmit
 2. Generate 3-5 question that would expose error in your answer. Always try to think out the box and think of the current architecture
 3. Double check any library/documentation using context7 MCP to ensure you are correct
 4. Answer yourself each verification question independently
-5. Provide you final revised answer based on the verification
+5. Provide your final revised answer based on the verification
 
 ### Priority
 

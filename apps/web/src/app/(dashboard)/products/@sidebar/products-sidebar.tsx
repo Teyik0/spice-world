@@ -22,7 +22,6 @@ interface Category {
 }
 
 interface ProductsSidebarProps {
-	initialProducts: ProductModel.getResult;
 	categories: Category[];
 }
 

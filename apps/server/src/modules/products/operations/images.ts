@@ -110,7 +110,7 @@ export async function executeImageDeletes(
 	});
 
 	await tx.image.deleteMany({
-		where: { id: { in: deleteIds } },
+		where: { id: { in: deleteIds }, productId },
 	});
 
 	return toDelete.map((img) => img.key);

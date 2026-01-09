@@ -51,10 +51,13 @@ export const ProductFormClassification = ({
 		value: string | ProductStatus,
 	) => {
 		if (isNew) {
-			setNewProduct((prev) => ({
-				...(prev as ProductItemProps),
-				[field]: value,
-			}));
+			setNewProduct((prev) => {
+				if (!prev) return prev;
+				return {
+					...prev,
+					[field]: value,
+				};
+			});
 		} else {
 			setPages((pages) =>
 				pages.map((page) =>
