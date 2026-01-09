@@ -432,6 +432,7 @@ export const productService = {
 		const currentProduct = await prisma.product.findUniqueOrThrow({
 			where: { id },
 			select: {
+				id: true,
 				name: true,
 				description: true,
 				status: true,

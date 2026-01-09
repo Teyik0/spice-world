@@ -24,7 +24,7 @@ import { CheckIcon, Loader2Icon, XIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { productStatusOptions } from "../search-params";
-import { selectedProductIdsAtom } from "../store";
+import { productPagesAtom, selectedProductIdsAtom } from "../store";
 
 interface Category {
 	id: string;
@@ -43,6 +43,7 @@ interface BulkActionsBarProps {
 
 export function BulkActionsBar({ categories }: BulkActionsBarProps) {
 	const [selectedIds, setSelectedIds] = useAtom(selectedProductIdsAtom);
+	const [, setPages] = useAtom(productPagesAtom);
 
 	const [pendingChanges, setPendingChanges] = useState<PendingChanges>({});
 	const hasPendingChanges =
@@ -84,7 +85,22 @@ export function BulkActionsBar({ categories }: BulkActionsBarProps) {
 					);
 					throw error;
 				}
-				toast.success("Product created successfully");
+				// Update products in sidebar list
+				setPages((pages) =>
+					pages.map((page) =>
+						page.map((product) => {
+							if (!selectedIds.has(product.id)) return product;
+							return {
+								...product,
+								...(pendingChanges.status && { status: pendingChanges.status }),
+								...(pendingChanges.categoryId && {
+									categoryId: pendingChanges.categoryId,
+								}),
+							};
+						}),
+					),
+				);
+				toast.success("Products updated successfully");
 				setSelectedIds(new Set<string>());
 				setPendingChanges({});
 				setShowConfirmDialog(false);

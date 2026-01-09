@@ -72,9 +72,23 @@ cd apps/server && bun run tsc --noEmit
 cd apps/web && bun run tsc --noEmit
 ```
 
-## Response plan
+## Plan mode mandatory steps
 
+### Analyses
+- Launch **parallel subagents** to search codebase (`explore-codebase` agent is good for that)
+- Launch **parallel subagents** to gather online information (`websearch` agent is good for that)
+- Find files to use as **examples** or **edit targets**
+- Return relevant file paths and useful context
+- **CRITICAL**: Think deeply before starting agents - know exactly what to search for
+- Use multiple agents to search across different areas
+
+### Plan 
 1. Provide your initial answer
-2. Generate 3-5 question that would expose error in your answer. Always try to think out the box and think of the current architecture.
-3. Answer yourself each verification question independently
-4. Provide you final revised answer based on the verification
+2. Generate 3-5 question that would expose error in your answer. Always try to think out the box and think of the current architecture
+3. Double check any library/documentation using context7 MCP to ensure you are correct
+4. Answer yourself each verification question independently
+5. Provide you final revised answer based on the verification
+
+### Priority
+
+Understanding > Speed > Completeness. Every bug/feature must be fully understood before giving the plans.

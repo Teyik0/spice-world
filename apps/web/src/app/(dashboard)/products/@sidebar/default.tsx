@@ -1,5 +1,4 @@
 import { app } from "@spice-world/web/lib/elysia";
-import { Provider } from "jotai";
 import type { SearchParams } from "nuqs/server";
 import { INITIAL_PAGE_SIZE, productsSearchParamsCache } from "../search-params";
 import { ProductsHydrator, ProductsSidebar } from "./products-sidebar";
@@ -26,12 +25,11 @@ export default async function ProductsSidebarSlot({
 	]);
 
 	return (
-		<Provider>
-			<ProductsHydrator initialProducts={products ?? []} />
+		<ProductsHydrator initialProducts={products ?? []}>
 			<ProductsSidebar
 				initialProducts={products ?? []}
 				categories={categories ?? []}
 			/>
-		</Provider>
+		</ProductsHydrator>
 	);
 }

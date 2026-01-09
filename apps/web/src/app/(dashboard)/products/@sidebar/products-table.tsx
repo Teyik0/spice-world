@@ -14,11 +14,7 @@ import {
 import { useAtom, useAtomValue } from "jotai";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import {
-	currentProductAtom,
-	newProductAtom,
-	selectedProductIdsAtom,
-} from "../store";
+import { newProductAtom, selectedProductIdsAtom } from "../store";
 
 interface Category {
 	id: string;
@@ -109,7 +105,6 @@ const NewProductTableRow = ({ categories }: { categories: Category[] }) => {
 
 export function ProductsTable({ products, categories }: ProductsTableProps) {
 	const [selectedIds, setSelectedIds] = useAtom(selectedProductIdsAtom);
-	const currentProduct = useAtomValue(currentProductAtom);
 
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
@@ -159,10 +154,6 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 					const isActive = pathname.includes(product.slug);
 					const params = searchParams.toString();
 					const href = `/products/${product.slug}${params ? `?${params}` : ""}`;
-					const displayProduct =
-						isActive && currentProduct?.slug === product.slug
-							? currentProduct
-							: product;
 
 					return (
 						<TableRow
@@ -186,14 +177,14 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 									onCheckedChange={(checked) =>
 										toggleOne(product.id, !!checked)
 									}
-									aria-label={`Select ${displayProduct.name}`}
+									aria-label={`Select ${product.name}`}
 								/>
 							</TableCell>
 							<TableCell className="relative z-10">
-								{displayProduct.img ? (
+								{product.img ? (
 									<Image
-										src={displayProduct.img}
-										alt={displayProduct.name}
+										src={product.img}
+										alt={product.name}
 										width={48}
 										height={48}
 										className="rounded-md object-cover"
@@ -203,15 +194,15 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 								)}
 							</TableCell>
 							<TableCell className="font-medium relative z-10">
-								{displayProduct.name}
+								{product.name}
 							</TableCell>
 							<TableCell className="relative z-10">
 								<Badge variant={statusVariants[product.status]}>
-									{displayProduct.status.toLowerCase()}
+									{product.status.toLowerCase()}
 								</Badge>
 							</TableCell>
 							<TableCell className="relative z-10">
-								{getCategoryName(displayProduct.categoryId, categories)}
+								{getCategoryName(product.categoryId, categories)}
 							</TableCell>
 							<TableCell className="text-muted-foreground relative z-10">
 								{product.priceMin}€

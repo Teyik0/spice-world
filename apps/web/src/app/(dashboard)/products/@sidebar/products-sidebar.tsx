@@ -83,9 +83,11 @@ export function ProductsSidebar({ categories }: ProductsSidebarProps) {
 
 export function ProductsHydrator({
 	initialProducts,
+	children,
 }: {
 	initialProducts: ProductModel.getResult;
+	children: React.ReactNode;
 }) {
 	useHydrateAtoms([[productPagesAtom, [initialProducts]]]);
-	return null;
+	return children;
 }

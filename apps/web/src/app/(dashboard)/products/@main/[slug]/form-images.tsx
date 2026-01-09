@@ -31,9 +31,9 @@ import {
 } from "react";
 import { toast } from "sonner";
 import {
-	currentProductAtom,
 	newProductAtom,
 	type ProductItemProps,
+	productPagesAtom,
 } from "../../store";
 
 const MAX_IMAGES = 5;
@@ -48,6 +48,7 @@ interface ImageMetadata {
 
 interface ProductFormImagesProps {
 	isNew: boolean;
+	slug: string;
 	form: ReturnType<
 		typeof useForm<typeof ProductModel.postBody | typeof ProductModel.patchBody>
 	>;
@@ -56,6 +57,7 @@ interface ProductFormImagesProps {
 
 export const ProductFormImages = ({
 	isNew,
+	slug,
 	form,
 	existingImages = [],
 }: ProductFormImagesProps) => {
@@ -71,9 +73,23 @@ export const ProductFormImages = ({
 	}, [api]);
 
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const setSidebarProduct = useSetAtom(
-		isNew ? newProductAtom : currentProductAtom,
-	);
+	const setNewProduct = useSetAtom(newProductAtom);
+	const setPages = useSetAtom(productPagesAtom);
+
+	const updateSidebarImg = (imgUrl: string | null) => {
+		if (isNew) {
+			setNewProduct((prev) => ({
+				...(prev as ProductItemProps),
+				img: imgUrl,
+			}));
+		} else {
+			setPages((pages) =>
+				pages.map((page) =>
+					page.map((p) => (p.slug === slug ? { ...p, img: imgUrl } : p)),
+				),
+			);
+		}
+	};
 	type UnifiedImage = ImageMetadata & {
 		state: "toCreate" | "toUpdate" | null;
 		fileIndex?: number; // Pour référencer form.images
@@ -89,11 +105,8 @@ export const ProductFormImages = ({
 	useEffect(() => {
 		// Sync product card on sidebar
 		const newThum = files.find((img) => img.isThumbnail);
-		setSidebarProduct((prev) => ({
-			...(prev as ProductItemProps),
-			img: newThum ? newThum.url : null,
-		}));
-	}, [setSidebarProduct, files]);
+		updateSidebarImg(newThum ? newThum.url : null);
+	}, [files]);
 
 	const syncToForm = useCallback(
 		(images: UnifiedImage[]) => {
