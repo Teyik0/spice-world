@@ -15,23 +15,39 @@ import {
 } from "@spice-world/web/components/ui/field";
 import { useSetAtom } from "jotai";
 import {
-	currentProductAtom,
 	newProductAtom,
 	type ProductItemProps,
-} from "../store";
+	productPagesAtom,
+} from "../../store";
 
 export const ProductFormDetails = ({
 	form,
 	isNew,
+	slug,
 }: {
 	form: ReturnType<
 		typeof useForm<typeof ProductModel.postBody | typeof ProductModel.patchBody>
 	>;
 	isNew: boolean;
+	slug: string;
 }) => {
-	const setSidebarProduct = useSetAtom(
-		isNew ? newProductAtom : currentProductAtom,
-	);
+	const setNewProduct = useSetAtom(newProductAtom);
+	const setPages = useSetAtom(productPagesAtom);
+
+	const updateSidebar = (field: keyof ProductItemProps, value: string) => {
+		if (isNew) {
+			setNewProduct((prev) => ({
+				...(prev as ProductItemProps),
+				[field]: value,
+			}));
+		} else {
+			setPages((pages) =>
+				pages.map((page) =>
+					page.map((p) => (p.slug === slug ? { ...p, [field]: value } : p)),
+				),
+			);
+		}
+	};
 
 	return (
 		<Card className="rounded-md">
@@ -46,9 +62,7 @@ export const ProductFormDetails = ({
 						name="name"
 						validators={{
 							onChange: ({ value }) => {
-								setSidebarProduct((prev) => {
-									return { ...(prev as ProductItemProps), name: value ?? "" };
-								});
+								updateSidebar("name", value ?? "");
 							},
 						}}
 					>
@@ -73,12 +87,7 @@ export const ProductFormDetails = ({
 						name="description"
 						validators={{
 							onChange: ({ value }) => {
-								setSidebarProduct((prev) => {
-									return {
-										...(prev as ProductItemProps),
-										description: value ?? "",
-									};
-								});
+								updateSidebar("description", value ?? "");
 							},
 						}}
 					>

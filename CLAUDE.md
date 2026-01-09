@@ -47,7 +47,6 @@ Better Auth provides `user`, `isLogin`, `isAdmin` macros in routes
 The server exports `export type App = typeof app`
 Frontend uses Eden Treaty for end-to-end type-safe API calls
 
-
 ## Running the project
 
 **Start development environment**
@@ -72,3 +71,24 @@ bun run format # Auto-fix with Biome (ultracite)
 cd apps/server && bun run tsc --noEmit
 cd apps/web && bun run tsc --noEmit
 ```
+
+## Plan mode mandatory steps
+
+### Analyses
+- Launch **parallel subagents** to search codebase (`explore-codebase` agent is good for that)
+- Launch **parallel subagents** to gather online information (`websearch` agent is good for that)
+- Find files to use as **examples** or **edit targets**
+- Return relevant file paths and useful context
+- **CRITICAL**: Think deeply before starting agents - know exactly what to search for
+- Use multiple agents to search across different areas
+
+### Plan 
+1. Provide your initial answer
+2. Generate 3-5 question that would expose error in your answer. Always try to think out the box and think of the current architecture
+3. Double check any library/documentation using context7 MCP to ensure you are correct
+4. Answer yourself each verification question independently
+5. Provide your final revised answer based on the verification
+
+### Priority
+
+Understanding > Speed > Completeness. Every bug/feature must be fully understood before giving the plans.

@@ -2014,4 +2014,137 @@ describe.concurrent("Product routes test", () => {
 			expect(updated.variants[0]?.attributeValues.length).toBe(0);
 		});
 	});
+
+	describe("POST and PATCH return type consistency", () => {
+		const filePath1 = `${import.meta.dir}/public/cumin.webp`;
+		const filePath2 = `${import.meta.dir}/public/curcuma.jpg`;
+		const files = [file(filePath1), file(filePath2)];
+
+		it("should return identical structure for POST and PATCH responses", async () => {
+			const category = testCategories[0];
+			expectDefined(category);
+
+			const categoryAttributes = await testDb.client.attribute.findMany({
+				where: { categoryId: category.id },
+				include: { values: true },
+			});
+
+			// Create a product via POST
+			const { data: postData, status: postStatus } = await api.products.post({
+				name: "return type test product",
+				description: "Testing return type consistency",
+				categoryId: category.id,
+				status: "PUBLISHED",
+				variants: {
+					create: [
+						{
+							price: 15.99,
+							sku: "RETURN-TYPE-001",
+							stock: 100,
+							attributeValueIds: [
+								categoryAttributes[0]?.values[0]?.id as string,
+							],
+						},
+					],
+				},
+				images: files,
+				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
+			});
+
+			expect(postStatus).toBe(201);
+			expectDefined(postData);
+
+			// Update the product via PATCH
+			const { data: patchData, status: patchStatus } = await api
+				.products({ id: postData.id })
+				.patch({
+					description: "Updated description for return type test",
+				});
+
+			expect(patchStatus).toBe(200);
+			expectDefined(patchData);
+
+			// Verify both responses have the same keys
+			const postKeys = Object.keys(postData).sort();
+			const patchKeys = Object.keys(patchData).sort();
+			expect(postKeys).toEqual(patchKeys);
+
+			// Verify category structure is identical
+			expect(postData.category).toHaveProperty("id");
+			expect(postData.category).toHaveProperty("name");
+			expect(patchData.category).toHaveProperty("id");
+			expect(patchData.category).toHaveProperty("name");
+			expect(typeof postData.category.name).toBe("string");
+			expect(typeof patchData.category.name).toBe("string");
+			expect(patchData.category.name).not.toBe(""); // Should not be empty string
+
+			// Verify variant structure
+			expect(postData.variants.length).toBeGreaterThan(0);
+			expect(patchData.variants.length).toBeGreaterThan(0);
+
+			const postVariantKeys = Object.keys(postData.variants[0] ?? {}).sort();
+			const patchVariantKeys = Object.keys(patchData.variants[0] ?? {}).sort();
+			expect(postVariantKeys).toEqual(patchVariantKeys);
+
+			// Verify image structure
+			expect(postData.images.length).toBeGreaterThan(0);
+			expect(patchData.images.length).toBeGreaterThan(0);
+
+			const postImageKeys = Object.keys(postData.images[0] ?? {}).sort();
+			const patchImageKeys = Object.keys(patchData.images[0] ?? {}).sort();
+			expect(postImageKeys).toEqual(patchImageKeys);
+		});
+
+		it("should return proper category name on early exit (no changes)", async () => {
+			const category = testCategories[0];
+			expectDefined(category);
+
+			const categoryAttributes = await testDb.client.attribute.findMany({
+				where: { categoryId: category.id },
+				include: { values: true },
+			});
+
+			// Create a product
+			const { data: created, status: createStatus } = await api.products.post({
+				name: "early exit test product",
+				description: "Testing early exit return type",
+				categoryId: category.id,
+				status: "DRAFT",
+				variants: {
+					create: [
+						{
+							price: 10,
+							sku: "EARLY-EXIT-001",
+							stock: 50,
+							attributeValueIds: [
+								categoryAttributes[0]?.values[0]?.id as string,
+							],
+						},
+					],
+				},
+				images: files,
+				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
+			});
+
+			expect(createStatus).toBe(201);
+			expectDefined(created);
+
+			// Patch with same values (should trigger early exit)
+			const { data: patched, status: patchStatus } = await api
+				.products({ id: created.id })
+				.patch({
+					name: created.name, // Same name
+					description: created.description, // Same description
+				});
+
+			expect(patchStatus).toBe(200);
+			expectDefined(patched);
+
+			// Verify category has proper name (not empty string)
+			expect(patched.category).toHaveProperty("id");
+			expect(patched.category).toHaveProperty("name");
+			expect(patched.category.name).toBe(category.name);
+			expect(patched.category.name).not.toBe("");
+		});
+	});
 });

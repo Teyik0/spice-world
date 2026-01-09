@@ -1,3 +1,4 @@
+import type { ProductModel } from "@spice-world/server/modules/products/model";
 import type { ProductStatus } from "@spice-world/server/prisma/enums";
 import { atom } from "jotai";
 
@@ -15,15 +16,19 @@ export interface ProductItemProps {
 }
 
 /**
- * Atom for storing the -current/new product being edited in the sidebar
+ * Atom for storing the new product being created in the sidebar
  *
- * PURPOSE: Display-only state for sidebar live updates
+ * PURPOSE: Display-only state for sidebar live updates during product creation
  * - Updated FROM TanStack Form state (one-way sync)
  * - Never used as source of truth for form validation
- * - Allows ProductItem component to show real-time changes
+ * - Allows NewProductItem component to show real-time changes
+ * - Reset to null after successful creation (product moves to productPagesAtom)
  */
-export const currentProductAtom = atom<ProductItemProps | null>(null);
 export const newProductAtom = atom<ProductItemProps | null>(null);
 
 export const selectedProductIdsAtom = atom<Set<string>>(new Set<string>());
 export const productsRefreshKeyAtom = atom<number>(0);
+
+/* Atome for infinite products scroll */
+export const productPagesAtom = atom<ProductModel.getResult[]>([]);
+export const productsAtom = atom((get) => get(productPagesAtom).flat());

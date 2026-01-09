@@ -133,4 +133,7 @@ export namespace ProductModel {
 		categoryId: t.Optional(uuid),
 	});
 	export type bulkPatchBody = typeof bulkPatchBody.static;
+	export type bulkPatchResult = Awaited<
+		ReturnType<typeof productService.bulkPatch>
+	>;
 }

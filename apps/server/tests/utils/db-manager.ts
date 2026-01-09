@@ -10,9 +10,12 @@ interface TestDatabase {
 }
 
 /**
- * Creates an isolated database for a test file
+ * Creates an isolated EMPTY database for a test file
  * Each test file gets its own PostgreSQL database to prevent conflicts
  * when running tests concurrently
+ *
+ * The database is created empty and the schema is applied using prisma db push.
+ * This avoids copying data from the main database (which could have 100k+ products).
  *
  * IMPORTANT: This function modifies process.env.DATABASE_URL to point to the test database.
  * Make sure to call cleanup() in afterAll() to restore the original DATABASE_URL.
@@ -46,13 +49,10 @@ export async function createTestDatabase(
 
 	// Parse the connection string to extract connection details
 	const url = new URL(BASE_DB_URL.replace("postgres://", "http://"));
-	const templateDb = url.pathname.slice(1) || "template1";
 
 	try {
-		// Create database with template to copy the schema
-		await adminClient.$executeRawUnsafe(
-			`CREATE DATABASE "${databaseName}" TEMPLATE "${templateDb}"`,
-		);
+		// Create an EMPTY database (no template = uses template0 which is empty)
+		await adminClient.$executeRawUnsafe(`CREATE DATABASE "${databaseName}"`);
 	} catch (error) {
 		console.error(`Failed to create database ${databaseName}:`, error);
 		throw error;
@@ -62,12 +62,48 @@ export async function createTestDatabase(
 
 	// Create connection string for the new test database
 	const testConnectionString = `postgres://${url.username}:${url.password}@${url.host}/${databaseName}?sslmode=disable`;
+
+	// Apply schema using prisma db push (schema only, no data)
+	const originalDbUrl = Bun.env.DATABASE_URL;
 	Bun.env.DATABASE_URL = testConnectionString;
+
+	try {
+		const proc = Bun.spawn(
+			["bunx", "prisma", "db", "push", "--accept-data-loss"],
+			{
+				cwd: `${import.meta.dir}/../../`,
+				env: { ...Bun.env, DATABASE_URL: testConnectionString },
+				stdout: "pipe",
+				stderr: "pipe",
+			},
+		);
+
+		const exitCode = await proc.exited;
+		if (exitCode !== 0) {
+			const stderr = await new Response(proc.stderr).text();
+			throw new Error(`prisma db push failed: ${stderr}`);
+		}
+	} catch (error) {
+		// Restore original URL before throwing
+		Bun.env.DATABASE_URL = originalDbUrl;
+
+		// Try to cleanup the created database
+		const cleanupAdapter = new PrismaPg({ connectionString: BASE_DB_URL });
+		const cleanupClient = new PrismaClient({ adapter: cleanupAdapter });
+		try {
+			await cleanupClient.$executeRawUnsafe(
+				`DROP DATABASE IF EXISTS "${databaseName}"`,
+			);
+		} finally {
+			await cleanupClient.$disconnect();
+		}
+
+		throw error;
+	}
 
 	const testAdapter = new PrismaPg({ connectionString: testConnectionString });
 	const testClient = new PrismaClient({ adapter: testAdapter });
 	globalThis.__prisma = testClient;
-	await resetTestDatabase(testClient); // Refresh the DB
 
 	// Cleanup function to drop the database and restore original DATABASE_URL
 	const destroy = async () => {
@@ -102,8 +138,7 @@ export async function createTestDatabase(
 }
 
 /**
- * Helper function to reset all data in the test
- * database
+ * Helper function to reset all data in the test database
  * Useful for beforeEach/afterEach hooks
  */
 export async function resetTestDatabase(client: PrismaClient): Promise<void> {

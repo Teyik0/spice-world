@@ -17,13 +17,14 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@spice-world/web/components/ui/dropdown-menu";
-import { app } from "@spice-world/web/lib/elysia";
-import { useSetAtom } from "jotai";
+import { app, elysiaErrorToString } from "@spice-world/web/lib/elysia";
+import { unknownError } from "@spice-world/web/lib/utils";
+import { useAtom } from "jotai";
 import { CheckIcon, Loader2Icon, XIcon } from "lucide-react";
 import { useState, useTransition } from "react";
-import { revalidateProductsLayout } from "./actions";
-import { productStatusOptions } from "./search-params";
-import { selectedProductIdsAtom } from "./store";
+import { toast } from "sonner";
+import { productStatusOptions } from "../search-params";
+import { productPagesAtom, selectedProductIdsAtom } from "../store";
 
 interface Category {
 	id: string;
@@ -37,21 +38,14 @@ interface PendingChanges {
 }
 
 interface BulkActionsBarProps {
-	selectedCount: number;
-	selectedIds: string[];
 	categories: Category[];
 }
 
-export function BulkActionsBar({
-	selectedCount,
-	selectedIds,
-	categories,
-}: BulkActionsBarProps) {
-	const setSelectedIds = useSetAtom(selectedProductIdsAtom);
-	const [isPending, startTransition] = useTransition();
-	const [pendingChanges, setPendingChanges] = useState<PendingChanges>({});
-	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+export function BulkActionsBar({ categories }: BulkActionsBarProps) {
+	const [selectedIds, setSelectedIds] = useAtom(selectedProductIdsAtom);
+	const [, setPages] = useAtom(productPagesAtom);
 
+	const [pendingChanges, setPendingChanges] = useState<PendingChanges>({});
 	const hasPendingChanges =
 		pendingChanges.status !== undefined ||
 		pendingChanges.categoryId !== undefined;
@@ -71,22 +65,48 @@ export function BulkActionsBar({
 		}));
 	};
 
+	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 	const handleApplyChanges = () => {
 		setShowConfirmDialog(true);
 	};
 
+	const [isPending, startTransition] = useTransition();
 	const handleConfirm = () => {
 		startTransition(async () => {
-			const { error } = await app.products.bulk.patch({
-				ids: selectedIds,
-				status: pendingChanges.status,
-				categoryId: pendingChanges.categoryId,
-			});
-			if (!error) {
+			try {
+				const { error } = await app.products.bulk.patch({
+					ids: Array.from(selectedIds),
+					status: pendingChanges.status,
+					categoryId: pendingChanges.categoryId,
+				});
+				if (error) {
+					toast.error(
+						`Failed to bulk update products with error ${error.status}: ${elysiaErrorToString(error)}`,
+					);
+					throw error;
+				}
+				// Update products in sidebar list
+				setPages((pages) =>
+					pages.map((page) =>
+						page.map((product) => {
+							if (!selectedIds.has(product.id)) return product;
+							return {
+								...product,
+								...(pendingChanges.status && { status: pendingChanges.status }),
+								...(pendingChanges.categoryId && {
+									categoryId: pendingChanges.categoryId,
+								}),
+							};
+						}),
+					),
+				);
+				toast.success("Products updated successfully");
 				setSelectedIds(new Set<string>());
 				setPendingChanges({});
 				setShowConfirmDialog(false);
-				await revalidateProductsLayout();
+			} catch (error: unknown) {
+				const err = unknownError(error, "Failed to bulk update products");
+				toast.error(elysiaErrorToString(err));
 			}
 		});
 	};
@@ -105,7 +125,7 @@ export function BulkActionsBar({
 			<div className="flex items-center gap-2 p-3 border-b bg-muted/50 flex-wrap">
 				{isPending && <Loader2Icon className="size-4 animate-spin" />}
 				<span className="text-sm text-muted-foreground">
-					{selectedCount} selected
+					{selectedIds.size} selected
 				</span>
 
 				<DropdownMenu>
@@ -200,8 +220,8 @@ export function BulkActionsBar({
 					<DialogHeader>
 						<DialogTitle>Confirm Bulk Edit</DialogTitle>
 						<DialogDescription>
-							You are about to modify {selectedCount} product
-							{selectedCount > 1 ? "s" : ""}. This action cannot be undone.
+							You are about to modify {selectedIds.size} product
+							{selectedIds.size > 1 ? "s" : ""}. This action cannot be undone.
 						</DialogDescription>
 					</DialogHeader>
 

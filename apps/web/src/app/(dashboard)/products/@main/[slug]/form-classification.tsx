@@ -2,6 +2,7 @@
 
 import type { CategoryModel } from "@spice-world/server/modules/categories/model";
 import type { ProductModel } from "@spice-world/server/modules/products/model";
+import type { ProductStatus } from "@spice-world/server/prisma/enums";
 import type { useForm } from "@spice-world/web/components/tanstack-form";
 import {
 	Card,
@@ -21,10 +22,10 @@ import { app } from "@spice-world/web/lib/elysia";
 import { useSetAtom } from "jotai";
 import { useState } from "react";
 import {
-	currentProductAtom,
 	newProductAtom,
 	type ProductItemProps,
-} from "../store";
+	productPagesAtom,
+} from "../../store";
 import { CategoryDialog } from "./category-dialog";
 
 interface ProductFormClassificationProps {
@@ -32,17 +33,39 @@ interface ProductFormClassificationProps {
 		typeof useForm<typeof ProductModel.postBody | typeof ProductModel.patchBody>
 	>;
 	isNew: boolean;
+	slug: string;
 	initialCategories: CategoryModel.getResult;
 }
 
 export const ProductFormClassification = ({
 	form,
 	isNew,
+	slug,
 	initialCategories,
 }: ProductFormClassificationProps) => {
-	const setSidebarProduct = useSetAtom(
-		isNew ? newProductAtom : currentProductAtom,
-	);
+	const setNewProduct = useSetAtom(newProductAtom);
+	const setPages = useSetAtom(productPagesAtom);
+
+	const updateSidebar = (
+		field: keyof ProductItemProps,
+		value: string | ProductStatus,
+	) => {
+		if (isNew) {
+			setNewProduct((prev) => {
+				if (!prev) return prev;
+				return {
+					...prev,
+					[field]: value,
+				};
+			});
+		} else {
+			setPages((pages) =>
+				pages.map((page) =>
+					page.map((p) => (p.slug === slug ? { ...p, [field]: value } : p)),
+				),
+			);
+		}
+	};
 
 	const [categories, setCategories] =
 		useState<CategoryModel.getResult>(initialCategories);
@@ -100,12 +123,7 @@ export const ProductFormClassification = ({
 						name="categoryId"
 						validators={{
 							onChange: ({ value }) => {
-								setSidebarProduct((prev) => {
-									return {
-										...(prev as ProductItemProps),
-										categoryId: value ?? "",
-									};
-								});
+								updateSidebar("categoryId", value ?? "");
 							},
 						}}
 					>
@@ -134,12 +152,7 @@ export const ProductFormClassification = ({
 						name="status"
 						validators={{
 							onChange: ({ value }) => {
-								setSidebarProduct((prev) => {
-									return {
-										...(prev as ProductItemProps),
-										status: value ?? "DRAFT",
-									};
-								});
+								updateSidebar("status", value ?? "DRAFT");
 							},
 						}}
 					>

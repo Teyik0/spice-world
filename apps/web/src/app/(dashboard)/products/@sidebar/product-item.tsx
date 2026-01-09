@@ -11,43 +11,28 @@ import {
 import { useAtom, useAtomValue } from "jotai";
 import { MinusIcon, PlusIcon } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useSidebarScroll } from "../sidebar-provider";
+import { newProductAtom, type ProductItemProps } from "../store";
 import { statusVariants } from "./products-table";
-import {
-	currentProductAtom,
-	newProductAtom,
-	type ProductItemProps,
-} from "./store";
 
 export const NewProductItem = () => {
-	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const newProduct = useAtomValue(newProductAtom);
-	const { saveScrollPosition } = useSidebarScroll();
 
 	if (!newProduct) return null;
 
 	const isSelected = pathname === "/products/new";
-
-	const handleClick = () => {
-		if (isSelected) return;
-		saveScrollPosition();
-		const params = searchParams.toString();
-		router.push(`/products/new${params ? `?${params}` : ""}`, {
-			scroll: false,
-		});
-	};
-
+	const params = searchParams.toString();
+	const href = `/products/new${params ? `?${params}` : ""}`;
 	const firstLetter = newProduct.name[0]?.toUpperCase() ?? "N";
 
 	return (
-		<button
-			type="button"
+		<Link
+			href={href}
 			className={`w-full cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex items-start gap-3 border-b p-3
 			text-sm leading-tight last:border-b-0 ${isSelected ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""}`}
-			onClick={handleClick}
 		>
 			{newProduct.img ? (
 				<Image
@@ -84,44 +69,28 @@ export const NewProductItem = () => {
 					})()}
 				</span>
 			</div>
-		</button>
+		</Link>
 	);
 };
 
 export const ProductItem = ({ product }: { product: ProductItemProps }) => {
-	const currentProduct = useAtomValue(currentProductAtom);
-	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
-	const { saveScrollPosition } = useSidebarScroll();
 
 	const isSelected = pathname.includes(product.slug);
-
-	const displayProduct =
-		isSelected && currentProduct?.slug === product.slug
-			? currentProduct
-			: product;
-
-	const handleClick = () => {
-		if (isSelected) return;
-		saveScrollPosition();
-		const params = searchParams.toString();
-		router.push(`/products/${product.slug}${params ? `?${params}` : ""}`, {
-			scroll: false,
-		});
-	};
+	const params = searchParams.toString();
+	const href = `/products/${product.slug}${params ? `?${params}` : ""}`;
 
 	return (
-		<button
-			type="button"
+		<Link
+			href={href}
 			className={`w-full cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex items-start gap-3 border-b p-3
 			text-sm leading-tight last:border-b-0 ${isSelected ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""}`}
-			onClick={handleClick}
 		>
-			{displayProduct.img && (
+			{product.img && (
 				<Image
-					src={displayProduct.img}
-					alt={`${product.name} Image`}
+					src={product.img}
+					alt={product.name}
 					width={48}
 					height={48}
 					className="rounded-md shrink-0 object-cover"
@@ -130,18 +99,18 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
 			<div className="flex flex-col items-start gap-1.5 min-w-0 flex-1">
 				<div className="flex w-full items-center gap-2">
 					<span className="first-letter:capitalize truncate">
-						{displayProduct.name}
+						{product.name}
 					</span>
 					<Badge
 						variant={statusVariants[product.status]}
 						className="ml-auto text-xs shrink-0"
 					>
-						{displayProduct.status.toLowerCase()}
+						{product.status.toLowerCase()}
 					</Badge>
 				</div>
 				<span className="font-medium text-muted-foreground text-xs text-left truncate w-full">
 					{(() => {
-						const desc = displayProduct.description;
+						const desc = product.description;
 						const maxChars = 50;
 						return desc && desc.length > maxChars
 							? `${desc.slice(0, maxChars)}...`
@@ -149,7 +118,7 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
 					})()}
 				</span>
 			</div>
-		</button>
+		</Link>
 	);
 };
 
@@ -165,6 +134,15 @@ export const AddProductButton = () => {
 			router.push(`/products${params ? `?${params}` : ""}`);
 			return;
 		}
+		// Set initial new product state immediately so sidebar shows it
+		setNewProduct({
+			name: "",
+			description: "",
+			status: "DRAFT",
+			img: null,
+			categoryId: "",
+			slug: "new",
+		});
 		router.push(`/products/new${params ? `?${params}` : ""}`);
 	};
 
