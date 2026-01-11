@@ -1,5 +1,40 @@
 import { status, t } from "elysia";
 import type { UploadFileResult } from "uploadthing/types";
+
+interface ValidationError {
+	code: string;
+	message: string;
+	httpStatus?: keyof typeof status;
+}
+
+export type ValidationResult<TData = void> =
+	| { success: true; data: TData }
+	| { success: false; error: ValidationError };
+
+export function assertValid<T extends ValidationResult>(
+	result: T,
+): asserts result is Extract<T, { success: true }> {
+	if (!result.success) {
+		const httpStatus = result.error.httpStatus || "Bad Request";
+		throw status(httpStatus, {
+			message: result.error.message,
+			code: result.error.code,
+		});
+	}
+}
+
+export function assertValidWithData<T>(
+	result: ValidationResult<T>,
+): asserts result is { success: true; data: T } {
+	if (!result.success) {
+		const httpStatus = result.error.httpStatus || "Bad Request";
+		throw status(httpStatus, {
+			message: result.error.message,
+			code: result.error.code,
+		});
+	}
+}
+
 /*
 Regex explanation:
 ^[a-zà-ÿ]        : string must start with a lowercase letter with latin char with accent (i.e éè)

@@ -1,11 +1,10 @@
-import { uploadFiles, utapi } from "@spice-world/server/lib/images";
+import { utapi } from "@spice-world/server/lib/images";
 import { prisma } from "@spice-world/server/lib/prisma";
 import type { Product } from "@spice-world/server/prisma/client";
 import { sql } from "bun";
 import { status } from "elysia";
 import { LRUCache } from "lru-cache";
-import type { UploadedFileData } from "uploadthing/types";
-import { uploadFileErrStatus, type uuidGuard } from "../shared";
+import { assertValid, assertValidWithData, type uuidGuard } from "../shared";
 import { MAX_IMAGES_PER_PRODUCT, type ProductModel } from "./model";
 import {
 	executeImageCreates,
@@ -17,9 +16,12 @@ import {
 	countVariantsWithAttributeValues,
 	determineStatusAfterCategoryChange,
 	ensureThumbnailAfterDelete,
+	uploadFilesFromIndices,
+	validateAndUploadFiles,
 	validateImagesOps,
 	validatePublishAttributeRequirements,
 	validatePublishHasPositivePrice,
+	validateThumbnailCountForCreate,
 	validateVariantAttributeValues,
 } from "./validators";
 
@@ -263,106 +265,100 @@ export const productService = {
 		images,
 		imagesOps,
 	}: ProductModel.postBody) {
-		const { data: uploadMap, error: uploadError } =
-			await validateAndUploadFiles(images, imagesOps, name);
-		if (uploadError || !uploadMap) {
-			return uploadFileErrStatus({ message: uploadError });
+		// Phase 1: Pure validations + category fetch (parallel)
+		const [thumbResult, imagesResult, category] = await Promise.all([
+			Promise.resolve(validateThumbnailCountForCreate(imagesOps)),
+			Promise.resolve(validateImagesOps(images, imagesOps)),
+			prisma.category.findUniqueOrThrow({
+				where: { id: categoryId },
+				select: {
+					id: true,
+					attributes: { select: { id: true } },
+				},
+			}),
+		]);
+
+		assertValid(thumbResult);
+		assertValidWithData(imagesResult);
+
+		const categoryHasAttributes = category.attributes.length > 0;
+
+		// Phase 2: Publish validations (parallel, depends on category)
+		let finalStatus = requestedStatus;
+
+		if (requestedStatus === "PUBLISHED") {
+			const [priceResult, attrResult] = await Promise.all([
+				Promise.resolve(
+					validatePublishHasPositivePrice({
+						currentVariants: [],
+						variantsToCreate: variants.create,
+					}),
+				),
+				Promise.resolve(
+					validatePublishAttributeRequirements({
+						categoryHasAttributes,
+						currentVariants: [],
+						variantsToCreate: variants.create,
+					}),
+				),
+			]);
+
+			if (priceResult.success && attrResult.success) {
+				finalStatus = "PUBLISHED";
+			} else {
+				finalStatus = "DRAFT";
+			}
 		}
 
-		const thumbnailCount = imagesOps.create.filter(
-			(op) => op.isThumbnail === true,
-		).length;
-		if (thumbnailCount > 1) {
-			throw status("Bad Request", {
-				message: `Only one image can be set as thumbnail (${thumbnailCount} found)`,
-				code: "POST_MULTIPLE_THUMBNAILS",
-			});
-		}
+		// Phase 3: Upload files (after all checks)
+		const uploadResult = await uploadFilesFromIndices({
+			referencedIndices: imagesResult.data,
+			images,
+			productName: name,
+		});
+		assertValidWithData(uploadResult);
+		const uploadMap = uploadResult.data;
 
-		const hasNoThumbnail = thumbnailCount === 0;
-		if (hasNoThumbnail && imagesOps.create.length > 0) {
+		// Auto-assign first image as thumbnail if none specified
+		if (
+			imagesOps.create.length > 0 &&
+			!imagesOps.create.some((op) => op.isThumbnail === true)
+		) {
 			// biome-ignore lint/style/noNonNullAssertion: imagesOps.create[0] is mandatory in the model
 			imagesOps.create[0]!.isThumbnail = true;
 		}
 
-		// Fetch category to check if it has attributes (for PUB2 validation)
-		const category = await prisma.category.findUnique({
-			where: { id: categoryId },
-			select: {
-				id: true,
-				attributes: { select: { id: true } },
-			},
-		});
-
-		if (!category) {
-			throw status("Bad Request", {
-				message: `Category ${categoryId} not found`,
-				code: "CATEGORY_NOT_FOUND",
-			});
-		}
-
-		const categoryHasAttributes = category.attributes.length > 0;
-
-		// Determine final status based on publish validation rules
-		let finalStatus = requestedStatus;
-
-		if (requestedStatus === "PUBLISHED") {
-			// PUB1: Check price > 0
-			const priceResult = validatePublishHasPositivePrice({
-				currentVariants: [],
-				variantsToCreate: variants.create,
-			});
-
-			if (!priceResult.isValid) {
-				finalStatus = "DRAFT";
-			} else {
-				// PUB2: Check attribute requirements
-				const attrResult = validatePublishAttributeRequirements({
-					categoryHasAttributes,
-					currentVariants: [],
-					variantsToCreate: variants.create,
-				});
-
-				if (!attrResult.isValid) {
-					finalStatus = "DRAFT";
-				}
-			}
-		}
-
+		// Phase 4: Transaction
 		try {
 			const product = await prisma.$transaction(async (tx) => {
-				const productPromise = tx.product.create({
-					data: {
-						name,
-						slug: name.toLowerCase().replace(/\s+/g, "-"),
-						description,
-						status: finalStatus,
-						categoryId,
-						images: {
-							createMany: {
-								data: imagesOps.create.map((op) => {
-									const file = uploadMap.get(op.fileIndex);
-									if (!file) {
-										throw new Error(`File not found for index ${op.fileIndex}`);
-									}
-									return {
-										key: file.key,
-										url: file.ufsUrl,
-										altText: op.altText ?? `${name} image`,
-										isThumbnail: op.isThumbnail ?? false,
-									};
-								}),
+				const [product, allowedAttributeValues] = await Promise.all([
+					tx.product.create({
+						data: {
+							name,
+							slug: name.toLowerCase().replace(/\s+/g, "-"),
+							description,
+							status: finalStatus,
+							categoryId,
+							images: {
+								createMany: {
+									data: imagesOps.create.map((op) => {
+										// biome-ignore lint/style/noNonNullAssertion: imagesOps has been validated before
+										const file = uploadMap.get(op.fileIndex)!;
+										return {
+											key: file.key,
+											url: file.ufsUrl,
+											altText: op.altText ?? `${name} image`,
+											isThumbnail: op.isThumbnail ?? false,
+										};
+									}),
+								},
 							},
 						},
-					},
-					include: {
-						category: true,
-						images: true,
-					},
-				});
-
-				const [product, allowedAttributeValues] = await Promise.all([
-					productPromise,
+						include: {
+							category: true,
+							images: true,
+						},
+					}),
 					tx.attributeValue.findMany({
 						where: { attribute: { categoryId } },
 						select: { id: true, attributeId: true },
@@ -371,11 +367,13 @@ export const productService = {
 
 				const createdVariants = await Promise.all(
 					variants.create.map((variant) => {
-						validateVariantAttributeValues(
+						const attrResult = validateVariantAttributeValues(
 							variant.sku ?? "",
 							variant.attributeValueIds,
 							allowedAttributeValues,
 						);
+						assertValid(attrResult);
+
 						return tx.productVariant.create({
 							data: {
 								productId: product.id,
@@ -400,7 +398,6 @@ export const productService = {
 				};
 			});
 
-			// Invalidate cache entries for this category and status
 			invalidateProductListings({
 				categoryIds: [categoryId],
 				statuses: [finalStatus],
@@ -724,9 +721,9 @@ export const productService = {
 				variantsToDelete,
 			});
 
-			if (!priceResult.isValid) {
+			if (!priceResult.success) {
 				throw status("Bad Request", {
-					message: priceResult.message,
+					message: priceResult.error?.message ?? "Validation failed",
 					code: "PUB1",
 				});
 			}
@@ -740,23 +737,22 @@ export const productService = {
 				variantsToDelete,
 			});
 
-			if (!attrResult.isValid) {
+			if (!attrResult.success) {
 				throw status("Bad Request", {
-					message: attrResult.message,
+					message: attrResult.error?.message ?? "Validation failed",
 					code: "PUB2",
 				});
 			}
 		}
 
 		// 8. Upload files
-		const { data: uploadMap, error: uploadErr } = await validateAndUploadFiles(
+		const uploadResult = await validateAndUploadFiles(
 			images,
 			imagesOps,
 			name ?? currentProduct.name,
 		);
-		if (uploadErr || !uploadMap) {
-			return uploadFileErrStatus({ message: uploadErr });
-		}
+		assertValidWithData(uploadResult);
+		const uploadMap = uploadResult.data;
 
 		const oldKeysToDelete: string[] = [];
 
@@ -985,9 +981,9 @@ export const productService = {
 					currentVariants: variantsData,
 				});
 
-				if (!priceResult.isValid) {
+				if (!priceResult.success) {
 					throw status("Bad Request", {
-						message: `Product "${product.name}": ${priceResult.message}`,
+						message: `Product "${product.name}": ${priceResult.error?.message ?? "Validation failed"}`,
 						code: "PUB1",
 					});
 				}
@@ -998,9 +994,9 @@ export const productService = {
 					currentVariants: variantsData,
 				});
 
-				if (!attrResult.isValid) {
+				if (!attrResult.success) {
 					throw status("Bad Request", {
-						message: `Product "${product.name}": ${attrResult.message}`,
+						message: `Product "${product.name}": ${attrResult.error?.message ?? "Validation failed"}`,
 						code: "PUB2",
 					});
 				}
@@ -1036,55 +1032,3 @@ export const productService = {
 		});
 	},
 };
-
-async function validateAndUploadFiles(
-	images: File[] | undefined,
-	imagesOps: ProductModel.imageOperations | undefined,
-	productName: string,
-) {
-	if (!images?.length || !imagesOps) {
-		return { data: new Map<number, UploadedFileData>(), error: null };
-	}
-	const referencedIndices = validateImagesOps(images, imagesOps);
-	return await uploadValidFiles({
-		referencedIndices,
-		images,
-		productName,
-	});
-}
-
-interface UploadValidFilesProps {
-	referencedIndices: number[];
-	images: File[];
-	productName: string;
-}
-
-async function uploadValidFiles({
-	referencedIndices,
-	images,
-	productName,
-}: UploadValidFilesProps): Promise<
-	| { data: Map<number, UploadedFileData>; error: null }
-	| { data: null; error: string }
-> {
-	if (referencedIndices.length === 0) {
-		return { data: new Map<number, UploadedFileData>(), error: null };
-	}
-
-	const sortedIndices = referencedIndices.sort((a, b) => a - b);
-	const filesToUpload = sortedIndices.map((idx) => images[idx] as File);
-	const { data: uploaded, error } = await uploadFiles(
-		productName,
-		filesToUpload,
-	);
-	if (error || !uploaded) {
-		return { data: null, error };
-	}
-
-	const uploadMap = new Map<number, UploadedFileData>();
-	uploaded.forEach((file, i) => {
-		uploadMap.set(sortedIndices[i] as number, file);
-	});
-
-	return { data: uploadMap, error: null };
-}

@@ -5,7 +5,7 @@ import {
 	determineStatusAfterCategoryChange,
 	validatePublishAttributeRequirements,
 	validatePublishHasPositivePrice,
-} from "../../src/modules/products/validators/publish";
+} from "../validators/publish";
 
 describe("validatePublishHasPositivePrice (PUB1)", () => {
 	it("should return invalid when all current variants have price = 0", () => {
@@ -13,8 +13,8 @@ describe("validatePublishHasPositivePrice (PUB1)", () => {
 			currentVariants: [{ id: "v1", price: 0 }],
 		});
 
-		expect(result.isValid).toBe(false);
-		expect(result.message).toContain("price");
+		expect(result.success).toBe(false);
+		expect((result as any).error.message).toContain("price");
 	});
 
 	it("should return valid when at least one variant has price > 0", () => {
@@ -25,7 +25,7 @@ describe("validatePublishHasPositivePrice (PUB1)", () => {
 			],
 		});
 
-		expect(result.isValid).toBe(true);
+		expect(result.success).toBe(true);
 	});
 
 	it("should consider update operations that set price to 0", () => {
@@ -34,7 +34,7 @@ describe("validatePublishHasPositivePrice (PUB1)", () => {
 			variantsToUpdate: [{ id: "v1", price: 0 }],
 		});
 
-		expect(result.isValid).toBe(false);
+		expect(result.success).toBe(false);
 	});
 
 	it("should consider create operations with price > 0", () => {
@@ -43,7 +43,7 @@ describe("validatePublishHasPositivePrice (PUB1)", () => {
 			variantsToCreate: [{ price: 10 }],
 		});
 
-		expect(result.isValid).toBe(true);
+		expect(result.success).toBe(true);
 	});
 
 	it("should exclude deleted variants from validation", () => {
@@ -55,7 +55,7 @@ describe("validatePublishHasPositivePrice (PUB1)", () => {
 			variantsToDelete: ["v1"],
 		});
 
-		expect(result.isValid).toBe(false);
+		expect(result.success).toBe(false);
 	});
 
 	it("should handle complex scenario: delete + create + update", () => {
@@ -69,7 +69,7 @@ describe("validatePublishHasPositivePrice (PUB1)", () => {
 			variantsToCreate: [{ price: 0 }],
 		});
 
-		expect(result.isValid).toBe(false);
+		expect(result.success).toBe(false);
 	});
 
 	it("should return valid with only new variants having price > 0", () => {
@@ -78,7 +78,7 @@ describe("validatePublishHasPositivePrice (PUB1)", () => {
 			variantsToCreate: [{ price: 9.99 }],
 		});
 
-		expect(result.isValid).toBe(true);
+		expect(result.success).toBe(true);
 	});
 });
 
@@ -89,7 +89,7 @@ describe("validatePublishAttributeRequirements (PUB2)", () => {
 			currentVariants: [{ id: "v1", attributeValueIds: [] }],
 		});
 
-		expect(result.isValid).toBe(true);
+		expect(result.success).toBe(true);
 	});
 
 	it("should reject multiple variants without attributes when category has attributes", () => {
@@ -101,8 +101,8 @@ describe("validatePublishAttributeRequirements (PUB2)", () => {
 			],
 		});
 
-		expect(result.isValid).toBe(false);
-		expect(result.message).toContain("distinguishable");
+		expect(result.success).toBe(false);
+		expect((result as any).error.message).toContain("distinguishable");
 	});
 
 	it("should reject multiple variants when category has no attributes", () => {
@@ -114,8 +114,8 @@ describe("validatePublishAttributeRequirements (PUB2)", () => {
 			],
 		});
 
-		expect(result.isValid).toBe(false);
-		expect(result.message).toContain("no attributes");
+		expect(result.success).toBe(false);
+		expect((result as any).error.message).toContain("no attributes");
 	});
 
 	it("should allow multiple variants when all have attributes", () => {
@@ -127,7 +127,7 @@ describe("validatePublishAttributeRequirements (PUB2)", () => {
 			],
 		});
 
-		expect(result.isValid).toBe(true);
+		expect(result.success).toBe(true);
 	});
 
 	it("should reject when update removes attributes from variant", () => {
@@ -140,7 +140,7 @@ describe("validatePublishAttributeRequirements (PUB2)", () => {
 			variantsToUpdate: [{ id: "v1", attributeValueIds: [] }],
 		});
 
-		expect(result.isValid).toBe(false);
+		expect(result.success).toBe(false);
 	});
 
 	it("should allow single variant in no-attribute category", () => {
@@ -149,7 +149,7 @@ describe("validatePublishAttributeRequirements (PUB2)", () => {
 			currentVariants: [{ id: "v1", attributeValueIds: [] }],
 		});
 
-		expect(result.isValid).toBe(true);
+		expect(result.success).toBe(true);
 	});
 
 	it("should consider create operations", () => {
@@ -159,7 +159,7 @@ describe("validatePublishAttributeRequirements (PUB2)", () => {
 			variantsToCreate: [{ attributeValueIds: [] }],
 		});
 
-		expect(result.isValid).toBe(false);
+		expect(result.success).toBe(false);
 	});
 
 	it("should exclude deleted variants", () => {
@@ -172,7 +172,7 @@ describe("validatePublishAttributeRequirements (PUB2)", () => {
 			variantsToDelete: ["v2"],
 		});
 
-		expect(result.isValid).toBe(true);
+		expect(result.success).toBe(true);
 	});
 });
 

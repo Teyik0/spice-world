@@ -1,4 +1,4 @@
-import { status } from "elysia";
+import type { ValidationResult } from "../../shared";
 import type { ProductModel } from "../model";
 
 interface ImageValidationResult {
@@ -60,40 +60,52 @@ export function validateImgOpsCreateUpdate(
 export function validateImagesOps(
 	images: File[],
 	imagesOps: ProductModel.imageOperations,
-) {
+): ValidationResult<number[]> {
 	const imgOpsCreate = validateImgOpsCreateUpdate(imagesOps.create);
 	if (!imgOpsCreate.isValid) {
 		if (imgOpsCreate.hasDuplicateFileIndex) {
-			throw status("Bad Request", {
-				message: `Duplicate fileIndex values at imagesOps.create, indices: ${imgOpsCreate.duplicateFileIndices.join(
-					", ",
-				)}`,
-				code: "VIO1",
-			});
+			return {
+				success: false,
+				error: {
+					code: "VIO1",
+					message: `Duplicate fileIndex values at imagesOps.create, indices: ${imgOpsCreate.duplicateFileIndices.join(
+						", ",
+					)}`,
+				},
+			};
 		}
 		if (imgOpsCreate.hasMultipleThumbnails) {
-			throw status("Bad Request", {
-				message: `Multiple thumbnails set at imagesOps.create (${imgOpsCreate.thumbnailCount} found)`,
-				code: "VIO2",
-			});
+			return {
+				success: false,
+				error: {
+					code: "VIO2",
+					message: `Multiple thumbnails set at imagesOps.create (${imgOpsCreate.thumbnailCount} found)`,
+				},
+			};
 		}
 	}
 
 	const imgOpsUpdate = validateImgOpsCreateUpdate(imagesOps.update);
 	if (!imgOpsUpdate.isValid) {
 		if (imgOpsUpdate.hasDuplicateFileIndex) {
-			throw status("Bad Request", {
-				message: `Duplicate fileIndex values at imagesOps.update, indices: ${imgOpsUpdate.duplicateFileIndices.join(
-					", ",
-				)}`,
-				code: "VIO3",
-			});
+			return {
+				success: false,
+				error: {
+					code: "VIO3",
+					message: `Duplicate fileIndex values at imagesOps.update, indices: ${imgOpsUpdate.duplicateFileIndices.join(
+						", ",
+					)}`,
+				},
+			};
 		}
 		if (imgOpsUpdate.hasMultipleThumbnails) {
-			throw status("Bad Request", {
-				message: `Multiple thumbnails set at imagesOps.update (${imgOpsUpdate.thumbnailCount} found)`,
-				code: "VIO4",
-			});
+			return {
+				success: false,
+				error: {
+					code: "VIO4",
+					message: `Multiple thumbnails set at imagesOps.update (${imgOpsUpdate.thumbnailCount} found)`,
+				},
+			};
 		}
 	}
 
@@ -106,32 +118,41 @@ export function validateImagesOps(
 		updateFileIndices.includes(idx),
 	);
 	if (overlap.length > 0) {
-		throw status("Bad Request", {
-			message: `Duplicate fileIndex ${overlap.join(", ")} used in both create and update`,
-			code: "VIO5",
-		});
+		return {
+			success: false,
+			error: {
+				code: "VIO5",
+				message: `Duplicate fileIndex ${overlap.join(", ")} used in both create and update`,
+			},
+		};
 	}
 
 	const totalThumbnailCount =
 		imgOpsCreate.thumbnailCount + imgOpsUpdate.thumbnailCount;
 	if (totalThumbnailCount > 1) {
-		throw status("Bad Request", {
-			message: `Multiple thumbnails across create and update operations (${totalThumbnailCount} found)`,
-			code: "VIO6",
-		});
+		return {
+			success: false,
+			error: {
+				code: "VIO6",
+				message: `Multiple thumbnails across create and update operations (${totalThumbnailCount} found)`,
+			},
+		};
 	}
 
 	const allReferencedIndices = [...createFileIndices, ...updateFileIndices];
 	for (const idx of allReferencedIndices) {
 		if (idx < 0 || idx >= images.length) {
-			throw status("Bad Request", {
-				message: `Invalid fileIndex ${idx}. Only ${images.length} files provided.`,
-				code: "VIO7",
-			});
+			return {
+				success: false,
+				error: {
+					code: "VIO7",
+					message: `Invalid fileIndex ${idx}. Only ${images.length} files provided.`,
+				},
+			};
 		}
 	}
 
-	return allReferencedIndices;
+	return { success: true, data: allReferencedIndices };
 }
 
 export function ensureThumbnailAfterDelete(

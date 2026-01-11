@@ -1,4 +1,8 @@
 import type { ProductStatus } from "@spice-world/server/prisma/client";
+import type { ValidationResult } from "../../shared";
+
+// Re-export for backwards compatibility with index.ts
+export type { ValidationResult };
 
 export interface VariantPriceData {
 	id?: string;
@@ -33,10 +37,7 @@ export interface CategoryChangeAutoDraftInput {
 	variantsWithAttributeValues: number;
 }
 
-export interface ValidationResult {
-	isValid: boolean;
-	message?: string;
-}
+// ValidationResult is imported from shared.ts
 
 /**
  * PUB1: Validates that at least one variant has price > 0 for publishing.
@@ -44,7 +45,7 @@ export interface ValidationResult {
  */
 export function validatePublishHasPositivePrice(
 	input: PublishPriceValidationInput,
-): ValidationResult {
+): ValidationResult<void> {
 	const deletedIds = new Set(input.variantsToDelete ?? []);
 
 	const remainingVariants = input.currentVariants.filter(
@@ -68,13 +69,16 @@ export function validatePublishHasPositivePrice(
 
 	if (!hasPositivePrice) {
 		return {
-			isValid: false,
-			message:
-				"Cannot publish: at least one variant must have a price greater than 0",
+			success: false,
+			error: {
+				code: "PUB1",
+				message:
+					"Cannot publish: at least one variant must have a price greater than 0",
+			},
 		};
 	}
 
-	return { isValid: true };
+	return { success: true, data: undefined };
 }
 
 /**
@@ -84,7 +88,7 @@ export function validatePublishHasPositivePrice(
  */
 export function validatePublishAttributeRequirements(
 	input: PublishAttributeValidationInput,
-): ValidationResult {
+): ValidationResult<void> {
 	const deletedIds = new Set(input.variantsToDelete ?? []);
 
 	const remainingVariants = input.currentVariants.filter(
@@ -112,11 +116,14 @@ export function validatePublishAttributeRequirements(
 	if (!input.categoryHasAttributes) {
 		if (variantCount > 1) {
 			return {
-				isValid: false,
-				message: `Cannot publish: category has no attributes, so product can only have 1 variant (found ${variantCount}). Multiple variants require attribute values to distinguish them.`,
+				success: false,
+				error: {
+					code: "PUB2",
+					message: `Cannot publish: category has no attributes, so product can only have 1 variant (found ${variantCount}). Multiple variants require attribute values to distinguish them.`,
+				},
 			};
 		}
-		return { isValid: true };
+		return { success: true, data: undefined };
 	}
 
 	if (variantCount > 1) {
@@ -126,13 +133,16 @@ export function validatePublishAttributeRequirements(
 
 		if (variantsWithoutAttributes.length > 0) {
 			return {
-				isValid: false,
-				message: `Cannot publish: ${variantsWithoutAttributes.length} variant(s) have no attribute values. Each variant must be distinguishable when product has multiple variants.`,
+				success: false,
+				error: {
+					code: "PUB2",
+					message: `Cannot publish: ${variantsWithoutAttributes.length} variant(s) have no attribute values. Each variant must be distinguishable when product has multiple variants.`,
+				},
 			};
 		}
 	}
 
-	return { isValid: true };
+	return { success: true, data: undefined };
 }
 
 /**
@@ -203,4 +213,31 @@ export function countVariantsWithAttributeValues(
 	).length;
 
 	return count;
+}
+
+/**
+ * Determines the final status for bulk operations.
+ *
+ * Auto-draft rule: When changing category with >1 variant and requesting PUBLISHED status,
+ * automatically set status to DRAFT instead of throwing an error.
+ * This makes sense because attributeValues are being cleared, so product needs reconfiguration.
+ */
+export function determineFinalStatusForBulk(
+	product: { status: ProductStatus; categoryId: string; variants: unknown[] },
+	requestedStatus: ProductStatus | undefined,
+	newCategoryId: string | undefined,
+): ProductStatus {
+	const hasCategoryChange =
+		!!newCategoryId && newCategoryId !== product.categoryId;
+	const variantCount = product.variants.length;
+
+	if (
+		hasCategoryChange &&
+		variantCount > 1 &&
+		requestedStatus === "PUBLISHED"
+	) {
+		return "DRAFT";
+	}
+
+	return requestedStatus ?? product.status;
 }

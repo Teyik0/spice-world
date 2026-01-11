@@ -1,3 +1,4 @@
+import type { Product } from "@spice-world/server/prisma/client";
 import { type ElysiaCustomStatusResponse, t } from "elysia";
 import { nameLowerPattern, uuid } from "../shared";
 import type { productService } from "./service";
@@ -133,7 +134,42 @@ export namespace ProductModel {
 		categoryId: t.Optional(uuid),
 	});
 	export type bulkPatchBody = typeof bulkPatchBody.static;
+
+	export const bulkPatchResponse = t.Object({
+		successes: t.Array(t.String()),
+		failed: t.Array(
+			t.Object({
+				id: t.String(),
+				name: t.String(),
+				code: t.String(),
+				error: t.String(),
+			}),
+		),
+	});
+	export type bulkPatchResponse = typeof bulkPatchResponse.static;
+
 	export type bulkPatchResult = Awaited<
 		ReturnType<typeof productService.bulkPatch>
 	>;
+
+	// Response types with warnings
+	export interface ProductCreateResponse {
+		product: Product;
+		warnings?: Array<{
+			code: "PUB1" | "PUB2";
+			message: string;
+		}>;
+	}
+
+	export interface ValidationErrorDetail {
+		variantIndex: number;
+		code: string;
+		message: string;
+	}
+
+	export interface MultipleVariantErrors {
+		message: string;
+		code: "VVA_MULTI";
+		details: ValidationErrorDetail[];
+	}
 }
