@@ -6,19 +6,15 @@ import { status } from "elysia";
 import { LRUCache } from "lru-cache";
 import { assertValid, assertValidWithData, type uuidGuard } from "../shared";
 import type { ProductModel } from "./model";
+import { uploadFilesFromIndices } from "./operations/images";
 import {
-	uploadFilesFromIndices,
-	validateImagesOps,
-	validateMaxVariantsForCategory,
 	validatePublishAttributeRequirements,
 	validatePublishHasPositivePrice,
-	validateThumbnailCountForCreate,
 } from "./validators";
+import { validateImages } from "./validators/images";
 import {
 	CATEGORY_WITH_VALUES_ARGS,
-	validateDuplicateAttributeCombinations,
 	validateVariants,
-	validateVariantsOps,
 } from "./validators/variants";
 
 /*
@@ -262,15 +258,13 @@ export const productService = {
 		imagesOps,
 	}: ProductModel.postBody) {
 		// Phase 1: Pure validations + category fetch (parallel)
-		const [thumbResult, imagesResult, category] = await Promise.all([
-			Promise.resolve(validateThumbnailCountForCreate(imagesOps)),
-			Promise.resolve(validateImagesOps(images, imagesOps)),
+		const [imagesResult, category] = await Promise.all([
+			Promise.resolve(validateImages({ images, imagesOps })),
 			prisma.category.findUniqueOrThrow({
 				where: { id: categoryId },
 				...CATEGORY_WITH_VALUES_ARGS,
 			}),
 		]);
-		assertValid(thumbResult);
 		assertValidWithData(imagesResult);
 
 		// Phase 2: Variant validations
@@ -317,15 +311,6 @@ export const productService = {
 		});
 		assertValidWithData(uploadResult);
 		const uploadMap = uploadResult.data;
-
-		// Auto-assign first image as thumbnail if none specified
-		if (
-			imagesOps.create.length > 0 &&
-			!imagesOps.create.some((op) => op.isThumbnail === true)
-		) {
-			// biome-ignore lint/style/noNonNullAssertion: imagesOps.create[0] is mandatory in the model
-			imagesOps.create[0]!.isThumbnail = true;
-		}
 
 		// Phase 5: Transaction
 		try {

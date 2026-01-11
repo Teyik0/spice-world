@@ -545,11 +545,12 @@ describe.concurrent("Product routes test", () => {
 
 			expect(status).toBe(400);
 			expectDefined(error);
-			expect(
-				typeof error.value === "object" && "message" in error.value
-					? error.value.message
-					: error.value,
-			).toMatch(/duplicate.*fileIndex|multiple.*same.*index/i);
+			// @ts-expect-error
+			expect(error.value.code).toBe("IMAGES_VALIDATION_FAILED");
+			// Check that VIO1 (duplicate fileIndex) is in error details
+			// @ts-expect-error
+			const errors = error.value.value as Array<{ code: string }>;
+			expect(errors.some((e) => e.code === "VIO1")).toBe(true);
 		});
 
 		it("should reject multiple thumbnails", async () => {
@@ -585,11 +586,12 @@ describe.concurrent("Product routes test", () => {
 
 			expect(status).toBe(400);
 			expectDefined(error);
-			expect(
-				typeof error.value === "object" && "message" in error.value
-					? error.value.message
-					: error.value,
-			).toMatch(/multiple.*thumbnail|only.*one.*thumbnail/i);
+			// @ts-expect-error
+			expect(error.value.code).toBe("IMAGES_VALIDATION_FAILED");
+			// Check that VIO4 (multiple thumbnails) is in error details
+			// @ts-expect-error
+			const errors = error.value.value as Array<{ code: string }>;
+			expect(errors.some((e) => e.code === "VIO4")).toBe(true);
 		});
 
 		it("should reject fileIndex out of bounds", async () => {
@@ -625,11 +627,12 @@ describe.concurrent("Product routes test", () => {
 
 			expect(status).toBe(400);
 			expectDefined(error);
-			expect(
-				typeof error.value === "object" && "message" in error.value
-					? error.value.message
-					: error.value,
-			).toMatch(/invalid.*fileIndex|out.*bounds|file.*not.*found/i);
+			// @ts-expect-error
+			expect(error.value.code).toBe("IMAGES_VALIDATION_FAILED");
+			// Check that VIO5 (fileIndex out of bounds) is in error details
+			// @ts-expect-error
+			const errors = error.value.value as Array<{ code: string }>;
+			expect(errors.some((e) => e.code === "VIO5")).toBe(true);
 		});
 
 		it("should create product with accented lowercase name", async () => {

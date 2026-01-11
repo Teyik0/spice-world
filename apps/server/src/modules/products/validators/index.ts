@@ -1,13 +1,4 @@
-export {
-	fetchAllowedAttributeValues,
-	uploadFilesFromIndices,
-	validateAndUploadFiles,
-	validateThumbnailCountForCreate,
-} from "./file-upload";
-export {
-	validateImagesOps,
-	validateImgOpsCreateUpdate,
-} from "./images";
+export { type ValidateImagesInput, validateImages } from "./images";
 export {
 	type CategoryChangeAutoDraftInput,
 	computeFinalVariantCount,

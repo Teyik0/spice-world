@@ -1,5 +1,8 @@
+import { uploadFiles } from "@spice-world/server/lib/images";
+import { prisma } from "@spice-world/server/lib/prisma";
 import type { PrismaClient } from "@spice-world/server/prisma/client";
 import type { UploadedFileData } from "uploadthing/types";
+import type { ValidationResult } from "../../shared";
 import type { ProductModel } from "../model";
 
 type PrismaTransaction = Omit<
@@ -114,4 +117,60 @@ export async function executeImageDeletes(
 	});
 
 	return toDelete.map((img) => img.key);
+}
+
+/**
+ * Fetches allowed attribute values for a category.
+ * Returns a Map of valueId -> attributeId for validation.
+ */
+export async function fetchAllowedAttributeValues(
+	categoryId: string,
+): Promise<Map<string, string>> {
+	const attributeValues = await prisma.attributeValue.findMany({
+		where: { attribute: { categoryId } },
+		select: { id: true, attributeId: true },
+	});
+
+	const map = new Map<string, string>();
+	for (const value of attributeValues) {
+		map.set(value.id, value.attributeId);
+	}
+	return map;
+}
+
+/**
+ * Uploads files from specified indices and returns a map of index -> uploaded data.
+ */
+export async function uploadFilesFromIndices({
+	referencedIndices,
+	images,
+	productName,
+}: {
+	referencedIndices: number[];
+	images: File[];
+	productName: string;
+}): Promise<ValidationResult<Map<number, UploadedFileData>>> {
+	const sortedIndices = [...referencedIndices].sort((a, b) => a - b);
+	const filesToUpload = sortedIndices.map((idx) => images[idx] as File);
+	const { data: uploaded, error } = await uploadFiles(
+		productName,
+		filesToUpload,
+	);
+
+	if (error || !uploaded) {
+		return {
+			success: false,
+			error: {
+				code: "UPLOAD_FAILED",
+				message: error || "File upload failed",
+			},
+		};
+	}
+
+	const uploadMap = new Map<number, UploadedFileData>();
+	uploaded.forEach((file, i) => {
+		uploadMap.set(sortedIndices[i] as number, file);
+	});
+
+	return { success: true, data: uploadMap };
 }
