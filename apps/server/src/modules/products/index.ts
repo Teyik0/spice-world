@@ -29,18 +29,18 @@ export const productsRouter = new Elysia({
 	)
 	.guard({ params: uuidGuard })
 	.get("/:id", async ({ params }) => await productService.getById(params))
-	.patch(
-		"/:id",
-		async ({ params, body }) => {
-			return productService.patch({
-				id: params.id,
-				...body,
-			});
-		},
-		{
-			body: ProductModel.patchBody,
-		},
-	)
+	// .patch(
+	// 	"/:id",
+	// 	async ({ params, body }) => {
+	// 		return productService.patch({
+	// 			id: params.id,
+	// 			...body,
+	// 		});
+	// 	},
+	// 	{
+	// 		body: ProductModel.patchBody,
+	// 	},
+	// )
 	.delete("/:id", async ({ params }) => {
 		const product = await productService.delete(params);
 		// Cleanup images after deletion

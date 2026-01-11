@@ -42,12 +42,6 @@ describe.concurrent("Product routes test", () => {
 
 	// Setup - create test data
 	beforeAll(async () => {
-		if (Bun.env.NODE_ENV === "production") {
-			throw new Error("You can't run tests in production");
-		}
-		if (!Bun.env.DATABASE_URL) {
-			throw new Error("DATABASE_URL should be set");
-		}
 		testDb = await createTestDatabase("product.test.ts");
 
 		const { productsRouter } = await import(

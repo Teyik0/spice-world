@@ -5,25 +5,21 @@ import { sql } from "bun";
 import { status } from "elysia";
 import { LRUCache } from "lru-cache";
 import { assertValid, assertValidWithData, type uuidGuard } from "../shared";
-import { MAX_IMAGES_PER_PRODUCT, type ProductModel } from "./model";
+import type { ProductModel } from "./model";
 import {
-	executeImageCreates,
-	executeImageDeletes,
-	executeImageUpdates,
-} from "./operations";
-import {
-	computeFinalVariantCount,
-	countVariantsWithAttributeValues,
-	determineStatusAfterCategoryChange,
-	ensureThumbnailAfterDelete,
 	uploadFilesFromIndices,
-	validateAndUploadFiles,
 	validateImagesOps,
+	validateMaxVariantsForCategory,
 	validatePublishAttributeRequirements,
 	validatePublishHasPositivePrice,
 	validateThumbnailCountForCreate,
-	validateVariantAttributeValues,
 } from "./validators";
+import {
+	CATEGORY_WITH_VALUES_ARGS,
+	validateDuplicateAttributeCombinations,
+	validateVariants,
+	validateVariantsOps,
+} from "./validators/variants";
 
 /*
 Examples ->
@@ -271,20 +267,23 @@ export const productService = {
 			Promise.resolve(validateImagesOps(images, imagesOps)),
 			prisma.category.findUniqueOrThrow({
 				where: { id: categoryId },
-				select: {
-					id: true,
-					attributes: { select: { id: true } },
-				},
+				...CATEGORY_WITH_VALUES_ARGS,
 			}),
 		]);
-
 		assertValid(thumbResult);
 		assertValidWithData(imagesResult);
 
-		const categoryHasAttributes = category.attributes.length > 0;
+		// Phase 2: Variant validations
+		assertValid(
+			validateVariants({
+				vOps: variants,
+				category,
+			}),
+		);
 
-		// Phase 2: Publish validations (parallel, depends on category)
+		// Phase 3: Publish validations (parallel, depends on category)
 		let finalStatus = requestedStatus;
+		const categoryHasAttributes = category.attributes.length > 0;
 
 		if (requestedStatus === "PUBLISHED") {
 			const [priceResult, attrResult] = await Promise.all([
@@ -310,7 +309,7 @@ export const productService = {
 			}
 		}
 
-		// Phase 3: Upload files (after all checks)
+		// Phase 4: Upload files (after all checks)
 		const uploadResult = await uploadFilesFromIndices({
 			referencedIndices: imagesResult.data,
 			images,
@@ -328,52 +327,39 @@ export const productService = {
 			imagesOps.create[0]!.isThumbnail = true;
 		}
 
-		// Phase 4: Transaction
+		// Phase 5: Transaction
 		try {
 			const product = await prisma.$transaction(async (tx) => {
-				const [product, allowedAttributeValues] = await Promise.all([
-					tx.product.create({
-						data: {
-							name,
-							slug: name.toLowerCase().replace(/\s+/g, "-"),
-							description,
-							status: finalStatus,
-							categoryId,
-							images: {
-								createMany: {
-									data: imagesOps.create.map((op) => {
-										// biome-ignore lint/style/noNonNullAssertion: imagesOps has been validated before
-										const file = uploadMap.get(op.fileIndex)!;
-										return {
-											key: file.key,
-											url: file.ufsUrl,
-											altText: op.altText ?? `${name} image`,
-											isThumbnail: op.isThumbnail ?? false,
-										};
-									}),
-								},
+				const product = await tx.product.create({
+					data: {
+						name,
+						slug: name.toLowerCase().replace(/\s+/g, "-"),
+						description,
+						status: finalStatus,
+						categoryId,
+						images: {
+							createMany: {
+								data: imagesOps.create.map((op) => {
+									// biome-ignore lint/style/noNonNullAssertion: imagesOps has been validated before
+									const file = uploadMap.get(op.fileIndex)!;
+									return {
+										key: file.key,
+										url: file.ufsUrl,
+										altText: op.altText ?? `${name} image`,
+										isThumbnail: op.isThumbnail ?? false,
+									};
+								}),
 							},
 						},
-						include: {
-							category: true,
-							images: true,
-						},
-					}),
-					tx.attributeValue.findMany({
-						where: { attribute: { categoryId } },
-						select: { id: true, attributeId: true },
-					}),
-				]);
+					},
+					include: {
+						category: true,
+						images: true,
+					},
+				});
 
 				const createdVariants = await Promise.all(
 					variants.create.map((variant) => {
-						const attrResult = validateVariantAttributeValues(
-							variant.sku ?? "",
-							variant.attributeValueIds,
-							allowedAttributeValues,
-						);
-						assertValid(attrResult);
-
 						return tx.productVariant.create({
 							data: {
 								productId: product.id,
@@ -414,523 +400,532 @@ export const productService = {
 		}
 	},
 
-	async patch({
-		id,
-		name,
-		status: requestedStatus,
-		description,
-		categoryId,
-		images,
-		imagesOps,
-		variants,
-		_version,
-	}: ProductModel.patchBody & uuidGuard) {
-		// 1. Fetch current product state
-		const currentProduct = await prisma.product.findUniqueOrThrow({
-			where: { id },
-			select: {
-				id: true,
-				name: true,
-				description: true,
-				status: true,
-				version: true,
-				categoryId: true,
-				slug: true,
-				createdAt: true,
-				updatedAt: true,
-				category: {
-					select: {
-						id: true,
-						name: true,
-						attributes: { select: { id: true } },
-					},
-				},
-				images: true,
-				variants: {
-					include: {
-						attributeValues: true,
-					},
-				},
-				_count: { select: { variants: true } },
-			},
-		});
+	// async patch({
+	// 	id,
+	// 	name,
+	// 	status: requestedStatus,
+	// 	description,
+	// 	categoryId,
+	// 	images,
+	// 	imagesOps,
+	// 	variants,
+	// 	_version,
+	// }: ProductModel.patchBody & uuidGuard) {
+	// 	// Phase 1: Pre-fetch & Validation (parallel)
+	// 	const [currentProduct, category, thumbResult, imagesResult] =
+	// 		await Promise.all([
+	// 			prisma.product.findUniqueOrThrow({
+	// 				where: { id },
+	// 				select: {
+	// 					id: true,
+	// 					name: true,
+	// 					description: true,
+	// 					status: true,
+	// 					version: true,
+	// 					categoryId: true,
+	// 					slug: true,
+	// 					createdAt: true,
+	// 					updatedAt: true,
+	// 					category: {
+	// 						select: {
+	// 							id: true,
+	// 							name: true,
+	// 							attributes: { select: { id: true } },
+	// 						},
+	// 					},
+	// 					images: true,
+	// 					variants: {
+	// 						include: {
+	// 							attributeValues: true,
+	// 						},
+	// 					},
+	// 					_count: { select: { variants: true } },
+	// 				},
+	// 			}),
+	// 			categoryId
+	// 				? prisma.category.findUnique({
+	// 						where: { id: categoryId },
+	// 						select: {
+	// 							id: true,
+	// 							name: true,
+	// 							attributes: { select: { id: true } },
+	// 						},
+	// 					})
+	// 				: undefined,
+	// 			Promise.resolve(validateThumbnailCountForCreate(imagesOps)),
+	// 			images && imagesOps
+	// 				? Promise.resolve(validateImagesOps(images, imagesOps))
+	// 				: undefined,
+	// 		]);
 
-		// 2. Version check (optimistic locking)
-		if (_version !== undefined && currentProduct.version !== _version) {
-			throw status(
-				"Conflict",
-				`Product has been modified. Expected version ${_version}, current is ${currentProduct.version}`,
-			);
-		}
+	// 	// Version check (optimistic locking)
+	// 	if (_version !== undefined && currentProduct.version !== _version) {
+	// 		throw status(
+	// 			"Conflict",
+	// 			`Product has been modified. Expected version ${_version}, current is ${currentProduct.version}`,
+	// 		);
+	// 	}
 
-		// 3. Detect changes
-		const isCategoryChanging =
-			categoryId !== undefined && categoryId !== currentProduct.categoryId;
+	// 	if (thumbResult) {
+	// 		assertValid(thumbResult);
+	// 	}
+	// 	if (imagesResult) {
+	// 		assertValidWithData(imagesResult);
+	// 	}
 
-		const hasProductFieldChanges =
-			(name !== undefined && name !== currentProduct.name) ||
-			(description !== undefined &&
-				description !== currentProduct.description) ||
-			(requestedStatus !== undefined &&
-				requestedStatus !== currentProduct.status) ||
-			isCategoryChanging;
+	// 	const newCategory = category ?? currentProduct.category;
+	// 	if (categoryId && !category) {
+	// 		throw status("Bad Request", {
+	// 			message: `Category ${categoryId} not found`,
+	// 			code: "CATEGORY_NOT_FOUND",
+	// 		});
+	// 	}
 
-		const hasRealImageUpdates =
-			imagesOps?.update?.some((updateOp) => {
-				const currentImage = currentProduct.images.find(
-					(img) => img.id === updateOp.id,
-				);
-				if (!currentImage) {
-					throw status("Not Found", {
-						message: `Image with id ${updateOp.id} not found in product ${id}`,
-						code: "IMAGE_NOT_FOUND",
-					});
-				}
+	// 	// 3. Detect changes
+	// 	const isCategoryChanging =
+	// 		categoryId !== undefined && categoryId !== currentProduct.categoryId;
 
-				const altTextChanged =
-					updateOp.altText !== undefined &&
-					updateOp.altText !== currentImage.altText;
-				const thumbnailChanged =
-					updateOp.isThumbnail !== undefined &&
-					updateOp.isThumbnail !== currentImage.isThumbnail;
-				const fileChanged = updateOp.fileIndex !== undefined;
+	// 	const hasProductFieldChanges =
+	// 		(name !== undefined && name !== currentProduct.name) ||
+	// 		(description !== undefined &&
+	// 			description !== currentProduct.description) ||
+	// 		(requestedStatus !== undefined &&
+	// 			requestedStatus !== currentProduct.status) ||
+	// 		isCategoryChanging;
 
-				return altTextChanged || thumbnailChanged || fileChanged;
-			}) ?? false;
+	// 	const hasRealImageUpdates =
+	// 		imagesOps?.update?.some((updateOp) => {
+	// 			const currentImage = currentProduct.images.find(
+	// 				(img) => img.id === updateOp.id,
+	// 			);
+	// 			if (!currentImage) {
+	// 				throw status("Not Found", {
+	// 					message: `Image with id ${updateOp.id} not found in product ${id}`,
+	// 					code: "IMAGE_NOT_FOUND",
+	// 				});
+	// 			}
 
-		const hasImageChanges =
-			(imagesOps?.create && imagesOps.create.length > 0) ||
-			(imagesOps?.delete && imagesOps.delete.length > 0);
+	// 			const altTextChanged =
+	// 				updateOp.altText !== undefined &&
+	// 				updateOp.altText !== currentImage.altText;
+	// 			const thumbnailChanged =
+	// 				updateOp.isThumbnail !== undefined &&
+	// 				updateOp.isThumbnail !== currentImage.isThumbnail;
+	// 			const fileChanged = updateOp.fileIndex !== undefined;
 
-		const hasRealVariantUpdates =
-			variants?.update?.some((updateOp) => {
-				const currentVariant = currentProduct.variants.find(
-					(v) => v.id === updateOp.id,
-				);
+	// 			return altTextChanged || thumbnailChanged || fileChanged;
+	// 		}) ?? false;
 
-				if (!currentVariant) {
-					throw status("Not Found", {
-						message: `Variant with id ${updateOp.id} not found in product ${id}`,
-						code: "VARIANT_NOT_FOUND",
-					});
-				}
+	// 	const hasImageChanges =
+	// 		(imagesOps?.create && imagesOps.create.length > 0) ||
+	// 		(imagesOps?.delete && imagesOps.delete.length > 0);
 
-				const priceChanged =
-					updateOp.price !== undefined &&
-					updateOp.price !== currentVariant.price;
-				const skuChanged =
-					updateOp.sku !== undefined && updateOp.sku !== currentVariant.sku;
-				const stockChanged =
-					updateOp.stock !== undefined &&
-					updateOp.stock !== currentVariant.stock;
-				const currencyChanged =
-					updateOp.currency !== undefined &&
-					updateOp.currency !== currentVariant.currency;
+	// 	const hasRealVariantUpdates =
+	// 		variants?.update?.some((updateOp) => {
+	// 			const currentVariant = currentProduct.variants.find(
+	// 				(v) => v.id === updateOp.id,
+	// 			);
 
-				let attrValuesChanged = false;
-				if (updateOp.attributeValueIds !== undefined) {
-					const currentAttrIds = currentVariant.attributeValues
-						.map((av) => av.id)
-						.sort();
-					const newAttrIds = [...updateOp.attributeValueIds].sort();
+	// 			if (!currentVariant) {
+	// 				throw status("Not Found", {
+	// 					message: `Variant with id ${updateOp.id} not found in product ${id}`,
+	// 					code: "VARIANT_NOT_FOUND",
+	// 				});
+	// 			}
 
-					attrValuesChanged =
-						currentAttrIds.length !== newAttrIds.length ||
-						currentAttrIds.some((id, index) => id !== newAttrIds[index]);
-				}
+	// 			const priceChanged =
+	// 				updateOp.price !== undefined &&
+	// 				updateOp.price !== currentVariant.price;
+	// 			const skuChanged =
+	// 				updateOp.sku !== undefined && updateOp.sku !== currentVariant.sku;
+	// 			const stockChanged =
+	// 				updateOp.stock !== undefined &&
+	// 				updateOp.stock !== currentVariant.stock;
+	// 			const currencyChanged =
+	// 				updateOp.currency !== undefined &&
+	// 				updateOp.currency !== currentVariant.currency;
 
-				return (
-					priceChanged ||
-					skuChanged ||
-					stockChanged ||
-					currencyChanged ||
-					attrValuesChanged
-				);
-			}) ?? false;
+	// 			let attrValuesChanged = false;
+	// 			if (updateOp.attributeValueIds !== undefined) {
+	// 				const currentAttrIds = currentVariant.attributeValues
+	// 					.map((av) => av.id)
+	// 					.sort();
+	// 				const newAttrIds = [...updateOp.attributeValueIds].sort();
 
-		const hasVariantChanges =
-			(variants?.create && variants.create.length > 0) ||
-			(variants?.delete && variants.delete.length > 0);
+	// 				attrValuesChanged =
+	// 					currentAttrIds.length !== newAttrIds.length ||
+	// 					currentAttrIds.some((id, index) => id !== newAttrIds[index]);
+	// 			}
 
-		// Early exit if no changes
-		if (
-			!hasProductFieldChanges &&
-			!hasRealImageUpdates &&
-			!hasImageChanges &&
-			!hasRealVariantUpdates &&
-			!hasVariantChanges
-		) {
-			const { _count, category, ...result } = currentProduct;
-			return { ...result, category: { id: category.id, name: category.name } };
-		}
+	// 			return (
+	// 				priceChanged ||
+	// 				skuChanged ||
+	// 				stockChanged ||
+	// 				currencyChanged ||
+	// 				attrValuesChanged
+	// 			);
+	// 		}) ?? false;
 
-		// 4. Category change validation
-		if (isCategoryChanging) {
-			if (!variants) {
-				throw status("Bad Request", {
-					message:
-						"Changing category requires providing variants operations (delete all existing + create at least one new).",
-					code: "CATEGORY_CHANGE_REQUIRES_VARIANTS",
-				});
-			}
+	// 	const hasVariantChanges =
+	// 		(variants?.create && variants.create.length > 0) ||
+	// 		(variants?.delete && variants.delete.length > 0);
 
-			const deleteCount = variants.delete?.length ?? 0;
-			const createCount = variants.create?.length ?? 0;
-			const currentVariantCount = currentProduct._count.variants;
+	// 	// Early exit if no changes
+	// 	if (
+	// 		!hasProductFieldChanges &&
+	// 		!hasRealImageUpdates &&
+	// 		!hasImageChanges &&
+	// 		!hasRealVariantUpdates &&
+	// 		!hasVariantChanges
+	// 	) {
+	// 		const { _count, category, ...result } = currentProduct;
+	// 		return {
+	// 			...result,
+	// 			id: currentProduct.id,
+	// 			category: { id: category.id, name: category.name },
+	// 		};
+	// 	}
 
-			if (deleteCount !== currentVariantCount) {
-				throw status("Bad Request", {
-					message: `Changing category requires deleting ALL existing variants. Expected to delete ${currentVariantCount} variants, but only ${deleteCount} provided.`,
-					code: "CATEGORY_CHANGE_REQUIRES_DELETE_ALL",
-				});
-			}
+	// 	// 4. Category change validation
+	// 	if (isCategoryChanging) {
+	// 		if (!variants) {
+	// 			throw status("Bad Request", {
+	// 				message:
+	// 					"Changing category requires providing variants operations (delete all existing + create at least one new).",
+	// 				code: "CATEGORY_CHANGE_REQUIRES_VARIANTS",
+	// 			});
+	// 		}
 
-			if (createCount < 1) {
-				throw status("Bad Request", {
-					message:
-						"Changing category requires creating at least one new variant with attributes from the new category.",
-					code: "CATEGORY_CHANGE_REQUIRES_CREATE",
-				});
-			}
-		}
+	// 		const deleteCount = variants.delete?.length ?? 0;
+	// 		const createCount = variants.create?.length ?? 0;
+	// 		const currentVariantCount = currentProduct._count.variants;
 
-		// 5. Variant count validation (only if NOT changing category)
-		if (variants && !isCategoryChanging) {
-			const currentVariantCount = currentProduct._count.variants;
-			const deleteCount = variants.delete?.length ?? 0;
-			const createCount = variants.create?.length ?? 0;
-			const finalVariantCount = currentVariantCount - deleteCount + createCount;
+	// 		if (deleteCount !== currentVariantCount) {
+	// 			throw status("Bad Request", {
+	// 				message: `Changing category requires deleting ALL existing variants. Expected to delete ${currentVariantCount} variants, but only ${deleteCount} provided.`,
+	// 				code: "CATEGORY_CHANGE_REQUIRES_DELETE_ALL",
+	// 			});
+	// 		}
 
-			if (finalVariantCount < 1) {
-				throw status("Bad Request", {
-					message: `Product must have at least 1 variant. Current: ${currentVariantCount}, deleting: ${deleteCount}, creating: ${createCount}`,
-					code: "INSUFFICIENT_VARIANTS",
-				});
-			}
-		}
+	// 		if (createCount < 1) {
+	// 			throw status("Bad Request", {
+	// 				message:
+	// 					"Changing category requires creating at least one new variant with attributes from the new category.",
+	// 				code: "CATEGORY_CHANGE_REQUIRES_CREATE",
+	// 			});
+	// 		}
+	// 	}
 
-		// 6. Image operations validation
-		if (imagesOps) {
-			ensureThumbnailAfterDelete(currentProduct.images, imagesOps);
+	// 	// 5. Variant count validation (only if NOT changing category)
+	// 	if (variants && !isCategoryChanging) {
+	// 		const currentVariantCount = currentProduct._count.variants;
+	// 		const deleteCount = variants.delete?.length ?? 0;
+	// 		const createCount = variants.create?.length ?? 0;
+	// 		const finalVariantCount = currentVariantCount - deleteCount + createCount;
 
-			const currentCount = currentProduct.images.length;
-			const createCount = imagesOps.create?.length ?? 0;
-			const deleteCount = imagesOps.delete?.length ?? 0;
-			const newTotal = currentCount + createCount - deleteCount;
+	// 		if (finalVariantCount < 1) {
+	// 			throw status("Bad Request", {
+	// 				message: `Product must have at least 1 variant. Current: ${currentVariantCount}, deleting: ${deleteCount}, creating: ${createCount}`,
+	// 				code: "INSUFFICIENT_VARIANTS",
+	// 			});
+	// 		}
+	// 	}
 
-			if (newTotal > MAX_IMAGES_PER_PRODUCT) {
-				throw status(
-					"Bad Request",
-					`Maximum ${MAX_IMAGES_PER_PRODUCT} images per product. Current: ${currentCount}, adding: ${createCount}, deleting: ${deleteCount}`,
-				);
-			}
+	// 	// 6. Image operations validation
+	// 	if (imagesOps) {
+	// 		ensureThumbnailAfterDelete(currentProduct.images, imagesOps);
 
-			if (newTotal < 1) {
-				throw status(
-					"Bad Request",
-					"Product must have at least 1 image. Cannot delete all images.",
-				);
-			}
+	// 		const currentCount = currentProduct.images.length;
+	// 		const createCount = imagesOps.create?.length ?? 0;
+	// 		const deleteCount = imagesOps.delete?.length ?? 0;
+	// 		const newTotal = currentCount + createCount - deleteCount;
 
-			if (images && images.length > 0) {
-				validateImagesOps(images, imagesOps);
-			}
-		}
+	// 		if (newTotal > MAX_IMAGES_PER_PRODUCT) {
+	// 			throw status(
+	// 				"Bad Request",
+	// 				`Maximum ${MAX_IMAGES_PER_PRODUCT} images per product. Current: ${currentCount}, adding: ${createCount}, deleting: ${deleteCount}`,
+	// 			);
+	// 		}
 
-		// 7. Publish validation (PUB1 & PUB2)
-		const newCategoryId = categoryId ?? currentProduct.categoryId;
-		let newCategory = currentProduct.category;
+	// 		if (newTotal < 1) {
+	// 			throw status(
+	// 				"Bad Request",
+	// 				"Product must have at least 1 image. Cannot delete all images.",
+	// 			);
+	// 		}
+	// 	}
 
-		if (isCategoryChanging) {
-			const fetchedCategory = await prisma.category.findUnique({
-				where: { id: newCategoryId },
-				select: {
-					id: true,
-					name: true,
-					attributes: { select: { id: true } },
-				},
-			});
+	// 	// 7. Publish validation (PUB1 & PUB2)
+	// 	const categoryHasAttributes = newCategory.attributes.length > 0;
+	// 	const targetStatus = requestedStatus ?? currentProduct.status;
+	// 	const isCurrentlyPublished = currentProduct.status === "PUBLISHED";
+	// 	const isRequestingPublish = targetStatus === "PUBLISHED";
 
-			if (!fetchedCategory) {
-				throw status("Bad Request", {
-					message: `Category ${newCategoryId} not found`,
-					code: "CATEGORY_NOT_FOUND",
-				});
-			}
-			newCategory = fetchedCategory;
-		}
+	// 	// Prepare variant data for validation
+	// 	const currentVariantsForValidation = currentProduct.variants.map((v) => ({
+	// 		id: v.id,
+	// 		price: v.price,
+	// 		attributeValueIds: v.attributeValues.map((av) => av.id),
+	// 	}));
 
-		const categoryHasAttributes = newCategory.attributes.length > 0;
-		const targetStatus = requestedStatus ?? currentProduct.status;
-		const isCurrentlyPublished = currentProduct.status === "PUBLISHED";
-		const isRequestingPublish = targetStatus === "PUBLISHED";
+	// 	const variantsToCreate = variants?.create?.map((v) => ({
+	// 		price: v.price,
+	// 		attributeValueIds: v.attributeValueIds,
+	// 	}));
 
-		// Prepare variant data for validation
-		const currentVariantsForValidation = currentProduct.variants.map((v) => ({
-			id: v.id,
-			price: v.price,
-			attributeValueIds: v.attributeValues.map((av) => av.id),
-		}));
+	// 	const variantsToUpdate = variants?.update?.map((v) => ({
+	// 		id: v.id,
+	// 		price: v.price,
+	// 		attributeValueIds: v.attributeValueIds,
+	// 	}));
 
-		const variantsToCreate = variants?.create?.map((v) => ({
-			price: v.price,
-			attributeValueIds: v.attributeValueIds,
-		}));
+	// 	const variantsToDelete = variants?.delete;
 
-		const variantsToUpdate = variants?.update?.map((v) => ({
-			id: v.id,
-			price: v.price,
-			attributeValueIds: v.attributeValueIds,
-		}));
+	// 	// Determine final status
+	// 	let finalStatus = targetStatus;
 
-		const variantsToDelete = variants?.delete;
+	// 	// Case 1: Category change - may auto-draft
+	// 	if (isCategoryChanging) {
+	// 		const finalVariantCount = computeFinalVariantCount(
+	// 			currentProduct._count.variants,
+	// 			variantsToCreate,
+	// 			variantsToDelete,
+	// 		);
 
-		// Determine final status
-		let finalStatus = targetStatus;
+	// 		const variantsWithAttrs = countVariantsWithAttributeValues(
+	// 			currentVariantsForValidation,
+	// 			variantsToCreate,
+	// 			variantsToUpdate,
+	// 			variantsToDelete,
+	// 		);
 
-		// Case 1: Category change - may auto-draft
-		if (isCategoryChanging) {
-			const finalVariantCount = computeFinalVariantCount(
-				currentProduct._count.variants,
-				variantsToCreate,
-				variantsToDelete,
-			);
+	// 		finalStatus = determineStatusAfterCategoryChange({
+	// 			currentStatus: currentProduct.status,
+	// 			requestedStatus,
+	// 			newCategoryHasAttributes: categoryHasAttributes,
+	// 			finalVariantCount,
+	// 			variantsWithAttributeValues: variantsWithAttrs,
+	// 		});
+	// 	}
+	// 	// Case 2: Requesting PUBLISH or currently PUBLISHED - validate PUB1 & PUB2
+	// 	else if (isRequestingPublish || isCurrentlyPublished) {
+	// 		const [priceResult, attrResult] = await Promise.all([
+	// 			Promise.resolve(
+	// 				validatePublishHasPositivePrice({
+	// 					currentVariants: currentVariantsForValidation,
+	// 					variantsToCreate,
+	// 					variantsToUpdate,
+	// 					variantsToDelete,
+	// 				}),
+	// 			),
+	// 			Promise.resolve(
+	// 				validatePublishAttributeRequirements({
+	// 					categoryHasAttributes,
+	// 					currentVariants: currentVariantsForValidation,
+	// 					variantsToCreate,
+	// 					variantsToUpdate,
+	// 					variantsToDelete,
+	// 				}),
+	// 			),
+	// 		]);
 
-			const variantsWithAttrs = countVariantsWithAttributeValues(
-				currentVariantsForValidation,
-				variantsToCreate,
-				variantsToUpdate,
-				variantsToDelete,
-			);
+	// 		if (priceResult.success && attrResult.success) {
+	// 			finalStatus = targetStatus;
+	// 		} else {
+	// 			finalStatus = "DRAFT";
+	// 		}
+	// 	}
 
-			finalStatus = determineStatusAfterCategoryChange({
-				currentStatus: currentProduct.status,
-				requestedStatus,
-				newCategoryHasAttributes: categoryHasAttributes,
-				finalVariantCount,
-				variantsWithAttributeValues: variantsWithAttrs,
-			});
-		}
-		// Case 2: Requesting PUBLISH or currently PUBLISHED - validate PUB1 & PUB2
-		else if (isRequestingPublish || isCurrentlyPublished) {
-			// PUB1: Price > 0 validation
-			const priceResult = validatePublishHasPositivePrice({
-				currentVariants: currentVariantsForValidation,
-				variantsToCreate,
-				variantsToUpdate,
-				variantsToDelete,
-			});
+	// 	// 8. Upload files
+	// 	const uploadResult = await validateAndUploadFiles(
+	// 		images,
+	// 		imagesOps,
+	// 		name ?? currentProduct.name,
+	// 	);
+	// 	assertValidWithData(uploadResult);
+	// 	const uploadMap = uploadResult.data;
 
-			if (!priceResult.success) {
-				throw status("Bad Request", {
-					message: priceResult.error?.message ?? "Validation failed",
-					code: "PUB1",
-				});
-			}
+	// 	const oldKeysToDelete: string[] = [];
 
-			// PUB2: Attribute requirements validation
-			const attrResult = validatePublishAttributeRequirements({
-				categoryHasAttributes,
-				currentVariants: currentVariantsForValidation,
-				variantsToCreate,
-				variantsToUpdate,
-				variantsToDelete,
-			});
+	// 	try {
+	// 		const product = await prisma.$transaction(async (tx) => {
+	// 			// Update base product
+	// 			const updatedProduct = await tx.product.update({
+	// 				where: { id },
+	// 				data: {
+	// 					...(name && {
+	// 						name,
+	// 						slug: name.toLowerCase().replace(/\s+/g, "-"),
+	// 					}),
+	// 					...(description !== undefined && { description }),
+	// 					status: finalStatus,
+	// 					...(categoryId && { category: { connect: { id: categoryId } } }),
+	// 					version: { increment: 1 },
+	// 				},
+	// 				include: {
+	// 					category: true,
+	// 				},
+	// 			});
 
-			if (!attrResult.success) {
-				throw status("Bad Request", {
-					message: attrResult.error?.message ?? "Validation failed",
-					code: "PUB2",
-				});
-			}
-		}
+	// 			// Image operations
+	// 			if (imagesOps?.create && imagesOps.create.length > 0) {
+	// 				await executeImageCreates(
+	// 					tx,
+	// 					id,
+	// 					updatedProduct.name,
+	// 					imagesOps.create,
+	// 					uploadMap,
+	// 				);
+	// 			}
 
-		// 8. Upload files
-		const uploadResult = await validateAndUploadFiles(
-			images,
-			imagesOps,
-			name ?? currentProduct.name,
-		);
-		assertValidWithData(uploadResult);
-		const uploadMap = uploadResult.data;
+	// 			if (imagesOps?.update && imagesOps.update.length > 0) {
+	// 				const deletedKeys = await executeImageUpdates(
+	// 					tx,
+	// 					id,
+	// 					imagesOps.update,
+	// 					uploadMap,
+	// 				);
+	// 				oldKeysToDelete.push(...deletedKeys);
+	// 			}
 
-		const oldKeysToDelete: string[] = [];
+	// 			if (imagesOps?.delete && imagesOps.delete.length > 0) {
+	// 				const deletedKeys = await executeImageDeletes(
+	// 					tx,
+	// 					id,
+	// 					imagesOps.delete,
+	// 				);
+	// 				oldKeysToDelete.push(...deletedKeys);
+	// 			}
 
-		try {
-			const product = await prisma.$transaction(async (tx) => {
-				// Update base product
-				const updatedProduct = await tx.product.update({
-					where: { id },
-					data: {
-						...(name && {
-							name,
-							slug: name.toLowerCase().replace(/\s+/g, "-"),
-						}),
-						...(description !== undefined && { description }),
-						status: finalStatus,
-						...(categoryId && { category: { connect: { id: categoryId } } }),
-						version: { increment: 1 },
-					},
-					include: {
-						category: true,
-					},
-				});
+	// 			// Variant operations
+	// 			if (variants) {
+	// 				const allowedAttributeValues = await tx.attributeValue.findMany({
+	// 					where: { attribute: { categoryId: updatedProduct.categoryId } },
+	// 					select: { id: true, attributeId: true },
+	// 				});
 
-				// Image operations
-				if (imagesOps?.create && imagesOps.create.length > 0) {
-					await executeImageCreates(
-						tx,
-						id,
-						updatedProduct.name,
-						imagesOps.create,
-						uploadMap,
-					);
-				}
+	// 				const promises: Promise<unknown>[] = [];
 
-				if (imagesOps?.update && imagesOps.update.length > 0) {
-					const deletedKeys = await executeImageUpdates(
-						tx,
-						id,
-						imagesOps.update,
-						uploadMap,
-					);
-					oldKeysToDelete.push(...deletedKeys);
-				}
+	// 				if (variants.delete && variants.delete.length > 0) {
+	// 					promises.push(
+	// 						tx.productVariant.deleteMany({
+	// 							where: { id: { in: variants.delete }, productId: id },
+	// 						}),
+	// 					);
+	// 				}
 
-				if (imagesOps?.delete && imagesOps.delete.length > 0) {
-					const deletedKeys = await executeImageDeletes(
-						tx,
-						id,
-						imagesOps.delete,
-					);
-					oldKeysToDelete.push(...deletedKeys);
-				}
+	// 				if (variants.update && variants.update.length > 0) {
+	// 					for (const variant of variants.update) {
+	// 						if (variant.attributeValueIds !== undefined) {
+	// 							assertValid(
+	// 								validateVariantAttributeValues(
+	// 									variant.sku ?? variant.id,
+	// 									variant.attributeValueIds,
+	// 									allowedAttributeValues,
+	// 								),
+	// 							);
+	// 						}
+	// 						promises.push(
+	// 							tx.productVariant.update({
+	// 								where: { id: variant.id },
+	// 								data: {
+	// 									...(variant.price !== undefined && {
+	// 										price: variant.price,
+	// 									}),
+	// 									...(variant.sku !== undefined && { sku: variant.sku }),
+	// 									...(variant.stock !== undefined && {
+	// 										stock: variant.stock,
+	// 									}),
+	// 									...(variant.currency !== undefined && {
+	// 										currency: variant.currency,
+	// 									}),
+	// 									...(variant.attributeValueIds !== undefined && {
+	// 										attributeValues: {
+	// 											set: variant.attributeValueIds.map((id) => ({ id })),
+	// 										},
+	// 									}),
+	// 								},
+	// 								include: { attributeValues: true },
+	// 							}),
+	// 						);
+	// 					}
+	// 				}
 
-				// Variant operations
-				if (variants) {
-					const allowedAttributeValues = await tx.attributeValue.findMany({
-						where: { attribute: { categoryId: updatedProduct.categoryId } },
-						select: { id: true, attributeId: true },
-					});
+	// 				if (variants.create && variants.create.length > 0) {
+	// 					for (const variant of variants.create) {
+	// 						assertValid(
+	// 							validateVariantAttributeValues(
+	// 								variant.sku ?? "",
+	// 								variant.attributeValueIds,
+	// 								allowedAttributeValues,
+	// 							),
+	// 						);
+	// 						promises.push(
+	// 							tx.productVariant.create({
+	// 								data: {
+	// 									productId: id,
+	// 									price: variant.price,
+	// 									sku: variant.sku,
+	// 									stock: variant.stock ?? 0,
+	// 									currency: variant.currency ?? "EUR",
+	// 									attributeValues: {
+	// 										connect: variant.attributeValueIds.map((id) => ({ id })),
+	// 									},
+	// 								},
+	// 								include: { attributeValues: true },
+	// 							}),
+	// 						);
+	// 					}
+	// 				}
 
-					const promises: Promise<unknown>[] = [];
+	// 				await Promise.all(promises);
+	// 			}
 
-					if (variants.delete && variants.delete.length > 0) {
-						promises.push(
-							tx.productVariant.deleteMany({
-								where: { id: { in: variants.delete }, productId: id },
-							}),
-						);
-					}
+	// 			// Fetch final state
+	// 			const [updatedVariants, updatedImages] = await Promise.all([
+	// 				tx.productVariant.findMany({
+	// 					where: { productId: id },
+	// 					include: { attributeValues: true },
+	// 				}),
+	// 				tx.image.findMany({
+	// 					where: { productId: id },
+	// 				}),
+	// 			]);
 
-					if (variants.update && variants.update.length > 0) {
-						for (const variant of variants.update) {
-							if (variant.attributeValueIds !== undefined) {
-								validateVariantAttributeValues(
-									variant.sku ?? variant.id,
-									variant.attributeValueIds,
-									allowedAttributeValues,
-								);
-							}
-							promises.push(
-								tx.productVariant.update({
-									where: { id: variant.id },
-									data: {
-										...(variant.price !== undefined && {
-											price: variant.price,
-										}),
-										...(variant.sku !== undefined && { sku: variant.sku }),
-										...(variant.stock !== undefined && {
-											stock: variant.stock,
-										}),
-										...(variant.currency !== undefined && {
-											currency: variant.currency,
-										}),
-										...(variant.attributeValueIds !== undefined && {
-											attributeValues: {
-												set: variant.attributeValueIds.map((id) => ({ id })),
-											},
-										}),
-									},
-									include: { attributeValues: true },
-								}),
-							);
-						}
-					}
+	// 			return {
+	// 				...updatedProduct,
+	// 				variants: updatedVariants,
+	// 				images: updatedImages,
+	// 			};
+	// 		});
 
-					if (variants.create && variants.create.length > 0) {
-						for (const variant of variants.create) {
-							validateVariantAttributeValues(
-								variant.sku ?? "",
-								variant.attributeValueIds,
-								allowedAttributeValues,
-							);
-							promises.push(
-								tx.productVariant.create({
-									data: {
-										productId: id,
-										price: variant.price,
-										sku: variant.sku,
-										stock: variant.stock ?? 0,
-										currency: variant.currency ?? "EUR",
-										attributeValues: {
-											connect: variant.attributeValueIds.map((id) => ({ id })),
-										},
-									},
-									include: { attributeValues: true },
-								}),
-							);
-						}
-					}
+	// 		if (oldKeysToDelete.length > 0) {
+	// 			await utapi.deleteFiles(oldKeysToDelete);
+	// 		}
 
-					await Promise.all(promises);
-				}
+	// 		// Invalidate cache - include old and new category/status if changed
+	// 		const categoryIds = [currentProduct.categoryId];
+	// 		if (categoryId && categoryId !== currentProduct.categoryId) {
+	// 			categoryIds.push(categoryId);
+	// 		}
 
-				// Fetch final state
-				const [updatedVariants, updatedImages] = await Promise.all([
-					tx.productVariant.findMany({
-						where: { productId: id },
-						include: { attributeValues: true },
-					}),
-					tx.image.findMany({
-						where: { productId: id },
-					}),
-				]);
+	// 		const statuses = [currentProduct.status];
+	// 		if (finalStatus !== currentProduct.status) {
+	// 			statuses.push(finalStatus);
+	// 		}
 
-				return {
-					...updatedProduct,
-					variants: updatedVariants,
-					images: updatedImages,
-				};
-			});
+	// 		invalidateProductListings({ categoryIds, statuses });
 
-			if (oldKeysToDelete.length > 0) {
-				await utapi.deleteFiles(oldKeysToDelete);
-			}
-
-			// Invalidate cache - include old and new category/status if changed
-			const categoryIds = [currentProduct.categoryId];
-			if (categoryId && categoryId !== currentProduct.categoryId) {
-				categoryIds.push(categoryId);
-			}
-
-			const statuses = [currentProduct.status];
-			if (finalStatus !== currentProduct.status) {
-				statuses.push(finalStatus);
-			}
-
-			invalidateProductListings({ categoryIds, statuses });
-
-			return product;
-		} catch (err: unknown) {
-			if (uploadMap.size > 0) {
-				await utapi.deleteFiles(
-					Array.from(uploadMap.values()).map((file) => file.key),
-				);
-			}
-			throw err;
-		}
-	},
+	// 		return product;
+	// 	} catch (err: unknown) {
+	// 		if (uploadMap.size > 0) {
+	// 			await utapi.deleteFiles(
+	// 				Array.from(uploadMap.values()).map((file) => file.key),
+	// 			);
+	// 		}
+	// 		throw err;
+	// 	}
+	// },
 
 	async delete({ id }: uuidGuard) {
 		const deletedProduct = await prisma.product.delete({

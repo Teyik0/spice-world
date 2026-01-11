@@ -150,15 +150,11 @@ export function validatePublishAttributeRequirements(
  *
  * Rule: When changing category, if the new category's attribute values are not filled
  * for variants, automatically set status to DRAFT.
- * Exception: If product has only 1 variant, no auto-draft needed.
+ * Exception: If product has only 1 variant and category has NO attributes, no auto-draft needed.
  */
 export function determineStatusAfterCategoryChange(
 	input: CategoryChangeAutoDraftInput,
 ): ProductStatus {
-	if (input.finalVariantCount <= 1) {
-		return input.requestedStatus ?? input.currentStatus;
-	}
-
 	if (input.newCategoryHasAttributes) {
 		if (input.variantsWithAttributeValues < input.finalVariantCount) {
 			return "DRAFT";

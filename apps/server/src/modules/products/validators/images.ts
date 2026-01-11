@@ -155,41 +155,41 @@ export function validateImagesOps(
 	return { success: true, data: allReferencedIndices };
 }
 
-export function ensureThumbnailAfterDelete(
-	currentImages: ProductModel.patchResult["images"],
-	imagesOps: ProductModel.imageOperations | undefined,
-) {
-	if (!imagesOps?.delete || imagesOps.delete.length === 0) return;
+// export function ensureThumbnailAfterDelete(
+// 	currentImages: ProductModel.patchResult["images"],
+// 	imagesOps: ProductModel.imageOperations | undefined,
+// ) {
+// 	if (!imagesOps?.delete || imagesOps.delete.length === 0) return;
 
-	const currentThumbnail = currentImages.find((img) => img.isThumbnail);
-	const willDeleteThumbnail =
-		currentThumbnail && imagesOps.delete.includes(currentThumbnail.id);
+// 	const currentThumbnail = currentImages.find((img) => img.isThumbnail);
+// 	const willDeleteThumbnail =
+// 		currentThumbnail && imagesOps.delete.includes(currentThumbnail.id);
 
-	const willSetNewThumbnail =
-		imagesOps.create?.some((op) => op.isThumbnail) ||
-		imagesOps.update?.some((op) => op.isThumbnail === true);
+// 	const willSetNewThumbnail =
+// 		imagesOps.create?.some((op) => op.isThumbnail) ||
+// 		imagesOps.update?.some((op) => op.isThumbnail === true);
 
-	if (willDeleteThumbnail && !willSetNewThumbnail) {
-		const deletedIds = new Set(imagesOps.delete);
-		const firstRemaining = currentImages.find((img) => !deletedIds.has(img.id));
+// 	if (willDeleteThumbnail && !willSetNewThumbnail) {
+// 		const deletedIds = new Set(imagesOps.delete);
+// 		const firstRemaining = currentImages.find((img) => !deletedIds.has(img.id));
 
-		if (firstRemaining) {
-			if (!imagesOps.update) {
-				imagesOps.update = [];
-			}
+// 		if (firstRemaining) {
+// 			if (!imagesOps.update) {
+// 				imagesOps.update = [];
+// 			}
 
-			const existingUpdate = imagesOps.update.find(
-				(op) => op.id === firstRemaining.id,
-			);
+// 			const existingUpdate = imagesOps.update.find(
+// 				(op) => op.id === firstRemaining.id,
+// 			);
 
-			if (existingUpdate) {
-				existingUpdate.isThumbnail = true;
-			} else {
-				imagesOps.update.push({
-					id: firstRemaining.id,
-					isThumbnail: true,
-				});
-			}
-		}
-	}
-}
+// 			if (existingUpdate) {
+// 				existingUpdate.isThumbnail = true;
+// 			} else {
+// 				imagesOps.update.push({
+// 					id: firstRemaining.id,
+// 					isThumbnail: true,
+// 				});
+// 			}
+// 		}
+// 	}
+// }

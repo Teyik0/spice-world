@@ -1,10 +1,12 @@
 import { status, t } from "elysia";
 import type { UploadFileResult } from "uploadthing/types";
 
-interface ValidationError {
+export interface ValidationError {
 	code: string;
 	message: string;
 	httpStatus?: keyof typeof status;
+	field?: string;
+	value?: unknown;
 }
 
 export type ValidationResult<TData = void> =
@@ -19,6 +21,8 @@ export function assertValid<T extends ValidationResult>(
 		throw status(httpStatus, {
 			message: result.error.message,
 			code: result.error.code,
+			field: result.error.field,
+			value: result.error.value,
 		});
 	}
 }

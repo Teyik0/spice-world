@@ -93,6 +93,7 @@ export namespace ProductModel {
 		update: t.Optional(t.Array(variantUpdate)),
 		delete: t.Optional(t.Array(uuid)),
 	});
+	export type variantOperations = typeof variantOperations.static;
 
 	export const postBody = t.Object({
 		name: nameLowerPattern,
@@ -126,7 +127,7 @@ export namespace ProductModel {
 		_version: t.Optional(t.Numeric()),
 	});
 	export type patchBody = typeof patchBody.static;
-	export type patchResult = Awaited<ReturnType<typeof productService.patch>>;
+	// export type patchResult = Awaited<ReturnType<typeof productService.patch>>;
 
 	export const bulkPatchBody = t.Object({
 		ids: t.Array(uuid, { minItems: 1 }),

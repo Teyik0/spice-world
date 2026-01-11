@@ -1,6 +1,5 @@
 import type { PrismaClient } from "@spice-world/server/prisma/client";
 import type { ProductModel } from "../model";
-import { validateVariantAttributeValues } from "../validators";
 
 type PrismaTransaction = Omit<
 	PrismaClient,
@@ -32,13 +31,13 @@ export async function executeVariantOperations(
 
 	if (ops.update && ops.update.length > 0) {
 		for (const variant of ops.update) {
-			if (variant.attributeValueIds !== undefined) {
-				validateVariantAttributeValues(
-					variant.sku ?? variant.id,
-					variant.attributeValueIds,
-					allowedAttributeValues,
-				);
-			}
+			// if (variant.attributeValueIds !== undefined) {
+			// 	validateVariantAttributeValues(
+			// 		variant.sku ?? variant.id,
+			// 		variant.attributeValueIds,
+			// 		allowedAttributeValues,
+			// 	);
+			// }
 
 			promises.push(
 				tx.productVariant.update({
@@ -65,11 +64,11 @@ export async function executeVariantOperations(
 
 	if (ops.create && ops.create.length > 0) {
 		for (const variant of ops.create) {
-			validateVariantAttributeValues(
-				variant.sku ?? "",
-				variant.attributeValueIds,
-				allowedAttributeValues,
-			);
+			// validateVariantAttributeValues(
+			// 	variant.sku ?? "",
+			// 	variant.attributeValueIds,
+			// 	allowedAttributeValues,
+			// );
 
 			promises.push(
 				tx.productVariant.create({

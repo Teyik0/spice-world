@@ -5,7 +5,6 @@ export {
 	validateThumbnailCountForCreate,
 } from "./file-upload";
 export {
-	ensureThumbnailAfterDelete,
 	validateImagesOps,
 	validateImgOpsCreateUpdate,
 } from "./images";
@@ -22,12 +21,4 @@ export {
 	validatePublishAttributeRequirements,
 	validatePublishHasPositivePrice,
 } from "./publish";
-export {
-	type AllowedAttributeValue,
-	type CategoryAttributeData,
-	type VariantCombinationData,
-	validateCategoryChangeCapacity,
-	validateDuplicateAttributeCombinations,
-	validateMaxVariantsForCategory,
-	validateVariantAttributeValues,
-} from "./variants";
+export { validateVariants } from "./variants";
