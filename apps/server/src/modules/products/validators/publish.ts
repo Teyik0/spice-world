@@ -1,5 +1,6 @@
 import type { ProductStatus } from "@spice-world/server/prisma/client";
 import type { ValidationResult } from "../../shared";
+import type { ProductModel } from "../model";
 
 // Re-export for backwards compatibility with index.ts
 export type { ValidationResult };
@@ -236,4 +237,116 @@ export function determineFinalStatusForBulk(
 	}
 
 	return requestedStatus ?? product.status;
+}
+
+interface DeterminePublishStatusInput {
+	requestedStatus?: ProductStatus;
+	currentStatus: ProductStatus;
+	currentVariants: Array<{
+		id: string;
+		price: number;
+		attributeValues: Array<{ id: string }>;
+	}>;
+	variants?: ProductModel.variantOperations;
+	categoryHasAttributes: boolean;
+}
+
+interface DeterminePublishStatusResult {
+	finalStatus: ProductStatus;
+	warnings?: Array<{ code: string; message: string }>;
+}
+
+export function determinePublishStatus({
+	requestedStatus,
+	currentStatus,
+	currentVariants,
+	variants,
+	categoryHasAttributes,
+}: DeterminePublishStatusInput): DeterminePublishStatusResult {
+	const warnings: Array<{ code: string; message: string }> = [];
+	const isRequestingPublish = requestedStatus === "PUBLISHED";
+	const isCurrentlyPublished = currentStatus === "PUBLISHED";
+
+	// Case 1: No publish-related work
+	if (!isRequestingPublish && !isCurrentlyPublished) {
+		return { finalStatus: requestedStatus ?? currentStatus };
+	}
+
+	const currentVariantsData = currentVariants.map((v) => ({
+		id: v.id,
+		price: v.price,
+		attributeValueIds: v.attributeValues.map((av) => av.id),
+	}));
+
+	// PUB1: Price validation requires price-only objects
+	const pub1VariantsToCreate =
+		variants?.create?.map((v) => ({
+			price: v.price,
+		})) ?? [];
+
+	const pub1VariantsToUpdate =
+		variants?.update?.map((v) => ({
+			id: v.id,
+			price: v.price,
+		})) ?? [];
+
+	const variantsToDelete = variants?.delete ?? [];
+
+	// PUB2: Attribute validation requires attribute-value objects
+	const pub2VariantsToCreate =
+		variants?.create?.map((v) => ({
+			attributeValueIds: v.attributeValueIds,
+		})) ?? [];
+
+	const pub2VariantsToUpdate =
+		variants?.update?.map((v) => ({
+			id: v.id,
+			attributeValueIds: v.attributeValueIds,
+		})) ?? [];
+
+	// Validate PUB1: At least one variant must have positive price
+	const pub1Result = validatePublishHasPositivePrice({
+		currentVariants: currentVariantsData,
+		variantsToCreate: pub1VariantsToCreate,
+		variantsToUpdate: pub1VariantsToUpdate,
+		variantsToDelete,
+	});
+
+	// Validate PUB2: Attribute requirements
+	const pub2Result = validatePublishAttributeRequirements({
+		categoryHasAttributes,
+		currentVariants: currentVariantsData,
+		variantsToCreate: pub2VariantsToCreate,
+		variantsToUpdate: pub2VariantsToUpdate,
+		variantsToDelete,
+	});
+
+	// Determine final status
+	let finalStatus: ProductStatus;
+
+	if (isRequestingPublish) {
+		if (pub1Result.success && pub2Result.success) {
+			finalStatus = "PUBLISHED";
+		} else {
+			finalStatus = "DRAFT";
+			if (!pub1Result.success) {
+				warnings.push({
+					code: "PUB1",
+					message: pub1Result.error?.message ?? "PUB1 validation failed",
+				});
+			}
+			if (!pub2Result.success) {
+				warnings.push({
+					code: "PUB2",
+					message: pub2Result.error?.message ?? "PUB2 validation failed",
+				});
+			}
+		}
+	} else {
+		// Currently published, not requesting publish
+		// Keep current status if not changing, otherwise use requested
+		finalStatus = requestedStatus ?? currentStatus;
+	}
+
+	return { finalStatus, warnings: warnings.length > 0 ? warnings : undefined };
 }

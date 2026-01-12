@@ -5,5 +5,3 @@ export {
 	fetchAllowedAttributeValues,
 	uploadFilesFromIndices,
 } from "./images";
-
-export { executeVariantOperations } from "./variants";

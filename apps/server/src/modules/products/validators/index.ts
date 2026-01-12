@@ -8,6 +8,7 @@ export {
 	computeFinalVariantCount,
 	countVariantsWithAttributeValues,
 	determineFinalStatusForBulk,
+	determinePublishStatus,
 	determineStatusAfterCategoryChange,
 	type PublishAttributeValidationInput,
 	type PublishPriceValidationInput,
