@@ -1,4 +1,8 @@
-export { type ValidateImagesInput, validateImages } from "./images";
+export {
+	type ValidateImagesInput,
+	type ValidateImagesSuccessData,
+	validateImages,
+} from "./images";
 export {
 	type CategoryChangeAutoDraftInput,
 	computeFinalVariantCount,

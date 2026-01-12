@@ -8,7 +8,7 @@ import {
 	expectDefined,
 } from "@spice-world/server/utils/helper";
 import { file } from "bun";
-import { createTestCategory, randomLowerString } from "./utils/helper";
+import { createTestCategory, randomLowerString } from "../utils/helper";
 
 let api: ReturnType<typeof treaty<typeof productsRouter>>;
 
@@ -53,7 +53,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -80,7 +80,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			// @ts-expect-error
 			expect(error.value.code).toBe("VARIANTS_VALIDATION_FAILED");
 			// @ts-expect-error
-			expect(error.value.value[0].code).toBe("VVA1");
+			expect(error.value.details.subErrors[0].code).toBe("VVA1");
 		});
 
 		it("should throw VVA1 for attribute value from different category", async () => {
@@ -98,7 +98,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -126,7 +126,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			// @ts-expect-error
 			expect(error.value.code).toBe("VARIANTS_VALIDATION_FAILED");
 			// @ts-expect-error
-			expect(error.value.value[0].code).toBe("VVA1");
+			expect(error.value.details.subErrors[0].code).toBe("VVA1");
 		});
 
 		it("should throw VVA2 for multiple values from same attribute", async () => {
@@ -140,7 +140,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -170,7 +170,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			// @ts-expect-error
 			expect(error.value.code).toBe("VARIANTS_VALIDATION_FAILED");
 			// @ts-expect-error
-			expect(error.value.value[0].code).toBe("VVA2");
+			expect(error.value.details.subErrors[0].code).toBe("VVA2");
 		});
 
 		it("should throw VVA3 when exceeding category capacity", async () => {
@@ -185,7 +185,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const variants = category.attributes[0].values.map((value, idx) => ({
 				price: 9.99 + idx,
@@ -219,7 +219,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			// @ts-expect-error
 			expect(error.value.code).toBe("VARIANTS_VALIDATION_FAILED");
 			// @ts-expect-error
-			expect(error.value.value[0].code).toBe("VVA3");
+			expect(error.value.details.subErrors[0].code).toBe("VVA3");
 		});
 
 		it("should throw VVA4 for duplicate attribute combinations", async () => {
@@ -232,7 +232,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -264,7 +264,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			// @ts-expect-error
 			expect(error.value.code).toBe("VARIANTS_VALIDATION_FAILED");
 			// @ts-expect-error
-			expect(error.value.value[0].code).toBe("VVA4");
+			expect(error.value.details.subErrors[0].code).toBe("VVA4");
 		});
 
 		it("should throw VVA4 for same combination in different order", async () => {
@@ -279,7 +279,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const attr1ValueId = category.attributes[0].values[0].id;
 			const attr2ValueId = category.attributes[1].values[0].id;
@@ -314,7 +314,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			// @ts-expect-error
 			expect(error.value.code).toBe("VARIANTS_VALIDATION_FAILED");
 			// @ts-expect-error
-			expect(error.value.value[0].code).toBe("VVA4");
+			expect(error.value.details.subErrors[0].code).toBe("VVA4");
 		});
 
 		it("should throw VVA4 for duplicate empty attributeValueIds", async () => {
@@ -325,7 +325,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -357,7 +357,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			// @ts-expect-error
 			expect(error.value.code).toBe("VARIANTS_VALIDATION_FAILED");
 			// @ts-expect-error
-			expect(error.value.value[0].code).toBe("VVA4");
+			expect(error.value.details.subErrors[0].code).toBe("VVA4");
 		});
 
 		it("should succeed with exactly max capacity variants", async () => {
@@ -372,7 +372,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			// Calculate max capacity: attribute1.values × attribute2.values
 			const attr1Values = category.attributes[0].values.slice(0, 2);
@@ -422,7 +422,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			// Create variants using all values
 			const variants = category.attributes[0].values.map((value, idx) => ({
@@ -457,7 +457,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			// @ts-expect-error
 			expect(error.value.code).toBe("VARIANTS_VALIDATION_FAILED");
 			// @ts-expect-error
-			expect(error.value.value[0].code).toBe("VVA3");
+			expect(error.value.details.subErrors[0].code).toBe("VVA3");
 		});
 
 		it("should throw VVA3 with no-attribute category (max 1 variant)", async () => {
@@ -468,7 +468,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -500,7 +500,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			// @ts-expect-error
 			expect(error.value.code).toBe("VARIANTS_VALIDATION_FAILED");
 			// @ts-expect-error
-			expect(error.value.value[0].code).toBe("VVA3");
+			expect(error.value.details.subErrors[0].code).toBe("VVA3");
 		});
 
 		it("should throw VVA1 for empty attributeValueIds when category has required attributes", async () => {
@@ -510,7 +510,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -550,7 +550,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 			const valueId = category.attributes[0].values[0].id;
 
 			const { error } = await api.products.post({
@@ -587,7 +587,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -618,13 +618,54 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			expect(error.value.code).toBe("IMAGES_VALIDATION_FAILED");
 		});
 
-		it("should throw VIO7 for fileIndex out of bounds", async () => {
+		it("should throw VIO5 error for fileIndex out of bounds", async () => {
 			const category = await createTestCategory({ testDb, attributeCount: 1 });
 			expectDefined(category.attributes[0]);
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath2 = `${import.meta.dir}/../public/garlic.webp`;
+
+			const { error } = await api.products.post({
+				name: productName,
+				description: "Test product description",
+				status: "DRAFT",
+				categoryId: category.id,
+				variants: {
+					create: [
+						{
+							price: 9.99,
+							sku: `sku${testId}one`,
+							attributeValueIds: [],
+						},
+					],
+				},
+				images: [file(filePath), file(filePath2)],
+				imagesOps: {
+					create: [{ fileIndex: 2, isThumbnail: true }],
+				},
+			});
+
+			expectDefined(error);
+			expect(error.status).toBe(400);
+			// @ts-expect-error
+			expect(error.value.code).toBe("IMAGES_VALIDATION_FAILED");
+			// @ts-expect-error
+			expect(error.value.message).toBe(
+				"Found 1 validation error in image operations",
+			);
+			// @ts-expect-error
+			expect(error.value.details.subErrors[0].code).toBe("VIO5");
+		});
+
+		it("should throw elysia error for fileIndex out of bounds (5 images max)", async () => {
+			const category = await createTestCategory({ testDb, attributeCount: 1 });
+			expectDefined(category.attributes[0]);
+
+			const testId = randomLowerString(8);
+			const productName = `test product ${testId}`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -656,7 +697,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { data, status } = await api.products.post({
 				name: productName,
@@ -696,7 +737,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			// Create 5 images (maximum allowed)
 			const images = Array.from({ length: 5 }, () => file(filePath));
@@ -734,13 +775,52 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			expect(data.images[0].isThumbnail).toBe(true);
 		});
 
+		it("should auto assign new thumbnail when none specified", async () => {
+			const category = await createTestCategory({ testDb, attributeCount: 1 });
+			expectDefined(category.attributes[0]);
+
+			const testId = randomLowerString(8);
+			const productName = `test product ${testId}`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath2 = `${import.meta.dir}/../public/garlic.webp`;
+
+			const { data, status } = await api.products.post({
+				name: productName,
+				description: "Test product description",
+				status: "DRAFT",
+				categoryId: category.id,
+				variants: {
+					create: [
+						{
+							price: 9.99,
+							sku: `sku${testId}one`,
+							attributeValueIds: [],
+						},
+					],
+				},
+				images: [file(filePath), file(filePath2)],
+				imagesOps: {
+					create: [
+						{ fileIndex: 0, isThumbnail: false },
+						{ fileIndex: 1, isThumbnail: false },
+					],
+				},
+			});
+
+			expectDefined(status);
+			expect(status).toBe(201);
+			expectDefined(data);
+			expect(data.images).toHaveLength(2);
+			expect(data.images.filter((img) => img.isThumbnail).length).toBe(1);
+		});
+
 		it("should reject when exceeding maximum images", async () => {
 			const category = await createTestCategory({ testDb, attributeCount: 1 });
 			expectDefined(category.attributes[0]);
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			// Create 6 images (exceeds maximum of 5)
 			const images = Array.from({ length: 6 }, () => file(filePath));
@@ -781,7 +861,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { data, status } = await api.products.post({
 				name: productName,
@@ -810,118 +890,6 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			expectDefined(data.variants[0]);
 			expect(data.variants[0].attributeValues).toHaveLength(1);
 		});
-	});
-
-	describe.skip("POST /products - Edge Cases (Future Validations)", () => {
-		it.skip("VIO8: Non-integer fileIndex validation", async () => {
-			const category = await createTestCategory({ testDb, attributeCount: 1 });
-			expectDefined(category.attributes[0]);
-
-			const testId = randomLowerString(8);
-			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
-
-			const { error } = await api.products.post({
-				name: productName,
-				description: "Test product description",
-				status: "DRAFT",
-				categoryId: category.id,
-				variants: {
-					create: [
-						{
-							price: 9.99,
-							sku: `sku${testId}one`,
-							attributeValueIds: [],
-						},
-					],
-				},
-				images: [file(filePath)],
-				imagesOps: {
-					create: [{ fileIndex: 1.5, isThumbnail: true }], // Non-integer
-				},
-			});
-
-			expectDefined(error);
-			expect(error.status).toBe(400);
-			// @ts-expect-error
-			expect(error.value.code).toBe("VIO8");
-		});
-
-		it.skip("VVA6: SKU uniqueness validation", async () => {
-			const category = await createTestCategory({ testDb, attributeCount: 1 });
-			expectDefined(category.attributes[0]);
-
-			const testId = randomLowerString(8);
-			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
-
-			const { error } = await api.products.post({
-				name: productName,
-				description: "Test product description",
-				status: "DRAFT",
-				categoryId: category.id,
-				variants: {
-					create: [
-						{
-							price: 9.99,
-							sku: "DUPLICATE_SKU",
-							attributeValueIds: [],
-						},
-						{
-							price: 14.99,
-							sku: "DUPLICATE_SKU", // Duplicate
-							attributeValueIds: [],
-						},
-					],
-				},
-				images: [file(filePath)],
-				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
-				},
-			});
-
-			expectDefined(error);
-			expect(error.status).toBe(400);
-			// @ts-expect-error
-			expect(error.value.code).toBe("VVA6");
-		});
-
-		it.skip("VIO8: Non-integer fileIndex validation", async () => {
-			const category = await createTestCategory({
-				testDb,
-				attributeCount: 1,
-			});
-			expectDefined(category.attributes[0]);
-
-			const testId = randomLowerString(8);
-			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
-
-			const { error } = await api.products.post({
-				name: productName,
-				description: "Test product description",
-				status: "DRAFT",
-				categoryId: category.id,
-				variants: {
-					create: [
-						{
-							price: 9.99,
-							sku: `sku${testId}one`,
-							attributeValueIds: [],
-						},
-					],
-				},
-				images: [file(filePath)],
-				imagesOps: {
-					create: [{ fileIndex: 1.5, isThumbnail: true }], // Non-integer
-				},
-			});
-
-			expectDefined(error);
-			expect(error.status).toBe(400);
-			// @ts-expect-error
-			expect(error.value.code).toBe("VIO8");
-		});
 
 		it("should handle multiple simultaneous validation failures", async () => {
 			// Create category with limited capacity (2 values per attribute)
@@ -935,10 +903,10 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			expectDefined(category.attributes[0].values[1]);
 
 			const testId = randomLowerString(8);
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
-				name: `complex-fail-${testId}`,
+				name: `complex fail ${testId}`,
 				description: "Complex validation test",
 				status: "PUBLISHED",
 				categoryId: category.id,
@@ -978,19 +946,24 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			expect(error.status).toBe(400);
 			// Should contain multiple validation errors
 			// @ts-expect-error
-			expect(error.value.code).toBe("VALIDATION_FAILED");
+			expect(error.value.code).toBe("IMAGES_VALIDATION_FAILED");
 		});
 
 		it("should validate at maximum allowed configuration limits", async () => {
-			// Create category at maximum complexity (3 attributes × 3 values each = 27 combinations)
 			const category = await createTestCategory({
 				testDb,
 				attributeCount: 3,
 				attributeValueCount: 3,
 			});
+			expectDefined(category.attributes[0]);
+			expectDefined(category.attributes[0].values[0]);
+			expectDefined(category.attributes[1]);
+			expectDefined(category.attributes[1].values[0]);
+			expectDefined(category.attributes[2]);
+			expectDefined(category.attributes[2].values[0]);
 
 			const testId = randomLowerString(8);
-			const filePath = `${import.meta.dir}/public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			// Create exactly maximum allowed variants (27)
 			const variants = [];
@@ -1010,7 +983,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			const images = Array.from({ length: 5 }, () => file(filePath));
 
 			const { data, status } = await api.products.post({
-				name: `max-limits-${testId}`,
+				name: `max limits ${testId}`,
 				description: "Maximum configuration test",
 				status: "PUBLISHED",
 				categoryId: category.id,
@@ -1031,6 +1004,224 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			expect(data.images).toHaveLength(5);
 			// @ts-expect-error
 			expect(data.images[0].isThumbnail).toBe(true);
+		});
+	});
+
+	describe("POST /products - Business Logic Validations", () => {
+		it("should create a new product successfully", async () => {
+			const category = await createTestCategory({ testDb, attributeCount: 1 });
+			expectDefined(category.attributes[0]);
+			expectDefined(category.attributes[0].values[0]);
+
+			const testId = randomLowerString(8);
+			const productName = `test product ${testId}`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+
+			const { data, status } = await api.products.post({
+				name: productName,
+				description: "Test product description",
+				status: "PUBLISHED",
+				categoryId: category.id,
+				variants: {
+					create: [
+						{
+							price: 10.99,
+							sku: `sku${testId}one`,
+							stock: 100,
+							attributeValueIds: [category.attributes[0].values[0].id],
+						},
+					],
+				},
+				images: [file(filePath)],
+				imagesOps: {
+					create: [{ fileIndex: 0, isThumbnail: true }],
+				},
+			});
+
+			expect(status).toBe(201);
+			expectDefined(data);
+			expect(data.name).toBe(productName);
+			expect(data.description).toBe("Test product description");
+			expect(data.categoryId).toBe(category.id);
+			expect(data.status).toBe("PUBLISHED");
+			expect(data.variants).toHaveLength(1);
+			expect(data.images).toHaveLength(1);
+			expect(data.images[0]?.isThumbnail).toBe(true);
+		});
+
+		it("should create product with accented lowercase name", async () => {
+			const category = await createTestCategory({ testDb, attributeCount: 1 });
+			expectDefined(category.attributes[0]);
+
+			const testId = randomLowerString(8);
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+
+			const { data, status } = await api.products.post({
+				name: "épices spéciales",
+				description: "Product with accented characters",
+				status: "PUBLISHED",
+				categoryId: category.id,
+				variants: {
+					create: [
+						{
+							price: 10.99,
+							sku: `sku${testId}one`,
+							stock: 100,
+							attributeValueIds: [],
+						},
+					],
+				},
+				images: [file(filePath)],
+				imagesOps: {
+					create: [{ fileIndex: 0, isThumbnail: true }],
+				},
+			});
+
+			expect(status).toBe(201);
+			expectDefined(data);
+			expect(data.name).toBe("épices spéciales");
+			expect(data.slug).toBe("épices-spéciales");
+		});
+
+		it("should return an error if the product name already exists", async () => {
+			const category = await createTestCategory({ testDb, attributeCount: 1 });
+			expectDefined(category.attributes[0]);
+
+			const testId = randomLowerString(8);
+			const duplicateName = `duplicate name test ${testId}`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+
+			// First create a product
+			const { data: firstProduct, status: firstStatus } =
+				await api.products.post({
+					name: duplicateName,
+					description: "First product for duplicate test",
+					categoryId: category.id,
+					status: "PUBLISHED",
+					variants: {
+						create: [
+							{
+								price: 10.99,
+								sku: `first${testId}`,
+								stock: 100,
+								attributeValueIds: [],
+							},
+						],
+					},
+					images: [file(filePath)],
+					imagesOps: {
+						create: [{ fileIndex: 0, isThumbnail: true }],
+					},
+				});
+
+			expect(firstStatus).toBe(201);
+			expectDefined(firstProduct);
+
+			// Now try to create another with the same name
+			const { error, status } = await api.products.post({
+				name: duplicateName,
+				description: "Duplicate product name",
+				categoryId: category.id,
+				status: "PUBLISHED",
+				variants: {
+					create: [
+						{
+							price: 10.99,
+							sku: `second${testId}`,
+							stock: 100,
+							attributeValueIds: [],
+						},
+					],
+				},
+				images: [file(filePath)],
+				imagesOps: {
+					create: [{ fileIndex: 0, isThumbnail: true }],
+				},
+			});
+
+			expect(status).toBe(409);
+			expectDefined(error);
+		});
+
+		it("should validate category exists", async () => {
+			const nonExistentCategoryId = "00000000-0000-0000-0000-000000000000";
+			const testId = randomLowerString(8);
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+
+			const { error, status } = await api.products.post({
+				name: `invalid category product ${testId}`,
+				description: "Product with non-existent category",
+				categoryId: nonExistentCategoryId,
+				status: "PUBLISHED",
+				variants: {
+					create: [
+						{
+							price: 8.99,
+							sku: `invalid${testId}`,
+							stock: 20,
+							attributeValueIds: [],
+						},
+					],
+				},
+				images: [file(filePath)],
+				imagesOps: {
+					create: [{ fileIndex: 0, isThumbnail: true }],
+				},
+			});
+
+			expect(status).toBe(404);
+			expectDefined(error);
+		});
+
+		it("should create multiple variants successfully", async () => {
+			const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
+
+			const category = await createTestCategory({ testDb, attributeCount: 3 });
+			expectDefined(category.attributes[0]);
+
+			const attributes = category.attributes;
+			expect(attributes.length).toBeGreaterThanOrEqual(2);
+
+			const { data, status } = await api.products.post({
+				name: `multi variant product`,
+				description: "Product with multiple variants",
+				categoryId: category.id,
+				status: "PUBLISHED",
+				variants: {
+					create: [
+						{
+							price: 5.99,
+							sku: "MULTI-VAR-001",
+							stock: 50,
+							attributeValueIds: [attributes[0]?.values[0]?.id as string],
+						},
+						{
+							price: 9.99,
+							sku: "MULTI-VAR-002",
+							stock: 30,
+							attributeValueIds: [attributes[1]?.values[0]?.id as string],
+						},
+						{
+							price: 14.99,
+							sku: "MULTI-VAR-003",
+							stock: 20,
+							attributeValueIds: [attributes[2]?.values[0]?.id as string],
+						},
+					],
+				},
+				images: [file(filePath1), file(filePath2)],
+				imagesOps: {
+					create: [{ fileIndex: 0, isThumbnail: true }, { fileIndex: 1 }],
+				},
+			});
+
+			expect(status).toBe(201);
+			expectDefined(data);
+			expect(data.variants.length).toBe(3);
+			expect(data.variants[0]?.price).toBe(5.99);
+			expect(data.variants[1]?.price).toBe(9.99);
+			expect(data.variants[2]?.price).toBe(14.99);
 		});
 	});
 });

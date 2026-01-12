@@ -6,7 +6,32 @@ export interface ValidationError {
 	message: string;
 	httpStatus?: keyof typeof status;
 	field?: string;
-	value?: unknown;
+	details?: {
+		// Invalid input value
+		invalidValue?: unknown;
+		// For capacity/limit violations
+		constraints?: {
+			current: number;
+			maximum?: number;
+			minimum?: number;
+		};
+		// For conflicts/duplicates
+		conflicts?: {
+			attributeId?: string;
+			duplicates?: string[];
+			overlapping?: number[];
+		};
+		// For operations affecting multiple items
+		operation?: {
+			type: "create" | "update" | "delete";
+			count: number;
+			affectedIds?: string[];
+		};
+		// For nested validation errors
+		subErrors?: ValidationError[];
+		// Generic additional data
+		metadata?: Record<string, unknown>;
+	};
 }
 
 export type ValidationResult<TData = void> =
@@ -22,7 +47,7 @@ export function assertValid<T extends ValidationResult>(
 			message: result.error.message,
 			code: result.error.code,
 			field: result.error.field,
-			value: result.error.value,
+			details: result.error.details,
 		});
 	}
 }
@@ -35,6 +60,8 @@ export function assertValidWithData<T>(
 		throw status(httpStatus, {
 			message: result.error.message,
 			code: result.error.code,
+			field: result.error.field,
+			details: result.error.details,
 		});
 	}
 }

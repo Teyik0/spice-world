@@ -138,7 +138,9 @@ export const validateVariants = ({
 				code: "VARIANTS_VALIDATION_FAILED",
 				message: `Found ${allErrors.length} validation errors across variants`,
 				field: "variants",
-				value: allErrors,
+				details: {
+					subErrors: allErrors,
+				},
 			},
 		};
 	}
@@ -158,7 +160,10 @@ function validateVA1(
 		code: "VVA1",
 		message: `Invalid attribute value "${invalidId}" for variant ${variantSkuOrId}. Attribute values should match product category.`,
 		field: "attributeValueIds",
-		value: invalidId,
+		details: {
+			invalidValue: invalidId,
+			operation: { type: "create" as const, count: 1 },
+		},
 	}));
 }
 
@@ -185,9 +190,11 @@ function validateVA2(
 				code: "VVA2",
 				message: `Variant ${variantSkuOrId} has multiple values for the same attribute (${attributeId}). Found values: ${existingValues.join(", ")} and ${valueId}.`,
 				field: "attributeValueIds",
-				value: {
-					attributeId,
-					conflictingValues: [...existingValues, valueId],
+				details: {
+					conflicts: {
+						attributeId,
+						duplicates: [...existingValues, valueId],
+					},
 				},
 			});
 		}
@@ -224,6 +231,12 @@ function validateVA3({
 			code: "VVA3",
 			message: `Product has ${variantCount} variant(s), but category only allows ${maxVariants} unique combination(s)`,
 			field: "variants",
+			details: {
+				constraints: {
+					current: variantCount,
+					maximum: maxVariants,
+				},
+			},
 		};
 	}
 
@@ -253,6 +266,11 @@ function validateVA4(
 				code: "VVA4",
 				message: `Duplicate attribute combination found in variants ${existingVariantId} and ${variant.id || "new variant"}`,
 				field: "variants.attributeValueIds",
+				details: {
+					conflicts: {
+						duplicates: [existingVariantId, variant.id || "new variant"],
+					},
+				},
 			};
 		}
 

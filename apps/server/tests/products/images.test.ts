@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { ProductModel } from "@spice-world/server/modules/products/model";
+import { assignThumbnail } from "@spice-world/server/modules/products/operations/thumbnail";
 import { validateImages } from "@spice-world/server/modules/products/validators/images";
 
 describe("Image Validators", () => {
@@ -24,7 +25,9 @@ describe("Image Validators", () => {
 
 				expect(result.success).toBe(false);
 				if (!result.success) {
-					const errors = result.error.value as Array<{ code: string }>;
+					const errors = result.error.details?.subErrors as Array<{
+						code: string;
+					}>;
 					expect(errors.some((e) => e.code === "VIO1")).toBe(true);
 				}
 			});
@@ -45,11 +48,10 @@ describe("Image Validators", () => {
 				};
 
 				const result = validateImages({ images, imagesOps });
+				const { referencedIndices } = assignThumbnail({ imagesOps });
 
 				expect(result.success).toBe(true);
-				if (result.success) {
-					expect(result.data).toEqual([0, 1, 2]);
-				}
+				expect(referencedIndices).toEqual([0, 1, 2]);
 			});
 		});
 
@@ -71,7 +73,9 @@ describe("Image Validators", () => {
 
 				expect(result.success).toBe(false);
 				if (!result.success) {
-					const errors = result.error.value as Array<{ code: string }>;
+					const errors = result.error.details?.subErrors as Array<{
+						code: string;
+					}>;
 					expect(errors.some((e) => e.code === "VIO4")).toBe(true);
 				}
 			});
@@ -90,15 +94,14 @@ describe("Image Validators", () => {
 				};
 
 				const result = validateImages({ images, imagesOps });
+				const { referencedIndices } = assignThumbnail({ imagesOps });
 
 				expect(result.success).toBe(true);
-				if (result.success) {
-					expect(result.data).toEqual([0, 1]);
-					// Verify that thumbnail was set correctly
-					if (imagesOps.create) {
-						expect(imagesOps.create[0]?.isThumbnail).toBe(true);
-						expect(imagesOps.create[1]?.isThumbnail).toBe(false);
-					}
+				expect(referencedIndices).toEqual([0, 1]);
+				// Verify that thumbnail was set correctly
+				if (imagesOps.create) {
+					expect(imagesOps.create[0]?.isThumbnail).toBe(true);
+					expect(imagesOps.create[1]?.isThumbnail).toBe(false);
 				}
 			});
 
@@ -116,14 +119,13 @@ describe("Image Validators", () => {
 				};
 
 				const result = validateImages({ images, imagesOps });
+				const { referencedIndices } = assignThumbnail({ imagesOps });
 
 				expect(result.success).toBe(true);
-				if (result.success) {
-					expect(result.data).toEqual([0, 1]);
-					// Verify that first image was auto-assigned as thumbnail
-					if (imagesOps.create) {
-						expect(imagesOps.create[0]?.isThumbnail).toBe(true);
-					}
+				expect(referencedIndices).toEqual([0, 1]);
+				// Verify that first image was auto-assigned as thumbnail
+				if (imagesOps.create) {
+					expect(imagesOps.create[0]?.isThumbnail).toBe(true);
 				}
 			});
 		});
@@ -146,7 +148,9 @@ describe("Image Validators", () => {
 
 				expect(result.success).toBe(false);
 				if (!result.success) {
-					const errors = result.error.value as Array<{ code: string }>;
+					const errors = result.error.details?.subErrors as Array<{
+						code: string;
+					}>;
 					expect(errors.some((e) => e.code === "VIO5")).toBe(true);
 				}
 			});
@@ -167,7 +171,9 @@ describe("Image Validators", () => {
 
 				expect(result.success).toBe(false);
 				if (!result.success) {
-					const errors = result.error.value as Array<{ code: string }>;
+					const errors = result.error.details?.subErrors as Array<{
+						code: string;
+					}>;
 					expect(errors.some((e) => e.code === "VIO5")).toBe(true);
 				}
 			});
@@ -187,11 +193,10 @@ describe("Image Validators", () => {
 				};
 
 				const result = validateImages({ images, imagesOps });
+				const { referencedIndices } = assignThumbnail({ imagesOps });
 
 				expect(result.success).toBe(true);
-				if (result.success) {
-					expect(result.data).toEqual([0, 2]);
-				}
+				expect(referencedIndices).toEqual([0, 2]);
 			});
 		});
 	});
@@ -225,7 +230,9 @@ describe("Image Validators", () => {
 
 				expect(result.success).toBe(false);
 				if (!result.success) {
-					const errors = result.error.value as Array<{ code: string }>;
+					const errors = result.error.details?.subErrors as Array<{
+						code: string;
+					}>;
 					expect(errors.some((e) => e.code === "VIO2")).toBe(true);
 				}
 			});
@@ -253,7 +260,9 @@ describe("Image Validators", () => {
 
 				expect(result.success).toBe(false);
 				if (!result.success) {
-					const errors = result.error.value as Array<{ code: string }>;
+					const errors = result.error.details?.subErrors as Array<{
+						code: string;
+					}>;
 					expect(errors.some((e) => e.code === "VIO3")).toBe(true);
 				}
 			});
@@ -280,7 +289,9 @@ describe("Image Validators", () => {
 
 				expect(result.success).toBe(false);
 				if (!result.success) {
-					const errors = result.error.value as Array<{ code: string }>;
+					const errors = result.error.details?.subErrors as Array<{
+						code: string;
+					}>;
 					expect(errors.some((e) => e.code === "VIO4")).toBe(true);
 				}
 			});
@@ -302,11 +313,13 @@ describe("Image Validators", () => {
 					imagesOps: imagesOpsValid,
 					currentImages: currentImagesValid,
 				});
+				const { referencedIndices } = assignThumbnail({
+					imagesOps: imagesOpsValid,
+					currentImages: currentImagesValid,
+				});
 
 				expect(resultValid.success).toBe(true);
-				if (resultValid.success) {
-					expect(resultValid.data).toEqual([0]);
-				}
+				expect(referencedIndices).toEqual([0]);
 			});
 		});
 
@@ -357,12 +370,6 @@ describe("Image Validators", () => {
 				});
 
 				expect(result.success).toBe(true);
-				if (result.success) {
-					// Auto-assign should have triggered
-					if (imagesOps.create) {
-						expect(imagesOps.create[0]?.isThumbnail).toBe(true);
-					}
-				}
 			});
 		});
 	});

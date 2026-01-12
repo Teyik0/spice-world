@@ -7,6 +7,8 @@ import { LRUCache } from "lru-cache";
 import { assertValid, assertValidWithData, type uuidGuard } from "../shared";
 import type { ProductModel } from "./model";
 import { uploadFilesFromIndices } from "./operations/images";
+import { setFinalStatus, type ValidationResults } from "./operations/status";
+import { assignThumbnail } from "./operations/thumbnail";
 import {
 	validatePublishAttributeRequirements,
 	validatePublishHasPositivePrice,
@@ -265,9 +267,8 @@ export const productService = {
 				...CATEGORY_WITH_VALUES_ARGS,
 			}),
 		]);
-		assertValidWithData(imagesResult);
+		assertValid(imagesResult);
 
-		// Phase 2: Variant validations
 		assertValid(
 			validateVariants({
 				vOps: variants,
@@ -275,9 +276,18 @@ export const productService = {
 			}),
 		);
 
-		// Phase 3: Publish validations (parallel, depends on category)
-		let finalStatus = requestedStatus;
+		const { referencedIndices } = assignThumbnail({
+			imagesOps,
+			currentImages: undefined,
+		});
+
+		// Phase 3: Publish validations
 		const categoryHasAttributes = category.attributes.length > 0;
+
+		let validationResults: ValidationResults = {
+			priceValid: true,
+			attributesValid: true,
+		};
 
 		if (requestedStatus === "PUBLISHED") {
 			const [priceResult, attrResult] = await Promise.all([
@@ -296,16 +306,18 @@ export const productService = {
 				),
 			]);
 
-			if (priceResult.success && attrResult.success) {
-				finalStatus = "PUBLISHED";
-			} else {
-				finalStatus = "DRAFT";
-			}
+			validationResults = {
+				priceValid: priceResult.success,
+				attributesValid: attrResult.success,
+			};
 		}
+
+		// Determine final status
+		const finalStatus = setFinalStatus({ requestedStatus, validationResults });
 
 		// Phase 4: Upload files (after all checks)
 		const uploadResult = await uploadFilesFromIndices({
-			referencedIndices: imagesResult.data,
+			referencedIndices,
 			images,
 			productName: name,
 		});

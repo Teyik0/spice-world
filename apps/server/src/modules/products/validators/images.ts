@@ -7,6 +7,10 @@ export interface ValidateImagesInput {
 	currentImages?: { id: string; isThumbnail: boolean }[];
 }
 
+export interface ValidateImagesSuccessData {
+	autoAssignThumbnail: boolean;
+}
+
 /**
  * VIO1: Duplicate fileIndex in create operations
  */
@@ -83,9 +87,9 @@ function validateVIO3(
 	const updateIndices =
 		updateOps
 			?.map((op) => op.fileIndex)
-			.filter((idx) => idx !== undefined && idx !== null) ?? [];
+			.filter((idx): idx is number => idx !== undefined && idx !== null) ?? [];
 
-	const overlap = updateIndices.filter((idx) => createIndices.has(idx!));
+	const overlap = updateIndices.filter((idx) => createIndices.has(idx));
 	if (overlap.length > 0) {
 		return {
 			code: "VIO3",
@@ -176,8 +180,31 @@ function validateVIO5(
 }
 
 /**
+ * VIO6: Cannot delete all images (must keep at least 1)
+ */
+function validateVIO6(
+	deleteIds: string[] | undefined,
+	currentImages: { id: string; isThumbnail: boolean }[],
+	createCount: number,
+): ValidationError | null {
+	if (!currentImages?.length) return null;
+
+	const deleteCount = deleteIds?.length ?? 0;
+	const remainingCount = currentImages.length - deleteCount + createCount;
+
+	if (remainingCount < 1) {
+		return {
+			code: "VIO6",
+			message: "Product must have at least 1 image. Cannot delete all images.",
+			field: "imagesOps",
+		};
+	}
+	return null;
+}
+
+/**
  * Validates image operations for POST and PATCH.
- * Returns referenced file indices on success.
+ * Returns referenced file indices and auto-assign instruction on success.
  *
  * Error codes:
  * - VIO1: Duplicate fileIndex in create
@@ -185,12 +212,13 @@ function validateVIO5(
  * - VIO3: Same fileIndex in both create and update
  * - VIO4: Multiple thumbnails in final state
  * - VIO5: fileIndex out of bounds
+ * - VIO6: Cannot delete all images (must keep at least 1)
  */
 export function validateImages({
 	images,
 	imagesOps,
 	currentImages,
-}: ValidateImagesInput): ValidationResult<number[]> {
+}: ValidateImagesInput): ValidationResult {
 	const errors: ValidationError[] = [];
 
 	// VIO1: Duplicate fileIndex in create
@@ -222,6 +250,16 @@ export function validateImages({
 	const vio5 = validateVIO5(imagesOps.create, imagesOps.update, images.length);
 	if (vio5) errors.push(vio5);
 
+	// VIO6: Cannot delete all images (only for PATCH)
+	if (currentImages) {
+		const vio6 = validateVIO6(
+			imagesOps.delete,
+			currentImages,
+			imagesOps.create?.length ?? 0,
+		);
+		if (vio6) errors.push(vio6);
+	}
+
 	if (errors.length > 0) {
 		return {
 			success: false,
@@ -229,57 +267,15 @@ export function validateImages({
 				code: "IMAGES_VALIDATION_FAILED",
 				message: `Found ${errors.length} validation error${errors.length > 1 ? "s" : ""} in image operations`,
 				field: "images",
-				value: errors,
+				details: {
+					subErrors: errors,
+				},
 			},
 		};
 	}
 
-	// Collect all referenced indices
-	const createIndices = imagesOps.create?.map((op) => op.fileIndex) ?? [];
-	const updateIndices =
-		imagesOps.update
-			?.map((op) => op.fileIndex)
-			.filter((idx): idx is number => idx !== undefined && idx !== null) ?? [];
-
-	// Calculate final thumbnail count before auto-assign
-	let finalThumbnailCount = 0;
-
-	// Count thumbnails in create
-	finalThumbnailCount +=
-		imagesOps.create?.filter((op) => op.isThumbnail === true).length ?? 0;
-
-	// Count thumbnails in update (explicitly set to true)
-	finalThumbnailCount +=
-		imagesOps.update?.filter((op) => op.isThumbnail === true).length ?? 0;
-
-	// For PATCH: count current thumbnails that remain
-	if (currentImages) {
-		const deletedIds = new Set(imagesOps.delete ?? []);
-
-		for (const img of currentImages) {
-			if (img.isThumbnail && !deletedIds.has(img.id)) {
-				const updateOp = imagesOps.update?.find((op) => op.id === img.id);
-				if (updateOp) {
-					if (updateOp.isThumbnail !== false) {
-						if (updateOp.isThumbnail === undefined) {
-							finalThumbnailCount++;
-						}
-					}
-				} else {
-					finalThumbnailCount++;
-				}
-			}
-		}
-	}
-
-	// Auto-assign first image as thumbnail ONLY if final count is 0
-	if (
-		imagesOps.create &&
-		imagesOps.create.length > 0 &&
-		finalThumbnailCount === 0
-	) {
-		imagesOps.create[0]!.isThumbnail = true;
-	}
-
-	return { success: true, data: [...createIndices, ...updateIndices] };
+	return {
+		success: true,
+		data: undefined,
+	};
 }

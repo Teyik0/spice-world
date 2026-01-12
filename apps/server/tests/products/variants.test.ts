@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { validateVariants } from "@spice-world/server/modules/products/validators/variants";
+import type { ValidationError } from "@spice-world/server/modules/shared";
 import { createTestDatabase } from "@spice-world/server/utils/db-manager";
 import {
 	createTestCategory,
@@ -73,8 +74,8 @@ describe("validateVariants", () => {
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{ code: string }>;
-				expect(errors.some((e) => e.code === "VVA1")).toBe(true);
+				const errors = result.error.details as ValidationError["details"];
+				expect(errors?.subErrors?.some((e) => e.code === "VVA1")).toBe(true);
 			}
 		});
 
@@ -99,8 +100,8 @@ describe("validateVariants", () => {
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{ code: string }>;
-				expect(errors.some((e) => e.code === "VVA1")).toBe(true);
+				const errors = result.error.details as ValidationError["details"];
+				expect(errors?.subErrors?.some((e) => e.code === "VVA1")).toBe(true);
 			}
 		});
 
@@ -137,8 +138,8 @@ describe("validateVariants", () => {
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{ code: string }>;
-				expect(errors.some((e) => e.code === "VVA1")).toBe(true);
+				const errors = result.error.details as ValidationError["details"];
+				expect(errors?.subErrors?.some((e) => e.code === "VVA1")).toBe(true);
 			}
 		});
 
@@ -166,8 +167,8 @@ describe("validateVariants", () => {
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{ code: string }>;
-				expect(errors.some((e) => e.code === "VVA1")).toBe(true);
+				const errors = result.error.details as ValidationError["details"];
+				expect(errors?.subErrors?.some((e) => e.code === "VVA1")).toBe(true);
 			}
 		});
 	});
@@ -215,8 +216,8 @@ describe("validateVariants", () => {
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{ code: string }>;
-				expect(errors.some((e) => e.code === "VVA2")).toBe(true);
+				const errors = result.error.details as ValidationError["details"];
+				expect(errors?.subErrors?.some((e) => e.code === "VVA2")).toBe(true);
 			}
 		});
 
@@ -241,10 +242,10 @@ describe("validateVariants", () => {
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{ code: string }>;
+				const errors = result.error.details as ValidationError["details"];
 				// Should have multiple VVA2 errors (one for each duplicate)
-				const vva2Errors = errors.filter((e) => e.code === "VVA2");
-				expect(vva2Errors.length).toBeGreaterThanOrEqual(1);
+				const vva2Errors = errors?.subErrors?.filter((e) => e.code === "VVA2");
+				expect(vva2Errors?.length).toBeGreaterThanOrEqual(1);
 			}
 		});
 
@@ -275,8 +276,8 @@ describe("validateVariants", () => {
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{ code: string }>;
-				expect(errors.some((e) => e.code === "VVA2")).toBe(true);
+				const errors = result.error.details as ValidationError["details"];
+				expect(errors?.subErrors?.some((e) => e.code === "VVA2")).toBe(true);
 			}
 		});
 	});
@@ -347,8 +348,8 @@ describe("validateVariants", () => {
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{ code: string }>;
-				expect(errors.some((e) => e.code === "VVA3")).toBe(true);
+				const errors = result.error.details as ValidationError["details"];
+				expect(errors?.subErrors?.some((e) => e.code === "VVA3")).toBe(true);
 			}
 		});
 
@@ -382,8 +383,8 @@ describe("validateVariants", () => {
 			// 1 existing + 2 create = 3 > max 2
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{ code: string }>;
-				expect(errors.some((e) => e.code === "VVA3")).toBe(true);
+				const errors = result.error.details as ValidationError["details"];
+				expect(errors?.subErrors?.some((e) => e.code === "VVA3")).toBe(true);
 			}
 		});
 
@@ -435,8 +436,8 @@ describe("validateVariants", () => {
 			// No attributes means max 1 variant (1^0 = 1)
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{ code: string }>;
-				expect(errors.some((e) => e.code === "VVA3")).toBe(true);
+				const errors = result.error.details as ValidationError["details"];
+				expect(errors?.subErrors?.some((e) => e.code === "VVA3")).toBe(true);
 			}
 		});
 	});
@@ -473,8 +474,8 @@ describe("validateVariants", () => {
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{ code: string }>;
-				expect(errors.some((e) => e.code === "VVA4")).toBe(true);
+				const errors = result.error.details as ValidationError["details"];
+				expect(errors?.subErrors?.some((e) => e.code === "VVA4")).toBe(true);
 			}
 		});
 
@@ -498,8 +499,8 @@ describe("validateVariants", () => {
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{ code: string }>;
-				expect(errors.some((e) => e.code === "VVA4")).toBe(true);
+				const errors = result.error.details as ValidationError["details"];
+				expect(errors?.subErrors?.some((e) => e.code === "VVA4")).toBe(true);
 			}
 		});
 
@@ -531,8 +532,8 @@ describe("validateVariants", () => {
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{ code: string }>;
-				expect(errors.some((e) => e.code === "VVA4")).toBe(true);
+				const errors = result.error.details as ValidationError["details"];
+				expect(errors?.subErrors?.some((e) => e.code === "VVA4")).toBe(true);
 			}
 		});
 
@@ -564,8 +565,8 @@ describe("validateVariants", () => {
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{ code: string }>;
-				expect(errors.some((e) => e.code === "VVA4")).toBe(true);
+				const errors = result.error.details as ValidationError["details"];
+				expect(errors?.subErrors?.some((e) => e.code === "VVA4")).toBe(true);
 			}
 		});
 
@@ -611,8 +612,8 @@ describe("validateVariants", () => {
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{ code: string }>;
-				expect(errors.some((e) => e.code === "VVA4")).toBe(true);
+				const errors = result.error.details as ValidationError["details"];
+				expect(errors?.subErrors?.some((e) => e.code === "VVA4")).toBe(true);
 			}
 		});
 
@@ -677,8 +678,8 @@ describe("validateVariants", () => {
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{ code: string }>;
-				const errorCodes = errors.map((e) => e.code);
+				const errors = result.error.details as ValidationError["details"];
+				const errorCodes = errors?.subErrors?.map((e) => e.code);
 				expect(errorCodes).toContain("VVA1");
 				expect(errorCodes).toContain("VVA2");
 				expect(errorCodes).toContain("VVA4");
@@ -719,18 +720,15 @@ describe("validateVariants", () => {
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				const errors = result.error.value as Array<{
-					code: string;
-					message: string;
-				}>;
-				const createErrors = errors.filter((e) =>
+				const errors = result.error.details as ValidationError["details"];
+				const createErrors = errors?.subErrors?.filter((e) =>
 					e.message.includes("create["),
 				);
-				const updateErrors = errors.filter((e) =>
+				const updateErrors = errors?.subErrors?.filter((e) =>
 					e.message.includes("update["),
 				);
-				expect(createErrors.length).toBeGreaterThanOrEqual(1);
-				expect(updateErrors.length).toBeGreaterThanOrEqual(1);
+				expect(createErrors?.length).toBeGreaterThanOrEqual(1);
+				expect(updateErrors?.length).toBeGreaterThanOrEqual(1);
 			}
 		});
 	});
