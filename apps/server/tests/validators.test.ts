@@ -1,10 +1,15 @@
 import { describe, expect, it } from "bun:test";
 import type { ProductModel } from "@spice-world/server/modules/products/model";
 import { assignThumbnail } from "@spice-world/server/modules/products/operations/thumbnail";
+import {
+	hasImageChanges,
+	hasProductChanges,
+	hasVariantChanges,
+} from "@spice-world/server/modules/products/validators/has-changes";
 import { validateImages } from "@spice-world/server/modules/products/validators/images";
 import { determinePublishStatus } from "@spice-world/server/modules/products/validators/publish";
 
-describe("PATCH Image Operations", () => {
+describe("Validator Functions", () => {
 	describe("validateImages (PATCH)", () => {
 		describe("VIO2 - Duplicate fileIndex in update", () => {
 			it("should fail with duplicate fileIndex in update", () => {
@@ -448,6 +453,236 @@ describe("PATCH Image Operations", () => {
 			});
 
 			expect(result.finalStatus).toBe("PUBLISHED");
+		});
+	});
+
+	describe("hasChanges Helpers", () => {
+		describe("hasProductChanges", () => {
+			it("should detect name change", () => {
+				const result = hasProductChanges({
+					name: "New Name",
+					currentProduct: {
+						name: "Old Name",
+						description: "desc",
+						status: "DRAFT",
+						categoryId: "cat1",
+					},
+				});
+				expect(result).toBe(true);
+			});
+
+			it("should detect description change", () => {
+				const result = hasProductChanges({
+					description: "New desc",
+					currentProduct: {
+						name: "Name",
+						description: "Old desc",
+						status: "DRAFT",
+						categoryId: "cat1",
+					},
+				});
+				expect(result).toBe(true);
+			});
+
+			it("should detect status change", () => {
+				const result = hasProductChanges({
+					requestedStatus: "PUBLISHED",
+					currentProduct: {
+						name: "Name",
+						description: "desc",
+						status: "DRAFT",
+						categoryId: "cat1",
+					},
+				});
+				expect(result).toBe(true);
+			});
+
+			it("should detect category change", () => {
+				const result = hasProductChanges({
+					categoryId: "cat2",
+					currentProduct: {
+						name: "Name",
+						description: "desc",
+						status: "DRAFT",
+						categoryId: "cat1",
+					},
+				});
+				expect(result).toBe(true);
+			});
+
+			it("should return false when no changes", () => {
+				const result = hasProductChanges({
+					currentProduct: {
+						name: "Name",
+						description: "desc",
+						status: "DRAFT",
+						categoryId: "cat1",
+					},
+				});
+				expect(result).toBe(false);
+			});
+		});
+
+		describe("hasImageChanges", () => {
+			it("should detect create operations", () => {
+				const result = hasImageChanges({
+					imagesOps: { create: [{ fileIndex: 0, isThumbnail: false }] },
+					currentImages: [{ id: "img1", altText: "alt", isThumbnail: false }],
+				});
+				expect(result).toBe(true);
+			});
+
+			it("should detect delete operations", () => {
+				const result = hasImageChanges({
+					imagesOps: { delete: ["img1"] },
+					currentImages: [{ id: "img1", altText: "alt", isThumbnail: false }],
+				});
+				expect(result).toBe(true);
+			});
+
+			it("should detect altText change in update", () => {
+				const result = hasImageChanges({
+					imagesOps: { update: [{ id: "img1", altText: "new alt" }] },
+					currentImages: [
+						{ id: "img1", altText: "old alt", isThumbnail: false },
+					],
+				});
+				expect(result).toBe(true);
+			});
+
+			it("should detect thumbnail change in update", () => {
+				const result = hasImageChanges({
+					imagesOps: { update: [{ id: "img1", isThumbnail: true }] },
+					currentImages: [{ id: "img1", altText: "alt", isThumbnail: false }],
+				});
+				expect(result).toBe(true);
+			});
+
+			it("should detect fileIndex change in update", () => {
+				const result = hasImageChanges({
+					imagesOps: { update: [{ id: "img1", fileIndex: 5 }] },
+					currentImages: [{ id: "img1", altText: "alt", isThumbnail: false }],
+				});
+				expect(result).toBe(true);
+			});
+
+			it("should return false when no changes", () => {
+				const result = hasImageChanges({
+					imagesOps: { update: [{ id: "img1", altText: "alt" }] },
+					currentImages: [{ id: "img1", altText: "alt", isThumbnail: false }],
+				});
+				expect(result).toBe(false);
+			});
+
+			it("should return false when no imagesOps", () => {
+				const result = hasImageChanges({
+					currentImages: [{ id: "img1", altText: "alt", isThumbnail: false }],
+				});
+				expect(result).toBe(false);
+			});
+		});
+
+		describe("hasVariantChanges", () => {
+			it("should detect create operations", () => {
+				const result = hasVariantChanges({
+					vOps: { create: [{ price: 10, attributeValueIds: ["av1"] }] },
+					currentVariants: [
+						{
+							id: "v1",
+							price: 10,
+							sku: null,
+							stock: 0,
+							currency: "EUR",
+							attributeValues: [{ id: "av1" }],
+						},
+					],
+				});
+				expect(result).toBe(true);
+			});
+
+			it("should detect delete operations", () => {
+				const result = hasVariantChanges({
+					vOps: { delete: ["v1"] },
+					currentVariants: [
+						{
+							id: "v1",
+							price: 10,
+							sku: null,
+							stock: 0,
+							currency: "EUR",
+							attributeValues: [],
+						},
+					],
+				});
+				expect(result).toBe(true);
+			});
+
+			it("should detect price change in update", () => {
+				const result = hasVariantChanges({
+					vOps: { update: [{ id: "v1", price: 20 }] },
+					currentVariants: [
+						{
+							id: "v1",
+							price: 10,
+							sku: null,
+							stock: 0,
+							currency: "EUR",
+							attributeValues: [],
+						},
+					],
+				});
+				expect(result).toBe(true);
+			});
+
+			it("should detect attributeValueIds change in update", () => {
+				const result = hasVariantChanges({
+					vOps: { update: [{ id: "v1", attributeValueIds: ["av2"] }] },
+					currentVariants: [
+						{
+							id: "v1",
+							price: 10,
+							sku: null,
+							stock: 0,
+							currency: "EUR",
+							attributeValues: [{ id: "av1" }],
+						},
+					],
+				});
+				expect(result).toBe(true);
+			});
+
+			it("should return false when no changes", () => {
+				const result = hasVariantChanges({
+					vOps: { update: [{ id: "v1", price: 10 }] },
+					currentVariants: [
+						{
+							id: "v1",
+							price: 10,
+							sku: null,
+							stock: 0,
+							currency: "EUR",
+							attributeValues: [],
+						},
+					],
+				});
+				expect(result).toBe(false);
+			});
+
+			it("should return false when no vOps", () => {
+				const result = hasVariantChanges({
+					currentVariants: [
+						{
+							id: "v1",
+							price: 10,
+							sku: null,
+							stock: 0,
+							currency: "EUR",
+							attributeValues: [],
+						},
+					],
+				});
+				expect(result).toBe(false);
+			});
 		});
 	});
 });

@@ -1,4 +1,9 @@
 export {
+	hasImageChanges,
+	hasProductChanges,
+	hasVariantChanges,
+} from "./has-changes";
+export {
 	type ValidateImagesInput,
 	type ValidateImagesSuccessData,
 	validateImages,

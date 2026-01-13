@@ -16,6 +16,9 @@ import { setFinalStatus, type ValidationResults } from "./operations/status";
 import { assignThumbnail } from "./operations/thumbnail";
 import {
 	determinePublishStatus,
+	hasImageChanges,
+	hasProductChanges,
+	hasVariantChanges,
 	validatePublishAttributeRequirements,
 	validatePublishHasPositivePrice,
 } from "./validators";
@@ -221,7 +224,9 @@ export const productService = {
 		const product = await prisma.product.findUnique({
 			where: { id },
 			include: {
-				category: true,
+				category: {
+					include: { attributes: { include: { values: true } } },
+				},
 				images: true,
 				variants: {
 					include: {
@@ -238,7 +243,9 @@ export const productService = {
 		const product = await prisma.product.findUnique({
 			where: { slug },
 			include: {
-				category: true,
+				category: {
+					include: { attributes: { include: { values: true } } },
+				},
 				images: true,
 				variants: {
 					include: {
@@ -430,7 +437,12 @@ export const productService = {
 					select: {
 						id: true,
 						name: true,
-						attributes: { select: { id: true } },
+						attributes: {
+							select: {
+								id: true,
+								values: { select: { id: true, value: true } },
+							},
+						},
 					},
 				},
 				images: true,
@@ -450,10 +462,10 @@ export const productService = {
 						...CATEGORY_WITH_VALUES_ARGS,
 					})
 				: Promise.resolve(undefined),
-			images && imagesOps
+			imagesOps
 				? Promise.resolve(
 						validateImages({
-							images: images as File[],
+							images: (images ?? []) as File[],
 							imagesOps,
 							currentImages: currentProduct.images,
 						}),
@@ -480,6 +492,7 @@ export const productService = {
 		if (vOps) {
 			assertValid(
 				validateVariants({
+					// biome-ignore lint/suspicious/noExplicitAny: ok
 					category: (newCategory ?? currentProduct.category) as any,
 					vOps,
 					currVariants: currentProduct.variants.map((v) => ({
@@ -491,7 +504,7 @@ export const productService = {
 		}
 
 		const { referencedIndices } = assignThumbnail({
-			imagesOps: imagesOps as NonNullable<typeof imagesOps>,
+			imagesOps: imagesOps ?? { create: [], update: [], delete: [] },
 			currentImages: currentProduct.images,
 		});
 
@@ -504,6 +517,35 @@ export const productService = {
 			variants: vOps,
 			categoryHasAttributes,
 		});
+
+		const hasProductFieldChanges = hasProductChanges({
+			name,
+			description,
+			requestedStatus,
+			categoryId,
+			currentProduct,
+		});
+
+		const hasImagesFieldChanges = hasImageChanges({
+			imagesOps,
+			currentImages: currentProduct.images,
+		});
+
+		const hasVariantsFieldChanges = hasVariantChanges({
+			vOps,
+			currentVariants: currentProduct.variants,
+		});
+
+		const hasAnyChanges =
+			hasProductFieldChanges ||
+			hasImagesFieldChanges ||
+			hasVariantsFieldChanges;
+
+		if (!hasAnyChanges) {
+			return status("OK", {
+				product: currentProduct,
+			});
+		}
 
 		let uploadMap: Map<number, import("uploadthing/types").UploadedFileData> =
 			new Map();
@@ -753,5 +795,19 @@ export const productService = {
 
 			return result;
 		});
+	},
+
+	async delete({ id }: uuidGuard) {
+		const deletedProduct = await prisma.product.delete({
+			where: { id: id },
+			include: { images: true },
+		});
+
+		invalidateProductListings({
+			categoryIds: [deletedProduct.categoryId],
+			statuses: [deletedProduct.status],
+		});
+
+		return deletedProduct;
 	},
 };

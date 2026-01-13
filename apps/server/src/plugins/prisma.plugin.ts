@@ -30,7 +30,6 @@ export const prismaErrorPlugin = (entity: Entity) =>
 			return;
 		}
 
-		// Handle different Prisma error codes
 		switch (error.code) {
 			case "P2025": // Record not found
 				return status("Not Found", {

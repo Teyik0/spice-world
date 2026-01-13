@@ -4,11 +4,12 @@ import * as imagesModule from "@spice-world/server/lib/images";
 import type { productsRouter } from "@spice-world/server/modules/products";
 import { createTestDatabase } from "@spice-world/server/utils/db-manager";
 import {
+	createTestCategory,
 	createUploadedFileData,
 	expectDefined,
+	randomLowerString,
 } from "@spice-world/server/utils/helper";
 import { file } from "bun";
-import { createTestCategory, randomLowerString } from "../utils/helper";
 
 let api: ReturnType<typeof treaty<typeof productsRouter>>;
 
@@ -53,7 +54,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -98,7 +99,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -140,7 +141,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -185,13 +186,15 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
-			const variants = category.attributes[0].values.map((value, idx) => ({
-				price: 9.99 + idx,
-				sku: `sku${testId}${idx}`,
-				attributeValueIds: [value.id],
-			}));
+			const variants = category.attributes[0].values.map(
+				(value: { id: string }, idx: number) => ({
+					price: 9.99 + idx,
+					sku: `sku${testId}${idx}`,
+					attributeValueIds: [value.id],
+				}),
+			);
 
 			// Add one more variant with empty attributeValueIds to exceed capacity
 			variants.push({
@@ -232,7 +235,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -279,7 +282,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			const attr1ValueId = category.attributes[0].values[0].id;
 			const attr2ValueId = category.attributes[1].values[0].id;
@@ -325,7 +328,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -372,7 +375,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			// Calculate max capacity: attribute1.values × attribute2.values
 			const attr1Values = category.attributes[0].values.slice(0, 2);
@@ -422,14 +425,16 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			// Create variants using all values
-			const variants = category.attributes[0].values.map((value, idx) => ({
-				price: 9.99 + idx,
-				sku: `sku${testId}${idx}`,
-				attributeValueIds: [value.id],
-			}));
+			const variants = category.attributes[0].values.map(
+				(value: { id: string }, idx: number) => ({
+					price: 9.99 + idx,
+					sku: `sku${testId}${idx}`,
+					attributeValueIds: [value.id],
+				}),
+			);
 
 			// Add variant with empty attributeValueIds to exceed capacity
 			variants.push({
@@ -468,7 +473,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -510,7 +515,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -550,7 +555,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 			const valueId = category.attributes[0].values[0].id;
 
 			const { error } = await api.products.post({
@@ -587,7 +592,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -624,8 +629,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
-			const filePath2 = `${import.meta.dir}/../public/garlic.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath2 = `${import.meta.dir}/../../public/garlic.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -665,7 +670,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -697,7 +702,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			const { data, status } = await api.products.post({
 				name: productName,
@@ -737,7 +742,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			// Create 5 images (maximum allowed)
 			const images = Array.from({ length: 5 }, () => file(filePath));
@@ -781,8 +786,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
-			const filePath2 = `${import.meta.dir}/../public/garlic.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath2 = `${import.meta.dir}/../../public/garlic.webp`;
 
 			const { data, status } = await api.products.post({
 				name: productName,
@@ -820,7 +825,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			// Create 6 images (exceeds maximum of 5)
 			const images = Array.from({ length: 6 }, () => file(filePath));
@@ -861,7 +866,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			const { data, status } = await api.products.post({
 				name: productName,
@@ -903,7 +908,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			expectDefined(category.attributes[0].values[1]);
 
 			const testId = randomLowerString(8);
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: `complex fail ${testId}`,
@@ -963,7 +968,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			expectDefined(category.attributes[2].values[0]);
 
 			const testId = randomLowerString(8);
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			// Create exactly maximum allowed variants (27)
 			const variants = [];
@@ -1015,7 +1020,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			const { data, status } = await api.products.post({
 				name: productName,
@@ -1054,7 +1059,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			expectDefined(category.attributes[0]);
 
 			const testId = randomLowerString(8);
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			const { data, status } = await api.products.post({
 				name: "épices spéciales",
@@ -1089,7 +1094,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const duplicateName = `duplicate name test ${testId}`;
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			// First create a product
 			const { data: firstProduct, status: firstStatus } =
@@ -1146,7 +1151,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 		it("should validate category exists", async () => {
 			const nonExistentCategoryId = "00000000-0000-0000-0000-000000000000";
 			const testId = randomLowerString(8);
-			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
 
 			const { error, status } = await api.products.post({
 				name: `invalid category product ${testId}`,
@@ -1174,8 +1179,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 		});
 
 		it("should create multiple variants successfully", async () => {
-			const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
-			const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
+			const filePath1 = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath2 = `${import.meta.dir}/../../public/curcuma.jpg`;
 
 			const category = await createTestCategory({ testDb, attributeCount: 3 });
 			expectDefined(category.attributes[0]);
