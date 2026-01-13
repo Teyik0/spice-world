@@ -1,9 +1,22 @@
 import { utapi } from "@spice-world/server/lib/images";
 import { prismaErrorPlugin } from "@spice-world/server/plugins/prisma.plugin";
-import { Elysia, status } from "elysia";
-import { uuidGuard } from "../shared";
+import { Elysia } from "elysia";
+import { ProductValidationError, uuidGuard } from "../shared";
 import { ProductModel } from "./model";
 import { productService } from "./service";
+
+const productsErrorPlugin = new Elysia({
+	name: "product-error-handler",
+}).onError({ as: "scoped" }, ({ error, status }) => {
+	if (error instanceof ProductValidationError) {
+		return status(error.httpStatus, {
+			message: error.message,
+			code: error.code,
+			field: error.field,
+			details: error.details,
+		});
+	} else return;
+});
 
 export const productsRouter = new Elysia({
 	name: "products",
@@ -11,6 +24,7 @@ export const productsRouter = new Elysia({
 	tags: ["Products"],
 })
 	.use(prismaErrorPlugin("Product"))
+	.use(productsErrorPlugin)
 	.get("/", async ({ query }) => await productService.get(query), {
 		query: ProductModel.getQuery,
 	})
@@ -41,7 +55,7 @@ export const productsRouter = new Elysia({
 			body: ProductModel.patchBody,
 		},
 	)
-	.delete("/:id", async ({ params }) => {
+	.delete("/:id", async ({ params, status }) => {
 		const product = await productService.delete(params);
 		if (product.images.length > 0) {
 			await utapi.deleteFiles(product.images.map((img) => img.key));

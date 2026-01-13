@@ -1,10 +1,18 @@
 import { status, t } from "elysia";
 import type { UploadFileResult } from "uploadthing/types";
 
+type HttpStatus =
+	| "Bad Request"
+	| "Not Found"
+	| "Conflict"
+	| "Unauthorized"
+	| "Forbidden"
+	| "Internal Server Error";
+
 export interface ValidationError {
 	code: string;
 	message: string;
-	httpStatus?: keyof typeof status;
+	httpStatus?: HttpStatus;
 	field?: string;
 	details?: {
 		// Invalid input value
@@ -34,6 +42,21 @@ export interface ValidationError {
 	};
 }
 
+export class ProductValidationError extends Error {
+	public readonly code: string;
+	public readonly httpStatus: HttpStatus;
+	public readonly field?: string;
+	public readonly details?: ValidationError["details"];
+
+	constructor(data: ValidationError) {
+		super(data.message);
+		this.code = data.code;
+		this.httpStatus = data.httpStatus ?? "Bad Request";
+		this.field = data.field;
+		this.details = data.details;
+	}
+}
+
 export type ValidationResult<TData = void> =
 	| { success: true; data: TData }
 	| { success: false; error: ValidationError };
@@ -41,29 +64,13 @@ export type ValidationResult<TData = void> =
 export function assertValid<T extends ValidationResult>(
 	result: T,
 ): asserts result is Extract<T, { success: true }> {
-	if (!result.success) {
-		const httpStatus = result.error.httpStatus || "Bad Request";
-		throw status(httpStatus, {
-			message: result.error.message,
-			code: result.error.code,
-			field: result.error.field,
-			details: result.error.details,
-		});
-	}
+	if (!result.success) throw new ProductValidationError(result.error);
 }
 
 export function assertValidWithData<T>(
 	result: ValidationResult<T>,
 ): asserts result is { success: true; data: T } {
-	if (!result.success) {
-		const httpStatus = result.error.httpStatus || "Bad Request";
-		throw status(httpStatus, {
-			message: result.error.message,
-			code: result.error.code,
-			field: result.error.field,
-			details: result.error.details,
-		});
-	}
+	if (!result.success) throw new ProductValidationError(result.error);
 }
 
 /*

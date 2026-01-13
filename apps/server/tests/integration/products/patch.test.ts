@@ -241,7 +241,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		expectDefined(error);
 	});
 
-	it("should failed delete all images", async () => {
+	it("should failed delete all images with error code VIO6", async () => {
 		const category = await createTestCategory({
 			testDb,
 			attributeCount: 2,
@@ -250,7 +250,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		expectDefined(category);
 
 		const testId = randomLowerString(8);
-		const productName = `test product ${testId}`;
+		const productName = `test delete all images product ${testId}`;
 
 		const { data: createdProduct, status: createStatus } =
 			await api.products.post({
@@ -288,19 +288,78 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 
 		expectDefined(error);
 		expect(error.status).toBe(400);
-		const validationErr = error.value;
-		expect("code" in validationErr).toBe(true);
-		expect(validationErr.code).toBe("IMAGES_VALIDATION_FAILED");
+		expect(error.value).toMatchObject({
+			code: "IMAGES_VALIDATION_FAILED",
+			message: expect.any(String),
+			details: {
+				subErrors: expect.arrayContaining([
+					expect.objectContaining({
+						code: "VIO6",
+					}),
+				]),
+			},
+		});
+	});
+
+	it("should sucess delete thumbnail image and autoassign", async () => {
+		const category = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+			attributeValueCount: 2,
+		});
+		expectDefined(category);
+
+		const testId = randomLowerString(8);
+		const productName = `test autoassign product images ${testId}`;
+
+		const { data: createdProduct, status: createStatus } =
+			await api.products.post({
+				name: productName,
+				description: "Will have images deleted",
+				categoryId: category.id,
+				status: "DRAFT",
+				variants: {
+					create: [
+						{
+							price: 10,
+							sku: "DEL-IMG-TEST",
+							stock: 10,
+							attributeValueIds: [
+								category.attributes[0]?.values[0]?.id as string,
+							],
+						},
+					],
+				},
+				images: files,
+				imagesOps: {
+					create: [
+						{ fileIndex: 0, isThumbnail: false },
+						{ fileIndex: 1, isThumbnail: false },
+					],
+				},
+			});
+
+		expect(createStatus).toBe(201);
+		expectDefined(createdProduct);
+		const thumbnails = createdProduct.images
+			.filter((img) => img.isThumbnail)
+			.map((img) => img.id);
+		expect(thumbnails.length).toBe(1);
+
+		const { data, status } = await api
+			.products({ id: createdProduct.id })
+			.patch({
+				imagesOps: { delete: thumbnails },
+			});
+		expect(status).toBe(200);
+		expectDefined(data);
+		const thumbnails2 = createdProduct.images.filter((img) => img.isThumbnail);
+		expect(thumbnails2.length).toBe(1);
 	});
 
 	it("should update image metadata successfully", async () => {
-		const category = await getTestCategory("test");
+		const category = await createTestCategory({ testDb, attributeCount: 2 });
 		expectDefined(category);
-
-		const categoryAttributes = await testDb.client.attribute.findMany({
-			where: { categoryId: category.id },
-			include: { values: true },
-		});
 
 		const { data: createdProduct, status: createStatus } =
 			await api.products.post({
@@ -315,7 +374,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 							sku: "IMG-META-TEST",
 							stock: 10,
 							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
+								category.attributes[0]?.values[0]?.id as string,
 							],
 						},
 					],
@@ -349,13 +408,11 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should create new variants successfully", async () => {
-		const category = await getTestCategory("test");
-		expectDefined(category);
-
-		const categoryAttributes = await testDb.client.attribute.findMany({
-			where: { categoryId: category.id },
-			include: { values: true },
+		const category = await createTestCategory({
+			testDb,
+			attributeCount: 4,
 		});
+		expectDefined(category);
 
 		const { data: createdProduct, status: createStatus } =
 			await api.products.post({
@@ -370,7 +427,8 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 							sku: "ADD-VAR-TEST",
 							stock: 10,
 							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
+								category.attributes[0]?.values[0]?.id as string,
+								category.attributes[1]?.values[1]?.id as string,
 							],
 						},
 					],
@@ -393,7 +451,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 							sku: "NEW-VARIANT-1",
 							stock: 20,
 							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
+								category.attributes[2]?.values[0]?.id as string,
 							],
 						},
 						{
@@ -401,7 +459,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 							sku: "NEW-VARIANT-2",
 							stock: 25,
 							attributeValueIds: [
-								categoryAttributes[0]?.values[1]?.id as string,
+								category.attributes[3]?.values[0]?.id as string,
 							],
 						},
 					],
@@ -415,8 +473,14 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should return an error if an attribute coming from another category is set for create", async () => {
-		const { spices: spicesCategory, herbs: herbsCategory } =
-			await getTwoCategories();
+		const spicesCategory = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
+		const herbsCategory = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
 		expectDefined(spicesCategory);
 		expectDefined(herbsCategory);
 
@@ -469,8 +533,14 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should return an error if an attribute coming from another category is set for update", async () => {
-		const { spices: spicesCategory, herbs: herbsCategory } =
-			await getTwoCategories();
+		const spicesCategory = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
+		const herbsCategory = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
 		expectDefined(spicesCategory);
 		expectDefined(herbsCategory);
 
@@ -521,7 +591,10 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should delete variants successfully", async () => {
-		const category = await getTestCategory("test");
+		const category = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
 		expectDefined(category);
 
 		const categoryAttributes = await testDb.client.attribute.findMany({
@@ -550,7 +623,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 							sku: "DEL-VAR-2",
 							stock: 15,
 							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
+								categoryAttributes[1]?.values[0]?.id as string,
 							],
 						},
 					],
@@ -563,7 +636,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		expectDefined(createdProduct);
 
 		const allVariantIds = createdProduct.variants.map((v) => v.id);
-		const variantToDelete = allVariantIds[0]!;
+		const variantToDelete = allVariantIds[0] as string;
 
 		const { data, status } = await api
 			.products({ id: createdProduct.id })
@@ -576,7 +649,10 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should reject duplicate fileIndex in imagesOps.create", async () => {
-		const category = await getTestCategory("test");
+		const category = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
 		expectDefined(category);
 
 		const categoryAttributes = await testDb.client.attribute.findMany({
@@ -586,7 +662,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 
 		const { data: createdProduct, status: createStatus } =
 			await api.products.post({
-				name: "product for duplicate fileIndex test",
+				name: "product for duplicate file index test",
 				description: "Testing duplicate fileIndex",
 				categoryId: category.id,
 				status: "DRAFT",
@@ -609,24 +685,36 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		expect(createStatus).toBe(201);
 		expectDefined(createdProduct);
 
-		const { status, error } = await api
-			.products({ id: createdProduct.id })
-			.patch({
-				images: files,
-				imagesOps: {
-					create: [
-						{ fileIndex: 0, isThumbnail: false },
-						{ fileIndex: 0, isThumbnail: false },
-					],
-				},
-			});
+		const { error } = await api.products({ id: createdProduct.id }).patch({
+			images: files,
+			imagesOps: {
+				create: [
+					{ fileIndex: 0, isThumbnail: false },
+					{ fileIndex: 0, isThumbnail: false },
+				],
+			},
+		});
 
-		expect(status).toBe(400);
 		expectDefined(error);
+		expect(error.status).toBe(400);
+		expect(error.value).toMatchObject({
+			code: "IMAGES_VALIDATION_FAILED",
+			message: expect.any(String),
+			details: {
+				subErrors: expect.arrayContaining([
+					expect.objectContaining({
+						code: "VIO1",
+					}),
+				]),
+			},
+		});
 	});
 
 	it("should reject multiple thumbnails in imagesOps.create", async () => {
-		const category = await getTestCategory("test");
+		const category = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
 		expectDefined(category);
 
 		const categoryAttributes = await testDb.client.attribute.findMany({
@@ -676,7 +764,10 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should reject fileIndex out of bounds", async () => {
-		const category = await getTestCategory("test");
+		const category = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
 		expectDefined(category);
 
 		const categoryAttributes = await testDb.client.attribute.findMany({
@@ -686,7 +777,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 
 		const { data: createdProduct, status: createStatus } =
 			await api.products.post({
-				name: "product for fileIndex bounds test",
+				name: "product for file index bounds test",
 				description: "Testing fileIndex bounds",
 				categoryId: category.id,
 				status: "DRAFT",
@@ -709,18 +800,33 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		expect(createStatus).toBe(201);
 		expectDefined(createdProduct);
 
-		const { status } = await api.products({ id: createdProduct.id }).patch({
+		const { error } = await api.products({ id: createdProduct.id }).patch({
 			images: files,
 			imagesOps: {
 				create: [{ fileIndex: 4, isThumbnail: false }],
 			},
 		});
 
-		expect(status).toBe(422);
+		expectDefined(error);
+		expect(error.status).toBe(400);
+		expect(error.value).toMatchObject({
+			code: "IMAGES_VALIDATION_FAILED",
+			message: expect.any(String),
+			details: {
+				subErrors: expect.arrayContaining([
+					expect.objectContaining({
+						code: "VIO5",
+					}),
+				]),
+			},
+		});
 	});
 
 	it("should reject deleting all images", async () => {
-		const category = await getTestCategory("test");
+		const category = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
 		expectDefined(category);
 
 		const categoryAttributes = await testDb.client.attribute.findMany({
@@ -763,7 +869,10 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should reject exceeding max images", async () => {
-		const category = await getTestCategory("test");
+		const category = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
 		expectDefined(category);
 
 		const categoryAttributes = await testDb.client.attribute.findMany({
@@ -810,11 +919,14 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 			},
 		});
 
-		expect(status).toBe(400);
+		expect(status).toBe(422);
 	});
 
-	it("should reject deleting all variants without category change", async () => {
-		const category = await getTestCategory("test");
+	it("should reject deleting all variants", async () => {
+		const category = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
 		expectDefined(category);
 
 		const categoryAttributes = await testDb.client.attribute.findMany({
@@ -843,7 +955,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 							sku: "DEL-ALL-VAR-2",
 							stock: 15,
 							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
+								categoryAttributes[1]?.values[0]?.id as string,
 							],
 						},
 					],
@@ -864,9 +976,15 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		expect(status).toBe(400);
 	});
 
-	it("should reject category change without variants operations", async () => {
-		const { spices: spicesCategory, herbs: herbsCategory } =
-			await getTwoCategories();
+	it("should autoassign DRAFT status when category change and more than 1 variant", async () => {
+		const spicesCategory = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
+		const herbsCategory = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
 		expectDefined(spicesCategory);
 		expectDefined(herbsCategory);
 
@@ -877,7 +995,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				name: "product for category change test",
 				description: "Testing category change",
 				categoryId: spicesCategory.id,
-				status: "DRAFT",
+				status: "PUBLISHED",
 				variants: {
 					create: [
 						{
@@ -886,43 +1004,11 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 							stock: 10,
 							attributeValueIds: [spicesAttributes[0]?.values[0]?.id as string],
 						},
-					],
-				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
-			});
-
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-
-		const { status } = await api.products({ id: createdProduct.id }).patch({
-			categoryId: herbsCategory.id,
-		});
-
-		expect(status).toBe(400);
-	});
-
-	it("should reject category change without deleting all existing variants", async () => {
-		const { spices: spicesCategory, herbs: herbsCategory } =
-			await getTwoCategories();
-		expectDefined(spicesCategory);
-		expectDefined(herbsCategory);
-
-		const spicesAttributes = spicesCategory.attributes;
-
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: "product for category change without delete test",
-				description: "Testing category change without deleting variants",
-				categoryId: spicesCategory.id,
-				status: "DRAFT",
-				variants: {
-					create: [
 						{
-							price: 10,
-							sku: "CAT-NO-DEL-TEST",
-							stock: 10,
-							attributeValueIds: [spicesAttributes[0]?.values[0]?.id as string],
+							price: 12,
+							sku: "CAT-CGG-TEST",
+							stock: 14,
+							attributeValueIds: [spicesAttributes[1]?.values[0]?.id as string],
 						},
 					],
 				},
@@ -933,61 +1019,23 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		expect(createStatus).toBe(201);
 		expectDefined(createdProduct);
 
-		const variantId = createdProduct.variants[0]?.id;
-		expectDefined(variantId);
-
-		const { status } = await api.products({ id: createdProduct.id }).patch({
-			categoryId: herbsCategory.id,
-			variants: { update: [{ id: variantId, price: 20 }] },
-		});
-
-		expect(status).toBe(400);
-	});
-
-	it("should reject category change without creating new variants", async () => {
-		const { spices: spicesCategory, herbs: herbsCategory } =
-			await getTwoCategories();
-		expectDefined(spicesCategory);
-		expectDefined(herbsCategory);
-
-		const spicesAttributes = spicesCategory.attributes;
-
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: "product for category change without create test",
-				description: "Testing category change without creating variants",
-				categoryId: spicesCategory.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "CAT-NO-CRE-TEST",
-							stock: 10,
-							attributeValueIds: [spicesAttributes[0]?.values[0]?.id as string],
-						},
-					],
-				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
+		const { data, status } = await api
+			.products({ id: createdProduct.id })
+			.patch({
+				categoryId: herbsCategory.id,
 			});
 
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-
-		const variantId = createdProduct.variants[0]?.id;
-		expectDefined(variantId);
-
-		const { status } = await api.products({ id: createdProduct.id }).patch({
-			categoryId: herbsCategory.id,
-			variants: { delete: [variantId] },
+		expect(status).toBe(200);
+		expect(data?.product).toMatchObject({
+			status: "DRAFT",
 		});
-
-		expect(status).toBe(400);
 	});
 
 	it("should reject wrong version (optimistic locking)", async () => {
-		const category = await getTestCategory("test");
+		const category = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
 		expectDefined(category);
 
 		const categoryAttributes = await testDb.client.attribute.findMany({
@@ -1029,7 +1077,10 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should reject duplicate attribute values in variant update", async () => {
-		const category = await getTestCategory("test");
+		const category = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
 		expectDefined(category);
 
 		const categoryAttributes = await testDb.client.attribute.findMany({
@@ -1082,8 +1133,14 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should change category successfully with atomic variant replacement", async () => {
-		const { spices: spicesCategory, herbs: herbsCategory } =
-			await getTwoCategories();
+		const spicesCategory = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
+		const herbsCategory = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
 		expectDefined(spicesCategory);
 		expectDefined(herbsCategory);
 
@@ -1142,7 +1199,10 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should replace image file with update + fileIndex", async () => {
-		const category = await getTestCategory("test");
+		const category = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
 		expectDefined(category);
 
 		const categoryAttributes = await testDb.client.attribute.findMany({
@@ -1192,7 +1252,10 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should reject multiple thumbnails across create and update", async () => {
-		const category = await getTestCategory("test");
+		const category = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
 		expectDefined(category);
 
 		const categoryAttributes = await testDb.client.attribute.findMany({
@@ -1240,18 +1303,16 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should reject fileIndex overlap between create and update", async () => {
-		const category = await getTestCategory("test");
-		expectDefined(category);
-
-		const categoryAttributes = await testDb.client.attribute.findMany({
-			where: { categoryId: category.id },
-			include: { values: true },
+		const category = await createTestCategory({
+			testDb,
+			attributeCount: 2,
 		});
+		expectDefined(category);
 
 		const { data: createdProduct, status: createStatus } =
 			await api.products.post({
-				name: "product for fileIndex overlap test",
-				description: "Testing fileIndex overlap",
+				name: "product for file index overlap test",
+				description: "testing fileIndex overlap",
 				categoryId: category.id,
 				status: "DRAFT",
 				variants: {
@@ -1261,7 +1322,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 							sku: "IDX-OVERLAP-TEST",
 							stock: 10,
 							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
+								category.attributes[0]?.values[0]?.id as string,
 							],
 						},
 					],
@@ -1288,7 +1349,10 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should return proper category name on early exit (no changes)", async () => {
-		const category = await getTestCategory("test");
+		const category = await createTestCategory({
+			testDb,
+			attributeCount: 2,
+		});
 		expectDefined(category);
 
 		const categoryAttributes = await testDb.client.attribute.findMany({

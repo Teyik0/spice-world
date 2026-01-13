@@ -221,6 +221,21 @@ function validateVA3({
 		include: (typeof CATEGORY_WITH_VALUES_ARGS)["include"];
 	}>;
 }): ValidationError | null {
+	if (variantCount < 1) {
+		return {
+			code: "VVA3",
+			message:
+				"Product must have at least 1 variant. Cannot delete all variants.",
+			field: "variants",
+			details: {
+				constraints: {
+					current: variantCount,
+					minimum: 1,
+				},
+			},
+		};
+	}
+
 	const maxVariants = category.attributes.reduce(
 		(acc, attr) => acc * (attr.values.length || 1),
 		1,

@@ -656,7 +656,6 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			expect(error.status).toBe(400);
 			// @ts-expect-error
 			expect(error.value.code).toBe("IMAGES_VALIDATION_FAILED");
-			// @ts-expect-error
 			expect(error.value.message).toBe(
 				"Found 1 validation error in image operations",
 			);

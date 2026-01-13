@@ -27,28 +27,6 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
 	const filePath2 = `${import.meta.dir}/../../public/curcuma.jpg`;
 	const files = [file(filePath1), file(filePath2)];
 
-	const categoryCache = new Map<
-		string,
-		Awaited<ReturnType<typeof createTestCategory>>
-	>();
-
-	async function getTestCategory(name: string, attributeCount: number = 1) {
-		const key = `${name}-${attributeCount}`;
-		if (!categoryCache.has(key)) {
-			categoryCache.set(
-				key,
-				await createTestCategory({ testDb, name, attributeCount }),
-			);
-		}
-		return categoryCache.get(key)!;
-	}
-
-	async function getTwoCategories() {
-		const spices = await getTestCategory("spices", 2);
-		const herbs = await getTestCategory("herbs", 2);
-		return { spices, herbs };
-	}
-
 	beforeAll(async () => {
 		testDb = await createTestDatabase("bulk.test.ts");
 
@@ -120,8 +98,16 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
 	});
 
 	it("should bulk update category and clear variant attribute values", async () => {
-		const { spices: spicesCategory, herbs: herbsCategory } =
-			await getTwoCategories();
+		const spicesCategory = await createTestCategory({
+			testDb,
+			name: "spices",
+			attributeCount: 2,
+		});
+		const herbsCategory = await createTestCategory({
+			testDb,
+			name: "herbs",
+			attributeCount: 2,
+		});
 		expectDefined(spicesCategory);
 		expectDefined(herbsCategory);
 
