@@ -203,6 +203,58 @@ function validateVIO6(
 }
 
 /**
+ * VIO7: Duplicate image IDs in update operations
+ */
+function validateVIO7(
+	updateOps: ProductModel.imageOperations["update"],
+): ValidationError | null {
+	if (!updateOps?.length) return null;
+
+	const idCount = new Map<string, number>();
+	for (const op of updateOps) {
+		idCount.set(op.id, (idCount.get(op.id) || 0) + 1);
+	}
+
+	const duplicates = Array.from(idCount.entries())
+		.filter(([_, count]) => count > 1)
+		.map(([id]) => id);
+
+	if (duplicates.length > 0) {
+		return {
+			code: "VIO7",
+			message: `Duplicate image IDs in update: ${duplicates.join(", ")}`,
+			field: "imagesOps",
+		};
+	}
+	return null;
+}
+
+/**
+ * VIO8: Duplicate image IDs in delete operations
+ */
+function validateVIO8(deleteIds: string[] | undefined): ValidationError | null {
+	if (!deleteIds?.length) return null;
+
+	const idCount = new Map<string, number>();
+	for (const id of deleteIds) {
+		idCount.set(id, (idCount.get(id) || 0) + 1);
+	}
+
+	const duplicates = Array.from(idCount.entries())
+		.filter(([_, count]) => count > 1)
+		.map(([id]) => id);
+
+	if (duplicates.length > 0) {
+		return {
+			code: "VIO8",
+			message: `Duplicate image IDs in delete: ${duplicates.join(", ")}`,
+			field: "imagesOps",
+		};
+	}
+	return null;
+}
+
+/**
  * Validates image operations for POST and PATCH.
  * Returns referenced file indices and auto-assign instruction on success.
  *
@@ -213,6 +265,8 @@ function validateVIO6(
  * - VIO4: Multiple thumbnails in final state
  * - VIO5: fileIndex out of bounds
  * - VIO6: Cannot delete all images (must keep at least 1)
+ * - VIO7: Duplicate image IDs in update
+ * - VIO8: Duplicate image IDs in delete
  */
 export function validateImages({
 	images,
@@ -258,6 +312,18 @@ export function validateImages({
 			imagesOps.create?.length ?? 0,
 		);
 		if (vio6) errors.push(vio6);
+	}
+
+	// VIO7: Duplicate image IDs in update (only for PATCH)
+	if (currentImages) {
+		const vio7 = validateVIO7(imagesOps.update);
+		if (vio7) errors.push(vio7);
+	}
+
+	// VIO8: Duplicate image IDs in delete (only for PATCH)
+	if (currentImages) {
+		const vio8 = validateVIO8(imagesOps.delete);
+		if (vio8) errors.push(vio8);
 	}
 
 	if (errors.length > 0) {

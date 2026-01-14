@@ -190,7 +190,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				variants: [
 					{
 						price: 10,
-						sku: "DUP-IMG-TEST-2",
+						sku: "DUP-IMG-TEST-3",
 						stock: 10,
 						attributeValueIds: [],
 					},
@@ -229,7 +229,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				variants: [
 					{
 						price: 10,
-						sku: "DUP-IMG-TEST-2",
+						sku: "DUP-IMG-TEST-4",
 						stock: 10,
 						attributeValueIds: [],
 					},
@@ -345,7 +345,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				variants: [
 					{
 						price: 10,
-						sku: "DUP-IMG-TEST-2",
+						sku: "DUP-IMG-TEST-5",
 						stock: 10,
 						attributeValueIds: [],
 					},
@@ -400,14 +400,14 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 			});
 		});
 
-		it("should throw VIO6 when try delete all images", async () => {
+		it("should throw error VIO6 when try delete all images", async () => {
 			const { product } = await setupProduct({
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
 					{
 						price: 10,
-						sku: "DUP-IMG-TEST-2",
+						sku: "DUP-IMG-TEST-6",
 						stock: 10,
 						attributeValueIds: [],
 					},
@@ -443,58 +443,119 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				},
 			});
 		});
+
+		it("should throw error VIO7 for duplicate image ID in imgOps.update", async () => {
+			const { product } = await setupProduct({
+				attributeCount: 2,
+				attributeValueCount: 2,
+				variants: [
+					{
+						price: 1000,
+						stock: 10,
+						attributeValueIds: [],
+					},
+				],
+				images: [file(filePath1), file(filePath2)],
+				imagesCreate: [
+					{ fileIndex: 0, isThumbnail: true },
+					{ fileIndex: 1, isThumbnail: false },
+				],
+			});
+
+			const imageId = product.images[0]?.id as string;
+
+			const { error } = await api.products({ id: product.id }).patch({
+				imagesOps: {
+					update: [
+						{ id: imageId, isThumbnail: false },
+						{ id: imageId, altText: "Updated" },
+					],
+				},
+			});
+
+			expectDefined(error);
+			expect(error.status).toBe(400);
+			expect(error.value).toMatchObject({
+				code: "IMAGES_VALIDATION_FAILED",
+				message: expect.any(String),
+				details: {
+					subErrors: expect.arrayContaining([
+						expect.objectContaining({
+							code: "VIO7",
+							message: expect.stringContaining("Duplicate image IDs in update"),
+						}),
+					]),
+				},
+			});
+		});
+
+		it("should throw error VIO8 for duplicate image ID in imgOps.delete", async () => {
+			const filePath3 = `${import.meta.dir}/../../public/garlic.webp`;
+			const { product } = await setupProduct({
+				attributeCount: 2,
+				attributeValueCount: 2,
+				variants: [
+					{
+						price: 1000,
+						stock: 10,
+						attributeValueIds: [],
+					},
+				],
+				images: [file(filePath1), file(filePath2), file(filePath3)],
+				imagesCreate: [
+					{ fileIndex: 0, isThumbnail: true },
+					{ fileIndex: 1, isThumbnail: false },
+					{ fileIndex: 2, isThumbnail: false },
+				],
+			});
+
+			const imageId = product.images[0]?.id as string;
+
+			const { error } = await api.products({ id: product.id }).patch({
+				imagesOps: {
+					delete: [imageId, imageId],
+				},
+			});
+
+			expectDefined(error);
+			expect(error.status).toBe(400);
+			expect(error.value).toMatchObject({
+				code: "IMAGES_VALIDATION_FAILED",
+				message: expect.any(String),
+				details: {
+					subErrors: expect.arrayContaining([
+						expect.objectContaining({
+							code: "VIO8",
+							message: expect.stringContaining("Duplicate image IDs in delete"),
+						}),
+					]),
+				},
+			});
+		});
 	});
 
 	it("should update the product successfully", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product } = await setupProduct({
 			attributeCount: 2,
 			attributeValueCount: 3,
+			variants: [
+				{ price: 10, sku: "UPDATE-TEST-1", stock: 50, attributeValueIds: [] },
+			],
+			images: files,
+			imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
 		});
-		expectDefined(category);
 
-		const categoryAttributes = category.attributes;
-		const testId = randomLowerString(8);
-		const productName = `test product ${testId}`;
-
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: productName,
-				description: "Original description",
-				categoryId: category.id,
-				status: "PUBLISHED",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "UPDATE-TEST-1",
-							stock: 50,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
-				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
-			});
-
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-
-		const variantToUpdate = createdProduct.variants[0];
+		const variantToUpdate = product.variants[0];
 		expectDefined(variantToUpdate);
 
-		const { data, status } = await api
-			.products({ id: createdProduct.id })
-			.patch({
-				name: "updated spice",
-				description: "an updated description",
-				status: "DRAFT",
-				variants: {
-					update: [{ id: variantToUpdate.id, price: 12.99, stock: 524 }],
-				},
-			});
+		const { data, status } = await api.products({ id: product.id }).patch({
+			name: "updated spice",
+			description: "an updated description",
+			status: "DRAFT",
+			variants: {
+				update: [{ id: variantToUpdate.id, price: 12.99, stock: 524 }],
+			},
+		});
 
 		expect(status).toBe(200);
 		expectDefined(data);
@@ -509,56 +570,33 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		);
 		expectDefined(updatedVariant);
 		expect(updatedVariant.price).toBe(12.99);
-		expect(updatedVariant.price).not.toBe(createdProduct.variants[0]?.price);
+		expect(updatedVariant.price).not.toBe(product.variants[0]?.price);
 		expect(updatedVariant.stock).toBe(524);
-		expect(updatedVariant.price).not.toBe(createdProduct.variants[0]?.stock);
+		expect(updatedVariant.price).not.toBe(product.variants[0]?.stock);
 	});
 
 	it("should update product with new images", async () => {
-		const category = await createTestCategory({ testDb, attributeCount: 1 });
-		expectDefined(category);
+		const { product } = await setupProduct({
+			attributeCount: 1,
+			attributeValueCount: 2,
+			variants: [
+				{ price: 10, sku: "IMG-UPDATE-TEST", stock: 10, attributeValueIds: [] },
+			],
+			images: files,
+			imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+		});
 
-		const categoryAttributes = category.attributes;
-		const testId = randomLowerString(8);
-		const productName = `test product ${testId}`;
+		const initialImageCount = product.images.length;
 
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: productName,
-				description: "Test product for adding images",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "IMG-UPDATE-TEST",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
-				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
-			});
-
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-		const initialImageCount = createdProduct.images.length;
-
-		const { data, status } = await api
-			.products({ id: createdProduct.id })
-			.patch({
-				images: files,
-				imagesOps: {
-					create: [
-						{ fileIndex: 0, isThumbnail: false },
-						{ fileIndex: 1, isThumbnail: false },
-					],
-				},
-			});
+		const { data, status } = await api.products({ id: product.id }).patch({
+			images: files,
+			imagesOps: {
+				create: [
+					{ fileIndex: 0, isThumbnail: false },
+					{ fileIndex: 1, isThumbnail: false },
+				],
+			},
+		});
 
 		expect(status).toBe(200);
 		expectDefined(data);
@@ -640,48 +678,21 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should failed delete all images with error code VIO6", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product } = await setupProduct({
 			attributeCount: 2,
 			attributeValueCount: 2,
+			variants: [
+				{ price: 10, sku: "DEL-IMG-TEST", stock: 10, attributeValueIds: [] },
+			],
+			images: files,
+			imagesCreate: [
+				{ fileIndex: 0, isThumbnail: false },
+				{ fileIndex: 1, isThumbnail: false },
+			],
 		});
-		expectDefined(category);
 
-		const testId = randomLowerString(8);
-		const productName = `test delete all images product ${testId}`;
-
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: productName,
-				description: "Will have images deleted",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "DEL-IMG-TEST",
-							stock: 10,
-							attributeValueIds: [
-								category.attributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
-				},
-				images: files,
-				imagesOps: {
-					create: [
-						{ fileIndex: 0, isThumbnail: false },
-						{ fileIndex: 1, isThumbnail: false },
-					],
-				},
-			});
-
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-
-		const { error } = await api.products({ id: createdProduct.id }).patch({
-			imagesOps: { delete: createdProduct.images.map((img) => img.id) },
+		const { error } = await api.products({ id: product.id }).patch({
+			imagesOps: { delete: product.images.map((img) => img.id) },
 		});
 
 		expectDefined(error);
@@ -700,169 +711,98 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should sucess delete thumbnail image and autoassign", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product } = await setupProduct({
 			attributeCount: 2,
 			attributeValueCount: 2,
+			variants: [
+				{ price: 10, sku: "ASG-IMG-TEST", stock: 10, attributeValueIds: [] },
+			],
+			images: files,
+			imagesCreate: [
+				{ fileIndex: 0, isThumbnail: false },
+				{ fileIndex: 1, isThumbnail: false },
+			],
 		});
-		expectDefined(category);
 
-		const testId = randomLowerString(8);
-		const productName = `test autoassign product images ${testId}`;
-
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: productName,
-				description: "Will have images deleted",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "ASG-IMG-TEST",
-							stock: 10,
-							attributeValueIds: [
-								category.attributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
-				},
-				images: files,
-				imagesOps: {
-					create: [
-						{ fileIndex: 0, isThumbnail: false },
-						{ fileIndex: 1, isThumbnail: false },
-					],
-				},
-			});
-
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-		const thumbnails = createdProduct.images
+		const thumbnails = product.images
 			.filter((img) => img.isThumbnail)
 			.map((img) => img.id);
 		expect(thumbnails.length).toBe(1);
 
-		const { data, status } = await api
-			.products({ id: createdProduct.id })
-			.patch({
-				imagesOps: { delete: thumbnails },
-			});
+		const { data, status } = await api.products({ id: product.id }).patch({
+			imagesOps: { delete: thumbnails },
+		});
 		expect(status).toBe(200);
 		expectDefined(data);
-		const thumbnails2 = createdProduct.images.filter((img) => img.isThumbnail);
+		const thumbnails2 = product.images.filter((img) => img.isThumbnail);
 		expect(thumbnails2.length).toBe(1);
 	});
 
 	it("should update image metadata successfully", async () => {
-		const category = await createTestCategory({ testDb, attributeCount: 2 });
-		expectDefined(category);
+		const { product } = await setupProduct({
+			attributeCount: 2,
+			attributeValueCount: 2,
+			variants: [
+				{ price: 10, sku: "IMG-META-TEST", stock: 10, attributeValueIds: [] },
+			],
+			images: files,
+			imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+		});
 
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: "product to update image metadata",
-				description: "Image metadata will be updated",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "IMG-META-TEST",
-							stock: 10,
-							attributeValueIds: [
-								category.attributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
-				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
-			});
-
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-
-		const imageId = createdProduct.images[0]?.id;
+		const imageId = product.images[0]?.id;
 		expectDefined(imageId);
 
-		const { data, status } = await api
-			.products({ id: createdProduct.id })
-			.patch({
-				imagesOps: {
-					update: [
-						{
-							id: imageId,
-							altText: "Updated alt text for test",
-							isThumbnail: false,
-						},
-					],
-				},
-			});
+		const { data, status } = await api.products({ id: product.id }).patch({
+			imagesOps: {
+				update: [
+					{
+						id: imageId,
+						altText: "Updated alt text for test",
+						isThumbnail: false,
+					},
+				],
+			},
+		});
 
 		expect(status).toBe(200);
 		expectDefined(data);
 	});
 
 	it("should create new variants successfully", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product, category } = await setupProduct({
 			attributeCount: 4,
+			attributeValueCount: 2,
+			variants: [
+				{ price: 10, sku: "ADD-VAR-TEST", stock: 10, attributeValueIds: [] },
+			],
+			images: files,
+			imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
 		});
-		expectDefined(category);
 
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: "product to add variants to",
-				description: "Variants will be added",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "ADD-VAR-TEST",
-							stock: 10,
-							attributeValueIds: [
-								category.attributes[0]?.values[0]?.id as string,
-								category.attributes[1]?.values[1]?.id as string,
-							],
-						},
-					],
-				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
-			});
+		const initialVariantCount = product.variants.length;
 
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-		const initialVariantCount = createdProduct.variants.length;
-
-		const { data, status } = await api
-			.products({ id: createdProduct.id })
-			.patch({
-				variants: {
-					create: [
-						{
-							price: 15,
-							sku: "NEW-VARIANT-1",
-							stock: 20,
-							attributeValueIds: [
-								category.attributes[2]?.values[0]?.id as string,
-							],
-						},
-						{
-							price: 20,
-							sku: "NEW-VARIANT-2",
-							stock: 25,
-							attributeValueIds: [
-								category.attributes[3]?.values[0]?.id as string,
-							],
-						},
-					],
-				},
-			});
+		const { data, status } = await api.products({ id: product.id }).patch({
+			variants: {
+				create: [
+					{
+						price: 15,
+						sku: "NEW-VARIANT-1",
+						stock: 20,
+						attributeValueIds: [
+							category.attributes[2]?.values[0]?.id as string,
+						],
+					},
+					{
+						price: 20,
+						sku: "NEW-VARIANT-2",
+						stock: 25,
+						attributeValueIds: [
+							category.attributes[3]?.values[0]?.id as string,
+						],
+					},
+				],
+			},
+		});
 
 		expect(status).toBe(200);
 		expectDefined(data);
@@ -1007,101 +947,59 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should delete variants successfully", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product, category } = await setupProduct({
 			attributeCount: 2,
-		});
-		expectDefined(category);
-
-		const categoryAttributes = await testDb.client.attribute.findMany({
-			where: { categoryId: category.id },
-			include: { values: true },
-		});
-
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: "product to delete variants from",
-				description: "Variants will be deleted",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "DEL-VAR-1",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-						{
-							price: 15,
-							sku: "DEL-VAR-2",
-							stock: 15,
-							attributeValueIds: [
-								categoryAttributes[1]?.values[0]?.id as string,
-							],
-						},
-					],
+			attributeValueCount: 2,
+			variants: [
+				{
+					price: 10,
+					stock: 10,
+					attributeValueIds: [],
 				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
-			});
+			],
+			images: files,
+			imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+		});
 
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
+		// Add a second variant with different attribute values
+		const { data: patchedData } = await api.products({ id: product.id }).patch({
+			variants: {
+				create: [
+					{
+						price: 15,
+						stock: 15,
+						attributeValueIds: [
+							category.attributes[0]?.values[0]?.id as string,
+						],
+					},
+				],
+			},
+		});
+		expectDefined(patchedData);
 
-		const allVariantIds = createdProduct.variants.map((v) => v.id);
+		const allVariantIds = patchedData.product.variants.map((v) => v.id);
 		const variantToDelete = allVariantIds[0] as string;
 
-		const { data, status } = await api
-			.products({ id: createdProduct.id })
-			.patch({
-				variants: { delete: [variantToDelete] },
-			});
+		const { data, status } = await api.products({ id: product.id }).patch({
+			variants: { delete: [variantToDelete] },
+		});
 
 		expect(status).toBe(200);
 		expectDefined(data);
 	});
 
 	it("should reject duplicate fileIndex in imagesOps.create", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product } = await setupProduct({
 			attributeCount: 2,
+			attributeValueCount: 2,
+			variants: [
+				{ price: 10, sku: "DUP-IDX-TEST", stock: 10, attributeValueIds: [] },
+			],
+			images: files,
+			imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
 		});
-		expectDefined(category);
 
-		const categoryAttributes = await testDb.client.attribute.findMany({
-			where: { categoryId: category.id },
-			include: { values: true },
-		});
-
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: "product for duplicate file index test",
-				description: "Testing duplicate fileIndex",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "DUP-IDX-TEST",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
-				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
-			});
-
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-
-		const { error } = await api.products({ id: createdProduct.id }).patch({
+		const { error } = await api.products({ id: product.id }).patch({
 			images: files,
 			imagesOps: {
 				create: [
@@ -1127,43 +1025,17 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should reject multiple thumbnails in imagesOps.create", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product } = await setupProduct({
 			attributeCount: 2,
+			attributeValueCount: 2,
+			variants: [
+				{ price: 10, sku: "MULT-THUMB-TEST", stock: 10, attributeValueIds: [] },
+			],
+			images: files,
+			imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
 		});
-		expectDefined(category);
 
-		const categoryAttributes = await testDb.client.attribute.findMany({
-			where: { categoryId: category.id },
-			include: { values: true },
-		});
-
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: "product for multi thumbnail test",
-				description: "Testing multiple thumbnails",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "MULT-THUMB-TEST",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
-				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
-			});
-
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-
-		const { error } = await api.products({ id: createdProduct.id }).patch({
+		const { error } = await api.products({ id: product.id }).patch({
 			images: files,
 			imagesOps: {
 				create: [
@@ -1189,43 +1061,17 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should reject fileIndex out of bounds", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product } = await setupProduct({
 			attributeCount: 2,
+			attributeValueCount: 2,
+			variants: [
+				{ price: 10, sku: "IDX-BOUNDS-TEST", stock: 10, attributeValueIds: [] },
+			],
+			images: files,
+			imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
 		});
-		expectDefined(category);
 
-		const categoryAttributes = await testDb.client.attribute.findMany({
-			where: { categoryId: category.id },
-			include: { values: true },
-		});
-
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: "product for file index bounds test",
-				description: "Testing fileIndex bounds",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "IDX-BOUNDS-TEST",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
-				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
-			});
-
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-
-		const { error } = await api.products({ id: createdProduct.id }).patch({
+		const { error } = await api.products({ id: product.id }).patch({
 			images: files,
 			imagesOps: {
 				create: [{ fileIndex: 4, isThumbnail: false }],
@@ -1248,45 +1094,24 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should reject deleting all images", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product } = await setupProduct({
 			attributeCount: 2,
-		});
-		expectDefined(category);
-
-		const categoryAttributes = await testDb.client.attribute.findMany({
-			where: { categoryId: category.id },
-			include: { values: true },
-		});
-
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: "product for delete all images test",
-				description: "Testing delete all images",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "DEL-ALL-IMG-TEST",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
+			attributeValueCount: 2,
+			variants: [
+				{
+					price: 10,
+					sku: "DEL-ALL-IMG-TEST",
+					stock: 10,
+					attributeValueIds: [],
 				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
-			});
+			],
+			images: files,
+			imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+		});
 
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
+		const allImageIds = product.images.map((img) => img.id);
 
-		const allImageIds = createdProduct.images.map((img) => img.id);
-
-		const { error } = await api.products({ id: createdProduct.id }).patch({
+		const { error } = await api.products({ id: product.id }).patch({
 			imagesOps: { delete: allImageIds },
 		});
 
@@ -1306,43 +1131,17 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should reject exceeding max images", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product } = await setupProduct({
 			attributeCount: 2,
+			attributeValueCount: 2,
+			variants: [
+				{ price: 10, sku: "MAX-IMG-TEST", stock: 10, attributeValueIds: [] },
+			],
+			images: files,
+			imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
 		});
-		expectDefined(category);
 
-		const categoryAttributes = await testDb.client.attribute.findMany({
-			where: { categoryId: category.id },
-			include: { values: true },
-		});
-
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: "product for max images test",
-				description: "Testing max images limit",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "MAX-IMG-TEST",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
-				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
-			});
-
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-
-		const { status } = await api.products({ id: createdProduct.id }).patch({
+		const { status } = await api.products({ id: product.id }).patch({
 			images: files,
 			imagesOps: {
 				create: [
@@ -1360,53 +1159,33 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should reject deleting all variants", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product, category } = await setupProduct({
 			attributeCount: 2,
-		});
-		expectDefined(category);
-
-		const categoryAttributes = await testDb.client.attribute.findMany({
-			where: { categoryId: category.id },
-			include: { values: true },
+			attributeValueCount: 2,
+			variants: [{ price: 10, stock: 10, attributeValueIds: [] }],
+			images: files,
+			imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
 		});
 
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: "product for delete all variants test",
-				description: "Testing delete all variants",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "DEL-ALL-VAR-1",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-						{
-							price: 15,
-							sku: "DEL-ALL-VAR-2",
-							stock: 15,
-							attributeValueIds: [
-								categoryAttributes[1]?.values[0]?.id as string,
-							],
-						},
-					],
-				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
-			});
+		// Add a second variant with different attribute values
+		const { data: patchedData } = await api.products({ id: product.id }).patch({
+			variants: {
+				create: [
+					{
+						price: 15,
+						stock: 15,
+						attributeValueIds: [
+							category.attributes[0]?.values[0]?.id as string,
+						],
+					},
+				],
+			},
+		});
+		expectDefined(patchedData);
 
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
+		const allVariantIds = patchedData.product.variants.map((v) => v.id);
 
-		const allVariantIds = createdProduct.variants.map((v) => v.id);
-
-		const { error } = await api.products({ id: createdProduct.id }).patch({
+		const { error } = await api.products({ id: product.id }).patch({
 			variants: { delete: allVariantIds },
 		});
 
@@ -1481,43 +1260,17 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should reject wrong version (optimistic locking)", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product } = await setupProduct({
 			attributeCount: 2,
+			attributeValueCount: 2,
+			variants: [
+				{ price: 10, sku: "VERSION-TEST", stock: 10, attributeValueIds: [] },
+			],
+			images: files,
+			imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
 		});
-		expectDefined(category);
 
-		const categoryAttributes = await testDb.client.attribute.findMany({
-			where: { categoryId: category.id },
-			include: { values: true },
-		});
-
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: "product for version test",
-				description: "Testing version check",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "VERSION-TEST",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
-				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
-			});
-
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-
-		const { status } = await api.products({ id: createdProduct.id }).patch({
+		const { status } = await api.products({ id: product.id }).patch({
 			name: "should fail version check",
 			_version: 999,
 		});
@@ -1526,53 +1279,27 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should reject duplicate attribute values in variant update", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product, category } = await setupProduct({
 			attributeCount: 2,
+			attributeValueCount: 2,
+			variants: [
+				{ price: 10, sku: "DUP-ATTR-TEST", stock: 10, attributeValueIds: [] },
+			],
+			images: files,
+			imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
 		});
-		expectDefined(category);
 
-		const categoryAttributes = await testDb.client.attribute.findMany({
-			where: { categoryId: category.id },
-			include: { values: true },
-		});
-
-		expect(categoryAttributes.length).toBeGreaterThanOrEqual(1);
-
-		const firstAttrValues = categoryAttributes[0]?.values;
+		const firstAttrValues = category.attributes[0]?.values;
 		expectDefined(firstAttrValues);
 		expect(firstAttrValues.length).toBeGreaterThanOrEqual(2);
 
 		const valueId1 = firstAttrValues[0]?.id as string;
 		const valueId2 = firstAttrValues[1]?.id as string;
 
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: "product for duplicate attr test",
-				description: "Testing duplicate attribute values",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "DUP-ATTR-TEST",
-							stock: 10,
-							attributeValueIds: [valueId1],
-						},
-					],
-				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
-			});
-
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-
-		const variantId = createdProduct.variants[0]?.id;
+		const variantId = product.variants[0]?.id;
 		expectDefined(variantId);
 
-		const { error } = await api.products({ id: createdProduct.id }).patch({
+		const { error } = await api.products({ id: product.id }).patch({
 			variants: {
 				update: [{ id: variantId, attributeValueIds: [valueId1, valueId2] }],
 			},
@@ -1660,99 +1387,45 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should replace image file with update + fileIndex", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product } = await setupProduct({
 			attributeCount: 2,
+			attributeValueCount: 2,
+			variants: [
+				{ price: 10, sku: "FILE-REP-TEST", stock: 10, attributeValueIds: [] },
+			],
+			images: files,
+			imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
 		});
-		expectDefined(category);
 
-		const categoryAttributes = await testDb.client.attribute.findMany({
-			where: { categoryId: category.id },
-			include: { values: true },
-		});
-
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: "product for file replace test",
-				description: "Testing file replace",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "FILE-REP-TEST",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
-				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
-			});
-
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-
-		const existingImage = createdProduct.images[0];
+		const existingImage = product.images[0];
 		expectDefined(existingImage);
 
-		const { data, status } = await api
-			.products({ id: createdProduct.id })
-			.patch({
-				images: files,
-				imagesOps: {
-					update: [{ id: existingImage.id, fileIndex: 0 }],
-				},
-			});
+		const { data, status } = await api.products({ id: product.id }).patch({
+			images: files,
+			imagesOps: {
+				update: [{ id: existingImage.id, fileIndex: 0 }],
+			},
+		});
 
 		expect(status).toBe(200);
 		expectDefined(data);
 	});
 
 	it("should reject multiple thumbnails across create and update", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product } = await setupProduct({
 			attributeCount: 2,
+			attributeValueCount: 2,
+			variants: [
+				{ price: 10, sku: "MULT-CROSS-TEST", stock: 10, attributeValueIds: [] },
+			],
+			images: files,
+			imagesCreate: [{ fileIndex: 0, isThumbnail: false }],
 		});
-		expectDefined(category);
 
-		const categoryAttributes = await testDb.client.attribute.findMany({
-			where: { categoryId: category.id },
-			include: { values: true },
-		});
-
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: "product for multi thumbnail cross test",
-				description: "Testing multiple thumbnails across ops",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "MULT-CROSS-TEST",
-							stock: 10,
-							attributeValueIds: [
-								categoryAttributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
-				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: false }] },
-			});
-
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-
-		const existingImage = createdProduct.images[0];
+		const existingImage = product.images[0];
 		expectDefined(existingImage);
 
-		const { error } = await api.products({ id: createdProduct.id }).patch({
+		const { error } = await api.products({ id: product.id }).patch({
 			images: files,
 			imagesOps: {
 				create: [{ fileIndex: 0, isThumbnail: true }],
@@ -1776,41 +1449,25 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should reject fileIndex overlap between create and update", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product } = await setupProduct({
 			attributeCount: 2,
-		});
-		expectDefined(category);
-
-		const { data: createdProduct, status: createStatus } =
-			await api.products.post({
-				name: "product for file index overlap test",
-				description: "testing fileIndex overlap",
-				categoryId: category.id,
-				status: "DRAFT",
-				variants: {
-					create: [
-						{
-							price: 10,
-							sku: "IDX-OVERLAP-TEST",
-							stock: 10,
-							attributeValueIds: [
-								category.attributes[0]?.values[0]?.id as string,
-							],
-						},
-					],
+			attributeValueCount: 2,
+			variants: [
+				{
+					price: 10,
+					sku: "IDX-OVERLAP-TEST",
+					stock: 10,
+					attributeValueIds: [],
 				},
-				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
-			});
+			],
+			images: files,
+			imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+		});
 
-		expect(createStatus).toBe(201);
-		expectDefined(createdProduct);
-
-		const existingImage = createdProduct.images[0];
+		const existingImage = product.images[0];
 		expectDefined(existingImage);
 
-		const { error } = await api.products({ id: createdProduct.id }).patch({
+		const { error } = await api.products({ id: product.id }).patch({
 			images: files,
 			imagesOps: {
 				create: [{ fileIndex: 0 }],
@@ -1834,44 +1491,21 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	it("should return proper category name on early exit (no changes)", async () => {
-		const category = await createTestCategory({
-			testDb,
+		const { product, category } = await setupProduct({
 			attributeCount: 2,
-		});
-		expectDefined(category);
-
-		const categoryAttributes = await testDb.client.attribute.findMany({
-			where: { categoryId: category.id },
-			include: { values: true },
-		});
-
-		const { data: created, status: createStatus } = await api.products.post({
-			name: "early exit test product",
-			description: "Testing early exit return type",
-			categoryId: category.id,
-			status: "DRAFT",
-			variants: {
-				create: [
-					{
-						price: 10,
-						sku: "EARLY-EXIT-001",
-						stock: 50,
-						attributeValueIds: [categoryAttributes[0]?.values[0]?.id as string],
-					},
-				],
-			},
+			attributeValueCount: 2,
+			variants: [
+				{ price: 10, sku: "EARLY-EXIT-001", stock: 50, attributeValueIds: [] },
+			],
 			images: files,
-			imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
+			imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
 		});
-
-		expect(createStatus).toBe(201);
-		expectDefined(created);
 
 		const { data: patched, status: patchStatus } = await api
-			.products({ id: created.id })
+			.products({ id: product.id })
 			.patch({
-				name: created.name,
-				description: created.description,
+				name: product.name,
+				description: product.description,
 			});
 
 		expect(patchStatus).toBe(200);
