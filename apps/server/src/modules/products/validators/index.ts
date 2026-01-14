@@ -19,8 +19,6 @@ export {
 export {
 	type CategoryChangeAutoDraftInput,
 	computeFinalVariantCount,
-	countVariantsWithAttributeValues,
-	determineFinalStatusForBulk,
 	determinePublishStatus,
 	determineStatusAfterCategoryChange,
 	type PublishAttributeValidationInput,

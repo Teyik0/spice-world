@@ -182,63 +182,6 @@ export function computeFinalVariantCount(
 	return currentCount - deleteCount + createCount;
 }
 
-/**
- * Counts variants that have attribute values assigned.
- */
-export function countVariantsWithAttributeValues(
-	currentVariants: VariantAttributeData[],
-	variantsToCreate?: { attributeValueIds: string[] }[],
-	variantsToUpdate?: { id: string; attributeValueIds?: string[] }[],
-	variantsToDelete?: string[],
-): number {
-	const deletedIds = new Set(variantsToDelete ?? []);
-
-	const remainingVariants = currentVariants.filter(
-		(v) => v.id && !deletedIds.has(v.id),
-	);
-
-	const updateMap = new Map((variantsToUpdate ?? []).map((u) => [u.id, u]));
-
-	let count = remainingVariants.filter((v) => {
-		const update = v.id ? updateMap.get(v.id) : undefined;
-		const attrIds = update?.attributeValueIds ?? v.attributeValueIds;
-		return attrIds.length > 0;
-	}).length;
-
-	count += (variantsToCreate ?? []).filter(
-		(v) => v.attributeValueIds.length > 0,
-	).length;
-
-	return count;
-}
-
-/**
- * Determines the final status for bulk operations.
- *
- * Auto-draft rule: When changing category with >1 variant and requesting PUBLISHED status,
- * automatically set status to DRAFT instead of throwing an error.
- * This makes sense because attributeValues are being cleared, so product needs reconfiguration.
- */
-export function determineFinalStatusForBulk(
-	product: { status: ProductStatus; categoryId: string; variants: unknown[] },
-	requestedStatus: ProductStatus | undefined,
-	newCategoryId: string | undefined,
-): ProductStatus {
-	const hasCategoryChange =
-		!!newCategoryId && newCategoryId !== product.categoryId;
-	const variantCount = product.variants.length;
-
-	if (
-		hasCategoryChange &&
-		variantCount > 1 &&
-		requestedStatus === "PUBLISHED"
-	) {
-		return "DRAFT";
-	}
-
-	return requestedStatus ?? product.status;
-}
-
 interface DeterminePublishStatusInput {
 	requestedStatus?: ProductStatus;
 	currentStatus: ProductStatus;

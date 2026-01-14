@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
 import { treaty } from "@elysiajs/eden";
 import * as imagesModule from "@spice-world/server/lib/images";
 import type { productsRouter } from "@spice-world/server/modules/products";
+import type { ProductModel } from "@spice-world/server/modules/products/model";
 import { createTestDatabase } from "@spice-world/server/utils/db-manager";
 import {
 	createTestCategory,
@@ -9,7 +10,7 @@ import {
 	expectDefined,
 	randomLowerString,
 } from "@spice-world/server/utils/helper";
-import { file } from "bun";
+import { type BunFile, file } from "bun";
 
 let api: ReturnType<typeof treaty<typeof productsRouter>>;
 
@@ -43,9 +44,406 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		api = treaty(productsRouter);
 	});
 
+	interface SetupProductOptions {
+		attributeCount: number;
+		attributeValueCount: number;
+		variants: (typeof ProductModel.variantCreate)["static"][];
+		images: BunFile[];
+		imagesCreate: (typeof ProductModel.imageCreate)["static"][];
+	}
+
+	const setupProduct = async ({
+		attributeCount,
+		attributeValueCount,
+		variants,
+		images,
+		imagesCreate,
+	}: SetupProductOptions) => {
+		const category = await createTestCategory({
+			testDb,
+			attributeCount,
+			attributeValueCount,
+		});
+		expectDefined(category);
+
+		const testId = randomLowerString(8);
+		const productName = `test product ${testId} ${category.name}`;
+
+		const { data, status } = await api.products.post({
+			name: productName,
+			description: "Test product description",
+			status: "DRAFT",
+			categoryId: category.id,
+			variants: {
+				create: variants,
+			},
+			images,
+			imagesOps: {
+				create: imagesCreate,
+			},
+		});
+		expect(status).toBe(201);
+		expectDefined(data);
+		return { product: data, category };
+	};
+
 	afterAll(async () => {
 		await testDb.destroy();
 	}, 10000);
+
+	describe("PATCH /products - Business Logic Validations", () => {});
+
+	describe("PATCH /products - Complex Scenarios", () => {});
+
+	describe("PATCH /products - Variant Attribute Validations", () => {});
+
+	describe("PATCH /products - Images Validation", () => {
+		it("should throw VIO1 for duplicate fileIndex in imgOps.create", async () => {
+			const { product } = await setupProduct({
+				attributeCount: 2,
+				attributeValueCount: 2,
+				variants: [
+					{
+						price: 10,
+						sku: "DUP-IMG-TEST-1",
+						stock: 10,
+						attributeValueIds: [],
+					},
+				],
+				images: [file(filePath1), file(filePath2)],
+				imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+			});
+
+			const { error } = await api.products({ id: product.id }).patch({
+				images: [file(filePath1), file(filePath2)],
+				imagesOps: {
+					create: [
+						{ fileIndex: 1, isThumbnail: false },
+						{ fileIndex: 1, isThumbnail: false },
+					],
+				},
+			});
+
+			expectDefined(error);
+			expect(error.status).toBe(400);
+			expect(error.value).toMatchObject({
+				code: "IMAGES_VALIDATION_FAILED",
+				message: expect.any(String),
+				details: {
+					subErrors: expect.arrayContaining([
+						expect.objectContaining({
+							code: "VIO1",
+						}),
+					]),
+				},
+			});
+		});
+
+		it("should throw VIO2 for duplicate fileIndex in imgOps.update", async () => {
+			const { product } = await setupProduct({
+				attributeCount: 2,
+				attributeValueCount: 2,
+				variants: [
+					{
+						price: 10,
+						sku: "DUP-IMG-TEST-2",
+						stock: 10,
+						attributeValueIds: [],
+					},
+				],
+				images: [file(filePath1), file(filePath2)],
+				imagesCreate: [
+					{ fileIndex: 0, isThumbnail: true },
+					{ fileIndex: 1, isThumbnail: false },
+				],
+			});
+
+			const { error } = await api.products({ id: product.id }).patch({
+				images: [file(filePath1), file(filePath2)],
+				imagesOps: {
+					update: [
+						{ fileIndex: 1, id: product.images[0]?.id as string },
+						{ fileIndex: 1, id: product.images[1]?.id as string },
+					],
+				},
+			});
+
+			expectDefined(error);
+			expect(error.status).toBe(400);
+			expect(error.value).toMatchObject({
+				code: "IMAGES_VALIDATION_FAILED",
+				message: expect.any(String),
+				details: {
+					subErrors: expect.arrayContaining([
+						expect.objectContaining({
+							code: "VIO2",
+						}),
+					]),
+				},
+			});
+		});
+
+		it("should throw VIO3 for duplicate fileIndex accros in imgOps.create and in imgOps.update", async () => {
+			const { product } = await setupProduct({
+				attributeCount: 2,
+				attributeValueCount: 2,
+				variants: [
+					{
+						price: 10,
+						sku: "DUP-IMG-TEST-2",
+						stock: 10,
+						attributeValueIds: [],
+					},
+				],
+				images: [file(filePath1), file(filePath2)],
+				imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+			});
+
+			const { error } = await api.products({ id: product.id }).patch({
+				images: [file(filePath1), file(filePath2)],
+				imagesOps: {
+					update: [{ fileIndex: 0, id: product.images[0]?.id as string }],
+					create: [{ fileIndex: 0 }],
+				},
+			});
+
+			expectDefined(error);
+			expect(error.status).toBe(400);
+			expect(error.value).toMatchObject({
+				code: "IMAGES_VALIDATION_FAILED",
+				message: expect.any(String),
+				details: {
+					subErrors: expect.arrayContaining([
+						expect.objectContaining({
+							code: "VIO3",
+						}),
+					]),
+				},
+			});
+		});
+
+		it("should throw error VIO4 for more than one thumbnail set", async () => {
+			const { product } = await setupProduct({
+				attributeCount: 2,
+				attributeValueCount: 2,
+				variants: [
+					{
+						price: 10,
+						sku: "DUP-IMG-TEST-2",
+						stock: 10,
+						attributeValueIds: [],
+					},
+				],
+				images: [file(filePath1), file(filePath2)],
+				imagesCreate: [
+					{ fileIndex: 0, isThumbnail: true },
+					{ fileIndex: 1, isThumbnail: false },
+				],
+			});
+
+			const { error } = await api.products({ id: product.id }).patch({
+				images: [file(filePath1), file(filePath2)],
+				imagesOps: {
+					update: [
+						{
+							fileIndex: 0,
+							id: product.images[0]?.id as string,
+							isThumbnail: true,
+						},
+					],
+					create: [
+						{
+							fileIndex: 1,
+							isThumbnail: true,
+						},
+					],
+				},
+			});
+
+			expectDefined(error);
+			expect(error.status).toBe(400);
+			expect(error.value).toMatchObject({
+				code: "IMAGES_VALIDATION_FAILED",
+				message: expect.any(String),
+				details: {
+					subErrors: expect.arrayContaining([
+						expect.objectContaining({
+							code: "VIO4",
+						}),
+					]),
+				},
+			});
+
+			// 2nd case
+			const { error: err } = await api.products({ id: product.id }).patch({
+				images: [file(filePath1), file(filePath2)],
+				imagesOps: {
+					update: [
+						{
+							fileIndex: 0,
+							id: product.images[0]?.id as string,
+							isThumbnail: true,
+						},
+						{
+							fileIndex: 1,
+							isThumbnail: true,
+							id: product.images[1]?.id as string,
+						},
+					],
+				},
+			});
+
+			expectDefined(err);
+			expect(err.status).toBe(400);
+			expect(err.value).toMatchObject({
+				code: "IMAGES_VALIDATION_FAILED",
+				message: expect.any(String),
+				details: {
+					subErrors: expect.arrayContaining([
+						expect.objectContaining({
+							code: "VIO4",
+						}),
+					]),
+				},
+			});
+
+			// 3rd case
+			const { error: errr } = await api.products({ id: product.id }).patch({
+				images: [file(filePath1), file(filePath2)],
+				imagesOps: {
+					create: [
+						{
+							fileIndex: 1,
+							isThumbnail: true,
+						},
+						{
+							fileIndex: 0,
+							isThumbnail: true,
+						},
+					],
+				},
+			});
+			expectDefined(errr);
+			expect(errr.status).toBe(400);
+			expect(errr.value).toMatchObject({
+				code: "IMAGES_VALIDATION_FAILED",
+				message: expect.any(String),
+				details: {
+					subErrors: expect.arrayContaining([
+						expect.objectContaining({
+							code: "VIO4",
+						}),
+					]),
+				},
+			});
+		});
+
+		it("should throw error VIO5 for fileIndex out of bounds", async () => {
+			const { product } = await setupProduct({
+				attributeCount: 2,
+				attributeValueCount: 2,
+				variants: [
+					{
+						price: 10,
+						sku: "DUP-IMG-TEST-2",
+						stock: 10,
+						attributeValueIds: [],
+					},
+				],
+				images: [file(filePath1)],
+				imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+			});
+
+			const { error } = await api.products({ id: product.id }).patch({
+				images: [file(filePath1), file(filePath2)],
+				imagesOps: {
+					update: [{ fileIndex: 3, id: product.images[0]?.id as string }],
+					create: [{ fileIndex: 0 }],
+				},
+			});
+
+			expectDefined(error);
+			expect(error.status).toBe(400);
+			expect(error.value).toMatchObject({
+				code: "IMAGES_VALIDATION_FAILED",
+				message: expect.any(String),
+				details: {
+					subErrors: expect.arrayContaining([
+						expect.objectContaining({
+							code: "VIO5",
+						}),
+					]),
+				},
+			});
+
+			// 2nd case
+			const { error: err } = await api.products({ id: product.id }).patch({
+				images: [file(filePath1), file(filePath2)],
+				imagesOps: {
+					update: [{ fileIndex: 0, id: product.images[0]?.id as string }],
+					create: [{ fileIndex: 2 }],
+				},
+			});
+
+			expectDefined(err);
+			expect(err.status).toBe(400);
+			expect(err.value).toMatchObject({
+				code: "IMAGES_VALIDATION_FAILED",
+				message: expect.any(String),
+				details: {
+					subErrors: expect.arrayContaining([
+						expect.objectContaining({
+							code: "VIO5",
+						}),
+					]),
+				},
+			});
+		});
+
+		it("should throw VIO6 when try delete all images", async () => {
+			const { product } = await setupProduct({
+				attributeCount: 2,
+				attributeValueCount: 2,
+				variants: [
+					{
+						price: 10,
+						sku: "DUP-IMG-TEST-2",
+						stock: 10,
+						attributeValueIds: [],
+					},
+				],
+				images: [file(filePath1), file(filePath2)],
+				imagesCreate: [
+					{ fileIndex: 0, isThumbnail: true },
+					{ fileIndex: 1, isThumbnail: false },
+				],
+			});
+
+			const { error } = await api.products({ id: product.id }).patch({
+				images: [file(filePath1), file(filePath2)],
+				imagesOps: {
+					delete: [
+						product.images[0]?.id as string,
+						product.images[1]?.id as string,
+					],
+				},
+			});
+
+			expectDefined(error);
+			expect(error.status).toBe(400);
+			expect(error.value).toMatchObject({
+				code: "IMAGES_VALIDATION_FAILED",
+				message: expect.any(String),
+				details: {
+					subErrors: expect.arrayContaining([
+						expect.objectContaining({
+							code: "VIO6",
+						}),
+					]),
+				},
+			});
+		});
+	});
 
 	it("should update the product successfully", async () => {
 		const category = await createTestCategory({
@@ -513,23 +911,32 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		expect(createStatus).toBe(201);
 		expectDefined(createdProduct);
 
-		const { status, error } = await api
-			.products({ id: createdProduct.id })
-			.patch({
-				variants: {
-					create: [
-						{
-							price: 15,
-							sku: "INVALID-VARIANT",
-							stock: 20,
-							attributeValueIds: [herbsAttributes[0]?.values[0]?.id as string],
-						},
-					],
-				},
-			});
+		const { error } = await api.products({ id: createdProduct.id }).patch({
+			variants: {
+				create: [
+					{
+						price: 15,
+						sku: "INVALID-VARIANT",
+						stock: 20,
+						attributeValueIds: [herbsAttributes[0]?.values[0]?.id as string],
+					},
+				],
+			},
+		});
 
-		expect(status).toBe(400);
 		expectDefined(error);
+		expect(error.status).toBe(400);
+		expect(error.value).toMatchObject({
+			code: "VARIANTS_VALIDATION_FAILED",
+			message: expect.any(String),
+			details: {
+				subErrors: expect.arrayContaining([
+					expect.objectContaining({
+						code: "VVA1",
+					}),
+				]),
+			},
+		});
 	});
 
 	it("should return an error if an attribute coming from another category is set for update", async () => {
@@ -573,21 +980,30 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		const existingVariantId = createdProduct.variants[0]?.id;
 		expectDefined(existingVariantId);
 
-		const { status, error } = await api
-			.products({ id: createdProduct.id })
-			.patch({
-				variants: {
-					update: [
-						{
-							id: existingVariantId,
-							attributeValueIds: [herbsAttributes[0]?.values[0]?.id as string],
-						},
-					],
-				},
-			});
+		const { error } = await api.products({ id: createdProduct.id }).patch({
+			variants: {
+				update: [
+					{
+						id: existingVariantId,
+						attributeValueIds: [herbsAttributes[0]?.values[0]?.id as string],
+					},
+				],
+			},
+		});
 
-		expect(status).toBe(400);
 		expectDefined(error);
+		expect(error.status).toBe(400);
+		expect(error.value).toMatchObject({
+			code: "VARIANTS_VALIDATION_FAILED",
+			message: expect.any(String),
+			details: {
+				subErrors: expect.arrayContaining([
+					expect.objectContaining({
+						code: "VVA1",
+					}),
+				]),
+			},
+		});
 	});
 
 	it("should delete variants successfully", async () => {
@@ -747,20 +1163,29 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		expect(createStatus).toBe(201);
 		expectDefined(createdProduct);
 
-		const { status, error } = await api
-			.products({ id: createdProduct.id })
-			.patch({
-				images: files,
-				imagesOps: {
-					create: [
-						{ fileIndex: 0, isThumbnail: true },
-						{ fileIndex: 1, isThumbnail: true },
-					],
-				},
-			});
+		const { error } = await api.products({ id: createdProduct.id }).patch({
+			images: files,
+			imagesOps: {
+				create: [
+					{ fileIndex: 0, isThumbnail: true },
+					{ fileIndex: 1, isThumbnail: true },
+				],
+			},
+		});
 
-		expect(status).toBe(400);
 		expectDefined(error);
+		expect(error.status).toBe(400);
+		expect(error.value).toMatchObject({
+			code: "IMAGES_VALIDATION_FAILED",
+			message: expect.any(String),
+			details: {
+				subErrors: expect.arrayContaining([
+					expect.objectContaining({
+						code: "VIO4",
+					}),
+				]),
+			},
+		});
 	});
 
 	it("should reject fileIndex out of bounds", async () => {
@@ -861,11 +1286,23 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 
 		const allImageIds = createdProduct.images.map((img) => img.id);
 
-		const { status } = await api.products({ id: createdProduct.id }).patch({
+		const { error } = await api.products({ id: createdProduct.id }).patch({
 			imagesOps: { delete: allImageIds },
 		});
 
-		expect(status).toBe(400);
+		expectDefined(error);
+		expect(error.status).toBe(400);
+		expect(error.value).toMatchObject({
+			code: "IMAGES_VALIDATION_FAILED",
+			message: expect.any(String),
+			details: {
+				subErrors: expect.arrayContaining([
+					expect.objectContaining({
+						code: "VIO6",
+					}),
+				]),
+			},
+		});
 	});
 
 	it("should reject exceeding max images", async () => {
@@ -969,11 +1406,23 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 
 		const allVariantIds = createdProduct.variants.map((v) => v.id);
 
-		const { status } = await api.products({ id: createdProduct.id }).patch({
+		const { error } = await api.products({ id: createdProduct.id }).patch({
 			variants: { delete: allVariantIds },
 		});
 
-		expect(status).toBe(400);
+		expectDefined(error);
+		expect(error.status).toBe(400);
+		expect(error.value).toMatchObject({
+			code: "VARIANTS_VALIDATION_FAILED",
+			message: expect.any(String),
+			details: {
+				subErrors: expect.arrayContaining([
+					expect.objectContaining({
+						code: "VVA3",
+					}),
+				]),
+			},
+		});
 	});
 
 	it("should autoassign DRAFT status when category change and more than 1 variant", async () => {
@@ -1123,13 +1572,25 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		const variantId = createdProduct.variants[0]?.id;
 		expectDefined(variantId);
 
-		const { status } = await api.products({ id: createdProduct.id }).patch({
+		const { error } = await api.products({ id: createdProduct.id }).patch({
 			variants: {
 				update: [{ id: variantId, attributeValueIds: [valueId1, valueId2] }],
 			},
 		});
 
-		expect(status).toBe(400);
+		expectDefined(error);
+		expect(error.status).toBe(400);
+		expect(error.value).toMatchObject({
+			code: "VARIANTS_VALIDATION_FAILED",
+			message: expect.any(String),
+			details: {
+				subErrors: expect.arrayContaining([
+					expect.objectContaining({
+						code: "VVA2",
+					}),
+				]),
+			},
+		});
 	});
 
 	it("should change category successfully with atomic variant replacement", async () => {
@@ -1282,7 +1743,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 					],
 				},
 				images: files,
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
+				imagesOps: { create: [{ fileIndex: 0, isThumbnail: false }] },
 			});
 
 		expect(createStatus).toBe(201);
@@ -1291,7 +1752,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		const existingImage = createdProduct.images[0];
 		expectDefined(existingImage);
 
-		const { status } = await api.products({ id: createdProduct.id }).patch({
+		const { error } = await api.products({ id: createdProduct.id }).patch({
 			images: files,
 			imagesOps: {
 				create: [{ fileIndex: 0, isThumbnail: true }],
@@ -1299,7 +1760,19 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 			},
 		});
 
-		expect(status).toBe(400);
+		expectDefined(error);
+		expect(error.status).toBe(400);
+		expect(error.value).toMatchObject({
+			code: "IMAGES_VALIDATION_FAILED",
+			message: expect.any(String),
+			details: {
+				subErrors: expect.arrayContaining([
+					expect.objectContaining({
+						code: "VIO4",
+					}),
+				]),
+			},
+		});
 	});
 
 	it("should reject fileIndex overlap between create and update", async () => {
@@ -1337,7 +1810,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		const existingImage = createdProduct.images[0];
 		expectDefined(existingImage);
 
-		const { status } = await api.products({ id: createdProduct.id }).patch({
+		const { error } = await api.products({ id: createdProduct.id }).patch({
 			images: files,
 			imagesOps: {
 				create: [{ fileIndex: 0 }],
@@ -1345,7 +1818,19 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 			},
 		});
 
-		expect(status).toBe(400);
+		expectDefined(error);
+		expect(error.status).toBe(400);
+		expect(error.value).toMatchObject({
+			code: "IMAGES_VALIDATION_FAILED",
+			message: expect.any(String),
+			details: {
+				subErrors: expect.arrayContaining([
+					expect.objectContaining({
+						code: "VIO3",
+					}),
+				]),
+			},
+		});
 	});
 
 	it("should return proper category name on early exit (no changes)", async () => {

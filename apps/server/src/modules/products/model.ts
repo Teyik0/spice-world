@@ -71,7 +71,7 @@ export namespace ProductModel {
 	});
 	export type imageOperations = typeof imageOperations.static;
 
-	const variantCreate = t.Object({
+	export const variantCreate = t.Object({
 		price: t.Number({ minimum: 0 }),
 		sku: t.Optional(t.String({ minLength: 3 })),
 		stock: t.Optional(t.Number({ minimum: 0, default: 0 })),

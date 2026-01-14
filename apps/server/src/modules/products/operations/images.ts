@@ -1,5 +1,4 @@
 import { uploadFiles } from "@spice-world/server/lib/images";
-import { prisma } from "@spice-world/server/lib/prisma";
 import type { PrismaClient } from "@spice-world/server/prisma/client";
 import type { UploadedFileData } from "uploadthing/types";
 import type { ValidationResult } from "../../shared";
@@ -117,25 +116,6 @@ export async function executeImageDeletes(
 	});
 
 	return toDelete.map((img) => img.key);
-}
-
-/**
- * Fetches allowed attribute values for a category.
- * Returns a Map of valueId -> attributeId for validation.
- */
-export async function fetchAllowedAttributeValues(
-	categoryId: string,
-): Promise<Map<string, string>> {
-	const attributeValues = await prisma.attributeValue.findMany({
-		where: { attribute: { categoryId } },
-		select: { id: true, attributeId: true },
-	});
-
-	const map = new Map<string, string>();
-	for (const value of attributeValues) {
-		map.set(value.id, value.attributeId);
-	}
-	return map;
 }
 
 /**
