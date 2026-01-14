@@ -14,13 +14,19 @@ import {
 } from "./operations/images";
 import { setFinalStatus, type ValidationResults } from "./operations/status";
 import { assignThumbnail } from "./operations/thumbnail";
+import type { ProductWithRelations } from "./types";
 import {
-	determinePublishStatus,
+	calculateReconfigurationStatus,
+	detectCategoryChange,
+	determineStatus,
 	hasImageChanges,
 	hasProductChanges,
 	hasVariantChanges,
+	hasVersionConflict,
+	validateImagesOps,
 	validatePublishAttributeRequirements,
 	validatePublishHasPositivePrice,
+	validateVariantsOps,
 } from "./validators";
 import { validateImages } from "./validators/images";
 import {
@@ -421,26 +427,14 @@ export const productService = {
 		variants: vOps,
 		_version,
 	}: ProductModel.patchBody & uuidGuard) {
-		const currentProduct = await prisma.product.findUniqueOrThrow({
+		const currentProduct = (await prisma.product.findUniqueOrThrow({
 			where: { id },
-			select: {
-				id: true,
-				name: true,
-				description: true,
-				status: true,
-				version: true,
-				categoryId: true,
-				slug: true,
-				createdAt: true,
-				updatedAt: true,
+			include: {
 				category: {
-					select: {
-						id: true,
-						name: true,
+					include: {
 						attributes: {
-							select: {
-								id: true,
-								values: { select: { id: true, value: true } },
+							include: {
+								values: true,
 							},
 						},
 					},
@@ -453,71 +447,51 @@ export const productService = {
 				},
 				_count: { select: { variants: true } },
 			},
-		});
+		})) as ProductWithRelations;
 
-		const [newCategory, imagesResult] = await Promise.all([
-			categoryId
-				? prisma.category.findUnique({
-						where: { id: categoryId },
-						...CATEGORY_WITH_VALUES_ARGS,
-					})
-				: Promise.resolve(undefined),
-			imagesOps
-				? Promise.resolve(
-						validateImages({
-							images: (images ?? []) as File[],
-							imagesOps,
-							currentImages: currentProduct.images,
-						}),
-					)
-				: Promise.resolve({ success: true, data: undefined } as const),
-		]);
-
-		if (_version !== undefined && currentProduct.version !== _version) {
+		// Check for version conflict (optimistic locking)
+		if (
+			hasVersionConflict({ _version } as ProductModel.patchBody, currentProduct)
+		) {
 			throw status("Conflict", {
 				message: `Product modified. Expected version ${_version}, current is ${currentProduct.version}`,
 				code: "VERSION_CONFLICT",
 			});
 		}
 
-		assertValid(imagesResult);
+		// Detect category change and validate new category exists
+		const categoryChange = await detectCategoryChange(
+			{ categoryId } as ProductModel.patchBody,
+			currentProduct,
+		);
 
-		if (categoryId && !newCategory) {
-			throw status("Bad Request", {
-				message: `Category ${categoryId} not found`,
-				code: "CATEGORY_NOT_FOUND",
-			});
-		}
+		// Validate image operations
+		validateImagesOps(
+			{ images, imagesOps } as ProductModel.patchBody,
+			currentProduct,
+		);
 
-		if (vOps) {
-			assertValid(
-				validateVariants({
-					// biome-ignore lint/suspicious/noExplicitAny: ok
-					category: (newCategory ?? currentProduct.category) as any,
-					vOps,
-					currVariants: currentProduct.variants.map((v) => ({
-						id: v.id,
-						attributeValueIds: v.attributeValues.map((av) => av.id),
-					})),
-				}),
-			);
-		}
+		// Validate variant operations (including VVA3 for category change without vOps)
+		validateVariantsOps(
+			{ variants: vOps } as ProductModel.patchBody,
+			currentProduct,
+			categoryChange,
+		);
 
+		// Prepare thumbnail assignment
 		const { referencedIndices } = assignThumbnail({
 			imagesOps: imagesOps ?? { create: [], update: [], delete: [] },
 			currentImages: currentProduct.images,
 		});
 
-		const categoryHasAttributes =
-			(newCategory ?? currentProduct.category).attributes.length > 0;
-		const { finalStatus, warnings } = determinePublishStatus({
-			requestedStatus,
-			currentStatus: currentProduct.status,
-			currentVariants: currentProduct.variants,
-			variants: vOps,
-			categoryHasAttributes,
-		});
+		// Determine final status (handles auto-draft for category change)
+		const { finalStatus, warnings } = determineStatus(
+			{ status: requestedStatus, variants: vOps } as ProductModel.patchBody,
+			currentProduct,
+			categoryChange,
+		);
 
+		// Check if there are any actual changes
 		const hasProductFieldChanges = hasProductChanges({
 			name,
 			description,
@@ -536,17 +510,24 @@ export const productService = {
 			currentVariants: currentProduct.variants,
 		});
 
-		const hasAnyChanges =
+		const hasChanges =
 			hasProductFieldChanges ||
 			hasImagesFieldChanges ||
 			hasVariantsFieldChanges;
 
-		if (!hasAnyChanges) {
+		if (!hasChanges) {
 			return status("OK", {
 				product: currentProduct,
 			});
 		}
 
+		// Calculate reconfiguration status for category change
+		const { isProperlyReconfigured } = calculateReconfigurationStatus(
+			{ variants: vOps } as ProductModel.patchBody,
+			currentProduct,
+		);
+
+		// Upload new images
 		let uploadMap: Map<number, import("uploadthing/types").UploadedFileData> =
 			new Map();
 		if (referencedIndices.length > 0) {
@@ -563,6 +544,7 @@ export const productService = {
 
 		try {
 			const product = await prisma.$transaction(async (tx) => {
+				// 1. Update product
 				const updatedProduct = await tx.product.update({
 					where: { id },
 					data: {
@@ -572,7 +554,9 @@ export const productService = {
 						}),
 						...(description !== undefined && { description }),
 						status: finalStatus,
-						...(categoryId && { category: { connect: { id: categoryId } } }),
+						...(categoryChange.categoryId && {
+							category: { connect: { id: categoryChange.categoryId } },
+						}),
 						version: { increment: 1 },
 					},
 					include: {
@@ -580,6 +564,7 @@ export const productService = {
 					},
 				});
 
+				// 2. Handle image operations
 				if (imagesOps) {
 					if (imagesOps.create && imagesOps.create.length > 0) {
 						await executeImageCreates(
@@ -611,6 +596,7 @@ export const productService = {
 					}
 				}
 
+				// 3. Handle variant operations
 				if (vOps) {
 					const promises: Promise<unknown>[] = [];
 
@@ -677,6 +663,24 @@ export const productService = {
 					await Promise.all(promises);
 				}
 
+				// 4. Clear attributeValues if category changed and not properly reconfigured
+				if (categoryChange.isChanging && !isProperlyReconfigured) {
+					const variants = await tx.productVariant.findMany({
+						where: { productId: id },
+						select: { id: true },
+					});
+
+					await Promise.all(
+						variants.map((v) =>
+							tx.productVariant.update({
+								where: { id: v.id },
+								data: { attributeValues: { set: [] } },
+							}),
+						),
+					);
+				}
+
+				// 5. Fetch and return updated product
 				const [updatedVariants, updatedImages] = await Promise.all([
 					tx.productVariant.findMany({
 						where: { productId: id },

@@ -322,7 +322,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 					create: [
 						{
 							price: 10,
-							sku: "DEL-IMG-TEST",
+							sku: "ASG-IMG-TEST",
 							stock: 10,
 							attributeValueIds: [
 								category.attributes[0]?.values[0]?.id as string,

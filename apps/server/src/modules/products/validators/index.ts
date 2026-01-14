@@ -9,6 +9,14 @@ export {
 	validateImages,
 } from "./images";
 export {
+	calculateReconfigurationStatus,
+	detectCategoryChange,
+	determineStatus,
+	hasVersionConflict,
+	validateImagesOps,
+	validateVariantsOps,
+} from "./patch";
+export {
 	type CategoryChangeAutoDraftInput,
 	computeFinalVariantCount,
 	countVariantsWithAttributeValues,

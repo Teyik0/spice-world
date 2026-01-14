@@ -59,7 +59,10 @@ async function getOrCreateCategoryWithAttributes(categoryName: string) {
 	if (categoryAttributesCache.has(category.id)) {
 		return {
 			category,
-			attributesByAttrId: categoryAttributesCache.get(category.id)!,
+			attributesByAttrId: categoryAttributesCache.get(category.id) as Map<
+				string,
+				string[]
+			>,
 		};
 	}
 
@@ -127,12 +130,7 @@ async function seedCategoriesAndAttributes() {
 	);
 }
 
-async function createProductBatch(
-	batchIndex: number,
-	batchSize: number,
-): Promise<void> {
-	const startOffset = batchIndex * batchSize;
-
+async function createProductBatch(batchSize: number): Promise<void> {
 	// Step 1: Generate product data
 	const productsData: Array<{
 		name: string;
@@ -148,7 +146,6 @@ async function createProductBatch(
 	}> = [];
 
 	for (let i = 0; i < batchSize; i++) {
-		const globalIndex = startOffset + i;
 		const categoryName = faker.helpers.arrayElement(CATEGORY_NAMES);
 		const { category, attributesByAttrId } =
 			await getOrCreateCategoryWithAttributes(categoryName);
@@ -297,7 +294,7 @@ async function main() {
 
 		const batchStartTime = Date.now();
 
-		await createProductBatch(batchIndex, currentBatchSize);
+		await createProductBatch(batchIndex);
 
 		const batchDuration = ((Date.now() - batchStartTime) / 1000).toFixed(2);
 		const totalCreated = Math.min((batchIndex + 1) * BATCH_SIZE, NUM_PRODUCTS);
