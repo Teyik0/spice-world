@@ -52,7 +52,7 @@ export function hasImageChanges({
 				(op.altText !== undefined && op.altText !== current.altText) ||
 				(op.isThumbnail !== undefined &&
 					op.isThumbnail !== current.isThumbnail) ||
-				op.fileIndex !== undefined
+				op.file !== undefined
 			);
 		});
 	}

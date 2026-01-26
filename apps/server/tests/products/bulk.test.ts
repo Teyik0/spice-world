@@ -23,8 +23,8 @@ let api: ReturnType<typeof treaty<typeof productsRouter>>;
 describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
 	let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
 
-	const filePath1 = `${import.meta.dir}/../../public/cumin.webp`;
-	const filePath2 = `${import.meta.dir}/../../public/curcuma.jpg`;
+	const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
+	const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
 	const files = [file(filePath1), file(filePath2)];
 
 	beforeAll(async () => {
@@ -76,8 +76,7 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
 					},
 				],
 			},
-			images: files,
-			imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
+			imagesOps: { create: [{ file: files[0] as File, isThumbnail: true }] },
 		});
 
 		expect(s1).toBe(201);
@@ -132,8 +131,7 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
 					},
 				],
 			},
-			images: files,
-			imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
+			imagesOps: { create: [{ file: files[0] as File, isThumbnail: true }] },
 		});
 
 		expect(createStatus).toBe(201);

@@ -23,8 +23,8 @@ let api: ReturnType<typeof treaty<typeof productsRouter>>;
 describe.concurrent("DELETE /products/:id - Integration Tests", () => {
 	let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
 
-	const filePath1 = `${import.meta.dir}/../../public/cumin.webp`;
-	const filePath2 = `${import.meta.dir}/../../public/curcuma.jpg`;
+	const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
+	const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
 
 	beforeAll(async () => {
 		testDb = await createTestDatabase("delete.test.ts");
@@ -74,11 +74,10 @@ describe.concurrent("DELETE /products/:id - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath1), file(filePath2)],
 				imagesOps: {
 					create: [
-						{ fileIndex: 0, isThumbnail: true },
-						{ fileIndex: 1, isThumbnail: false },
+						{ file: file(filePath1), isThumbnail: true },
+						{ file: file(filePath2), isThumbnail: false },
 					],
 				},
 			});

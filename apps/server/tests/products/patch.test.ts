@@ -17,9 +17,8 @@ let api: ReturnType<typeof treaty<typeof productsRouter>>;
 describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
 
-	const filePath1 = `${import.meta.dir}/../../public/cumin.webp`;
-	const filePath2 = `${import.meta.dir}/../../public/curcuma.jpg`;
-	const files = [file(filePath1), file(filePath2)];
+	const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
+	const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
 
 	beforeAll(async () => {
 		testDb = await createTestDatabase("patch.test.ts");
@@ -48,15 +47,15 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		attributeCount: number;
 		attributeValueCount: number;
 		variants: (typeof ProductModel.variantCreate)["static"][];
-		images: BunFile[];
-		imagesCreate: (typeof ProductModel.imageCreate)["static"][];
+		imagesCreate: (Omit<(typeof ProductModel.imageCreate)["static"], "file"> & {
+			file: BunFile;
+		})[];
 	}
 
 	const setupProduct = async ({
 		attributeCount,
 		attributeValueCount,
 		variants,
-		images,
 		imagesCreate,
 	}: SetupProductOptions) => {
 		const category = await createTestCategory({
@@ -77,7 +76,6 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 			variants: {
 				create: variants,
 			},
-			images,
 			imagesOps: {
 				create: imagesCreate,
 			},
@@ -127,8 +125,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath1)],
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
+				imagesOps: { create: [{ isThumbnail: true, file: file(filePath1) }] },
 			});
 
 			const testId2 = randomLowerString(8);
@@ -149,8 +146,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath1)],
-				imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
+				imagesOps: { create: [{ isThumbnail: true, file: file(filePath1) }] },
 			});
 
 			expectDefined(product1);
@@ -170,8 +166,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [{ price: 10, stock: 10, attributeValueIds: [] }],
-				images: files,
-				imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
 
 			// Add a second variant with different attribute values
@@ -220,8 +215,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				variants: [
 					{ price: 10, sku: "VERSION-TEST", stock: 10, attributeValueIds: [] },
 				],
-				images: files,
-				imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
 
 			const { status } = await api.products({ id: product.id }).patch({
@@ -270,8 +264,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 							},
 						],
 					},
-					images: files,
-					imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
+					imagesOps: { create: [{ isThumbnail: true, file: file(filePath1) }] },
 				});
 
 			expect(createStatus).toBe(201);
@@ -338,8 +331,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 							},
 						],
 					},
-					images: files,
-					imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
+					imagesOps: { create: [{ isThumbnail: true, file: file(filePath1) }] },
 				});
 
 			expect(createStatus).toBe(201);
@@ -414,8 +406,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 							},
 						],
 					},
-					images: files,
-					imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
+					imagesOps: { create: [{ isThumbnail: true, file: file(filePath1) }] },
 				});
 
 			expect(createStatus).toBe(201);
@@ -466,8 +457,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 							},
 						],
 					},
-					images: files,
-					imagesOps: { create: [{ fileIndex: 0, isThumbnail: true }] },
+					imagesOps: { create: [{ isThumbnail: true, file: file(filePath1) }] },
 				});
 
 			expect(createStatus).toBe(201);
@@ -512,8 +502,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				variants: [
 					{ price: 10, sku: "DUP-ATTR-TEST", stock: 10, attributeValueIds: [] },
 				],
-				images: files,
-				imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
 
 			const firstAttrValues = category.attributes[0]?.values;
@@ -549,130 +538,6 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	describe("PATCH /products - Images Validation", () => {
-		it("should throw VIO1 for duplicate fileIndex in imgOps.create", async () => {
-			const { product } = await setupProduct({
-				attributeCount: 2,
-				attributeValueCount: 2,
-				variants: [
-					{
-						price: 10,
-						sku: "DUP-IMG-TEST-1",
-						stock: 10,
-						attributeValueIds: [],
-					},
-				],
-				images: [file(filePath1), file(filePath2)],
-				imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
-			});
-
-			const { error } = await api.products({ id: product.id }).patch({
-				images: [file(filePath1), file(filePath2)],
-				imagesOps: {
-					create: [
-						{ fileIndex: 1, isThumbnail: false },
-						{ fileIndex: 1, isThumbnail: false },
-					],
-				},
-			});
-
-			expectDefined(error);
-			expect(error.status).toBe(400);
-			expect(error.value).toMatchObject({
-				code: "IMAGES_VALIDATION_FAILED",
-				message: expect.any(String),
-				details: {
-					subErrors: expect.arrayContaining([
-						expect.objectContaining({
-							code: "VIO1",
-						}),
-					]),
-				},
-			});
-		});
-
-		it("should throw VIO2 for duplicate fileIndex in imgOps.update", async () => {
-			const { product } = await setupProduct({
-				attributeCount: 2,
-				attributeValueCount: 2,
-				variants: [
-					{
-						price: 10,
-						sku: "DUP-IMG-TEST-2",
-						stock: 10,
-						attributeValueIds: [],
-					},
-				],
-				images: [file(filePath1), file(filePath2)],
-				imagesCreate: [
-					{ fileIndex: 0, isThumbnail: true },
-					{ fileIndex: 1, isThumbnail: false },
-				],
-			});
-
-			const { error } = await api.products({ id: product.id }).patch({
-				images: [file(filePath1), file(filePath2)],
-				imagesOps: {
-					update: [
-						{ fileIndex: 1, id: product.images[0]?.id as string },
-						{ fileIndex: 1, id: product.images[1]?.id as string },
-					],
-				},
-			});
-
-			expectDefined(error);
-			expect(error.status).toBe(400);
-			expect(error.value).toMatchObject({
-				code: "IMAGES_VALIDATION_FAILED",
-				message: expect.any(String),
-				details: {
-					subErrors: expect.arrayContaining([
-						expect.objectContaining({
-							code: "VIO2",
-						}),
-					]),
-				},
-			});
-		});
-
-		it("should throw VIO3 for duplicate fileIndex accros in imgOps.create and in imgOps.update", async () => {
-			const { product } = await setupProduct({
-				attributeCount: 2,
-				attributeValueCount: 2,
-				variants: [
-					{
-						price: 10,
-						sku: "DUP-IMG-TEST-3",
-						stock: 10,
-						attributeValueIds: [],
-					},
-				],
-				images: [file(filePath1), file(filePath2)],
-				imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
-			});
-
-			const { error } = await api.products({ id: product.id }).patch({
-				images: [file(filePath1), file(filePath2)],
-				imagesOps: {
-					update: [{ fileIndex: 0, id: product.images[0]?.id as string }],
-					create: [{ fileIndex: 0 }],
-				},
-			});
-
-			expectDefined(error);
-			expect(error.status).toBe(400);
-			expect(error.value).toMatchObject({
-				code: "IMAGES_VALIDATION_FAILED",
-				message: expect.any(String),
-				details: {
-					subErrors: expect.arrayContaining([
-						expect.objectContaining({
-							code: "VIO3",
-						}),
-					]),
-				},
-			});
-		});
-
 		it("should throw error VIO4 for more than one thumbnail set", async () => {
 			const { product } = await setupProduct({
 				attributeCount: 2,
@@ -685,26 +550,24 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 						attributeValueIds: [],
 					},
 				],
-				images: [file(filePath1), file(filePath2)],
 				imagesCreate: [
-					{ fileIndex: 0, isThumbnail: true },
-					{ fileIndex: 1, isThumbnail: false },
+					{ isThumbnail: true, file: file(filePath1) },
+					{ isThumbnail: false, file: file(filePath2) },
 				],
 			});
 
+			// Case 1: update + create both with isThumbnail: true
 			const { error } = await api.products({ id: product.id }).patch({
-				images: [file(filePath1), file(filePath2)],
 				imagesOps: {
 					update: [
 						{
-							fileIndex: 0,
 							id: product.images[0]?.id as string,
 							isThumbnail: true,
 						},
 					],
 					create: [
 						{
-							fileIndex: 1,
+							file: file(filePath2),
 							isThumbnail: true,
 						},
 					],
@@ -725,18 +588,15 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				},
 			});
 
-			// 2nd case
+			// 2nd case: two updates both with isThumbnail: true
 			const { error: err } = await api.products({ id: product.id }).patch({
-				images: [file(filePath1), file(filePath2)],
 				imagesOps: {
 					update: [
 						{
-							fileIndex: 0,
 							id: product.images[0]?.id as string,
 							isThumbnail: true,
 						},
 						{
-							fileIndex: 1,
 							isThumbnail: true,
 							id: product.images[1]?.id as string,
 						},
@@ -758,17 +618,16 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				},
 			});
 
-			// 3rd case
+			// 3rd case: two creates both with isThumbnail: true
 			const { error: errr } = await api.products({ id: product.id }).patch({
-				images: [file(filePath1), file(filePath2)],
 				imagesOps: {
 					create: [
 						{
-							fileIndex: 1,
+							file: file(filePath2),
 							isThumbnail: true,
 						},
 						{
-							fileIndex: 0,
+							file: file(filePath1),
 							isThumbnail: true,
 						},
 					],
@@ -789,68 +648,6 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 			});
 		});
 
-		it("should throw error VIO5 for fileIndex out of bounds", async () => {
-			const { product } = await setupProduct({
-				attributeCount: 2,
-				attributeValueCount: 2,
-				variants: [
-					{
-						price: 10,
-						sku: "DUP-IMG-TEST-5",
-						stock: 10,
-						attributeValueIds: [],
-					},
-				],
-				images: [file(filePath1)],
-				imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
-			});
-
-			const { error } = await api.products({ id: product.id }).patch({
-				images: [file(filePath1), file(filePath2)],
-				imagesOps: {
-					update: [{ fileIndex: 3, id: product.images[0]?.id as string }],
-					create: [{ fileIndex: 0 }],
-				},
-			});
-
-			expectDefined(error);
-			expect(error.status).toBe(400);
-			expect(error.value).toMatchObject({
-				code: "IMAGES_VALIDATION_FAILED",
-				message: expect.any(String),
-				details: {
-					subErrors: expect.arrayContaining([
-						expect.objectContaining({
-							code: "VIO5",
-						}),
-					]),
-				},
-			});
-
-			// 2nd case
-			const { error: err } = await api.products({ id: product.id }).patch({
-				images: [file(filePath1), file(filePath2)],
-				imagesOps: {
-					update: [{ fileIndex: 0, id: product.images[0]?.id as string }],
-					create: [{ fileIndex: 2 }],
-				},
-			});
-
-			expectDefined(err);
-			expect(err.status).toBe(400);
-			expect(err.value).toMatchObject({
-				code: "IMAGES_VALIDATION_FAILED",
-				message: expect.any(String),
-				details: {
-					subErrors: expect.arrayContaining([
-						expect.objectContaining({
-							code: "VIO5",
-						}),
-					]),
-				},
-			});
-		});
-
 		it("should throw error VIO6 when try delete all images", async () => {
 			const { product } = await setupProduct({
 				attributeCount: 2,
@@ -863,15 +660,13 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 						attributeValueIds: [],
 					},
 				],
-				images: [file(filePath1), file(filePath2)],
 				imagesCreate: [
-					{ fileIndex: 0, isThumbnail: true },
-					{ fileIndex: 1, isThumbnail: false },
+					{ isThumbnail: true, file: file(filePath1) },
+					{ isThumbnail: false, file: file(filePath2) },
 				],
 			});
 
 			const { error } = await api.products({ id: product.id }).patch({
-				images: [file(filePath1), file(filePath2)],
 				imagesOps: {
 					delete: [
 						product.images[0]?.id as string,
@@ -906,10 +701,9 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 						attributeValueIds: [],
 					},
 				],
-				images: [file(filePath1), file(filePath2)],
 				imagesCreate: [
-					{ fileIndex: 0, isThumbnail: true },
-					{ fileIndex: 1, isThumbnail: false },
+					{ isThumbnail: true, file: file(filePath1) },
+					{ isThumbnail: false, file: file(filePath2) },
 				],
 			});
 
@@ -941,7 +735,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		});
 
 		it("should throw error VIO8 for duplicate image ID in imgOps.delete", async () => {
-			const filePath3 = `${import.meta.dir}/../../public/garlic.webp`;
+			const filePath3 = `${import.meta.dir}/../public/garlic.webp`;
 			const { product } = await setupProduct({
 				attributeCount: 2,
 				attributeValueCount: 2,
@@ -952,11 +746,10 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 						attributeValueIds: [],
 					},
 				],
-				images: [file(filePath1), file(filePath2), file(filePath3)],
 				imagesCreate: [
-					{ fileIndex: 0, isThumbnail: true },
-					{ fileIndex: 1, isThumbnail: false },
-					{ fileIndex: 2, isThumbnail: false },
+					{ isThumbnail: true, file: file(filePath1) },
+					{ isThumbnail: false, file: file(filePath2) },
+					{ isThumbnail: false, file: file(filePath3) },
 				],
 			});
 
@@ -993,8 +786,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				variants: [
 					{ price: 10, sku: "UPDATE-TEST-1", stock: 50, attributeValueIds: [] },
 				],
-				images: files,
-				imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
 
 			const variantToUpdate = product.variants[0];
@@ -1039,18 +831,16 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 						attributeValueIds: [],
 					},
 				],
-				images: files,
-				imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
 
 			const initialImageCount = product.images.length;
 
 			const { data, status } = await api.products({ id: product.id }).patch({
-				images: files,
 				imagesOps: {
 					create: [
-						{ fileIndex: 0, isThumbnail: false },
-						{ fileIndex: 1, isThumbnail: false },
+						{ isThumbnail: false, file: file(filePath1) },
+						{ isThumbnail: false, file: file(filePath2) },
 					],
 				},
 			});
@@ -1068,10 +858,9 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				variants: [
 					{ price: 10, sku: "ASG-IMG-TEST", stock: 10, attributeValueIds: [] },
 				],
-				images: files,
 				imagesCreate: [
-					{ fileIndex: 0, isThumbnail: false },
-					{ fileIndex: 1, isThumbnail: false },
+					{ isThumbnail: false, file: file(filePath1) },
+					{ isThumbnail: false, file: file(filePath2) },
 				],
 			});
 
@@ -1096,8 +885,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				variants: [
 					{ price: 10, sku: "IMG-META-TEST", stock: 10, attributeValueIds: [] },
 				],
-				images: files,
-				imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
 
 			const imageId = product.images[0]?.id;
@@ -1126,8 +914,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				variants: [
 					{ price: 10, sku: "ADD-VAR-TEST", stock: 10, attributeValueIds: [] },
 				],
-				images: files,
-				imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
 
 			const initialVariantCount = product.variants.length;
@@ -1172,8 +959,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 						attributeValueIds: [],
 					},
 				],
-				images: files,
-				imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
 
 			// Add a second variant with different attribute values
@@ -1205,24 +991,22 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 			expectDefined(data);
 		});
 
-		it("should replace image file with update + fileIndex", async () => {
+		it("should replace image file with update + file", async () => {
 			const { product } = await setupProduct({
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
 					{ price: 10, sku: "FILE-REP-TEST", stock: 10, attributeValueIds: [] },
 				],
-				images: files,
-				imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
 
 			const existingImage = product.images[0];
 			expectDefined(existingImage);
 
 			const { data, status } = await api.products({ id: product.id }).patch({
-				images: files,
 				imagesOps: {
-					update: [{ id: existingImage.id, fileIndex: 0 }],
+					update: [{ id: existingImage.id, file: file(filePath1) }],
 				},
 			});
 
@@ -1242,8 +1026,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 						attributeValueIds: [],
 					},
 				],
-				images: files,
-				imagesCreate: [{ fileIndex: 0, isThumbnail: true }],
+				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
 
 			const { data: patched, status: patchStatus } = await api

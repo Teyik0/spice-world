@@ -83,7 +83,6 @@ export function validateImagesOps(
 
 	assertValid(
 		validateImages({
-			images: (data.images ?? []) as File[],
 			imagesOps: data.imagesOps,
 			currentImages: currentProduct.images,
 		}),

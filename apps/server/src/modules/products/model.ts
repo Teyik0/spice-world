@@ -45,7 +45,7 @@ export namespace ProductModel {
 	export type countQuery = typeof countQuery.static;
 
 	export const imageCreate = t.Object({
-		fileIndex: t.Number({ minimum: 0, maximum: MAX_IMAGES_PER_PRODUCT - 1 }),
+		file: t.File({ type: "image/*" }),
 		altText: t.Optional(t.String()),
 		isThumbnail: t.Optional(t.Boolean({ default: false })),
 	});
@@ -58,9 +58,7 @@ export namespace ProductModel {
 			t.Array(
 				t.Object({
 					id: uuid,
-					fileIndex: t.Optional(
-						t.Number({ minimum: 0, maximum: MAX_IMAGES_PER_PRODUCT - 1 }),
-					), // If present = replace file
+					file: t.Optional(t.File({ type: "image/*" })),
 					altText: t.Optional(t.String()),
 					isThumbnail: t.Optional(t.Boolean({ default: false })),
 				}),
@@ -101,7 +99,6 @@ export namespace ProductModel {
 		status: productStatus,
 		categoryId: uuid,
 		variants: t.Object({ create: t.Array(variantCreate, { minItems: 1 }) }),
-		images: t.Files({ minItems: 1, maxItems: MAX_IMAGES_PER_PRODUCT }),
 		imagesOps: t.Object({
 			create: t.Array(imageCreate, {
 				minItems: 1,
@@ -119,9 +116,6 @@ export namespace ProductModel {
 		description: t.Optional(t.String()),
 		status: t.Optional(productStatus),
 		categoryId: t.Optional(uuid),
-		images: t.Optional(
-			t.Files({ minItems: 1, maxItems: MAX_IMAGES_PER_PRODUCT }),
-		),
 		imagesOps: t.Optional(imageOperations),
 		variants: t.Optional(variantOperations),
 		_version: t.Optional(t.Numeric()),

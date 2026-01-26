@@ -6,7 +6,6 @@ interface ThumbnailContext {
 }
 
 interface ThumbnailResult {
-	referencedIndices: number[];
 	autoAssignThumbnail: boolean;
 }
 
@@ -14,12 +13,6 @@ export function assignThumbnail({
 	imagesOps,
 	currentImages,
 }: ThumbnailContext): ThumbnailResult {
-	const createIndices = imagesOps.create?.map((op) => op.fileIndex) ?? [];
-	const updateIndices =
-		imagesOps.update
-			?.map((op) => op.fileIndex)
-			.filter((idx): idx is number => idx !== undefined && idx !== null) ?? [];
-
 	let finalThumbnailCount = 0;
 
 	finalThumbnailCount +=
@@ -56,7 +49,7 @@ export function assignThumbnail({
 			autoAssignThumbnail = false;
 		} else if (imagesOps.update && imagesOps.update.length > 0) {
 			const updateWithFile = imagesOps.update.find(
-				(op) => op.fileIndex !== undefined && op.fileIndex !== null,
+				(op) => op.file !== undefined,
 			);
 			if (updateWithFile) {
 				updateWithFile.isThumbnail = true;
@@ -74,7 +67,6 @@ export function assignThumbnail({
 	}
 
 	return {
-		referencedIndices: [...createIndices, ...updateIndices],
 		autoAssignThumbnail,
 	};
 }

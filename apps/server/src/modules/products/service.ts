@@ -1,17 +1,12 @@
-import { utapi } from "@spice-world/server/lib/images";
+import { uploadFiles, utapi } from "@spice-world/server/lib/images";
 import { prisma } from "@spice-world/server/lib/prisma";
 import type { Product } from "@spice-world/server/prisma/client";
 import { sql } from "bun";
 import { status } from "elysia";
 import { LRUCache } from "lru-cache";
-import { assertValid, assertValidWithData, type uuidGuard } from "../shared";
+import type { UploadedFileData } from "uploadthing/types";
+import { assertValid, uploadFileErrStatus, type uuidGuard } from "../shared";
 import type { ProductModel } from "./model";
-import {
-	executeImageCreates,
-	executeImageDeletes,
-	executeImageUpdates,
-	uploadFilesFromIndices,
-} from "./operations/images";
 import { setFinalStatus, type ValidationResults } from "./operations/status";
 import { assignThumbnail } from "./operations/thumbnail";
 import type { ProductWithRelations } from "./types";
@@ -275,12 +270,11 @@ export const productService = {
 		description,
 		categoryId,
 		variants,
-		images,
 		imagesOps,
 	}: ProductModel.postBody) {
 		// Phase 1: Pure validations + category fetch (parallel)
 		const [imagesResult, category] = await Promise.all([
-			Promise.resolve(validateImages({ images, imagesOps })),
+			Promise.resolve(validateImages({ imagesOps })),
 			prisma.category.findUniqueOrThrow({
 				where: { id: categoryId },
 				...CATEGORY_WITH_VALUES_ARGS,
@@ -295,7 +289,7 @@ export const productService = {
 			}),
 		);
 
-		const { referencedIndices } = assignThumbnail({
+		assignThumbnail({
 			imagesOps,
 			currentImages: undefined,
 		});
@@ -334,14 +328,13 @@ export const productService = {
 		// Determine final status
 		const finalStatus = setFinalStatus({ requestedStatus, validationResults });
 
-		// Phase 4: Upload files (after all checks)
-		const uploadResult = await uploadFilesFromIndices({
-			referencedIndices,
-			images,
-			productName: name,
-		});
-		assertValidWithData(uploadResult);
-		const uploadMap = uploadResult.data;
+		const { data: uploadMap, error: uploadError } = await uploadFiles(
+			name,
+			imagesOps.create.map((img) => img.file),
+		);
+		if (uploadError || !uploadMap) {
+			return uploadFileErrStatus({ message: uploadError });
+		}
 
 		// Phase 5: Transaction
 		try {
@@ -355,9 +348,8 @@ export const productService = {
 						categoryId,
 						images: {
 							createMany: {
-								data: imagesOps.create.map((op) => {
-									// biome-ignore lint/style/noNonNullAssertion: imagesOps has been validated before
-									const file = uploadMap.get(op.fileIndex)!;
+								data: imagesOps.create.map((op, index) => {
+									const file = uploadMap[index] as UploadedFileData;
 									return {
 										key: file.key,
 										url: file.ufsUrl,
@@ -407,10 +399,8 @@ export const productService = {
 
 			return status("Created", product);
 		} catch (err: unknown) {
-			if (uploadMap.size > 0) {
-				await utapi.deleteFiles(
-					Array.from(uploadMap.values()).map((file) => file.key),
-				);
+			if (uploadMap.length > 0) {
+				await utapi.deleteFiles(uploadMap.map((file) => file.key));
 			}
 			throw err;
 		}
@@ -422,7 +412,6 @@ export const productService = {
 		status: requestedStatus,
 		description,
 		categoryId,
-		images,
 		imagesOps,
 		variants: vOps,
 		_version,
@@ -466,10 +455,7 @@ export const productService = {
 		);
 
 		// Validate image operations
-		validateImagesOps(
-			{ images, imagesOps } as ProductModel.patchBody,
-			currentProduct,
-		);
+		validateImagesOps({ imagesOps } as ProductModel.patchBody, currentProduct);
 
 		// Validate variant operations (including VVA3 for category change without vOps)
 		validateVariantsOps(
@@ -479,7 +465,7 @@ export const productService = {
 		);
 
 		// Prepare thumbnail assignment
-		const { referencedIndices } = assignThumbnail({
+		assignThumbnail({
 			imagesOps: imagesOps ?? { create: [], update: [], delete: [] },
 			currentImages: currentProduct.images,
 		});
@@ -527,20 +513,44 @@ export const productService = {
 			currentProduct,
 		);
 
-		// Upload new images
-		let uploadMap: Map<number, import("uploadthing/types").UploadedFileData> =
-			new Map();
-		if (referencedIndices.length > 0) {
-			const uploadResult = await uploadFilesFromIndices({
-				referencedIndices,
-				images: images as File[],
-				productName: currentProduct.name,
+		const oldKeysToDelete: string[] = [];
+
+		// Étape 1: Uploads AVANT la transaction - PARALLÈLE
+		const productName = name ?? currentProduct.name;
+		const [createUploads, updateUploads] = await Promise.all([
+			imagesOps?.create?.length
+				? uploadFiles(
+						productName,
+						imagesOps.create.map((img) => img.file),
+					)
+				: Promise.resolve({ data: [], error: null }),
+			imagesOps?.update?.filter((op) => op.file)?.length
+				? uploadFiles(
+						productName,
+						imagesOps.update
+							.filter((op) => op.file)
+							.map((op) => op.file as File),
+					)
+				: Promise.resolve({ data: [], error: null }),
+		]);
+
+		// Gestion erreurs uploads
+		if (createUploads.error || updateUploads.error) {
+			const allSuccessful = [
+				...(createUploads.data ?? []),
+				...(updateUploads.data ?? []),
+			];
+			if (allSuccessful.length > 0) {
+				await utapi.deleteFiles(allSuccessful.map((f) => f.key));
+			}
+			return uploadFileErrStatus({
+				message: [createUploads.error, updateUploads.error]
+					.filter(Boolean)
+					.join(", "),
 			});
-			assertValidWithData(uploadResult);
-			uploadMap = uploadResult.data;
 		}
 
-		const oldKeysToDelete: string[] = [];
+		const updateOpsWithFiles = imagesOps?.update?.filter((op) => op.file) ?? [];
 
 		try {
 			const product = await prisma.$transaction(async (tx) => {
@@ -566,33 +576,69 @@ export const productService = {
 
 				// 2. Handle image operations
 				if (imagesOps) {
-					if (imagesOps.create && imagesOps.create.length > 0) {
-						await executeImageCreates(
-							tx,
-							id,
-							updatedProduct.name,
-							imagesOps.create,
-							uploadMap,
-						);
-					}
-
-					if (imagesOps.update && imagesOps.update.length > 0) {
-						const deletedKeys = await executeImageUpdates(
-							tx,
-							id,
-							imagesOps.update,
-							uploadMap,
-						);
-						oldKeysToDelete.push(...deletedKeys);
-					}
-
+					// Delete images
 					if (imagesOps.delete && imagesOps.delete.length > 0) {
-						const deletedKeys = await executeImageDeletes(
-							tx,
-							id,
-							imagesOps.delete,
-						);
-						oldKeysToDelete.push(...deletedKeys);
+						const oldImages = await tx.image.findMany({
+							where: { id: { in: imagesOps.delete } },
+							select: { key: true },
+						});
+						await tx.image.deleteMany({
+							where: { id: { in: imagesOps.delete } },
+						});
+						oldKeysToDelete.push(...oldImages.map((i) => i.key));
+					}
+
+					// Create new images (uploadMap séquentiel)
+					if (imagesOps.create && imagesOps.create.length > 0) {
+						await tx.image.createMany({
+							data: imagesOps.create.map((op, index) => {
+								// biome-ignore lint/style/noNonNullAssertion: already checked at upload time
+								const file = createUploads.data![index] as UploadedFileData;
+								return {
+									key: file.key,
+									url: file.ufsUrl,
+									altText: op.altText ?? `${updatedProduct.name} image`,
+									isThumbnail: op.isThumbnail ?? false,
+									productId: id,
+								};
+							}),
+						});
+					}
+
+					// Update images (find par ID dans uploadMap)
+					if (imagesOps.update && imagesOps.update.length > 0) {
+						for (const op of imagesOps.update) {
+							const currentImage = await tx.image.findUnique({
+								where: { id: op.id },
+							});
+							if (!currentImage) throw new Error(`Image not found: ${op.id}`);
+
+							// biome-ignore lint/style/noNonNullAssertion: already checked at upload time
+							const uploaded = updateUploads.data!.find(
+								(_, i) => updateOpsWithFiles[i]?.id === op.id,
+							);
+
+							if (uploaded) {
+								oldKeysToDelete.push(currentImage.key);
+								await tx.image.update({
+									where: { id: op.id },
+									data: {
+										key: uploaded.key,
+										url: uploaded.ufsUrl,
+										altText: op.altText ?? currentImage.altText,
+										isThumbnail: op.isThumbnail ?? currentImage.isThumbnail,
+									},
+								});
+							} else {
+								await tx.image.update({
+									where: { id: op.id },
+									data: {
+										altText: op.altText ?? currentImage.altText,
+										isThumbnail: op.isThumbnail ?? currentImage.isThumbnail,
+									},
+								});
+							}
+						}
 					}
 				}
 
@@ -707,11 +753,11 @@ export const productService = {
 
 			return status("OK", { product, warnings });
 		} catch (err: unknown) {
-			if (uploadMap.size > 0) {
-				await utapi.deleteFiles(
-					Array.from(uploadMap.values()).map((f) => f.key),
-				);
-			}
+			// Cleanup orphelins si transaction échoue
+			if (createUploads.data && createUploads.data.length > 0)
+				await utapi.deleteFiles(createUploads.data.map((f) => f.key));
+			if (updateUploads.data && updateUploads.data.length > 0)
+				await utapi.deleteFiles(updateUploads.data.map((f) => f.key));
 			throw err;
 		}
 	},

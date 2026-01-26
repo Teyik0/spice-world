@@ -50,7 +50,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { data, status } = await api.products.post({
 				name: productName,
@@ -67,9 +67,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -89,7 +88,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			expectDefined(category.attributes[0]);
 
 			const testId = randomLowerString(8);
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { data, status } = await api.products.post({
 				name: "épices spéciales",
@@ -106,9 +105,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -124,7 +122,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const duplicateName = `duplicate name test ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			// First create a product
 			const { data: firstProduct, status: firstStatus } =
@@ -143,9 +141,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 							},
 						],
 					},
-					images: [file(filePath)],
 					imagesOps: {
-						create: [{ fileIndex: 0, isThumbnail: true }],
+						create: [{ isThumbnail: true, file: file(filePath) }],
 					},
 				});
 
@@ -168,9 +165,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -181,7 +177,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 		it("should validate category exists", async () => {
 			const nonExistentCategoryId = "00000000-0000-0000-0000-000000000000";
 			const testId = randomLowerString(8);
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error, status } = await api.products.post({
 				name: `invalid category product ${testId}`,
@@ -198,9 +194,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -209,8 +204,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 		});
 
 		it("should create multiple variants successfully", async () => {
-			const filePath1 = `${import.meta.dir}/../../public/cumin.webp`;
-			const filePath2 = `${import.meta.dir}/../../public/curcuma.jpg`;
+			const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
 
 			const category = await createTestCategory({ testDb, attributeCount: 3 });
 			expectDefined(category.attributes[0]);
@@ -245,9 +240,11 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath1), file(filePath2)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }, { fileIndex: 1 }],
+					create: [
+						{ isThumbnail: true, file: file(filePath1) },
+						{ file: file(filePath2) },
+					],
 				},
 			});
 
@@ -268,7 +265,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { data, status } = await api.products.post({
 				name: productName,
@@ -284,9 +281,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -310,7 +306,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			expectDefined(category.attributes[0].values[1]);
 
 			const testId = randomLowerString(8);
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: `complex fail ${testId}`,
@@ -339,12 +335,11 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath), file(filePath)], // 2 images
 				imagesOps: {
 					create: [
-						{ fileIndex: 0, isThumbnail: true },
-						{ fileIndex: 0, isThumbnail: false }, // Duplicate fileIndex (VIO1)
-						{ fileIndex: 1, isThumbnail: true }, // Multiple thumbnails (VIO4)
+						{ isThumbnail: true, file: file(filePath) },
+						{ isThumbnail: false, file: file(filePath) },
+						{ isThumbnail: true, file: file(filePath) }, // Multiple thumbnails (VIO4)
 					],
 				},
 			});
@@ -356,9 +351,6 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				message: expect.any(String),
 				details: {
 					subErrors: expect.arrayContaining([
-						expect.objectContaining({
-							code: "VIO1",
-						}),
 						expect.objectContaining({
 							code: "VIO4",
 						}),
@@ -381,7 +373,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			expectDefined(category.attributes[2].values[0]);
 
 			const testId = randomLowerString(8);
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			// Create exactly maximum allowed variants (27)
 			const variants = [];
@@ -397,19 +389,15 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				}
 			}
 
-			// Create maximum allowed images (5)
-			const images = Array.from({ length: 5 }, () => file(filePath));
-
 			const { data, status } = await api.products.post({
 				name: `max limits ${testId}`,
 				description: "Maximum configuration test",
 				status: "PUBLISHED",
 				categoryId: category.id,
 				variants: { create: variants },
-				images: images,
 				imagesOps: {
 					create: Array.from({ length: 5 }, (_, i) => ({
-						fileIndex: i,
+						file: file(filePath),
 						isThumbnail: i === 0, // Only one thumbnail
 						altText: `Image ${i + 1}`,
 					})),
@@ -436,7 +424,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -452,9 +440,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -488,7 +475,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -505,9 +492,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -537,7 +523,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -556,9 +542,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -589,7 +574,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const variants = category.attributes[0].values.map(
 				(value: { id: string }, idx: number) => ({
@@ -614,9 +599,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: variants,
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -645,7 +629,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -666,9 +650,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -699,7 +682,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const attr1ValueId = category.attributes[0].values[0].id;
 			const attr2ValueId = category.attributes[1].values[0].id;
@@ -723,9 +706,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -752,7 +734,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -773,9 +755,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -806,7 +787,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			// Calculate max capacity: attribute1.values × attribute2.values
 			const attr1Values = category.attributes[0].values.slice(0, 2);
@@ -834,9 +815,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: variants,
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -856,7 +836,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			// Create variants using all values
 			const variants = category.attributes[0].values.map(
@@ -882,9 +862,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: variants,
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -911,7 +890,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -932,9 +911,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -960,7 +938,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { error } = await api.products.post({
 				name: productName,
@@ -981,9 +959,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -1009,7 +986,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 			const valueId = category.attributes[0].values[0].id;
 
 			const { error } = await api.products.post({
@@ -1026,9 +1003,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath)],
 				imagesOps: {
-					create: [{ fileIndex: 0, isThumbnail: true }],
+					create: [{ isThumbnail: true, file: file(filePath) }],
 				},
 			});
 
@@ -1049,222 +1025,14 @@ describe.concurrent("POST /products - Integration Tests", () => {
 	});
 
 	describe("POST /products - Images Validation", () => {
-		it("should throw VIO1 for duplicate fileIndex in imgOps.create", async () => {
-			const category = await createTestCategory({ testDb, attributeCount: 1 });
-			expectDefined(category.attributes[0]);
-
-			const testId = randomLowerString(8);
-			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
-
-			const { error } = await api.products.post({
-				name: productName,
-				description: "Test product description",
-				status: "DRAFT",
-				categoryId: category.id,
-				variants: {
-					create: [
-						{
-							price: 9.99,
-							sku: `sku${testId}one`,
-							attributeValueIds: [],
-						},
-					],
-				},
-				images: [file(filePath)],
-				imagesOps: {
-					create: [
-						{ fileIndex: 0, isThumbnail: true },
-						{ fileIndex: 0, altText: "Duplicate index" },
-					],
-				},
-			});
-
-			expectDefined(error);
-			expect(error.status).toBe(400);
-			expect(error.value).toMatchObject({
-				code: "IMAGES_VALIDATION_FAILED",
-				message: expect.any(String),
-				details: {
-					subErrors: expect.arrayContaining([
-						expect.objectContaining({
-							code: "VIO1",
-						}),
-					]),
-				},
-			});
-		});
-
 		// VIO2, VIO3, VIO6 would never happen in POST request, only in PATCH
-
-		it("should throw error VIO4 for more than one thumbnail set", async () => {
-			const category = await createTestCategory({ testDb, attributeCount: 1 });
-			expectDefined(category.attributes[0]);
-
-			const testId = randomLowerString(8);
-			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
-			const filePath2 = `${import.meta.dir}/../../public/garlic.webp`;
-
-			const { error } = await api.products.post({
-				name: productName,
-				description: "Test product description",
-				status: "DRAFT",
-				categoryId: category.id,
-				variants: {
-					create: [
-						{
-							price: 9.99,
-							sku: `sku${testId}one`,
-							attributeValueIds: [],
-						},
-					],
-				},
-				images: [file(filePath), file(filePath2)],
-				imagesOps: {
-					create: [
-						{ fileIndex: 0, isThumbnail: true },
-						{ fileIndex: 1, isThumbnail: true },
-					],
-				},
-			});
-
-			expectDefined(error);
-			expect(error.status).toBe(400);
-			expect(error.value).toMatchObject({
-				code: "IMAGES_VALIDATION_FAILED",
-				message: "Found 1 validation error in image operations",
-				details: {
-					subErrors: expect.arrayContaining([
-						expect.objectContaining({
-							code: "VIO4",
-						}),
-					]),
-				},
-			});
-		});
-
-		it("should throw error VIO5 for fileIndex out of bounds", async () => {
-			const category = await createTestCategory({ testDb, attributeCount: 1 });
-			expectDefined(category.attributes[0]);
-
-			const testId = randomLowerString(8);
-			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
-			const filePath2 = `${import.meta.dir}/../../public/garlic.webp`;
-
-			const { error } = await api.products.post({
-				name: productName,
-				description: "Test product description",
-				status: "DRAFT",
-				categoryId: category.id,
-				variants: {
-					create: [
-						{
-							price: 9.99,
-							sku: `sku${testId}one`,
-							attributeValueIds: [],
-						},
-					],
-				},
-				images: [file(filePath), file(filePath2)],
-				imagesOps: {
-					create: [{ fileIndex: 2, isThumbnail: true }],
-				},
-			});
-
-			expectDefined(error);
-			expect(error.status).toBe(400);
-			expect(error.value).toMatchObject({
-				code: "IMAGES_VALIDATION_FAILED",
-				message: "Found 1 validation error in image operations",
-				details: {
-					subErrors: expect.arrayContaining([
-						expect.objectContaining({
-							code: "VIO5",
-						}),
-					]),
-				},
-			});
-		});
-
-		it("should throw error 422 for fileIndex out of bounds (5 images max, model validation) - 1", async () => {
-			const category = await createTestCategory({ testDb, attributeCount: 1 });
-			expectDefined(category.attributes[0]);
-
-			const testId = randomLowerString(8);
-			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
-
-			const { error } = await api.products.post({
-				name: productName,
-				description: "Test product description",
-				status: "DRAFT",
-				categoryId: category.id,
-				variants: {
-					create: [
-						{
-							price: 9.99,
-							sku: `sku${testId}one`,
-							attributeValueIds: [],
-						},
-					],
-				},
-				images: [file(filePath)],
-				imagesOps: {
-					create: [{ fileIndex: 5, isThumbnail: true }],
-				},
-			});
-
-			expectDefined(error);
-			expect(error.status).toBe(422); // Elysia validation error
-		});
-
-		it("should throw error 422 for fileIndex out of bounds (5 images max, model validation) - 2", async () => {
-			const category = await createTestCategory({ testDb, attributeCount: 1 });
-			expectDefined(category.attributes[0]);
-
-			const testId = randomLowerString(8);
-			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
-
-			// Create 6 images (exceeds maximum of 5)
-			const images = Array.from({ length: 6 }, () => file(filePath));
-
-			const { error } = await api.products.post({
-				name: productName,
-				description: "Test product description",
-				status: "DRAFT",
-				categoryId: category.id,
-				variants: {
-					create: [
-						{
-							price: 9.99,
-							sku: `sku${testId}one`,
-							attributeValueIds: [],
-						},
-					],
-				},
-				images: images,
-				imagesOps: {
-					create: Array.from({ length: 6 }, (_, i) => ({
-						fileIndex: i,
-						isThumbnail: i === 0,
-					})),
-				},
-			});
-
-			expectDefined(error);
-			expect(error.status).toBe(422); // Elysia schema validation
-		});
-
 		it("should upload only referenced files", async () => {
 			const category = await createTestCategory({ testDb, attributeCount: 1 });
 			expectDefined(category.attributes[0]);
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { data, status } = await api.products.post({
 				name: productName,
@@ -1280,11 +1048,10 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath), file(filePath), file(filePath)],
 				imagesOps: {
 					create: [
-						{ fileIndex: 0, isThumbnail: true },
-						{ fileIndex: 2, altText: "Third image" },
+						{ isThumbnail: true, file: file(filePath) },
+						{ altText: "Third image", file: file(filePath) },
 					],
 				},
 			});
@@ -1304,10 +1071,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
-
-			// Create 5 images (maximum allowed)
-			const images = Array.from({ length: 5 }, () => file(filePath));
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
 
 			const { data, status } = await api.products.post({
 				name: productName,
@@ -1323,14 +1087,13 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: images,
 				imagesOps: {
 					create: [
-						{ fileIndex: 0, isThumbnail: true, altText: "Main image" },
-						{ fileIndex: 1, altText: "Second image" },
-						{ fileIndex: 2, altText: "Third image" },
-						{ fileIndex: 3, altText: "Fourth image" },
-						{ fileIndex: 4, altText: "Fifth image" },
+						{ isThumbnail: true, altText: "Main image", file: file(filePath) },
+						{ altText: "Second image", file: file(filePath) },
+						{ altText: "Third image", file: file(filePath) },
+						{ altText: "Fourth image", file: file(filePath) },
+						{ altText: "Fifth image", file: file(filePath) },
 					],
 				},
 			});
@@ -1348,8 +1111,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const testId = randomLowerString(8);
 			const productName = `test product ${testId}`;
-			const filePath = `${import.meta.dir}/../../public/cumin.webp`;
-			const filePath2 = `${import.meta.dir}/../../public/garlic.webp`;
+			const filePath = `${import.meta.dir}/../public/cumin.webp`;
+			const filePath2 = `${import.meta.dir}/../public/garlic.webp`;
 
 			const { data, status } = await api.products.post({
 				name: productName,
@@ -1365,11 +1128,10 @@ describe.concurrent("POST /products - Integration Tests", () => {
 						},
 					],
 				},
-				images: [file(filePath), file(filePath2)],
 				imagesOps: {
 					create: [
-						{ fileIndex: 0, isThumbnail: false },
-						{ fileIndex: 1, isThumbnail: false },
+						{ isThumbnail: false, file: file(filePath) },
+						{ isThumbnail: false, file: file(filePath2) },
 					],
 				},
 			});

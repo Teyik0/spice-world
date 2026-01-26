@@ -2,101 +2,12 @@ import type { ValidationError, ValidationResult } from "../../shared";
 import type { ProductModel } from "../model";
 
 export interface ValidateImagesInput {
-	images: File[];
 	imagesOps: ProductModel.imageOperations;
 	currentImages?: { id: string; isThumbnail: boolean }[];
 }
 
 export interface ValidateImagesSuccessData {
 	autoAssignThumbnail: boolean;
-}
-
-/**
- * VIO1: Duplicate fileIndex in create operations
- */
-function validateVIO1(
-	createOps: ProductModel.imageOperations["create"],
-): ValidationError | null {
-	if (!createOps?.length) return null;
-
-	const fileIndexCount = new Map<number, number>();
-	for (const op of createOps) {
-		if (op.fileIndex !== undefined && op.fileIndex !== null) {
-			fileIndexCount.set(
-				op.fileIndex,
-				(fileIndexCount.get(op.fileIndex) || 0) + 1,
-			);
-		}
-	}
-
-	const duplicates = Array.from(fileIndexCount.entries())
-		.filter(([_, count]) => count > 1)
-		.map(([idx]) => idx);
-
-	if (duplicates.length > 0) {
-		return {
-			code: "VIO1",
-			message: `Duplicate fileIndex in create: ${duplicates.join(", ")}`,
-		};
-	}
-	return null;
-}
-
-/**
- * VIO2: Duplicate fileIndex in update operations
- */
-function validateVIO2(
-	updateOps: ProductModel.imageOperations["update"],
-): ValidationError | null {
-	if (!updateOps?.length) return null;
-
-	const fileIndexCount = new Map<number, number>();
-	for (const op of updateOps) {
-		if (op.fileIndex !== undefined && op.fileIndex !== null) {
-			fileIndexCount.set(
-				op.fileIndex,
-				(fileIndexCount.get(op.fileIndex) || 0) + 1,
-			);
-		}
-	}
-
-	const duplicates = Array.from(fileIndexCount.entries())
-		.filter(([_, count]) => count > 1)
-		.map(([idx]) => idx);
-
-	if (duplicates.length > 0) {
-		return {
-			code: "VIO2",
-			message: `Duplicate fileIndex in update: ${duplicates.join(", ")}`,
-		};
-	}
-	return null;
-}
-
-/**
- * VIO3: Same fileIndex used in both create and update
- */
-function validateVIO3(
-	createOps: ProductModel.imageOperations["create"],
-	updateOps: ProductModel.imageOperations["update"],
-): ValidationError | null {
-	const createIndices = new Set(
-		createOps?.map((op) => op.fileIndex).filter((idx) => idx !== undefined) ??
-			[],
-	);
-	const updateIndices =
-		updateOps
-			?.map((op) => op.fileIndex)
-			.filter((idx): idx is number => idx !== undefined && idx !== null) ?? [];
-
-	const overlap = updateIndices.filter((idx) => createIndices.has(idx));
-	if (overlap.length > 0) {
-		return {
-			code: "VIO3",
-			message: `fileIndex ${overlap.join(", ")} used in both create and update`,
-		};
-	}
-	return null;
 }
 
 /**
@@ -149,32 +60,6 @@ function validateVIO4(
 			code: "VIO4",
 			message: `Multiple thumbnails in final state (${thumbnailCount} found)`,
 		};
-	}
-	return null;
-}
-
-/**
- * VIO5: fileIndex out of bounds
- */
-function validateVIO5(
-	createOps: ProductModel.imageOperations["create"],
-	updateOps: ProductModel.imageOperations["update"],
-	imagesLength: number,
-): ValidationError | null {
-	const allIndices = [
-		...(createOps?.map((op) => op.fileIndex) ?? []),
-		...(updateOps
-			?.map((op) => op.fileIndex)
-			.filter((idx) => idx !== undefined && idx !== null) ?? []),
-	];
-
-	for (const idx of allIndices) {
-		if (idx < 0 || idx >= imagesLength) {
-			return {
-				code: "VIO5",
-				message: `Invalid fileIndex ${idx}. Only ${imagesLength} files provided.`,
-			};
-		}
 	}
 	return null;
 }
@@ -256,40 +141,19 @@ function validateVIO8(deleteIds: string[] | undefined): ValidationError | null {
 
 /**
  * Validates image operations for POST and PATCH.
- * Returns referenced file indices and auto-assign instruction on success.
+ * Returns auto-assign instruction on success.
  *
  * Error codes:
- * - VIO1: Duplicate fileIndex in create
- * - VIO2: Duplicate fileIndex in update
- * - VIO3: Same fileIndex in both create and update
  * - VIO4: Multiple thumbnails in final state
- * - VIO5: fileIndex out of bounds
  * - VIO6: Cannot delete all images (must keep at least 1)
  * - VIO7: Duplicate image IDs in update
  * - VIO8: Duplicate image IDs in delete
  */
 export function validateImages({
-	images,
 	imagesOps,
 	currentImages,
 }: ValidateImagesInput): ValidationResult {
 	const errors: ValidationError[] = [];
-
-	// VIO1: Duplicate fileIndex in create
-	const vio1 = validateVIO1(imagesOps.create);
-	if (vio1) errors.push(vio1);
-
-	// VIO2: Duplicate fileIndex in update (only for PATCH)
-	if (currentImages) {
-		const vio2 = validateVIO2(imagesOps.update);
-		if (vio2) errors.push(vio2);
-	}
-
-	// VIO3: Same fileIndex in create and update (only for PATCH)
-	if (currentImages) {
-		const vio3 = validateVIO3(imagesOps.create, imagesOps.update);
-		if (vio3) errors.push(vio3);
-	}
 
 	// VIO4: Multiple thumbnails in final state
 	const vio4 = validateVIO4(
@@ -299,10 +163,6 @@ export function validateImages({
 		currentImages,
 	);
 	if (vio4) errors.push(vio4);
-
-	// VIO5: fileIndex out of bounds
-	const vio5 = validateVIO5(imagesOps.create, imagesOps.update, images.length);
-	if (vio5) errors.push(vio5);
 
 	// VIO6: Cannot delete all images (only for PATCH)
 	if (currentImages) {

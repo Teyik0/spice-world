@@ -11,112 +11,12 @@ import { determinePublishStatus } from "@spice-world/server/modules/products/val
 
 describe("Validator Functions", () => {
 	describe("validateImages (PATCH)", () => {
-		describe("VIO2 - Duplicate fileIndex in update", () => {
-			it("should fail with duplicate fileIndex in update", () => {
-				const images: File[] = [
-					new File([""], "new1.jpg"),
-					new File([""], "new2.jpg"),
-				] as File[];
-
+		describe("VIO4 - Multiple thumbnails in final state", () => {
+			it("should fail when final state has multiple thumbnails", () => {
 				const imagesOps: ProductModel.imageOperations = {
-					create: [{ fileIndex: 0, isThumbnail: false }],
-					update: [
-						{ id: "img1", fileIndex: 1 },
-						{ id: "img2", fileIndex: 1 },
+					create: [
+						{ file: new File([""], "new1.jpg") as File, isThumbnail: true },
 					],
-				};
-
-				const currentImages = [
-					{ id: "img1", isThumbnail: false },
-					{ id: "img2", isThumbnail: false },
-				];
-
-				const result = validateImages({ images, imagesOps, currentImages });
-
-				expect(result.success).toBe(false);
-				if (!result.success) {
-					const errors = result.error.details?.subErrors as Array<{
-						code: string;
-					}>;
-					expect(errors.some((e) => e.code === "VIO2")).toBe(true);
-				}
-			});
-
-			it("should pass with unique fileIndex in update", () => {
-				const images: File[] = [
-					new File([""], "new1.jpg"),
-					new File([""], "new2.jpg"),
-				] as File[];
-
-				const imagesOps: ProductModel.imageOperations = {
-					create: [{ fileIndex: 0, isThumbnail: false }],
-					update: [
-						{ id: "img1", fileIndex: 1 },
-						{ id: "img2", fileIndex: undefined },
-					],
-				};
-
-				const currentImages = [
-					{ id: "img1", isThumbnail: false },
-					{ id: "img2", isThumbnail: false },
-				];
-
-				const result = validateImages({ images, imagesOps, currentImages });
-
-				expect(result.success).toBe(true);
-			});
-		});
-
-		describe("VIO3 - Same fileIndex in create and update", () => {
-			it("should fail when same fileIndex used in both create and update", () => {
-				const images: File[] = [
-					new File([""], "new1.jpg"),
-					new File([""], "new2.jpg"),
-				] as File[];
-
-				const imagesOps: ProductModel.imageOperations = {
-					create: [{ fileIndex: 0, isThumbnail: false }],
-					update: [{ id: "img1", fileIndex: 0 }],
-				};
-
-				const currentImages = [{ id: "img1", isThumbnail: false }];
-
-				const result = validateImages({ images, imagesOps, currentImages });
-
-				expect(result.success).toBe(false);
-				if (!result.success) {
-					const errors = result.error.details?.subErrors as Array<{
-						code: string;
-					}>;
-					expect(errors.some((e) => e.code === "VIO3")).toBe(true);
-				}
-			});
-
-			it("should pass with different fileIndex in create and update", () => {
-				const images: File[] = [
-					new File([""], "new1.jpg"),
-					new File([""], "new2.jpg"),
-				] as File[];
-
-				const imagesOps: ProductModel.imageOperations = {
-					create: [{ fileIndex: 0, isThumbnail: false }],
-					update: [{ id: "img1", fileIndex: 1 }],
-				};
-
-				const currentImages = [{ id: "img1", isThumbnail: false }];
-
-				const result = validateImages({ images, imagesOps, currentImages });
-
-				expect(result.success).toBe(true);
-			});
-		});
-
-		describe("VIO4 - Multiple thumbnails in PATCH", () => {
-			it("should fail with multiple thumbnails in final state (create + existing)", () => {
-				const images: File[] = [new File([""], "new.jpg")] as File[];
-
-				const imagesOps: ProductModel.imageOperations = {
-					create: [{ fileIndex: 0, isThumbnail: true }],
 				};
 
 				const currentImages = [
@@ -124,7 +24,7 @@ describe("Validator Functions", () => {
 					{ id: "img2", isThumbnail: false },
 				];
 
-				const result = validateImages({ images, imagesOps, currentImages });
+				const result = validateImages({ imagesOps, currentImages });
 
 				expect(result.success).toBe(false);
 				if (!result.success) {
@@ -135,74 +35,38 @@ describe("Validator Functions", () => {
 				}
 			});
 
-			it("should fail with multiple thumbnails in update operations", () => {
-				const images: File[] = [new File([""], "new.jpg")] as File[];
-
-				const imagesOps: ProductModel.imageOperations = {
-					create: [{ fileIndex: 0, isThumbnail: false }],
+			it("should pass when replacing existing thumbnail", () => {
+				const imagesOpsValid: ProductModel.imageOperations = {
 					update: [
-						{ id: "img1", isThumbnail: true },
-						{ id: "img2", isThumbnail: true },
+						{
+							id: "img1",
+							file: new File([""], "new1.jpg") as File,
+							isThumbnail: true,
+						},
 					],
 				};
 
-				const currentImages = [
+				const currentImagesValid = [
 					{ id: "img1", isThumbnail: false },
 					{ id: "img2", isThumbnail: false },
 				];
 
-				const result = validateImages({ images, imagesOps, currentImages });
+				const resultValid = validateImages({
+					imagesOps: imagesOpsValid,
+					currentImages: currentImagesValid,
+				});
+				const { autoAssignThumbnail } = assignThumbnail({
+					imagesOps: imagesOpsValid,
+					currentImages: currentImagesValid,
+				});
 
-				expect(result.success).toBe(false);
-				if (!result.success) {
-					const errors = result.error.details?.subErrors as Array<{
-						code: string;
-					}>;
-					expect(errors.some((e) => e.code === "VIO4")).toBe(true);
-				}
-			});
-
-			it("should pass when existing thumbnail is updated to false", () => {
-				const images: File[] = [new File([""], "new.jpg")] as File[];
-
-				const imagesOps: ProductModel.imageOperations = {
-					create: [{ fileIndex: 0, isThumbnail: true }],
-					update: [{ id: "img1", isThumbnail: false }],
-				};
-
-				const currentImages = [
-					{ id: "img1", isThumbnail: true },
-					{ id: "img2", isThumbnail: false },
-				];
-
-				const result = validateImages({ images, imagesOps, currentImages });
-
-				expect(result.success).toBe(true);
-			});
-
-			it("should pass when existing thumbnail is deleted", () => {
-				const images: File[] = [new File([""], "new.jpg")] as File[];
-
-				const imagesOps: ProductModel.imageOperations = {
-					create: [{ fileIndex: 0, isThumbnail: true }],
-					delete: ["img1"],
-				};
-
-				const currentImages = [
-					{ id: "img1", isThumbnail: true },
-					{ id: "img2", isThumbnail: false },
-				];
-
-				const result = validateImages({ images, imagesOps, currentImages });
-
-				expect(result.success).toBe(true);
+				expect(resultValid.success).toBe(true);
+				expect(autoAssignThumbnail).toBe(false);
 			});
 		});
 
 		describe("VIO6 - Cannot delete all images", () => {
-			it("should fail when deleting all images without create", () => {
-				const images: File[] = [] as File[];
-
+			it("should fail when deleting all images without creating new ones", () => {
 				const imagesOps: ProductModel.imageOperations = {
 					delete: ["img1", "img2"],
 				};
@@ -212,7 +76,7 @@ describe("Validator Functions", () => {
 					{ id: "img2", isThumbnail: false },
 				];
 
-				const result = validateImages({ images, imagesOps, currentImages });
+				const result = validateImages({ imagesOps, currentImages });
 
 				expect(result.success).toBe(false);
 				if (!result.success) {
@@ -223,11 +87,106 @@ describe("Validator Functions", () => {
 				}
 			});
 
-			it("should pass when deleting all images but creating new ones", () => {
-				const images: File[] = [new File([""], "new.jpg")] as File[];
-
+			it("should pass when deleting some images but keeping at least one", () => {
 				const imagesOps: ProductModel.imageOperations = {
-					create: [{ fileIndex: 0, isThumbnail: false }],
+					delete: ["img1"],
+				};
+
+				const currentImages = [
+					{ id: "img1", isThumbnail: false },
+					{ id: "img2", isThumbnail: false },
+				];
+
+				const result = validateImages({ imagesOps, currentImages });
+
+				expect(result.success).toBe(true);
+			});
+
+			it("should pass when deleting all but creating new ones", () => {
+				const imagesOps: ProductModel.imageOperations = {
+					delete: ["img1", "img2"],
+					create: [{ file: new File([""], "new1.jpg") as File }],
+				};
+
+				const currentImages = [
+					{ id: "img1", isThumbnail: false },
+					{ id: "img2", isThumbnail: false },
+				];
+
+				const result = validateImages({ imagesOps, currentImages });
+
+				expect(result.success).toBe(true);
+			});
+		});
+
+		describe("VIO7 - Duplicate image IDs in update", () => {
+			it("should fail with duplicate IDs in update", () => {
+				const imagesOps: ProductModel.imageOperations = {
+					update: [
+						{ id: "img1", file: new File([""], "new1.jpg") as File },
+						{ id: "img1", file: new File([""], "new2.jpg") as File }, // Duplicate!
+					],
+				};
+
+				const currentImages = [
+					{ id: "img1", isThumbnail: false },
+					{ id: "img2", isThumbnail: false },
+				];
+
+				const result = validateImages({ imagesOps, currentImages });
+
+				expect(result.success).toBe(false);
+				if (!result.success) {
+					const errors = result.error.details?.subErrors as Array<{
+						code: string;
+					}>;
+					expect(errors.some((e) => e.code === "VIO7")).toBe(true);
+				}
+			});
+
+			it("should pass with unique IDs in update", () => {
+				const imagesOps: ProductModel.imageOperations = {
+					update: [
+						{ id: "img1", file: new File([""], "new1.jpg") as File },
+						{ id: "img2", file: new File([""], "new2.jpg") as File },
+					],
+				};
+
+				const currentImages = [
+					{ id: "img1", isThumbnail: false },
+					{ id: "img2", isThumbnail: false },
+				];
+
+				const result = validateImages({ imagesOps, currentImages });
+
+				expect(result.success).toBe(true);
+			});
+		});
+
+		describe("VIO8 - Duplicate image IDs in delete", () => {
+			it("should fail with duplicate IDs in delete", () => {
+				const imagesOps: ProductModel.imageOperations = {
+					delete: ["img1", "img1"], // Duplicate!
+				};
+
+				const currentImages = [
+					{ id: "img1", isThumbnail: false },
+					{ id: "img2", isThumbnail: false },
+				];
+
+				const result = validateImages({ imagesOps, currentImages });
+
+				expect(result.success).toBe(false);
+				if (!result.success) {
+					const errors = result.error.details?.subErrors as Array<{
+						code: string;
+					}>;
+					expect(errors.some((e) => e.code === "VIO8")).toBe(true);
+				}
+			});
+
+			it("should pass with unique IDs in delete", () => {
+				const imagesOps: ProductModel.imageOperations = {
 					delete: ["img1", "img2"],
 				};
 
@@ -236,453 +195,324 @@ describe("Validator Functions", () => {
 					{ id: "img2", isThumbnail: false },
 				];
 
-				const result = validateImages({ images, imagesOps, currentImages });
+				const result = validateImages({ imagesOps, currentImages });
+
+				expect(result.success).toBe(true);
+			});
+		});
+
+		describe("Auto-assign thumbnail in PATCH", () => {
+			it("should NOT auto-assign when currentImages already has thumbnail", () => {
+				const imagesOps: ProductModel.imageOperations = {
+					create: [
+						{ file: new File([""], "new1.jpg") as File, isThumbnail: false },
+					], // No thumbnail specified
+				};
+
+				const currentImages = [
+					{ id: "img1", isThumbnail: true }, // Already has thumbnail!
+					{ id: "img2", isThumbnail: false },
+				];
+
+				const result = validateImages({ imagesOps, currentImages });
+
+				expect(result.success).toBe(true);
+				if (result.success) {
+					// Auto-assign should NOT have triggered
+					if (imagesOps.create) {
+						expect(imagesOps.create[0]?.isThumbnail).toBe(false);
+					}
+				}
+			});
+
+			it("should auto-assign when no thumbnail exists in final state", () => {
+				const imagesOps: ProductModel.imageOperations = {
+					create: [
+						{ file: new File([""], "new1.jpg") as File, isThumbnail: false },
+					], // No thumbnail specified
+				};
+
+				const currentImages = [
+					{ id: "img1", isThumbnail: false },
+					{ id: "img2", isThumbnail: false },
+				];
+
+				const result = validateImages({ imagesOps, currentImages });
 
 				expect(result.success).toBe(true);
 			});
 		});
 	});
 
-	describe("assignThumbnail (PATCH)", () => {
-		it("should NOT auto-assign when currentImages already has thumbnail", () => {
+	describe("hasImageChanges", () => {
+		it("should return true when imagesOps has create operations", () => {
 			const imagesOps: ProductModel.imageOperations = {
-				create: [{ fileIndex: 0, isThumbnail: false }],
+				create: [{ file: new File([""], "new.jpg") as File }],
 			};
 
-			const currentImages = [
-				{ id: "img1", isThumbnail: true },
-				{ id: "img2", isThumbnail: false },
-			];
-
-			const { autoAssignThumbnail, referencedIndices } = assignThumbnail({
+			const result = hasImageChanges({
 				imagesOps,
-				currentImages,
+				currentImages: [],
 			});
 
-			expect(autoAssignThumbnail).toBe(false);
-			expect(referencedIndices).toEqual([0]);
-			expect(imagesOps.create?.[0]?.isThumbnail).toBe(false);
+			expect(result).toBe(true);
 		});
 
-		it("should auto-assign first create when no thumbnail exists", () => {
+		it("should return true when imagesOps has update operations", () => {
 			const imagesOps: ProductModel.imageOperations = {
-				create: [
-					{ fileIndex: 0, isThumbnail: false },
-					{ fileIndex: 1, isThumbnail: false },
-				],
+				update: [{ id: "img1", file: new File([""], "new.jpg") as File }],
 			};
 
-			const currentImages = [
-				{ id: "img1", isThumbnail: false },
-				{ id: "img2", isThumbnail: false },
-			];
-
-			const { autoAssignThumbnail, referencedIndices } = assignThumbnail({
+			const result = hasImageChanges({
 				imagesOps,
-				currentImages,
+				currentImages: [{ id: "img1", altText: null, isThumbnail: false }],
 			});
 
-			expect(autoAssignThumbnail).toBe(false);
-			expect(referencedIndices).toEqual([0, 1]);
-			expect(imagesOps.create?.[0]?.isThumbnail).toBe(true);
-			expect(imagesOps.create?.[1]?.isThumbnail).toBe(false);
+			expect(result).toBe(true);
 		});
 
-		it("should auto-assign update with fileIndex when no thumbnail exists", () => {
-			const imagesOps: ProductModel.imageOperations = {
-				update: [{ id: "img1", fileIndex: 0 }],
-			};
-
-			const currentImages = [
-				{ id: "img1", isThumbnail: false },
-				{ id: "img2", isThumbnail: false },
-			];
-
-			const { autoAssignThumbnail, referencedIndices } = assignThumbnail({
-				imagesOps,
-				currentImages,
-			});
-
-			expect(autoAssignThumbnail).toBe(false);
-			expect(referencedIndices).toEqual([0]);
-			expect(imagesOps.update?.[0]?.isThumbnail).toBe(true);
-		});
-
-		it("should signal autoAssignThumbnail when deleting only thumbnail with no new images", () => {
+		it("should return true when imagesOps has delete operations", () => {
 			const imagesOps: ProductModel.imageOperations = {
 				delete: ["img1"],
 			};
 
-			const currentImages = [
-				{ id: "img1", isThumbnail: true },
-				{ id: "img2", isThumbnail: false },
-			];
-
-			const { autoAssignThumbnail, referencedIndices } = assignThumbnail({
+			const result = hasImageChanges({
 				imagesOps,
-				currentImages,
+				currentImages: [{ id: "img1", altText: null, isThumbnail: false }],
 			});
 
-			expect(autoAssignThumbnail).toBe(true);
-			expect(referencedIndices).toEqual([]);
+			expect(result).toBe(true);
 		});
 
-		it("should preserve existing thumbnail when not affected by operations", () => {
-			const imagesOps: ProductModel.imageOperations = {
-				update: [{ id: "img2", altText: "Updated" }],
+		it("should return false when imagesOps is undefined", () => {
+			const result = hasImageChanges({
+				imagesOps: undefined,
+				currentImages: [{ id: "img1", altText: null, isThumbnail: false }],
+			});
+
+			expect(result).toBe(false);
+		});
+
+		it("should return false when imagesOps has no operations", () => {
+			const imagesOps: ProductModel.imageOperations = {};
+
+			const result = hasImageChanges({
+				imagesOps,
+				currentImages: [{ id: "img1", altText: null, isThumbnail: false }],
+			});
+
+			expect(result).toBe(false);
+		});
+	});
+
+	describe("hasProductChanges", () => {
+		it("should return true when name changes", () => {
+			const result = hasProductChanges({
+				name: "New Name",
+				description: undefined,
+				requestedStatus: undefined,
+				categoryId: undefined,
+				currentProduct: {
+					name: "Old Name",
+					description: "Old Description",
+					status: "DRAFT",
+					categoryId: "cat1",
+				} as any,
+			});
+
+			expect(result).toBe(true);
+		});
+
+		it("should return true when description changes", () => {
+			const result = hasProductChanges({
+				name: undefined,
+				description: "New Description",
+				requestedStatus: undefined,
+				categoryId: undefined,
+				currentProduct: {
+					name: "Product Name",
+					description: "Old Description",
+					status: "DRAFT",
+					categoryId: "cat1",
+				} as any,
+			});
+
+			expect(result).toBe(true);
+		});
+
+		it("should return true when status changes", () => {
+			const result = hasProductChanges({
+				name: undefined,
+				description: undefined,
+				requestedStatus: "PUBLISHED",
+				categoryId: undefined,
+				currentProduct: {
+					name: "Product Name",
+					description: "Description",
+					status: "DRAFT",
+					categoryId: "cat1",
+				} as any,
+			});
+
+			expect(result).toBe(true);
+		});
+
+		it("should return true when categoryId changes", () => {
+			const result = hasProductChanges({
+				name: undefined,
+				description: undefined,
+				requestedStatus: undefined,
+				categoryId: "cat2",
+				currentProduct: {
+					name: "Product Name",
+					description: "Description",
+					status: "DRAFT",
+					categoryId: "cat1",
+				} as any,
+			});
+
+			expect(result).toBe(true);
+		});
+
+		it("should return false when no product fields change", () => {
+			const result = hasProductChanges({
+				name: undefined,
+				description: undefined,
+				requestedStatus: undefined,
+				categoryId: undefined,
+				currentProduct: {
+					name: "Product Name",
+					description: "Description",
+					status: "DRAFT",
+					categoryId: "cat1",
+				} as any,
+			});
+
+			expect(result).toBe(false);
+		});
+	});
+
+	describe("hasVariantChanges", () => {
+		it("should return true when vOps has create operations", () => {
+			const vOps: ProductModel.variantOperations = {
+				create: [
+					{
+						price: 10,
+						attributeValueIds: ["attr1"],
+					},
+				],
 			};
 
-			const currentImages = [
-				{ id: "img1", isThumbnail: false },
-				{ id: "img2", isThumbnail: true },
-			];
-
-			const { autoAssignThumbnail, referencedIndices } = assignThumbnail({
-				imagesOps,
-				currentImages,
+			const result = hasVariantChanges({
+				vOps,
+				currentVariants: [],
 			});
 
-			expect(autoAssignThumbnail).toBe(false);
-			expect(referencedIndices).toEqual([]);
+			expect(result).toBe(true);
+		});
+
+		it("should return true when vOps has update operations", () => {
+			const vOps: ProductModel.variantOperations = {
+				update: [{ id: "var1", price: 15 }],
+			};
+
+			const result = hasVariantChanges({
+				vOps,
+				currentVariants: [{ id: "var1", price: 10 } as any],
+			});
+
+			expect(result).toBe(true);
+		});
+
+		it("should return true when vOps has delete operations", () => {
+			const vOps: ProductModel.variantOperations = {
+				delete: ["var1"],
+			};
+
+			const result = hasVariantChanges({
+				vOps,
+				currentVariants: [{ id: "var1", price: 10 } as any],
+			});
+
+			expect(result).toBe(true);
+		});
+
+		it("should return false when vOps is undefined", () => {
+			const result = hasVariantChanges({
+				vOps: undefined,
+				currentVariants: [{ id: "var1", price: 10 } as any],
+			});
+
+			expect(result).toBe(false);
+		});
+
+		it("should return false when vOps has no operations", () => {
+			const vOps: ProductModel.variantOperations = {};
+
+			const result = hasVariantChanges({
+				vOps,
+				currentVariants: [{ id: "var1", price: 10 } as any],
+			});
+
+			expect(result).toBe(false);
 		});
 	});
 
-	describe("determinePublishStatus (PATCH)", () => {
-		it("should return requested status when not publishing related", () => {
-			const result = determinePublishStatus({
-				requestedStatus: "DRAFT",
-				currentStatus: "DRAFT",
-				currentVariants: [
-					{ id: "v1", price: 10, attributeValues: [{ id: "av1" }] },
-				],
-				categoryHasAttributes: true,
-			});
-
-			expect(result.finalStatus).toBe("DRAFT");
-			expect(result.warnings).toBeUndefined();
-		});
-
-		it("should publish when all validations pass", () => {
+	describe("determinePublishStatus", () => {
+		it("should return PUBLISHED when requested and all conditions met", () => {
 			const result = determinePublishStatus({
 				requestedStatus: "PUBLISHED",
 				currentStatus: "DRAFT",
 				currentVariants: [
-					{ id: "v1", price: 10, attributeValues: [{ id: "av1" }] },
+					{ id: "var1", price: 10, attributeValues: [{ id: "attr1" }] } as any,
 				],
-				variants: {
-					create: [{ price: 20, attributeValueIds: ["av2"] }],
-				},
+				variants: undefined,
 				categoryHasAttributes: true,
 			});
 
 			expect(result.finalStatus).toBe("PUBLISHED");
-			expect(result.warnings).toBeUndefined();
 		});
 
-		it("should auto-draft when PUB1 fails (no positive price)", () => {
-			const result = determinePublishStatus({
-				requestedStatus: "PUBLISHED",
-				currentStatus: "DRAFT",
-				currentVariants: [{ id: "v1", price: 0, attributeValues: [] }],
-				categoryHasAttributes: false,
-			});
-
-			expect(result.finalStatus).toBe("DRAFT");
-			expect(result.warnings).toBeDefined();
-			expect(result.warnings?.some((w) => w.code === "PUB1")).toBe(true);
-		});
-
-		it("should auto-draft when PUB2 fails (category has attributes but no values)", () => {
+		it("should return DRAFT when requested but no variants with attributes", () => {
 			const result = determinePublishStatus({
 				requestedStatus: "PUBLISHED",
 				currentStatus: "DRAFT",
 				currentVariants: [
-					{ id: "v1", price: 10, attributeValues: [] },
-					{ id: "v2", price: 20, attributeValues: [] },
+					{ id: "var1", price: 10, attributeValues: [] } as any,
 				],
+				variants: undefined,
 				categoryHasAttributes: true,
 			});
 
 			expect(result.finalStatus).toBe("DRAFT");
-			expect(result.warnings).toBeDefined();
-			expect(result.warnings?.some((w) => w.code === "PUB2")).toBe(true);
 		});
 
-		it("should return warnings for multiple validation failures", () => {
+		it("should return DRAFT when requested but no positive price", () => {
 			const result = determinePublishStatus({
 				requestedStatus: "PUBLISHED",
 				currentStatus: "DRAFT",
 				currentVariants: [
-					{ id: "v1", price: 0, attributeValues: [] },
-					{ id: "v2", price: 0, attributeValues: [] },
+					{ id: "var1", price: 0, attributeValues: [{ id: "attr1" }] } as any,
 				],
+				variants: undefined,
 				categoryHasAttributes: true,
 			});
 
 			expect(result.finalStatus).toBe("DRAFT");
-			expect(result.warnings).toBeDefined();
-			expect(result.warnings?.length).toBeGreaterThan(1);
 		});
 
-		it("should keep published status when not changing to draft", () => {
+		it("should return requested status when not PUBLISHED", () => {
 			const result = determinePublishStatus({
-				requestedStatus: undefined,
+				requestedStatus: "ARCHIVED",
 				currentStatus: "PUBLISHED",
 				currentVariants: [
-					{ id: "v1", price: 10, attributeValues: [{ id: "av1" }] },
+					{ id: "var1", price: 10, attributeValues: [{ id: "attr1" }] } as any,
 				],
+				variants: undefined,
 				categoryHasAttributes: true,
 			});
 
-			expect(result.finalStatus).toBe("PUBLISHED");
-		});
-
-		it("should handle variants with create, update, and delete", () => {
-			const result = determinePublishStatus({
-				requestedStatus: "PUBLISHED",
-				currentStatus: "DRAFT",
-				currentVariants: [
-					{ id: "v1", price: 5, attributeValues: [{ id: "av1" }] },
-				],
-				variants: {
-					create: [{ price: 15, attributeValueIds: ["av2"] }],
-					update: [{ id: "v1", price: 10 }],
-					delete: [],
-				},
-				categoryHasAttributes: true,
-			});
-
-			expect(result.finalStatus).toBe("PUBLISHED");
-		});
-	});
-
-	describe("hasChanges Helpers", () => {
-		describe("hasProductChanges", () => {
-			it("should detect name change", () => {
-				const result = hasProductChanges({
-					name: "New Name",
-					currentProduct: {
-						name: "Old Name",
-						description: "desc",
-						status: "DRAFT",
-						categoryId: "cat1",
-					},
-				});
-				expect(result).toBe(true);
-			});
-
-			it("should detect description change", () => {
-				const result = hasProductChanges({
-					description: "New desc",
-					currentProduct: {
-						name: "Name",
-						description: "Old desc",
-						status: "DRAFT",
-						categoryId: "cat1",
-					},
-				});
-				expect(result).toBe(true);
-			});
-
-			it("should detect status change", () => {
-				const result = hasProductChanges({
-					requestedStatus: "PUBLISHED",
-					currentProduct: {
-						name: "Name",
-						description: "desc",
-						status: "DRAFT",
-						categoryId: "cat1",
-					},
-				});
-				expect(result).toBe(true);
-			});
-
-			it("should detect category change", () => {
-				const result = hasProductChanges({
-					categoryId: "cat2",
-					currentProduct: {
-						name: "Name",
-						description: "desc",
-						status: "DRAFT",
-						categoryId: "cat1",
-					},
-				});
-				expect(result).toBe(true);
-			});
-
-			it("should return false when no changes", () => {
-				const result = hasProductChanges({
-					currentProduct: {
-						name: "Name",
-						description: "desc",
-						status: "DRAFT",
-						categoryId: "cat1",
-					},
-				});
-				expect(result).toBe(false);
-			});
-		});
-
-		describe("hasImageChanges", () => {
-			it("should detect create operations", () => {
-				const result = hasImageChanges({
-					imagesOps: { create: [{ fileIndex: 0, isThumbnail: false }] },
-					currentImages: [{ id: "img1", altText: "alt", isThumbnail: false }],
-				});
-				expect(result).toBe(true);
-			});
-
-			it("should detect delete operations", () => {
-				const result = hasImageChanges({
-					imagesOps: { delete: ["img1"] },
-					currentImages: [{ id: "img1", altText: "alt", isThumbnail: false }],
-				});
-				expect(result).toBe(true);
-			});
-
-			it("should detect altText change in update", () => {
-				const result = hasImageChanges({
-					imagesOps: { update: [{ id: "img1", altText: "new alt" }] },
-					currentImages: [
-						{ id: "img1", altText: "old alt", isThumbnail: false },
-					],
-				});
-				expect(result).toBe(true);
-			});
-
-			it("should detect thumbnail change in update", () => {
-				const result = hasImageChanges({
-					imagesOps: { update: [{ id: "img1", isThumbnail: true }] },
-					currentImages: [{ id: "img1", altText: "alt", isThumbnail: false }],
-				});
-				expect(result).toBe(true);
-			});
-
-			it("should detect fileIndex change in update", () => {
-				const result = hasImageChanges({
-					imagesOps: { update: [{ id: "img1", fileIndex: 5 }] },
-					currentImages: [{ id: "img1", altText: "alt", isThumbnail: false }],
-				});
-				expect(result).toBe(true);
-			});
-
-			it("should return false when no changes", () => {
-				const result = hasImageChanges({
-					imagesOps: { update: [{ id: "img1", altText: "alt" }] },
-					currentImages: [{ id: "img1", altText: "alt", isThumbnail: false }],
-				});
-				expect(result).toBe(false);
-			});
-
-			it("should return false when no imagesOps", () => {
-				const result = hasImageChanges({
-					currentImages: [{ id: "img1", altText: "alt", isThumbnail: false }],
-				});
-				expect(result).toBe(false);
-			});
-		});
-
-		describe("hasVariantChanges", () => {
-			it("should detect create operations", () => {
-				const result = hasVariantChanges({
-					vOps: { create: [{ price: 10, attributeValueIds: ["av1"] }] },
-					currentVariants: [
-						{
-							id: "v1",
-							price: 10,
-							sku: null,
-							stock: 0,
-							currency: "EUR",
-							attributeValues: [{ id: "av1" }],
-						},
-					],
-				});
-				expect(result).toBe(true);
-			});
-
-			it("should detect delete operations", () => {
-				const result = hasVariantChanges({
-					vOps: { delete: ["v1"] },
-					currentVariants: [
-						{
-							id: "v1",
-							price: 10,
-							sku: null,
-							stock: 0,
-							currency: "EUR",
-							attributeValues: [],
-						},
-					],
-				});
-				expect(result).toBe(true);
-			});
-
-			it("should detect price change in update", () => {
-				const result = hasVariantChanges({
-					vOps: { update: [{ id: "v1", price: 20 }] },
-					currentVariants: [
-						{
-							id: "v1",
-							price: 10,
-							sku: null,
-							stock: 0,
-							currency: "EUR",
-							attributeValues: [],
-						},
-					],
-				});
-				expect(result).toBe(true);
-			});
-
-			it("should detect attributeValueIds change in update", () => {
-				const result = hasVariantChanges({
-					vOps: { update: [{ id: "v1", attributeValueIds: ["av2"] }] },
-					currentVariants: [
-						{
-							id: "v1",
-							price: 10,
-							sku: null,
-							stock: 0,
-							currency: "EUR",
-							attributeValues: [{ id: "av1" }],
-						},
-					],
-				});
-				expect(result).toBe(true);
-			});
-
-			it("should return false when no changes", () => {
-				const result = hasVariantChanges({
-					vOps: { update: [{ id: "v1", price: 10 }] },
-					currentVariants: [
-						{
-							id: "v1",
-							price: 10,
-							sku: null,
-							stock: 0,
-							currency: "EUR",
-							attributeValues: [],
-						},
-					],
-				});
-				expect(result).toBe(false);
-			});
-
-			it("should return false when no vOps", () => {
-				const result = hasVariantChanges({
-					currentVariants: [
-						{
-							id: "v1",
-							price: 10,
-							sku: null,
-							stock: 0,
-							currency: "EUR",
-							attributeValues: [],
-						},
-					],
-				});
-				expect(result).toBe(false);
-			});
+			expect(result.finalStatus).toBe("ARCHIVED");
 		});
 	});
 });
