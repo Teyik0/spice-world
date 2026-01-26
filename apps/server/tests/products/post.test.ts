@@ -339,7 +339,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 					create: [
 						{ isThumbnail: true, file: file(filePath) },
 						{ isThumbnail: false, file: file(filePath) },
-						{ isThumbnail: true, file: file(filePath) }, // Multiple thumbnails (VIO4)
+						{ isThumbnail: true, file: file(filePath) }, // Multiple thumbnails (VIO1)
 					],
 				},
 			});
@@ -352,7 +352,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				details: {
 					subErrors: expect.arrayContaining([
 						expect.objectContaining({
-							code: "VIO4",
+							code: "VIO1",
 						}),
 					]),
 				},
@@ -1025,7 +1025,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 	});
 
 	describe("POST /products - Images Validation", () => {
-		// VIO2, VIO3, VIO6 would never happen in POST request, only in PATCH
+		// VIO2, VIO6 would never happen in POST request, only in PATCH
 		it("should upload only referenced files", async () => {
 			const category = await createTestCategory({ testDb, attributeCount: 1 });
 			expectDefined(category.attributes[0]);

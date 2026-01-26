@@ -15,13 +15,9 @@ This document outlines all requirements and validations for POST (create) and PA
 | **Business - Category Exists** | Category must exist in database | PrismaError (404) | Both | categoryId | `findUniqueOrThrow` fails if not found. |
 | **Business - Name Uniqueness** | Product name must be unique across all products | CustomError (409) | Both | name | Database constraint check. |
 | **Business - Optimistic Locking** | _version must match current DB version | CustomError (409) | PATCH | _version | Prevents concurrent modification conflicts. |
-| **Images - Min 1 Image** | Product must have at least 1 image after all operations | VIO6 (400) | PATCH | imagesOps.delete | Cannot delete all images without creating new ones. |
-| **Images - Max 5 Images** | Cannot exceed 5 images total | ElysiaValidationErr (422) | Both | images | Schema limit on array length. |
-| **Images - Unique fileIndex in Create** | No duplicate fileIndex values in create operations | VIO1 (400) | Both | imagesOps.create | Each fileIndex must be unique within create array. |
-| **Images - Unique fileIndex in Update** | No duplicate fileIndex values in update operations | VIO2 (400) | PATCH | imagesOps.update | Each fileIndex must be unique within update array. |
-| **Images - No Overlapping fileIndex** | fileIndex cannot be used in both create and update | VIO3 (400) | PATCH | imagesOps.create, imagesOps.update | Create and update operations can't reference same fileIndex. |
-| **Images - Single Thumbnail** | Only one image can be marked as thumbnail in final state | VIO4 (400) | Both | imagesOps.create, imagesOps.update | Auto-assigns thumbnail if none specified, fails if multiple. |
-| **Images - fileIndex Bounds** | fileIndex must be within provided images array length | VIO5 (400) | Both | imagesOps.create, imagesOps.update | 0 ≤ fileIndex < images.length. |
+| **Images - Min 1 Image** | Product must have at least 1 image after all operations | VIO2 (400) | PATCH | imagesOps.delete | Cannot delete all images without creating new ones. |
+| **Images - Max 5 Images** | Cannot exceed 5 images total | ElysiaValidationErr (422) | Both | images | File objects, not just metadata. |
+| **Images - Single Thumbnail** | Only one image can be marked as thumbnail in final state | VIO1 (400) | Both | imagesOps.create, imagesOps.update | Auto-assigns thumbnail if none specified, fails if multiple. |
 | **Variants - Valid Attribute Values** | All attributeValueIds must belong to product category | VVA1 (400) | Both | variants.create, variants.update | Cross-references category.attributes.values. |
 | **Variants - Single Value per Attribute** | No variant can have multiple values from same attribute | VVA2 (400) | Both | variants.create, variants.update | Attribute value uniqueness per variant. |
 | **Variants - Category Capacity** | Total variants cannot exceed category's possible combinations | VVA3 (400) | Both | variants | Max = product of attribute value counts (e.g., 3 attrs × 2 vals = 6 max). |

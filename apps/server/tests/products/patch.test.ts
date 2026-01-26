@@ -538,7 +538,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	});
 
 	describe("PATCH /products - Images Validation", () => {
-		it("should throw error VIO4 for more than one thumbnail set", async () => {
+		it("should throw error VIO1 for more than one thumbnail set", async () => {
 			const { product } = await setupProduct({
 				attributeCount: 2,
 				attributeValueCount: 2,
@@ -582,7 +582,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				details: {
 					subErrors: expect.arrayContaining([
 						expect.objectContaining({
-							code: "VIO4",
+							code: "VIO1",
 						}),
 					]),
 				},
@@ -612,7 +612,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				details: {
 					subErrors: expect.arrayContaining([
 						expect.objectContaining({
-							code: "VIO4",
+							code: "VIO1",
 						}),
 					]),
 				},
@@ -641,14 +641,14 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				details: {
 					subErrors: expect.arrayContaining([
 						expect.objectContaining({
-							code: "VIO4",
+							code: "VIO1",
 						}),
 					]),
 				},
 			});
 		});
 
-		it("should throw error VIO6 when try delete all images", async () => {
+		it("should throw error VIO2 when try delete all images", async () => {
 			const { product } = await setupProduct({
 				attributeCount: 2,
 				attributeValueCount: 2,
@@ -683,94 +683,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				details: {
 					subErrors: expect.arrayContaining([
 						expect.objectContaining({
-							code: "VIO6",
-						}),
-					]),
-				},
-			});
-		});
-
-		it("should throw error VIO7 for duplicate image ID in imgOps.update", async () => {
-			const { product } = await setupProduct({
-				attributeCount: 2,
-				attributeValueCount: 2,
-				variants: [
-					{
-						price: 1000,
-						stock: 10,
-						attributeValueIds: [],
-					},
-				],
-				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
-				],
-			});
-
-			const imageId = product.images[0]?.id as string;
-
-			const { error } = await api.products({ id: product.id }).patch({
-				imagesOps: {
-					update: [
-						{ id: imageId, isThumbnail: false },
-						{ id: imageId, altText: "Updated" },
-					],
-				},
-			});
-
-			expectDefined(error);
-			expect(error.status).toBe(400);
-			expect(error.value).toMatchObject({
-				code: "IMAGES_VALIDATION_FAILED",
-				message: expect.any(String),
-				details: {
-					subErrors: expect.arrayContaining([
-						expect.objectContaining({
-							code: "VIO7",
-							message: expect.stringContaining("Duplicate image IDs in update"),
-						}),
-					]),
-				},
-			});
-		});
-
-		it("should throw error VIO8 for duplicate image ID in imgOps.delete", async () => {
-			const filePath3 = `${import.meta.dir}/../public/garlic.webp`;
-			const { product } = await setupProduct({
-				attributeCount: 2,
-				attributeValueCount: 2,
-				variants: [
-					{
-						price: 1000,
-						stock: 10,
-						attributeValueIds: [],
-					},
-				],
-				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
-					{ isThumbnail: false, file: file(filePath3) },
-				],
-			});
-
-			const imageId = product.images[0]?.id as string;
-
-			const { error } = await api.products({ id: product.id }).patch({
-				imagesOps: {
-					delete: [imageId, imageId],
-				},
-			});
-
-			expectDefined(error);
-			expect(error.status).toBe(400);
-			expect(error.value).toMatchObject({
-				code: "IMAGES_VALIDATION_FAILED",
-				message: expect.any(String),
-				details: {
-					subErrors: expect.arrayContaining([
-						expect.objectContaining({
-							code: "VIO8",
-							message: expect.stringContaining("Duplicate image IDs in delete"),
+							code: "VIO2",
 						}),
 					]),
 				},

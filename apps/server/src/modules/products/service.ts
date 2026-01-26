@@ -607,10 +607,16 @@ export const productService = {
 
 					// Update images (find par ID dans uploadMap)
 					if (imagesOps.update && imagesOps.update.length > 0) {
-						for (const op of imagesOps.update) {
-							const currentImage = await tx.image.findUnique({
-								where: { id: op.id },
-							});
+						// Parallel fetch all current images first
+						const currentImages = await Promise.all(
+							imagesOps.update.map((op) =>
+								tx.image.findUnique({ where: { id: op.id } }),
+							),
+						);
+
+						// Parallel update all images
+						const updatePromises = imagesOps.update.map((op, index) => {
+							const currentImage = currentImages[index];
 							if (!currentImage) throw new Error(`Image not found: ${op.id}`);
 
 							// biome-ignore lint/style/noNonNullAssertion: already checked at upload time
@@ -618,27 +624,23 @@ export const productService = {
 								(_, i) => updateOpsWithFiles[i]?.id === op.id,
 							);
 
-							if (uploaded) {
-								oldKeysToDelete.push(currentImage.key);
-								await tx.image.update({
-									where: { id: op.id },
-									data: {
-										key: uploaded.key,
-										url: uploaded.ufsUrl,
-										altText: op.altText ?? currentImage.altText,
-										isThumbnail: op.isThumbnail ?? currentImage.isThumbnail,
-									},
-								});
-							} else {
-								await tx.image.update({
-									where: { id: op.id },
-									data: {
-										altText: op.altText ?? currentImage.altText,
-										isThumbnail: op.isThumbnail ?? currentImage.isThumbnail,
-									},
-								});
-							}
-						}
+							return tx.image.update({
+								where: { id: op.id },
+								data: uploaded
+									? {
+											key: uploaded.key,
+											url: uploaded.ufsUrl,
+											altText: op.altText ?? currentImage.altText,
+											isThumbnail: op.isThumbnail ?? currentImage.isThumbnail,
+										}
+									: {
+											altText: op.altText ?? currentImage.altText,
+											isThumbnail: op.isThumbnail ?? currentImage.isThumbnail,
+										},
+							});
+						});
+
+						await Promise.all(updatePromises);
 					}
 				}
 

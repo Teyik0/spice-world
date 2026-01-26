@@ -11,7 +11,7 @@ import { determinePublishStatus } from "@spice-world/server/modules/products/val
 
 describe("Validator Functions", () => {
 	describe("validateImages (PATCH)", () => {
-		describe("VIO4 - Multiple thumbnails in final state", () => {
+		describe("VIO1 - Multiple thumbnails in final state", () => {
 			it("should fail when final state has multiple thumbnails", () => {
 				const imagesOps: ProductModel.imageOperations = {
 					create: [
@@ -31,7 +31,7 @@ describe("Validator Functions", () => {
 					const errors = result.error.details?.subErrors as Array<{
 						code: string;
 					}>;
-					expect(errors.some((e) => e.code === "VIO4")).toBe(true);
+					expect(errors.some((e) => e.code === "VIO1")).toBe(true);
 				}
 			});
 
@@ -65,7 +65,7 @@ describe("Validator Functions", () => {
 			});
 		});
 
-		describe("VIO6 - Cannot delete all images", () => {
+		describe("VIO2 - Cannot delete all images", () => {
 			it("should fail when deleting all images without creating new ones", () => {
 				const imagesOps: ProductModel.imageOperations = {
 					delete: ["img1", "img2"],
@@ -83,7 +83,7 @@ describe("Validator Functions", () => {
 					const errors = result.error.details?.subErrors as Array<{
 						code: string;
 					}>;
-					expect(errors.some((e) => e.code === "VIO6")).toBe(true);
+					expect(errors.some((e) => e.code === "VIO2")).toBe(true);
 				}
 			});
 
@@ -106,88 +106,6 @@ describe("Validator Functions", () => {
 				const imagesOps: ProductModel.imageOperations = {
 					delete: ["img1", "img2"],
 					create: [{ file: new File([""], "new1.jpg") as File }],
-				};
-
-				const currentImages = [
-					{ id: "img1", isThumbnail: false },
-					{ id: "img2", isThumbnail: false },
-				];
-
-				const result = validateImages({ imagesOps, currentImages });
-
-				expect(result.success).toBe(true);
-			});
-		});
-
-		describe("VIO7 - Duplicate image IDs in update", () => {
-			it("should fail with duplicate IDs in update", () => {
-				const imagesOps: ProductModel.imageOperations = {
-					update: [
-						{ id: "img1", file: new File([""], "new1.jpg") as File },
-						{ id: "img1", file: new File([""], "new2.jpg") as File }, // Duplicate!
-					],
-				};
-
-				const currentImages = [
-					{ id: "img1", isThumbnail: false },
-					{ id: "img2", isThumbnail: false },
-				];
-
-				const result = validateImages({ imagesOps, currentImages });
-
-				expect(result.success).toBe(false);
-				if (!result.success) {
-					const errors = result.error.details?.subErrors as Array<{
-						code: string;
-					}>;
-					expect(errors.some((e) => e.code === "VIO7")).toBe(true);
-				}
-			});
-
-			it("should pass with unique IDs in update", () => {
-				const imagesOps: ProductModel.imageOperations = {
-					update: [
-						{ id: "img1", file: new File([""], "new1.jpg") as File },
-						{ id: "img2", file: new File([""], "new2.jpg") as File },
-					],
-				};
-
-				const currentImages = [
-					{ id: "img1", isThumbnail: false },
-					{ id: "img2", isThumbnail: false },
-				];
-
-				const result = validateImages({ imagesOps, currentImages });
-
-				expect(result.success).toBe(true);
-			});
-		});
-
-		describe("VIO8 - Duplicate image IDs in delete", () => {
-			it("should fail with duplicate IDs in delete", () => {
-				const imagesOps: ProductModel.imageOperations = {
-					delete: ["img1", "img1"], // Duplicate!
-				};
-
-				const currentImages = [
-					{ id: "img1", isThumbnail: false },
-					{ id: "img2", isThumbnail: false },
-				];
-
-				const result = validateImages({ imagesOps, currentImages });
-
-				expect(result.success).toBe(false);
-				if (!result.success) {
-					const errors = result.error.details?.subErrors as Array<{
-						code: string;
-					}>;
-					expect(errors.some((e) => e.code === "VIO8")).toBe(true);
-				}
-			});
-
-			it("should pass with unique IDs in delete", () => {
-				const imagesOps: ProductModel.imageOperations = {
-					delete: ["img1", "img2"],
 				};
 
 				const currentImages = [
