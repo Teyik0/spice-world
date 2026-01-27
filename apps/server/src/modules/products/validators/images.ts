@@ -1,57 +1,26 @@
-import type { ValidationError, ValidationResult } from "../../shared";
+import { ProductValidationError, type ValidationError } from "../../shared";
 import type { ProductModel } from "../model";
-export interface ValidateImagesInput {
-	imagesOps: ProductModel.imageOperations;
-	currentImages?: { id: string; isThumbnail: boolean }[];
-}
-export interface ValidateImagesSuccessData {
-	autoAssignThumbnail: boolean;
-}
 
 /**
- * VIO1: Multiple thumbnails in final state
- * For POST: count thumbnails in create
- * For PATCH: count = (current thumbnails not deleted/updated to false) + new thumbnails
+ * VIO1: Duplicate IDs between update and delete operations
+ * An image cannot be both updated and deleted in the same request.
+ * This would cause the update to apply then the image to be deleted,
+ * potentially removing the thumbnail with no fallback.
  */
 function validateVIO1(
-	createOps: ProductModel.imageOperations["create"],
 	updateOps: ProductModel.imageOperations["update"],
 	deleteIds: string[] | undefined,
-	currentImages?: { id: string; isThumbnail: boolean }[],
 ): ValidationError | null {
-	let thumbnailCount = 0;
-	// Count thumbnails in create
-	thumbnailCount +=
-		createOps?.filter((op) => op.isThumbnail === true).length ?? 0;
-	// Count thumbnails in update (explicitly set to true)
-	thumbnailCount +=
-		updateOps?.filter((op) => op.isThumbnail === true).length ?? 0;
-	// For PATCH: count current thumbnails that remain
-	if (currentImages) {
-		const deletedIds = new Set(deleteIds ?? []);
-		for (const img of currentImages) {
-			if (img.isThumbnail && !deletedIds.has(img.id)) {
-				// Check if this image is being updated
-				const updateOp = updateOps?.find((op) => op.id === img.id);
-				if (updateOp) {
-					// Only count if not explicitly set to false
-					if (updateOp.isThumbnail !== false) {
-						// Already counted above if set to true, skip if undefined
-						if (updateOp.isThumbnail === undefined) {
-							thumbnailCount++;
-						}
-					}
-				} else {
-					// Not being updated, still a thumbnail
-					thumbnailCount++;
-				}
-			}
-		}
-	}
-	if (thumbnailCount > 1) {
+	if (!updateOps?.length || !deleteIds?.length) return null;
+	const deleteSet = new Set(deleteIds);
+	const duplicates = updateOps
+		.filter((op) => deleteSet.has(op.id))
+		.map((op) => op.id);
+	if (duplicates.length > 0) {
 		return {
 			code: "VIO1",
-			message: `Multiple thumbnails in final state (${thumbnailCount} found)`,
+			message: `Image IDs present in both update and delete: ${duplicates.join(", ")}`,
+			field: "imageOps",
 		};
 	}
 	return null;
@@ -77,29 +46,26 @@ function validateVIO2(
 	}
 	return null;
 }
+
+interface ValidateImagesInput {
+	imagesOps: ProductModel.imageOperations;
+	currentImages?: { id: string; isThumbnail: boolean }[];
+}
 /**
  * Validates image operations for POST and PATCH.
- * Returns auto-assign instruction on success.
- *
- * Duplicate IDs in update/delete operations are idempotent - validation not needed.
- * Database handles these cases correctly.
+ * Throw ProductValidationError on error
  *
  * Error codes:
- * - VIO1: Multiple thumbnails in final state
+ * - VIO1: Duplicate IDs between update and delete (necessary check before auto assign thumbnail)
  * - VIO2: Cannot delete all images (must keep at least 1)
  */
 export function validateImages({
 	imagesOps,
 	currentImages,
-}: ValidateImagesInput): ValidationResult {
+}: ValidateImagesInput) {
 	const errors: ValidationError[] = [];
-	// VIO1: Multiple thumbnails in final state
-	const vio1 = validateVIO1(
-		imagesOps.create,
-		imagesOps.update,
-		imagesOps.delete,
-		currentImages,
-	);
+	// VIO1: Duplicate IDs between update and delete
+	const vio1 = validateVIO1(imagesOps.update, imagesOps.delete);
 	if (vio1) errors.push(vio1);
 
 	// VIO2: Cannot delete all images (only for PATCH)
@@ -111,21 +77,15 @@ export function validateImages({
 		);
 		if (vio2) errors.push(vio2);
 	}
+
 	if (errors.length > 0) {
-		return {
-			success: false,
-			error: {
-				code: "IMAGES_VALIDATION_FAILED",
-				message: `Found ${errors.length} validation error${errors.length > 1 ? "s" : ""} in image operations`,
-				field: "images",
-				details: {
-					subErrors: errors,
-				},
+		throw new ProductValidationError({
+			code: "IMAGES_VALIDATION_FAILED",
+			message: `Found ${errors.length} validation error${errors.length > 1 ? "s" : ""} in image operations`,
+			field: "images",
+			details: {
+				subErrors: errors,
 			},
-		};
+		});
 	}
-	return {
-		success: true,
-		data: undefined,
-	};
 }

@@ -1,178 +1,62 @@
 import { prisma } from "@spice-world/server/lib/prisma";
-import type { ProductStatus } from "@spice-world/server/prisma/client";
-import { status } from "elysia";
-import { assertValid } from "../../shared";
-import type { ProductModel } from "../model";
 import type {
-	CategoryChangeResult,
-	CategoryWithAttrs,
-	ProductWithRelations,
-} from "../types";
-import { validateImages } from "./images";
+	Attribute,
+	ProductStatus,
+	ProductVariant,
+} from "@spice-world/server/prisma/client";
+import type { ProductVariantFindManyArgs } from "@spice-world/server/prisma/models";
+import type { ProductModel } from "../model";
 import {
 	computeFinalVariantCount,
 	determinePublishStatus,
 	determineStatusAfterCategoryChange,
 } from "./publish";
-import { validateVariants } from "./variants";
-
-// ============================================================================
-// VALIDATION LAYER FUNCTIONS
-// ============================================================================
-
-/**
- * Checks for version conflict (optimistic locking).
- * Returns true if there's a conflict.
- */
-export function hasVersionConflict(
-	data: ProductModel.patchBody,
-	currentProduct: ProductWithRelations,
-): boolean {
-	return (
-		data._version !== undefined && data._version !== currentProduct.version
-	);
-}
 
 /**
  * Detects if category is being changed and validates the new category exists.
- * Returns category change information for subsequent steps.
+ * Returns requested category information for subsequent steps only if it is different from current.
  */
-export async function detectCategoryChange(
-	data: ProductModel.patchBody,
-	currentProduct: ProductWithRelations,
-): Promise<CategoryChangeResult> {
-	const requestedCategoryId = data.categoryId;
+export async function requestedCategory(
+	requestedCategoryId: string | undefined,
+	currCategoryId: string,
+) {
+	if (!requestedCategoryId) return null;
+	if (requestedCategoryId === currCategoryId) return null;
 
-	if (requestedCategoryId === undefined) {
-		return { categoryId: undefined, isChanging: false, newCategory: undefined };
-	}
-
-	// Prevent changing to the same category
-	if (requestedCategoryId === currentProduct.categoryId) {
-		return { categoryId: undefined, isChanging: false, newCategory: undefined };
-	}
-
-	// Validate new category exists and fetch with attributes
-	const newCategory = await prisma.category.findUnique({
+	return await prisma.category.findUniqueOrThrow({
 		where: { id: requestedCategoryId },
 		include: { attributes: { include: { values: true } } },
 	});
-
-	if (!newCategory) {
-		throw status("Bad Request", {
-			message: `Category ${requestedCategoryId} not found`,
-			code: "CATEGORY_NOT_FOUND",
-		});
-	}
-
-	return {
-		categoryId: requestedCategoryId,
-		isChanging: true,
-		newCategory: newCategory as CategoryWithAttrs,
-	};
 }
-
-/**
- * Validates image operations against current product state.
- */
-export function validateImagesOps(
-	data: ProductModel.patchBody,
-	currentProduct: ProductWithRelations,
-): void {
-	if (data.imagesOps === undefined) return;
-
-	assertValid(
-		validateImages({
-			imagesOps: data.imagesOps,
-			currentImages: currentProduct.images,
-		}),
-	);
-}
-
-/**
- * Validates variant operations against current product and category.
- * Handles both category change scenarios and normal variant operations.
- *
- * Key behaviors:
- * - When category changes without vOps: only VVA3 runs (variant count check)
- * - When vOps are provided: VVA1/VVA2/VVA3/VVA4 all run
- */
-export function validateVariantsOps(
-	data: ProductModel.patchBody,
-	currentProduct: ProductWithRelations,
-	categoryChange: CategoryChangeResult,
-): void {
-	// No vOps and no category change = nothing to validate
-	if (data.variants === undefined && !categoryChange.isChanging) {
-		return;
-	}
-
-	// Use new category if changing, otherwise current category
-	const category = categoryChange.isChanging
-		? categoryChange.newCategory
-		: currentProduct.category;
-
-	// When category changes without vOps, we still need to validate VVA3
-	// (variant count must fit new category's max combinations)
-	if (categoryChange.isChanging && !data.variants) {
-		// Create minimal vOps to trigger VVA3 validation
-		assertValid(
-			validateVariants({
-				category: category as Parameters<
-					typeof validateVariants
-				>[0]["category"],
-				vOps: { create: [], update: [], delete: [] },
-				currVariants: currentProduct.variants.map((v) => ({
-					id: v.id,
-					attributeValueIds: v.attributeValues.map((av) => av.id),
-				})),
-			}),
-		);
-		return;
-	}
-
-	// When vOps are provided, run full validation (VVA1/VVA2/VVA3/VVA4)
-	if (data.variants) {
-		assertValid(
-			validateVariants({
-				category: category as Parameters<
-					typeof validateVariants
-				>[0]["category"],
-				vOps: data.variants,
-				currVariants: currentProduct.variants.map((v) => ({
-					id: v.id,
-					attributeValueIds: v.attributeValues.map((av) => av.id),
-				})),
-			}),
-		);
-	}
-}
-
-// ============================================================================
-// PREPARATION LAYER FUNCTIONS
-// ============================================================================
+type CategoryWithAttributes = Awaited<ReturnType<typeof requestedCategory>>;
 
 /**
  * Determines the final status for the product after the patch operation.
  * Handles auto-draft logic when category changes with >1 variant.
  */
 export function determineStatus(
-	data: ProductModel.patchBody,
-	currentProduct: ProductWithRelations,
-	categoryChange: CategoryChangeResult,
+	product: {
+		status: ProductStatus | undefined;
+		variants: ProductModel.variantOperations | undefined;
+	},
+	currentProduct: {
+		category: NonNullable<CategoryWithAttributes>;
+		variants: ({ attributes: Attribute[] } & ProductVariant)[];
+		status: ProductStatus;
+	},
+	requestedCategory?: CategoryWithAttributes,
 ): {
 	finalStatus: ProductStatus;
 	warnings?: Array<{ code: string; message: string }>;
 } {
 	const categoryHasAttributes =
-		(categoryChange.newCategory ?? currentProduct.category).attributes.length >
-		0;
+		(requestedCategory ?? currentProduct.category).attributes.length > 0;
 
 	// If category is changing, we need special handling for auto-draft
-	if (categoryChange.isChanging) {
-		const vOps = data.variants;
+	if (requestedCategory) {
+		const vOps = product.variants;
 		const finalVariantCount = computeFinalVariantCount(
-			currentProduct.variants.length,
+			currentProduct.variantsLength,
 			vOps?.create,
 			vOps?.delete,
 		);
@@ -205,14 +89,14 @@ export function determineStatus(
 		// Determine if we should auto-draft due to category change
 		const statusAfterCategoryChange = determineStatusAfterCategoryChange({
 			currentStatus: currentProduct.status,
-			requestedStatus: data.status,
+			requestedStatus: product.status,
 			newCategoryHasAttributes: categoryHasAttributes,
 			finalVariantCount,
 			variantsWithAttributeValues: variantsWithValidAttrs,
 		});
 
 		// If auto-drafted, return early with warning
-		if (statusAfterCategoryChange === "DRAFT" && data.status !== "DRAFT") {
+		if (statusAfterCategoryChange === "DRAFT" && product.status !== "DRAFT") {
 			return {
 				finalStatus: "DRAFT",
 				warnings: [
@@ -233,14 +117,14 @@ export function determineStatus(
 
 	// Standard publish status determination (no category change)
 	return determinePublishStatus({
-		requestedStatus: data.status,
+		requestedStatus: product.status,
 		currentStatus: currentProduct.status,
 		currentVariants: currentProduct.variants.map((v) => ({
 			id: v.id,
 			price: Number(v.price),
 			attributeValues: v.attributeValues,
 		})),
-		variants: data.variants,
+		variants: product.variants,
 		categoryHasAttributes,
 	});
 }

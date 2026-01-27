@@ -45,7 +45,7 @@ export namespace ProductModel {
 	export type countQuery = typeof countQuery.static;
 
 	export const imageCreate = t.Object({
-		file: t.File({ type: "image/*" }),
+		file: t.File({ type: "image/*", maxSize: "7m" }),
 		altText: t.Optional(t.String()),
 		isThumbnail: t.Optional(t.Boolean({ default: false })),
 	});
@@ -58,7 +58,7 @@ export namespace ProductModel {
 			t.Array(
 				t.Object({
 					id: uuid,
-					file: t.Optional(t.File({ type: "image/*" })),
+					file: t.Optional(t.File({ type: "image/*", maxSize: "7m" })),
 					altText: t.Optional(t.String()),
 					isThumbnail: t.Optional(t.Boolean({ default: false })),
 				}),
@@ -99,7 +99,7 @@ export namespace ProductModel {
 		status: productStatus,
 		categoryId: uuid,
 		variants: t.Object({ create: t.Array(variantCreate, { minItems: 1 }) }),
-		imagesOps: t.Object({
+		images: t.Object({
 			create: t.Array(imageCreate, {
 				minItems: 1,
 				maxItems: MAX_IMAGES_PER_PRODUCT,
@@ -116,12 +116,12 @@ export namespace ProductModel {
 		description: t.Optional(t.String()),
 		status: t.Optional(productStatus),
 		categoryId: t.Optional(uuid),
-		imagesOps: t.Optional(imageOperations),
+		images: t.Optional(imageOperations),
 		variants: t.Optional(variantOperations),
 		_version: t.Optional(t.Numeric()),
 	});
 	export type patchBody = typeof patchBody.static;
-	// export type patchResult = Awaited<ReturnType<typeof productService.patch>>;
+	export type patchResult = Awaited<ReturnType<typeof productService.patch>>;
 
 	export const bulkPatchBody = t.Object({
 		ids: t.Array(uuid, { minItems: 1 }),

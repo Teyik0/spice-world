@@ -285,11 +285,4 @@ export const categoryService = {
 		const count = await prisma.category.count();
 		return count;
 	},
-
-	async checkExists({ name }: { name: string }) {
-		const category = await prisma.category.findUnique({
-			where: { name },
-		});
-		return category !== null;
-	},
 };

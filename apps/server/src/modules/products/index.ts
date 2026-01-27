@@ -31,11 +31,11 @@ export const productsRouter = new Elysia({
 	.get("/count", async ({ query }) => await productService.count(query), {
 		query: ProductModel.countQuery,
 	})
-	.patch("/bulk", async ({ body }) => await productService.bulkPatch(body), {
-		body: ProductModel.bulkPatchBody,
-	})
 	.post("/", async ({ body }) => await productService.post(body), {
 		body: ProductModel.postBody,
+	})
+	.patch("/bulk", async ({ body }) => await productService.bulkPatch(body), {
+		body: ProductModel.bulkPatchBody,
 	})
 	.get(
 		"/slug/:slug",

@@ -38,8 +38,6 @@ export interface CategoryChangeAutoDraftInput {
 	variantsWithAttributeValues: number;
 }
 
-// ValidationResult is imported from shared.ts
-
 /**
  * PUB1: Validates that at least one variant has price > 0 for publishing.
  * Pure function for unit testing.
@@ -202,7 +200,8 @@ interface DeterminePublishStatusResult {
 export function determinePublishStatus({
 	requestedStatus,
 	currentStatus,
-	currentVariants,
+
+	,
 	variants,
 	categoryHasAttributes,
 }: DeterminePublishStatusInput): DeterminePublishStatusResult {

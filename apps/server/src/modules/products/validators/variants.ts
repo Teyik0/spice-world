@@ -1,5 +1,5 @@
 import type { Prisma } from "@spice-world/server/prisma/client";
-import type { ValidationError, ValidationResult } from "../../shared";
+import { ProductValidationError, type ValidationError } from "../../shared";
 import type { ProductModel } from "../model";
 
 export const CATEGORY_WITH_VALUES_ARGS = {
@@ -19,11 +19,11 @@ export interface AllowedAttributeValue {
 	attributeId: string;
 }
 
-interface ValidateVariantsParams {
+interface ValidateVariants {
 	category: Prisma.CategoryGetPayload<{
 		include: (typeof CATEGORY_WITH_VALUES_ARGS)["include"];
 	}>;
-	vOps: typeof ProductModel.variantOperations.static;
+	vOps?: typeof ProductModel.variantOperations.static;
 	currVariants?: {
 		id: string;
 		attributeValueIds: string[];
@@ -34,7 +34,7 @@ export const validateVariants = ({
 	category,
 	vOps,
 	currVariants,
-}: ValidateVariantsParams): ValidationResult<void> => {
+}: ValidateVariants) => {
 	/*
 	    example:
         attr 1 → ["attrVal1", "attrVal2"]
@@ -61,7 +61,7 @@ export const validateVariants = ({
 		}));
 	};
 
-	vOps.create?.forEach((variant, index: number) => {
+	vOps?.create?.forEach((variant, index: number) => {
 		const attrValueIds = variant.attributeValueIds;
 		if (attrValueIds.length === 0) return;
 
@@ -80,7 +80,7 @@ export const validateVariants = ({
 		allErrors.push(...addVariantContext(vva2Errors, index, "create"));
 	});
 
-	vOps.update?.forEach((variant, index: number) => {
+	vOps?.update?.forEach((variant, index: number) => {
 		const attrValueIds = variant.attributeValueIds;
 		if (!attrValueIds || attrValueIds.length === 0) return;
 
@@ -101,23 +101,23 @@ export const validateVariants = ({
 
 	const finalVariantCount =
 		(currVariants?.length ?? 0) +
-		(vOps.create?.length ?? 0) -
-		(vOps.delete?.length ?? 0);
+		(vOps?.create?.length ?? 0) -
+		(vOps?.delete?.length ?? 0);
 	const validateVA3Result = validateVA3({
 		variantCount: finalVariantCount,
 		category,
 	});
 	validateVA3Result && allErrors.push(validateVA3Result);
 
-	const updatedIds = new Set(vOps.update?.map((v) => v.id) || []);
-	const deletedIds = new Set(vOps.delete || []);
+	const updatedIds = new Set(vOps?.update?.map((v) => v.id) || []);
+	const deletedIds = new Set(vOps?.delete || []);
 	const finalVariants = [
 		// New variants being created
-		...(vOps.create?.map((v) => ({
+		...(vOps?.create?.map((v) => ({
 			attributeValueIds: v.attributeValueIds,
 		})) || []),
 		// Updated variants (only those with attributeValueIds changes)
-		...(vOps.update
+		...(vOps?.update
 			?.filter((v) => v.attributeValueIds)
 			.map((v) => ({
 				id: v.id,
@@ -132,20 +132,15 @@ export const validateVariants = ({
 	validateVA4Result && allErrors.push(validateVA4Result);
 
 	if (allErrors.length > 0) {
-		return {
-			success: false,
-			error: {
-				code: "VARIANTS_VALIDATION_FAILED",
-				message: `Found ${allErrors.length} validation errors across variants`,
-				field: "variants",
-				details: {
-					subErrors: allErrors,
-				},
+		throw new ProductValidationError({
+			code: "VARIANTS_VALIDATION_FAILED",
+			message: `Found ${allErrors.length} validation errors across variants`,
+			field: "variants",
+			details: {
+				subErrors: allErrors,
 			},
-		};
+		});
 	}
-
-	return { success: true, data: undefined };
 };
 
 function validateVA1(
