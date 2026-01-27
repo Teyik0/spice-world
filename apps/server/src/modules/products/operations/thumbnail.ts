@@ -92,18 +92,36 @@ export function ensureSingleThumbnail({
 		if (currentThumbnail && !explicitlyUnset)
 			return { source: "existing", id: currentThumbnail.id };
 
-		// 4. First create op (auto-assign)
-		if (creates.length > 0) return { source: "create", index: 0 };
+		// Collect IDs explicitly marked false
+		const explicitlyFalseIds = new Set(
+			updates.filter((op) => op.isThumbnail === false).map((op) => op.id),
+		);
 
-		// 5. First update op with file
+		// 4. First create op not explicitly marked false (auto-assign)
+		const firstCreateIdx = creates.findIndex((op) => op.isThumbnail !== false);
+		if (firstCreateIdx !== -1)
+			return { source: "create", index: firstCreateIdx };
+
+		// 5. First update op with file not explicitly marked false
 		const updateWithFile = updates.find(
-			(op) => op.file && !deletedIds.has(op.id),
+			(op) => op.file && !deletedIds.has(op.id) && op.isThumbnail !== false,
 		);
 		if (updateWithFile) return { source: "existing", id: updateWithFile.id };
 
-		// 6. First remaining current image
-		const remaining = currentImages?.find((img) => !deletedIds.has(img.id));
+		// 6. First remaining current image (not deleted, not explicitly marked false)
+		const remaining = currentImages?.find(
+			(img) => !deletedIds.has(img.id) && !explicitlyFalseIds.has(img.id),
+		);
 		if (remaining) return { source: "existing", id: remaining.id };
+
+		// 7. Fallback: if all marked false, take first create anyway
+		if (creates.length > 0) return { source: "create", index: 0 };
+
+		// 8. Fallback: if all marked false, take first remaining
+		const finalRemaining = currentImages?.find(
+			(img) => !deletedIds.has(img.id),
+		);
+		if (finalRemaining) return { source: "existing", id: finalRemaining.id };
 
 		return null;
 	}
