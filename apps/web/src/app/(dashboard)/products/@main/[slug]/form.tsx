@@ -139,7 +139,6 @@ export const ProductForm = ({
 					})),
 					delete: undefined,
 				});
-				form.setFieldValue("images", undefined);
 				form.setFieldValue("imagesOps", {
 					create: undefined,
 					update: undefined,

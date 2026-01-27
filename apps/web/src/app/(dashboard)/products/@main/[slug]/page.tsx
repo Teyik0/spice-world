@@ -28,8 +28,9 @@ export default async function ProductMainSlot({
 								id: firstCategory.id,
 								name: firstCategory.name,
 								imageId: firstCategory.imageId,
+								attributes: [],
 							}
-						: { id: "", name: "", imageId: "" },
+						: { id: "", name: "", imageId: "", attributes: [] },
 					categoryId: firstCategory?.id ?? "",
 					variants: [],
 					images: [],
