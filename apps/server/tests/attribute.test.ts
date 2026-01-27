@@ -18,12 +18,6 @@ describe.concurrent("Attribute routes test", () => {
 
 	// Setup - create test data
 	beforeAll(async () => {
-		if (Bun.env.NODE_ENV === "production") {
-			throw new Error("You can't run tests in production");
-		}
-		if (!Bun.env.DATABASE_URL) {
-			throw new Error("DATABASE_URL should be set");
-		}
 		testDb = await createTestDatabase("attribute.test.ts");
 		const { attributeRouter } = await import(
 			"@spice-world/server/modules/attributes"

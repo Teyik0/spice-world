@@ -1,174 +1,91 @@
-import { status } from "elysia";
+import { ProductValidationError, type ValidationError } from "../../shared";
 import type { ProductModel } from "../model";
 
-interface ImageValidationResult {
-	hasDuplicateFileIndex: boolean;
-	hasMultipleThumbnails: boolean;
-	duplicateFileIndices: number[];
-	thumbnailCount: number;
-	isValid: boolean;
-}
-
-export function validateImgOpsCreateUpdate(
-	items:
-		| (typeof ProductModel.imageOperations.static)["create"]
-		| (typeof ProductModel.imageOperations.static)["update"]
-		| undefined,
-): ImageValidationResult {
-	if (!items || items.length === 0) {
+/**
+ * VIO1: Duplicate IDs between update and delete operations
+ * An image cannot be both updated and deleted in the same request.
+ * This would cause the update to apply then the image to be deleted,
+ * potentially removing the thumbnail with no fallback.
+ */
+function validateVIO1(
+	updateOps: ProductModel.imageOperations["update"],
+	deleteIds: string[] | undefined,
+): ValidationError | null {
+	if (!updateOps?.length || !deleteIds?.length) return null;
+	const deleteSet = new Set(deleteIds);
+	const duplicates = updateOps
+		.filter((op) => deleteSet.has(op.id))
+		.map((op) => op.id);
+	if (duplicates.length > 0) {
 		return {
-			hasDuplicateFileIndex: false,
-			hasMultipleThumbnails: false,
-			duplicateFileIndices: [],
-			thumbnailCount: 0,
-			isValid: true,
+			code: "VIO1",
+			message: `Image IDs present in both update and delete: ${duplicates.join(", ")}`,
+			field: "imageOps",
 		};
 	}
+	return null;
+}
 
-	const fileIndexCount = new Map<number, number>();
-	let thumbnailCount = 0;
+/**
+ * VIO2: Cannot delete all images (must keep at least 1)
+ */
+function validateVIO2(
+	deleteIds: string[] | undefined,
+	currentImages: { id: string; isThumbnail: boolean }[],
+	createCount: number,
+): ValidationError | null {
+	if (!currentImages?.length) return null;
+	const deleteCount = deleteIds?.length ?? 0;
+	const remainingCount = currentImages.length - deleteCount + createCount;
+	if (remainingCount < 1) {
+		return {
+			code: "VIO2",
+			message: "Product must have at least 1 image. Cannot delete all images.",
+			field: "imagesOps",
+		};
+	}
+	return null;
+}
 
-	for (const item of items) {
-		if (item.isThumbnail === true) {
-			thumbnailCount++;
-		}
+interface ValidateImagesInput {
+	imagesOps: ProductModel.imageOperations;
+	currentImages?: { id: string; isThumbnail: boolean }[];
+}
+/**
+ * Validates image operations for POST and PATCH.
+ * Throw ProductValidationError on error
+ *
+ * Error codes:
+ * - VIO1: Duplicate IDs between update and delete (necessary check before auto assign thumbnail)
+ * - VIO2: Cannot delete all images (must keep at least 1)
+ */
+export function validateImages({
+	imagesOps,
+	currentImages,
+}: ValidateImagesInput) {
+	const errors: ValidationError[] = [];
+	// VIO1: Duplicate IDs between update and delete
+	const vio1 = validateVIO1(imagesOps.update, imagesOps.delete);
+	if (vio1) errors.push(vio1);
 
-		if (item.fileIndex === undefined || item.fileIndex === null) continue;
-		fileIndexCount.set(
-			item.fileIndex,
-			(fileIndexCount.get(item.fileIndex) || 0) + 1,
+	// VIO2: Cannot delete all images (only for PATCH)
+	if (currentImages) {
+		const vio2 = validateVIO2(
+			imagesOps.delete,
+			currentImages,
+			imagesOps.create?.length ?? 0,
 		);
+		if (vio2) errors.push(vio2);
 	}
 
-	const duplicateFileIndices = Array.from(fileIndexCount.entries())
-		.filter(([_, count]) => count > 1)
-		.map(([fileIndex]) => fileIndex);
-
-	const hasDuplicateFileIndex = duplicateFileIndices.length > 0;
-	const hasMultipleThumbnails = thumbnailCount > 1;
-	const isValid = !hasDuplicateFileIndex && !hasMultipleThumbnails;
-
-	return {
-		hasDuplicateFileIndex,
-		hasMultipleThumbnails,
-		duplicateFileIndices,
-		thumbnailCount,
-		isValid,
-	};
-}
-
-export function validateImagesOps(
-	images: File[],
-	imagesOps: ProductModel.imageOperations,
-) {
-	const imgOpsCreate = validateImgOpsCreateUpdate(imagesOps.create);
-	if (!imgOpsCreate.isValid) {
-		if (imgOpsCreate.hasDuplicateFileIndex) {
-			throw status("Bad Request", {
-				message: `Duplicate fileIndex values at imagesOps.create, indices: ${imgOpsCreate.duplicateFileIndices.join(
-					", ",
-				)}`,
-				code: "VIO1",
-			});
-		}
-		if (imgOpsCreate.hasMultipleThumbnails) {
-			throw status("Bad Request", {
-				message: `Multiple thumbnails set at imagesOps.create (${imgOpsCreate.thumbnailCount} found)`,
-				code: "VIO2",
-			});
-		}
-	}
-
-	const imgOpsUpdate = validateImgOpsCreateUpdate(imagesOps.update);
-	if (!imgOpsUpdate.isValid) {
-		if (imgOpsUpdate.hasDuplicateFileIndex) {
-			throw status("Bad Request", {
-				message: `Duplicate fileIndex values at imagesOps.update, indices: ${imgOpsUpdate.duplicateFileIndices.join(
-					", ",
-				)}`,
-				code: "VIO3",
-			});
-		}
-		if (imgOpsUpdate.hasMultipleThumbnails) {
-			throw status("Bad Request", {
-				message: `Multiple thumbnails set at imagesOps.update (${imgOpsUpdate.thumbnailCount} found)`,
-				code: "VIO4",
-			});
-		}
-	}
-
-	const createFileIndices = imagesOps.create?.map((op) => op.fileIndex) ?? [];
-	const updateFileIndices =
-		imagesOps.update
-			?.filter((op) => op.fileIndex !== undefined)
-			.map((op) => op.fileIndex as number) ?? [];
-	const overlap = createFileIndices.filter((idx) =>
-		updateFileIndices.includes(idx),
-	);
-	if (overlap.length > 0) {
-		throw status("Bad Request", {
-			message: `Duplicate fileIndex ${overlap.join(", ")} used in both create and update`,
-			code: "VIO5",
+	if (errors.length > 0) {
+		throw new ProductValidationError({
+			code: "IMAGES_VALIDATION_FAILED",
+			message: `Found ${errors.length} validation error${errors.length > 1 ? "s" : ""} in image operations`,
+			field: "images",
+			details: {
+				subErrors: errors,
+			},
 		});
-	}
-
-	const totalThumbnailCount =
-		imgOpsCreate.thumbnailCount + imgOpsUpdate.thumbnailCount;
-	if (totalThumbnailCount > 1) {
-		throw status("Bad Request", {
-			message: `Multiple thumbnails across create and update operations (${totalThumbnailCount} found)`,
-			code: "VIO6",
-		});
-	}
-
-	const allReferencedIndices = [...createFileIndices, ...updateFileIndices];
-	for (const idx of allReferencedIndices) {
-		if (idx < 0 || idx >= images.length) {
-			throw status("Bad Request", {
-				message: `Invalid fileIndex ${idx}. Only ${images.length} files provided.`,
-				code: "VIO7",
-			});
-		}
-	}
-
-	return allReferencedIndices;
-}
-
-export function ensureThumbnailAfterDelete(
-	currentImages: ProductModel.patchResult["images"],
-	imagesOps: ProductModel.imageOperations | undefined,
-) {
-	if (!imagesOps?.delete || imagesOps.delete.length === 0) return;
-
-	const currentThumbnail = currentImages.find((img) => img.isThumbnail);
-	const willDeleteThumbnail =
-		currentThumbnail && imagesOps.delete.includes(currentThumbnail.id);
-
-	const willSetNewThumbnail =
-		imagesOps.create?.some((op) => op.isThumbnail) ||
-		imagesOps.update?.some((op) => op.isThumbnail === true);
-
-	if (willDeleteThumbnail && !willSetNewThumbnail) {
-		const deletedIds = new Set(imagesOps.delete);
-		const firstRemaining = currentImages.find((img) => !deletedIds.has(img.id));
-
-		if (firstRemaining) {
-			if (!imagesOps.update) {
-				imagesOps.update = [];
-			}
-
-			const existingUpdate = imagesOps.update.find(
-				(op) => op.id === firstRemaining.id,
-			);
-
-			if (existingUpdate) {
-				existingUpdate.isThumbnail = true;
-			} else {
-				imagesOps.update.push({
-					id: firstRemaining.id,
-					isThumbnail: true,
-				});
-			}
-		}
 	}
 }

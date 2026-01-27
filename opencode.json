@@ -1,0 +1,72 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["./CLAUDE.md"],
+  "mcp": {
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "{env:CONTEXT7_API_KEY}"
+      },
+      "enabled": true
+    }
+  },
+  "agent": {
+    "backend-coder": {
+      "description": "ElysiaJS backend API development specialist",
+      "model": "opencode/glm-4.7",
+      "temperature": 0.2,
+      "permission": {
+        "edit": "allow",
+        "bash": {
+          "*": "ask",
+          "git diff": "allow",
+          "git status": "allow",
+          "bun test": "allow",
+          "bun run tsc": "allow"
+        }
+      }
+    },
+    "frontend-coder": {
+      "description": "React/Next.js frontend UI development specialist",
+      "model": "opencode/kimi-k2-thinking",
+      "temperature": 0.3,
+      "permission": {
+        "edit": "allow",
+        "bash": {
+          "*": "ask",
+          "git diff": "allow",
+          "git status": "allow"
+        }
+      }
+    },
+    "planner": {
+      "description": "Planning and analysis without code changes",
+      "mode": "subagent",
+      "model": "opencode/glm-4.7",
+      "temperature": 0.1,
+      "tools": {
+        "write": false,
+        "edit": false
+      },
+      "permission": {
+        "bash": {
+          "bun test": "allow",
+          "*": "ask"
+        }
+      }
+    },
+    "build": {
+      "permission": {
+        "edit": "ask",
+        "bash": {
+          "*": "ask",
+          "git diff": "allow",
+          "git status": "allow",
+          "bun test": "allow",
+          "bun run tsc": "allow"
+        }
+      }
+    }
+  }
+}

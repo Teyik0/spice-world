@@ -1,9 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@spice-world/server/prisma/client";
-import { sql } from "bun";
 
-interface TestDatabase {
+export interface TestDatabase {
 	client: PrismaClient;
 	databaseName: string;
 	destroy: () => Promise<void>;
@@ -121,10 +120,9 @@ export async function createTestDatabase(
 				databaseName.startsWith("test_product") ||
 				databaseName.startsWith("test_load")
 			)
-				await sql.close();
-			await dropClient.$executeRawUnsafe(
-				`DROP DATABASE IF EXISTS "${databaseName}"`,
-			);
+				await dropClient.$executeRawUnsafe(
+					`DROP DATABASE IF EXISTS "${databaseName}"`,
+				);
 		} finally {
 			await dropClient.$disconnect();
 		}

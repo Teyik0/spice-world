@@ -1,3 +1,4 @@
+import type { Product } from "@spice-world/server/prisma/client";
 import { type ElysiaCustomStatusResponse, t } from "elysia";
 import { nameLowerPattern, uuid } from "../shared";
 import type { productService } from "./service";
@@ -44,7 +45,7 @@ export namespace ProductModel {
 	export type countQuery = typeof countQuery.static;
 
 	export const imageCreate = t.Object({
-		fileIndex: t.Number({ minimum: 0, maximum: MAX_IMAGES_PER_PRODUCT - 1 }),
+		file: t.File({ type: "image/*", maxSize: "7m" }),
 		altText: t.Optional(t.String()),
 		isThumbnail: t.Optional(t.Boolean({ default: false })),
 	});
@@ -57,9 +58,7 @@ export namespace ProductModel {
 			t.Array(
 				t.Object({
 					id: uuid,
-					fileIndex: t.Optional(
-						t.Number({ minimum: 0, maximum: MAX_IMAGES_PER_PRODUCT - 1 }),
-					), // If present = replace file
+					file: t.Optional(t.File({ type: "image/*", maxSize: "7m" })),
 					altText: t.Optional(t.String()),
 					isThumbnail: t.Optional(t.Boolean({ default: false })),
 				}),
@@ -70,7 +69,7 @@ export namespace ProductModel {
 	});
 	export type imageOperations = typeof imageOperations.static;
 
-	const variantCreate = t.Object({
+	export const variantCreate = t.Object({
 		price: t.Number({ minimum: 0 }),
 		sku: t.Optional(t.String({ minLength: 3 })),
 		stock: t.Optional(t.Number({ minimum: 0, default: 0 })),
@@ -92,6 +91,7 @@ export namespace ProductModel {
 		update: t.Optional(t.Array(variantUpdate)),
 		delete: t.Optional(t.Array(uuid)),
 	});
+	export type variantOperations = typeof variantOperations.static;
 
 	export const postBody = t.Object({
 		name: nameLowerPattern,
@@ -99,8 +99,7 @@ export namespace ProductModel {
 		status: productStatus,
 		categoryId: uuid,
 		variants: t.Object({ create: t.Array(variantCreate, { minItems: 1 }) }),
-		images: t.Files({ minItems: 1, maxItems: MAX_IMAGES_PER_PRODUCT }),
-		imagesOps: t.Object({
+		images: t.Object({
 			create: t.Array(imageCreate, {
 				minItems: 1,
 				maxItems: MAX_IMAGES_PER_PRODUCT,
@@ -117,10 +116,7 @@ export namespace ProductModel {
 		description: t.Optional(t.String()),
 		status: t.Optional(productStatus),
 		categoryId: t.Optional(uuid),
-		images: t.Optional(
-			t.Files({ minItems: 1, maxItems: MAX_IMAGES_PER_PRODUCT }),
-		),
-		imagesOps: t.Optional(imageOperations),
+		images: t.Optional(imageOperations),
 		variants: t.Optional(variantOperations),
 		_version: t.Optional(t.Numeric()),
 	});
@@ -133,7 +129,42 @@ export namespace ProductModel {
 		categoryId: t.Optional(uuid),
 	});
 	export type bulkPatchBody = typeof bulkPatchBody.static;
+
+	export const bulkPatchResponse = t.Object({
+		successes: t.Array(t.String()),
+		failed: t.Array(
+			t.Object({
+				id: t.String(),
+				name: t.String(),
+				code: t.String(),
+				error: t.String(),
+			}),
+		),
+	});
+	export type bulkPatchResponse = typeof bulkPatchResponse.static;
+
 	export type bulkPatchResult = Awaited<
 		ReturnType<typeof productService.bulkPatch>
 	>;
+
+	// Response types with warnings
+	export interface ProductCreateResponse {
+		product: Product;
+		warnings?: Array<{
+			code: "PUB1" | "PUB2";
+			message: string;
+		}>;
+	}
+
+	export interface ValidationErrorDetail {
+		variantIndex: number;
+		code: string;
+		message: string;
+	}
+
+	export interface MultipleVariantErrors {
+		message: string;
+		code: "VVA_MULTI";
+		details: ValidationErrorDetail[];
+	}
 }
