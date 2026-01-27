@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@spice-world/server/prisma/client";
 
-interface TestDatabase {
+export interface TestDatabase {
 	client: PrismaClient;
 	databaseName: string;
 	destroy: () => Promise<void>;

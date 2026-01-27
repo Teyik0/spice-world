@@ -5,6 +5,7 @@ import type { productsRouter } from "@spice-world/server/modules/products";
 import type { ProductModel } from "@spice-world/server/modules/products/model";
 import { createTestDatabase } from "@spice-world/server/utils/db-manager";
 import {
+	createSetupProduct,
 	createTestCategory,
 	createUploadedFileData,
 	expectDefined,
@@ -16,6 +17,7 @@ let api: ReturnType<typeof treaty<typeof productsRouter>>;
 
 describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
+	let setupProduct: ReturnType<typeof createSetupProduct>;
 
 	const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
 	const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
@@ -41,49 +43,8 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 		}) as typeof imagesModule.utapi.deleteFiles);
 
 		api = treaty(productsRouter);
+		setupProduct = createSetupProduct(testDb, api);
 	});
-
-	interface SetupProductOptions {
-		attributeCount: number;
-		attributeValueCount: number;
-		variants: (typeof ProductModel.variantCreate)["static"][];
-		imagesCreate: (Omit<(typeof ProductModel.imageCreate)["static"], "file"> & {
-			file: BunFile;
-		})[];
-	}
-
-	const setupProduct = async ({
-		attributeCount,
-		attributeValueCount,
-		variants,
-		imagesCreate,
-	}: SetupProductOptions) => {
-		const category = await createTestCategory({
-			testDb,
-			attributeCount,
-			attributeValueCount,
-		});
-		expectDefined(category);
-
-		const testId = randomLowerString(8);
-		const productName = `test product ${testId} ${category.name}`;
-
-		const { data, status } = await api.products.post({
-			name: productName,
-			description: "Test product description",
-			status: "DRAFT",
-			categoryId: category.id,
-			variants: {
-				create: variants,
-			},
-			images: {
-				create: imagesCreate,
-			},
-		});
-		expect(status).toBe(201);
-		expectDefined(data);
-		return { product: data, category };
-	};
 
 	afterAll(async () => {
 		await testDb.destroy();
@@ -802,98 +763,6 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 			expect(patched.category).toHaveProperty("name");
 			expect(patched.category.name).toBe(category.name);
 			expect(patched.category.name).not.toBe("");
-		});
-	});
-
-	describe("PATCH /products - Images Validation & Thumbnail auto assign", () => {
-		it("should throw error VIO1 for duplicate IDs in update and delete", async () => {
-			const { product } = await setupProduct({
-				attributeCount: 2,
-				attributeValueCount: 2,
-				variants: [
-					{
-						price: 10,
-						sku: "DUP-IMG-TEST-4",
-						stock: 10,
-						attributeValueIds: [],
-					},
-				],
-				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
-				],
-			});
-
-			const imageId = product.images[0]?.id as string;
-
-			// Same image ID in both update and delete
-			const { error } = await api.products({ id: product.id }).patch({
-				images: {
-					update: [
-						{
-							id: imageId,
-							file: file(filePath2),
-						},
-					],
-					delete: [imageId],
-				},
-			});
-
-			expectDefined(error);
-			expect(error.status).toBe(400);
-			expect(error.value).toMatchObject({
-				code: "IMAGES_VALIDATION_FAILED",
-				message: expect.any(String),
-				details: {
-					subErrors: expect.arrayContaining([
-						expect.objectContaining({
-							code: "VIO1",
-						}),
-					]),
-				},
-			});
-		});
-
-		it("should throw error VIO2 when try delete all images", async () => {
-			const { product } = await setupProduct({
-				attributeCount: 2,
-				attributeValueCount: 2,
-				variants: [
-					{
-						price: 10,
-						sku: "DUP-IMG-TEST-6",
-						stock: 10,
-						attributeValueIds: [],
-					},
-				],
-				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
-				],
-			});
-
-			const { error } = await api.products({ id: product.id }).patch({
-				images: {
-					delete: [
-						product.images[0]?.id as string,
-						product.images[1]?.id as string,
-					],
-				},
-			});
-
-			expectDefined(error);
-			expect(error.status).toBe(400);
-			expect(error.value).toMatchObject({
-				code: "IMAGES_VALIDATION_FAILED",
-				message: expect.any(String),
-				details: {
-					subErrors: expect.arrayContaining([
-						expect.objectContaining({
-							code: "VIO2",
-						}),
-					]),
-				},
-			});
 		});
 	});
 });

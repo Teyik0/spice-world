@@ -22,10 +22,7 @@ import {
 	validatePublishAttributeRequirements,
 	validatePublishHasPositivePrice,
 } from "./validators/publish";
-import {
-	CATEGORY_WITH_VALUES_ARGS,
-	validateVariants,
-} from "./validators/variants";
+import { validateVariants } from "./validators/variants";
 
 /*
 Examples ->
@@ -264,10 +261,7 @@ export const productService = {
 		variants: vOps,
 		images: iOps,
 	}: ProductModel.postBody) {
-		const category = await prisma.category.findUniqueOrThrow({
-			where: { id: categoryId },
-			...CATEGORY_WITH_VALUES_ARGS,
-		});
+		const category = await categoryService.getById({ id: categoryId });
 		validateVariants({ vOps, category });
 		ensureSingleThumbnail({ imagesOps: iOps });
 
@@ -405,7 +399,7 @@ export const productService = {
 			});
 			ensureSingleThumbnail({
 				imagesOps: iOps,
-				currentThumbnail: currentProduct.images.find((img) => img.isThumbnail),
+				currentImages: currentProduct.images,
 			});
 		}
 
@@ -417,7 +411,9 @@ export const productService = {
 
 		if (hasCategoryChanged || vOps) {
 			validateVariants({
-				category: categoryChange ?? currentProduct.category,
+				category:
+					categoryChange ??
+					(currentProduct.category as CategoryModel.getByIdResult),
 				vOps,
 				currVariants: currentProduct.variants.map((v) => ({
 					id: v.id,
@@ -438,7 +434,7 @@ export const productService = {
 		);
 
 		// Determine final status using pre-computed analysis
-		const { finalStatus, warnings } = determineStatus(
+		const { finalStatus } = determineStatus(
 			{ status: requestedStatus, variants: vOps },
 			{
 				category: currentProduct.category as CategoryModel.getByIdResult,

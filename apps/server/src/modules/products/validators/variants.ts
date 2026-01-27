@@ -1,18 +1,6 @@
-import type { Prisma } from "@spice-world/server/prisma/client";
+import type { CategoryModel } from "../../categories/model";
 import { ProductValidationError, type ValidationError } from "../../shared";
 import type { ProductModel } from "../model";
-
-export const CATEGORY_WITH_VALUES_ARGS = {
-	include: {
-		attributes: {
-			include: {
-				values: {
-					select: { value: true, id: true },
-				},
-			},
-		},
-	},
-};
 
 export interface AllowedAttributeValue {
 	id: string;
@@ -20,9 +8,7 @@ export interface AllowedAttributeValue {
 }
 
 interface ValidateVariants {
-	category: Prisma.CategoryGetPayload<{
-		include: (typeof CATEGORY_WITH_VALUES_ARGS)["include"];
-	}>;
+	category: CategoryModel.getByIdResult;
 	vOps?: typeof ProductModel.variantOperations.static;
 	currVariants?: {
 		id: string;
@@ -212,9 +198,7 @@ function validateVA3({
 	category,
 }: {
 	variantCount: number;
-	category: Prisma.CategoryGetPayload<{
-		include: (typeof CATEGORY_WITH_VALUES_ARGS)["include"];
-	}>;
+	category: CategoryModel.getByIdResult;
 }): ValidationError | null {
 	if (variantCount < 1) {
 		return {

@@ -1,6 +1,14 @@
 import { expect } from "bun:test";
+import type { treaty } from "@elysiajs/eden";
 import { faker } from "@faker-js/faker";
-import type { createTestDatabase } from "@spice-world/server/utils/db-manager";
+import type { productsRouter } from "@spice-world/server/modules/products";
+import type { ProductModel } from "@spice-world/server/modules/products/model";
+import type {
+	createTestDatabase,
+	TestDatabase,
+} from "@spice-world/server/utils/db-manager";
+import type { BunFile } from "bun";
+import type Elysia from "elysia";
 import type { UploadedFileData } from "uploadthing/types";
 
 export function expectDefined<T>(value: T): asserts value is NonNullable<T> {
@@ -191,4 +199,67 @@ export const createTestCategory = async ({
 	});
 
 	return category;
+};
+
+interface SetupProductOptions {
+	attributeCount: number;
+	attributeValueCount: number;
+	variants: (typeof ProductModel.variantCreate)["static"][];
+	imagesCreate: (Omit<(typeof ProductModel.imageCreate)["static"], "file"> & {
+		file: BunFile;
+	})[];
+}
+
+/**
+ * Factory function that creates a setupProduct function bound to specific testDb and productRouter api instances.
+ *
+ * @param testDb - Test database instance
+ * @param api - Treaty API client (typed from productsRouter)
+ * @returns A setupProduct function that can be called multiple times in tests
+ *
+ * @example
+ * const setupProduct = createSetupProduct(testDb, api);
+ * const { product, category } = await setupProduct({
+ *   attributeCount: 2,
+ *   attributeValueCount: 2,
+ *   variants: [{ price: 10, sku: "TEST", stock: 10, attributeValueIds: [] }],
+ *   imagesCreate: [{ isThumbnail: true, file: file(filePath) }]
+ * });
+ */
+export const createSetupProduct = (
+	testDb: TestDatabase,
+	api: ReturnType<typeof treaty<typeof productsRouter>>,
+) => {
+	return async ({
+		attributeCount,
+		attributeValueCount,
+		variants,
+		imagesCreate,
+	}: SetupProductOptions) => {
+		const category = await createTestCategory({
+			testDb,
+			attributeCount,
+			attributeValueCount,
+		});
+		expectDefined(category);
+
+		const testId = randomLowerString(8);
+		const productName = `test product ${testId} ${category.name}`;
+
+		const { data, status } = await api.products.post({
+			name: productName,
+			description: "Test product description",
+			status: "DRAFT",
+			categoryId: category.id,
+			variants: {
+				create: variants,
+			},
+			images: {
+				create: imagesCreate,
+			},
+		});
+		expect(status).toBe(201);
+		expectDefined(data);
+		return { product: data, category };
+	};
 };
