@@ -27,7 +27,7 @@ export const categoryService = {
 	},
 
 	async getById({ id }: uuidGuard) {
-		const category = await prisma.category.findUnique({
+		return await prisma.category.findUniqueOrThrow({
 			where: { id },
 			include: {
 				image: true,
@@ -36,7 +36,6 @@ export const categoryService = {
 				},
 			},
 		});
-		return category ?? status("Not Found", "Category not found");
 	},
 
 	async post({ name, file, attributes }: CategoryModel.postBody) {

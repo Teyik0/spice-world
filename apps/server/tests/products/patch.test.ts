@@ -187,7 +187,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				});
 			expectDefined(patchedData);
 
-			const allVariantIds = patchedData.product.variants.map((v) => v.id);
+			const allVariantIds = patchedData.variants.map((v) => v.id);
 
 			const { error } = await api.products({ id: product.id }).patch({
 				variants: { delete: allVariantIds },
@@ -419,7 +419,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				});
 
 			expect(status).toBe(200);
-			expect(data?.product).toMatchObject({
+			expect(data).toMatchObject({
 				status: "DRAFT",
 			});
 		});
@@ -487,10 +487,10 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 
 			expect(status).toBe(200);
 			expectDefined(data);
-			expectDefined(data.product);
-			expect(data.product.categoryId).toBe(herbsCategory.id);
-			expect(data.product.variants.length).toBe(1);
-			expect(data.product.variants[0]?.sku).toBe("CAT-ATOMIC-NEW");
+			expectDefined(data);
+			expect(data.categoryId).toBe(herbsCategory.id);
+			expect(data.variants.length).toBe(1);
+			expect(data.variants[0]?.sku).toBe("CAT-ATOMIC-NEW");
 		});
 	});
 
@@ -562,13 +562,13 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 
 			expect(status).toBe(200);
 			expectDefined(data);
-			expectDefined(data.product);
-			expect(data.product.name).toBe("updated spice");
-			expect(data.product.description).toBe("an updated description");
-			expect(data.product.status).toBe("DRAFT");
-			expect(data.product.variants.length).toBeGreaterThanOrEqual(1);
+			expectDefined(data);
+			expect(data.name).toBe("updated spice");
+			expect(data.description).toBe("an updated description");
+			expect(data.status).toBe("DRAFT");
+			expect(data.variants.length).toBeGreaterThanOrEqual(1);
 
-			const updatedVariant = data.product.variants.find(
+			const updatedVariant = data.variants.find(
 				(v) => v.id === variantToUpdate.id,
 			);
 			expectDefined(updatedVariant);
@@ -606,8 +606,8 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 
 			expect(status).toBe(200);
 			expectDefined(data);
-			expectDefined(data.product);
-			expect(data.product.images.length).toBe(initialImageCount + 2);
+			expectDefined(data);
+			expect(data.images.length).toBe(initialImageCount + 2);
 		});
 
 		it("should sucess delete thumbnail image and autoassign", async () => {
@@ -703,8 +703,8 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 
 			expect(status).toBe(200);
 			expectDefined(data);
-			expectDefined(data.product);
-			expect(data.product.variants.length).toBe(initialVariantCount + 2);
+			expectDefined(data);
+			expect(data.variants.length).toBe(initialVariantCount + 2);
 		});
 
 		it("should delete variants successfully", async () => {
@@ -739,7 +739,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				});
 			expectDefined(patchedData);
 
-			const allVariantIds = patchedData.product.variants.map((v) => v.id);
+			const allVariantIds = patchedData.variants.map((v) => v.id);
 			const variantToDelete = allVariantIds[0] as string;
 
 			const { data, status } = await api.products({ id: product.id }).patch({
@@ -797,11 +797,11 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 
 			expect(patchStatus).toBe(200);
 			expectDefined(patched);
-			expectDefined(patched.product);
-			expect(patched.product.category).toHaveProperty("id");
-			expect(patched.product.category).toHaveProperty("name");
-			expect(patched.product.category.name).toBe(category.name);
-			expect(patched.product.category.name).not.toBe("");
+			expectDefined(patched.category);
+			expect(patched.category).toHaveProperty("id");
+			expect(patched.category).toHaveProperty("name");
+			expect(patched.category.name).toBe(category.name);
+			expect(patched.category.name).not.toBe("");
 		});
 	});
 

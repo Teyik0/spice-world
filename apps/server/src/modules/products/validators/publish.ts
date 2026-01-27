@@ -200,8 +200,7 @@ interface DeterminePublishStatusResult {
 export function determinePublishStatus({
 	requestedStatus,
 	currentStatus,
-
-	,
+	currentVariants,
 	variants,
 	categoryHasAttributes,
 }: DeterminePublishStatusInput): DeterminePublishStatusResult {

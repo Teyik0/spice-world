@@ -1,33 +1,42 @@
 import type { ProductModel } from "../model";
 
 export function hasProductChanges({
-	name,
-	description,
-	requestedStatus,
-	categoryId,
+	newData,
 	currentProduct,
 }: {
-	name?: string;
-	description?: string | undefined;
-	requestedStatus?: string;
-	categoryId?: string;
-	currentProduct: {
-		name: string;
-		description: string | null;
-		status: string;
-		categoryId: string;
+	newData: {
+		name?: string;
+		description?: string;
+		requestedStatus?: string;
+		categoryId?: string;
+		iOps?: ProductModel.imageOperations;
+		vOps?: ProductModel.variantOperations;
 	};
+	currentProduct: ProductModel.getByIdResult;
 }): boolean {
+	const hasProductFieldsChange =
+		(newData.name !== undefined && newData.name !== currentProduct.name) ||
+		(newData.description !== undefined &&
+			newData.description !== currentProduct.description) ||
+		(newData.requestedStatus !== undefined &&
+			newData.requestedStatus !== currentProduct.status) ||
+		(newData.categoryId !== undefined &&
+			newData.categoryId !== currentProduct.categoryId);
+
 	return (
-		(name !== undefined && name !== currentProduct.name) ||
-		(description !== undefined && description !== currentProduct.description) ||
-		(requestedStatus !== undefined &&
-			requestedStatus !== currentProduct.status) ||
-		(categoryId !== undefined && categoryId !== currentProduct.categoryId)
+		hasProductFieldsChange ||
+		hasImageChanges({
+			imagesOps: newData.iOps,
+			currentImages: currentProduct.images,
+		}) ||
+		hasVariantChanges({
+			vOps: newData.vOps,
+			currentVariants: currentProduct.variants,
+		})
 	);
 }
 
-export function hasImageChanges({
+function hasImageChanges({
 	imagesOps,
 	currentImages,
 }: {
@@ -38,21 +47,23 @@ export function hasImageChanges({
 		isThumbnail: boolean;
 	}>;
 }): boolean {
-	if (!imagesOps) return false;
+	if (imagesOps?.create && imagesOps.create.length > 0) return true;
 
-	if (imagesOps.create && imagesOps.create.length > 0) return true;
+	if (imagesOps?.delete && imagesOps.delete.length > 0) return true;
 
-	if (imagesOps.delete && imagesOps.delete.length > 0) return true;
-
-	if (imagesOps.update && imagesOps.update.length > 0) {
-		return imagesOps.update.some((op) => {
-			const current = currentImages.find((img) => img.id === op.id);
+	if (imagesOps?.update && imagesOps.update.length > 0) {
+		return imagesOps.update.some((imgToUpdate) => {
+			const current = currentImages.find(
+				(currImg) => currImg.id === imgToUpdate.id,
+			);
+			// no matching in current and update img then no change
 			if (!current) return false;
 			return (
-				(op.altText !== undefined && op.altText !== current.altText) ||
-				(op.isThumbnail !== undefined &&
-					op.isThumbnail !== current.isThumbnail) ||
-				op.file !== undefined
+				(imgToUpdate.altText !== undefined &&
+					imgToUpdate.altText !== current.altText) ||
+				(imgToUpdate.isThumbnail !== undefined &&
+					imgToUpdate.isThumbnail !== current.isThumbnail) ||
+				imgToUpdate.file !== undefined
 			);
 		});
 	}
@@ -60,7 +71,7 @@ export function hasImageChanges({
 	return false;
 }
 
-export function hasVariantChanges({
+function hasVariantChanges({
 	vOps,
 	currentVariants,
 }: {
@@ -74,15 +85,14 @@ export function hasVariantChanges({
 		attributeValues: Array<{ id: string }>;
 	}>;
 }): boolean {
-	if (!vOps) return false;
+	if (vOps?.create && vOps.create.length > 0) return true;
 
-	if (vOps.create && vOps.create.length > 0) return true;
+	if (vOps?.delete && vOps.delete.length > 0) return true;
 
-	if (vOps.delete && vOps.delete.length > 0) return true;
-
-	if (vOps.update && vOps.update.length > 0) {
+	if (vOps?.update && vOps.update.length > 0) {
 		return vOps.update.some((op) => {
 			const current = currentVariants.find((v) => v.id === op.id);
+			// no matching in current and update variant then no change
 			if (!current) return false;
 			return (
 				(op.price !== undefined && op.price !== current.price) ||
