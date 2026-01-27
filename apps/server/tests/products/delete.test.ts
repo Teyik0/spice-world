@@ -74,7 +74,7 @@ describe.concurrent("DELETE /products/:id - Integration Tests", () => {
 						},
 					],
 				},
-				imagesOps: {
+				images: {
 					create: [
 						{ file: file(filePath1), isThumbnail: true },
 						{ file: file(filePath2), isThumbnail: false },

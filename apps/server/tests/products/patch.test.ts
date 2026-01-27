@@ -2,7 +2,6 @@ import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
 import { treaty } from "@elysiajs/eden";
 import * as imagesModule from "@spice-world/server/lib/images";
 import type { productsRouter } from "@spice-world/server/modules/products";
-import type { ProductModel } from "@spice-world/server/modules/products/model";
 import { createTestDatabase } from "@spice-world/server/utils/db-manager";
 import {
 	createSetupProduct,
@@ -11,7 +10,7 @@ import {
 	expectDefined,
 	randomLowerString,
 } from "@spice-world/server/utils/helper";
-import { type BunFile, file } from "bun";
+import { file } from "bun";
 
 let api: ReturnType<typeof treaty<typeof productsRouter>>;
 
