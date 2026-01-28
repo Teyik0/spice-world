@@ -8,15 +8,15 @@ import {
 	spyOn,
 } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import * as imagesModule from "@spice-world/server/lib/images";
-import type { productsRouter } from "@spice-world/server/modules/products";
-import type { ProductModel } from "@spice-world/server/modules/products/model";
 import type {
 	Category,
 	Image,
 	Product,
 	ProductVariant,
-} from "@spice-world/server/prisma/client";
+} from "@spice-world/server/db";
+import * as imagesModule from "@spice-world/server/lib/images";
+import type { productsRouter } from "@spice-world/server/modules/products";
+import type { ProductModel } from "@spice-world/server/modules/products/model";
 import { createTestDatabase } from "@spice-world/server/utils/db-manager";
 import { createDummyProducts } from "@spice-world/server/utils/dummy-products";
 import {

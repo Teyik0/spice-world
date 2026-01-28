@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@spice-world/server/prisma/client";
+import { sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
+import * as schema from "@spice-world/server/db/schema";
+import type { DrizzleClient } from "@spice-world/server/db";
 
 export interface TestDatabase {
-	client: PrismaClient;
+	client: DrizzleClient;
 	databaseName: string;
 	destroy: () => Promise<void>;
 }
@@ -13,7 +16,7 @@ export interface TestDatabase {
  * Each test file gets its own PostgreSQL database to prevent conflicts
  * when running tests concurrently
  *
- * The database is created empty and the schema is applied using prisma db push.
+ * The database is created empty and the schema is applied using drizzle-kit push.
  * This avoids copying data from the main database (which could have 100k+ products).
  *
  * IMPORTANT: This function modifies process.env.DATABASE_URL to point to the test database.
@@ -41,34 +44,35 @@ export async function createTestDatabase(
 	const uniqueId = randomUUID().split("-")[0]; // First part of UUID for brevity
 	const databaseName = `test_${sanitizedFileName}_${uniqueId}`;
 
-	const adminAdapter = new PrismaPg({
-		connectionString: BASE_DB_URL,
-	});
-	const adminClient = new PrismaClient({ adapter: adminAdapter });
+	// Create admin connection to create database
+	const adminPool = new pg.Pool({ connectionString: BASE_DB_URL });
+	const adminClient = drizzle(adminPool, { schema });
 
 	// Parse the connection string to extract connection details
 	const url = new URL(BASE_DB_URL.replace("postgres://", "http://"));
 
 	try {
 		// Create an EMPTY database (no template = uses template0 which is empty)
-		await adminClient.$executeRawUnsafe(`CREATE DATABASE "${databaseName}"`);
+		await adminClient.execute(
+			sql.raw(`CREATE DATABASE "${databaseName}"`),
+		);
 	} catch (error) {
 		console.error(`Failed to create database ${databaseName}:`, error);
 		throw error;
 	} finally {
-		await adminClient.$disconnect();
+		await adminPool.end();
 	}
 
 	// Create connection string for the new test database
 	const testConnectionString = `postgres://${url.username}:${url.password}@${url.host}/${databaseName}?sslmode=disable`;
 
-	// Apply schema using prisma db push (schema only, no data)
+	// Apply schema using drizzle-kit push (schema only, no data)
 	const originalDbUrl = Bun.env.DATABASE_URL;
 	Bun.env.DATABASE_URL = testConnectionString;
 
 	try {
 		const proc = Bun.spawn(
-			["bunx", "prisma", "db", "push", "--accept-data-loss"],
+			["bunx", "drizzle-kit", "push", "--force"],
 			{
 				cwd: `${import.meta.dir}/../../`,
 				env: { ...Bun.env, DATABASE_URL: testConnectionString },
@@ -80,56 +84,57 @@ export async function createTestDatabase(
 		const exitCode = await proc.exited;
 		if (exitCode !== 0) {
 			const stderr = await new Response(proc.stderr).text();
-			throw new Error(`prisma db push failed: ${stderr}`);
+			throw new Error(`drizzle-kit push failed: ${stderr}`);
 		}
 	} catch (error) {
 		// Restore original URL before throwing
 		Bun.env.DATABASE_URL = originalDbUrl;
 
 		// Try to cleanup the created database
-		const cleanupAdapter = new PrismaPg({ connectionString: BASE_DB_URL });
-		const cleanupClient = new PrismaClient({ adapter: cleanupAdapter });
+		const cleanupPool = new pg.Pool({ connectionString: BASE_DB_URL });
+		const cleanupClient = drizzle(cleanupPool, { schema });
 		try {
-			await cleanupClient.$executeRawUnsafe(
-				`DROP DATABASE IF EXISTS "${databaseName}"`,
+			await cleanupClient.execute(
+				sql.raw(`DROP DATABASE IF EXISTS "${databaseName}"`),
 			);
 		} finally {
-			await cleanupClient.$disconnect();
+			await cleanupPool.end();
 		}
 
 		throw error;
 	}
 
-	const testAdapter = new PrismaPg({ connectionString: testConnectionString });
-	const testClient = new PrismaClient({ adapter: testAdapter });
-	globalThis.__prisma = testClient;
+	const testPool = new pg.Pool({ connectionString: testConnectionString });
+	const testClient = drizzle(testPool, { schema });
+	globalThis.__drizzle = testClient;
+
+	// Store pool reference for cleanup
+	const poolRef = testPool;
 
 	// Cleanup function to drop the database and restore original DATABASE_URL
 	const destroy = async () => {
-		await testClient.$disconnect();
+		await poolRef.end();
 		Bun.env.DATABASE_URL = BASE_DB_URL;
 
-		const dropAdapter = new PrismaPg({
-			connectionString: BASE_DB_URL,
-		});
-		const dropClient = new PrismaClient({ adapter: dropAdapter });
-		globalThis.__prisma = dropClient;
+		const dropPool = new pg.Pool({ connectionString: BASE_DB_URL });
+		const dropClient = drizzle(dropPool, { schema });
+		globalThis.__drizzle = dropClient;
 
 		try {
 			if (
 				databaseName.startsWith("test_product") ||
 				databaseName.startsWith("test_load")
 			)
-				await dropClient.$executeRawUnsafe(
-					`DROP DATABASE IF EXISTS "${databaseName}"`,
+				await dropClient.execute(
+					sql.raw(`DROP DATABASE IF EXISTS "${databaseName}"`),
 				);
 		} finally {
-			await dropClient.$disconnect();
+			await dropPool.end();
 		}
 	};
 
 	return {
-		client: testClient,
+		client: testClient as DrizzleClient,
 		databaseName,
 		destroy,
 	};
@@ -139,15 +144,15 @@ export async function createTestDatabase(
  * Helper function to reset all data in the test database
  * Useful for beforeEach/afterEach hooks
  */
-export async function resetTestDatabase(client: PrismaClient): Promise<void> {
-	await client.$transaction([
-		// Delete in order of dependencies (children first, then parents)
-		client.productVariant.deleteMany(),
-		client.product.deleteMany(),
-		client.category.deleteMany(),
-		client.image.deleteMany(),
-		client.attributeValue.deleteMany(),
-		client.attribute.deleteMany(),
-		client.user.deleteMany(),
-	]);
+export async function resetTestDatabase(client: DrizzleClient): Promise<void> {
+	// Delete in order of dependencies (children first, then parents)
+	// Need to handle the join tables too
+	await client.delete(schema.productVariantsToAttributeValues);
+	await client.delete(schema.productVariant);
+	await client.delete(schema.image);
+	await client.delete(schema.product);
+	await client.delete(schema.attributeValue);
+	await client.delete(schema.attribute);
+	await client.delete(schema.category);
+	await client.delete(schema.user);
 }

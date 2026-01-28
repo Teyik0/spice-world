@@ -2,8 +2,8 @@ import { ChangeEmailVerification } from "@spice-world/emails/src/change-email-ve
 import { PasswordReset } from "@spice-world/emails/src/password-reset";
 import { ResetPassword } from "@spice-world/emails/src/reset-password";
 import { VerifyEmail } from "@spice-world/emails/src/spiceworld-welcome";
-import { prisma } from "@spice-world/server/lib/prisma";
-import { prismaAdapter } from "better-auth/adapters/prisma";
+import { db } from "@spice-world/server/db";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { betterAuth } from "better-auth/minimal";
 import { admin, openAPI } from "better-auth/plugins";
 import { Elysia } from "elysia";
@@ -13,8 +13,8 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const from = "Spice World <noreply@teyik0.dev>";
 
 export const auth = betterAuth({
-	database: prismaAdapter(prisma, {
-		provider: "postgresql",
+	database: drizzleAdapter(db, {
+		provider: "pg",
 	}),
 	trustedOrigins: ["http://localhost:3000", "http://localhost:3001"], // Both frontend and backend
 	experimental: { joins: true },

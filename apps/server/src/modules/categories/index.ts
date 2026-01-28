@@ -1,5 +1,5 @@
 import { utapi } from "@spice-world/server/lib/images";
-import { prismaErrorPlugin } from "@spice-world/server/plugins/prisma.plugin";
+import { dbErrorPlugin } from "@spice-world/server/plugins/db.plugin";
 import { Elysia, status } from "elysia";
 import { uuidGuard } from "../shared";
 import { CategoryModel } from "./model";
@@ -10,7 +10,7 @@ export const categoryRouter = new Elysia({
 	prefix: "/categories",
 	tags: ["Categories"],
 })
-	.use(prismaErrorPlugin("Category"))
+	.use(dbErrorPlugin("Category"))
 	.get("/", async ({ query }) => await categoryService.get(query), {
 		query: CategoryModel.getQuery,
 	})

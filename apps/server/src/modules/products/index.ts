@@ -1,5 +1,5 @@
 import { utapi } from "@spice-world/server/lib/images";
-import { prismaErrorPlugin } from "@spice-world/server/plugins/prisma.plugin";
+import { dbErrorPlugin } from "@spice-world/server/plugins/db.plugin";
 import { Elysia } from "elysia";
 import { ProductValidationError, uuidGuard } from "../shared";
 import { ProductModel } from "./model";
@@ -23,7 +23,7 @@ export const productsRouter = new Elysia({
 	prefix: "/products",
 	tags: ["Products"],
 })
-	.use(prismaErrorPlugin("Product"))
+	.use(dbErrorPlugin("Product"))
 	.use(productsErrorPlugin)
 	.get("/", async ({ query }) => await productService.get(query), {
 		query: ProductModel.getQuery,

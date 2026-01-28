@@ -1,4 +1,4 @@
-import type { ProductStatus } from "@spice-world/server/prisma/client";
+import type { ProductStatus } from "@spice-world/server/db";
 
 export interface ValidationResults {
 	priceValid: boolean;
