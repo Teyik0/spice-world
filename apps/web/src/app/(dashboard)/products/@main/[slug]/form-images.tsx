@@ -19,6 +19,7 @@ import {
 	CarouselPrevious,
 } from "@spice-world/web/components/ui/carousel";
 import { formatBytes } from "@spice-world/web/hooks/use-file-upload";
+import { useStore } from "@tanstack/react-form";
 import { useSetAtom } from "jotai";
 import { ImageIcon, RefreshCw, Star, Trash2Icon, Upload } from "lucide-react";
 import Image from "next/image";
@@ -26,6 +27,7 @@ import {
 	type ChangeEvent,
 	useCallback,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -46,6 +48,16 @@ interface ImageMetadata {
 	altText: string | null;
 }
 
+interface DisplayImage {
+	id: string;
+	url: string;
+	isThumbnail: boolean;
+	altText: string;
+	source: "existing" | "create" | "update";
+	createIndex?: number;
+	updateIndex?: number;
+}
+
 interface ProductFormImagesProps {
 	isNew: boolean;
 	slug: string;
@@ -64,7 +76,6 @@ export const ProductFormImages = ({
 	const [api, setApi] = useState<CarouselApi>();
 	const [current, setCurrent] = useState(0);
 	useEffect(() => {
-		// Track carousel state
 		if (!api) return;
 		setCurrent(api.selectedScrollSnap() + 1);
 		api.on("select", () => {
@@ -75,89 +86,115 @@ export const ProductFormImages = ({
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const setNewProduct = useSetAtom(newProductAtom);
 	const setPages = useSetAtom(productPagesAtom);
+	const blobUrlCache = useRef(new Map<File, string>());
 
-	const updateSidebarImg = (imgUrl: string | null) => {
-		if (isNew) {
-			setNewProduct((prev) => ({
-				...(prev as ProductItemProps),
-				img: imgUrl,
-			}));
-		} else {
-			setPages((pages) =>
-				pages.map((page) =>
-					page.map((p) => (p.slug === slug ? { ...p, img: imgUrl } : p)),
-				),
-			);
-		}
-	};
-	type UnifiedImage = ImageMetadata & {
-		state: "toCreate" | "toUpdate" | null;
-		fileIndex?: number; // Pour référencer form.images
-		file?: File;
-	};
-	const [files, setFiles] = useState<UnifiedImage[]>(() =>
-		existingImages.map((img) => ({
-			...img,
-			state: null,
-		})),
-	);
-
-	//biome-ignore lint/correctness/useExhaustiveDependencies: acnowledged
 	useEffect(() => {
-		// Sync product card on sidebar
-		const newThum = files.find((img) => img.isThumbnail);
-		updateSidebarImg(newThum ? newThum.url : null);
-	}, [files]);
-
-	const syncToForm = useCallback(
-		(images: UnifiedImage[]) => {
-			const toCreate = images.filter((img) => img.state === "toCreate");
-			const toUpdate = images.filter((img) => img.state === "toUpdate");
-
-			// Sync images array
-			const allFiles = [
-				...toCreate.map((img) => img.file as File),
-				...toUpdate.filter((img) => img.file).map((img) => img.file as File),
-			];
-			if (allFiles.length > 0) {
-				form.setFieldValue("images", allFiles);
+		const cache = blobUrlCache.current;
+		return () => {
+			for (const url of cache.values()) {
+				URL.revokeObjectURL(url);
 			}
+			cache.clear();
+		};
+	}, []);
 
-			// Sync imagesOps.create
-			form.setFieldValue(
-				"imagesOps.create",
-				toCreate.map((img, index) => ({
-					fileIndex: index,
-					altText: img.altText ?? img.file?.name,
-					isThumbnail: img.isThumbnail,
-				})),
-			);
+	const getBlobUrl = useCallback((file: File): string => {
+		const cached = blobUrlCache.current.get(file);
+		if (cached) return cached;
+		const url = URL.createObjectURL(file);
+		blobUrlCache.current.set(file, url);
+		return url;
+	}, []);
 
-			// Sync imagesOps.update
-			if (toUpdate.length > 0) {
-				form.setFieldValue(
-					"imagesOps.update",
-					toUpdate.map((img, index) => ({
-						id: img.id,
-						altText: img.altText ?? img.file?.name,
-						isThumbnail: img.isThumbnail,
-						fileIndex: img.file ? toCreate.length + index : undefined,
-					})),
+	const revokeBlobUrl = useCallback((file: File) => {
+		const url = blobUrlCache.current.get(file);
+		if (url) {
+			URL.revokeObjectURL(url);
+			blobUrlCache.current.delete(file);
+		}
+	}, []);
+
+	const updateSidebarImg = useCallback(
+		(imgUrl: string | null) => {
+			if (isNew) {
+				setNewProduct((prev) => ({
+					...(prev as ProductItemProps),
+					img: imgUrl,
+				}));
+			} else {
+				setPages((pages) =>
+					pages.map((page) =>
+						page.map((p) => (p.slug === slug ? { ...p, img: imgUrl } : p)),
+					),
 				);
 			}
 		},
-		[form],
+		[isNew, slug, setNewProduct, setPages],
 	);
 
+	const existingMap = useMemo(
+		() => new Map(existingImages.map((img) => [img.id, img])),
+		[existingImages],
+	);
+
+	const displayImages: DisplayImage[] = useStore(form.store, (state) => {
+		const images = state.values.images as
+			| ProductModel.imageOperations
+			| undefined;
+		const createOps = images?.create ?? [];
+		const updateOps = images?.update ?? [];
+		const deleteIds = new Set(images?.delete ?? []);
+
+		const result: DisplayImage[] = [];
+
+		for (const [id, img] of existingMap) {
+			if (deleteIds.has(id)) continue;
+			const updateOp = updateOps.find((op) => op.id === id);
+			const updateIndex = updateOp ? updateOps.indexOf(updateOp) : undefined;
+			if (updateOp) {
+				result.push({
+					id,
+					url: updateOp.file ? getBlobUrl(updateOp.file) : img.url,
+					isThumbnail: updateOp.isThumbnail ?? img.isThumbnail,
+					altText: updateOp.altText ?? img.altText ?? "image",
+					source: "update",
+					updateIndex,
+				});
+			} else {
+				result.push({
+					id,
+					url: img.url,
+					isThumbnail: img.isThumbnail,
+					altText: img.altText ?? "image",
+					source: "existing",
+				});
+			}
+		}
+
+		for (const [i, op] of createOps.entries()) {
+			result.push({
+				id: `create-${i}`,
+				url: getBlobUrl(op.file),
+				isThumbnail: op.isThumbnail ?? false,
+				altText: op.altText ?? op.file.name,
+				source: "create",
+				createIndex: i,
+			});
+		}
+
+		return result;
+	});
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: sidebar sync on display change
 	useEffect(() => {
-		// Sync files to form whenever files change
-		syncToForm(files);
-	}, [files, syncToForm]);
+		const thumb = displayImages.find((img) => img.isThumbnail);
+		updateSidebarImg(thumb ? thumb.url : null);
+	}, [displayImages]);
 
 	const handleNewImg = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const selectedFiles = Array.from(e.target.files || []);
 
-		if (files.length + selectedFiles.length > MAX_IMAGES) {
+		if (displayImages.length + selectedFiles.length > MAX_IMAGES) {
 			toast.error(`You can only upload a maximum of ${MAX_IMAGES} images`);
 			return;
 		}
@@ -172,106 +209,196 @@ export const ProductFormImages = ({
 			return;
 		}
 
-		// Créer les nouvelles images
-		const needsThumbnail = files.length === 0;
-		const newImgs: UnifiedImage[] = selectedFiles.map((file, index) => ({
-			id: crypto.randomUUID(),
-			url: URL.createObjectURL(file),
-			altText: file.name,
-			isThumbnail: needsThumbnail && index === 0, // Only first new image is thumbnail if none exist
-			state: "toCreate",
-			file,
-		}));
+		const needsThumbnail = displayImages.length === 0;
+		for (const [i, file] of selectedFiles.entries()) {
+			// @ts-expect-error - images.create exists on both postBody and patchBody
+			form.pushFieldValue("images.create", {
+				file,
+				altText: file.name,
+				isThumbnail: needsThumbnail && i === 0,
+			});
+		}
 
-		setFiles((prev) => {
-			const updated = [...prev, ...newImgs];
-			setTimeout(() => {
-				// wait the files update and component rerender
-				api?.scrollTo(updated.length - 1);
-			}, 50);
-			return updated;
-		});
+		setTimeout(() => {
+			api?.scrollTo(displayImages.length + selectedFiles.length - 1);
+		}, 50);
 
-		// Reset input to allow re-selection
 		if (fileInputRef.current) {
 			fileInputRef.current.value = "";
 		}
 	};
 
-	const handleImgChange = (e: ChangeEvent<HTMLInputElement>, imgId: string) => {
+	const handleImgChange = (
+		e: ChangeEvent<HTMLInputElement>,
+		img: DisplayImage,
+	) => {
 		const newFile = e.target.files?.[0];
 		if (!newFile) return;
 
-		setFiles((prev) => {
-			const updated = prev.map((img) => {
-				if (img.id !== imgId) return img;
-
-				// Révoquer l'ancien blob URL si c'était un fichier local
-				if (img.url.startsWith("blob:")) {
-					URL.revokeObjectURL(img.url);
-				}
-
-				return {
-					...img,
-					url: URL.createObjectURL(newFile),
-					altText: newFile.name,
-					file: newFile,
-					state: img.state === null ? "toUpdate" : img.state, // null → toUpdate
-				};
+		if (img.source === "create" && img.createIndex !== undefined) {
+			const oldFile = (
+				form.getFieldValue(
+					"images.create",
+				) as ProductModel.imageOperations["create"]
+			)?.[img.createIndex]?.file;
+			if (oldFile) revokeBlobUrl(oldFile);
+			form.setFieldValue(`images.create[${img.createIndex}].file`, newFile);
+			form.setFieldValue(
+				`images.create[${img.createIndex}].altText`,
+				newFile.name,
+			);
+		} else if (img.source === "update" && img.updateIndex !== undefined) {
+			const oldFile = (
+				form.getFieldValue(
+					"images.update",
+				) as ProductModel.imageOperations["update"]
+			)?.[img.updateIndex]?.file;
+			if (oldFile) revokeBlobUrl(oldFile);
+			form.setFieldValue(`images.update[${img.updateIndex}].file`, newFile);
+			form.setFieldValue(
+				`images.update[${img.updateIndex}].altText`,
+				newFile.name,
+			);
+		} else if (img.source === "existing") {
+			const existing = existingMap.get(img.id);
+			if (!existing) return;
+			// @ts-expect-error - images.update exists on patchBody
+			form.pushFieldValue("images.update", {
+				id: img.id,
+				file: newFile,
+				altText: newFile.name,
+				isThumbnail: existing.isThumbnail,
 			});
-
-			return updated;
-		});
-	};
-
-	const handleDeleteImg = (imgId: string) => {
-		const imgToDelete = files.find((img) => img.id === imgId);
-		if (imgToDelete && imgToDelete.state !== "toCreate") {
-			// @ts-expect-error - imagesOps.delete exist
-			form.pushFieldValue("imagesOps.delete", imgId);
 		}
-		setFiles((prev) => {
-			const updated = prev.filter((img) => {
-				if (img.id !== imgId) return true;
-				// Revoke blob url if local file
-				if (img.url.startsWith("blob:")) {
-					URL.revokeObjectURL(img.url);
-				}
-				if (img.state === "toCreate") return false;
-				return false;
-			});
-
-			// If deleted img was the thumbnail, set a new one
-			const hasThumbnail = updated.some((img) => img.isThumbnail);
-			if (!hasThumbnail && updated.length > 0) {
-				const newThumb = updated[0] as UnifiedImage;
-				newThumb.isThumbnail = true;
-				// If existing image set state "toUpdate"
-				if (newThumb.state === null) {
-					newThumb.state = "toUpdate";
-				}
-			}
-
-			return updated;
-		});
-		setCurrent(1); // update current scroll state
 	};
 
-	const handleThumbnailChange = (imgId: string) => {
-		setFiles((prev) => {
-			const updated = prev.map((img) => {
-				const isThumbnail = img.id === imgId;
+	const handleDeleteImg = (img: DisplayImage) => {
+		if (img.source === "create" && img.createIndex !== undefined) {
+			const oldFile = (
+				form.getFieldValue(
+					"images.create",
+				) as ProductModel.imageOperations["create"]
+			)?.[img.createIndex]?.file;
+			if (oldFile) revokeBlobUrl(oldFile);
+			form.removeFieldValue("images.create", img.createIndex);
+		} else if (img.source === "update" && img.updateIndex !== undefined) {
+			const oldFile = (
+				form.getFieldValue(
+					"images.update",
+				) as ProductModel.imageOperations["update"]
+			)?.[img.updateIndex]?.file;
+			if (oldFile) revokeBlobUrl(oldFile);
+			// @ts-expect-error - images.update exists
+			form.removeFieldValue("images.update", img.updateIndex);
+			// @ts-expect-error - images.delete exists
+			form.pushFieldValue("images.delete", img.id);
+		} else if (img.source === "existing") {
+			// @ts-expect-error - images.delete exists
+			form.pushFieldValue("images.delete", img.id);
+		}
 
-				return {
-					...img,
-					isThumbnail,
-					// Si on change le thumbnail d'une image existing, marquer toUpdate
-					state: img.state === null && isThumbnail ? "toUpdate" : img.state,
-				};
-			});
+		// Auto-assign thumbnail if the deleted image was the thumbnail
+		if (img.isThumbnail) {
+			setTimeout(() => {
+				autoAssignThumbnail();
+			}, 0);
+		}
+		setCurrent(1);
+	};
 
-			return updated;
-		});
+	const autoAssignThumbnail = () => {
+		const images = form.getFieldValue("images") as
+			| ProductModel.imageOperations
+			| undefined;
+		const createOps = images?.create ?? [];
+		const updateOps = images?.update ?? [];
+		const deleteIds = new Set(images?.delete ?? []);
+
+		// Find first remaining existing (not deleted, not in update)
+		for (const [id, img] of existingMap) {
+			if (deleteIds.has(id)) continue;
+			const inUpdate = updateOps.find((op) => op.id === id);
+			if (!inUpdate) {
+				// Push as update with isThumbnail
+				// @ts-expect-error - images.update exists
+				form.pushFieldValue("images.update", {
+					id,
+					isThumbnail: true,
+					altText: img.altText,
+				});
+				return;
+			}
+		}
+
+		// Check update ops
+		for (const [i, op] of updateOps.entries()) {
+			if (deleteIds.has(op.id)) continue;
+			form.setFieldValue(`images.update[${i}].isThumbnail`, true);
+			return;
+		}
+
+		// Check create ops
+		if (createOps.length > 0) {
+			form.setFieldValue("images.create[0].isThumbnail", true);
+		}
+	};
+
+	const handleThumbnailChange = (img: DisplayImage) => {
+		const images = form.getFieldValue("images") as
+			| ProductModel.imageOperations
+			| undefined;
+		const createOps = images?.create ?? [];
+		const updateOps = images?.update ?? [];
+
+		// Clear all thumbnails in create ops
+		for (let i = 0; i < createOps.length; i++) {
+			if (createOps[i]?.isThumbnail) {
+				form.setFieldValue(`images.create[${i}].isThumbnail`, false);
+			}
+		}
+
+		// Clear all thumbnails in update ops
+		for (let i = 0; i < updateOps.length; i++) {
+			if (updateOps[i]?.isThumbnail) {
+				form.setFieldValue(`images.update[${i}].isThumbnail`, false);
+			}
+		}
+
+		// Ensure existing images that were thumbnails get an update op to clear them
+		for (const [id, existingImg] of existingMap) {
+			if (!existingImg.isThumbnail) continue;
+			if (id === img.id) continue;
+			const alreadyInUpdate = updateOps.some((op) => op.id === id);
+			if (!alreadyInUpdate) {
+				// @ts-expect-error - images.update exists
+				form.pushFieldValue("images.update", {
+					id,
+					isThumbnail: false,
+					altText: existingImg.altText,
+				});
+			}
+		}
+
+		// Set the new thumbnail
+		if (img.source === "create" && img.createIndex !== undefined) {
+			form.setFieldValue(`images.create[${img.createIndex}].isThumbnail`, true);
+		} else if (img.source === "update" && img.updateIndex !== undefined) {
+			form.setFieldValue(`images.update[${img.updateIndex}].isThumbnail`, true);
+		} else if (img.source === "existing") {
+			const alreadyInUpdate = updateOps.find((op) => op.id === img.id);
+			if (alreadyInUpdate) {
+				const idx = updateOps.indexOf(alreadyInUpdate);
+				form.setFieldValue(`images.update[${idx}].isThumbnail`, true);
+			} else {
+				// @ts-expect-error - images.update exists
+				form.pushFieldValue("images.update", {
+					id: img.id,
+					isThumbnail: true,
+					altText: existingMap.get(img.id)?.altText,
+				});
+			}
+		}
+
 		if (api) {
 			api.scrollTo(0);
 		}
@@ -288,7 +415,7 @@ export const ProductFormImages = ({
 			</CardHeader>
 
 			<CardContent>
-				{files.length ? (
+				{displayImages.length ? (
 					<Carousel
 						opts={{
 							align: "start",
@@ -298,10 +425,10 @@ export const ProductFormImages = ({
 						className="w-full"
 					>
 						<span className="absolute top-3 left-3 z-50 text-xs font-bold bg-background/80 backdrop-blur-sm rounded px-2 py-1">
-							{current} / {files.length}
+							{current} / {displayImages.length}
 						</span>
 						<CarouselContent>
-							{[...files]
+							{[...displayImages]
 								.sort(
 									(a, b) => (b.isThumbnail ? 1 : 0) - (a.isThumbnail ? 1 : 0),
 								)
@@ -309,17 +436,17 @@ export const ProductFormImages = ({
 									return (
 										<CarouselImageItem
 											key={item.id}
-											altText={item.altText ?? item.file?.name ?? "image"}
+											altText={item.altText}
 											imgId={item.id}
 											imgUrl={item.url}
 											isThumbnail={item.isThumbnail}
 											handleDeleteImg={
-												files.length > 1 ? () => handleDeleteImg(item.id) : null
+												displayImages.length > 1
+													? () => handleDeleteImg(item)
+													: null
 											}
-											handleThumbnailChange={() =>
-												handleThumbnailChange(item.id)
-											}
-											onImgChange={(e) => handleImgChange(e, item.id)}
+											handleThumbnailChange={() => handleThumbnailChange(item)}
+											onImgChange={(e) => handleImgChange(e, item)}
 										/>
 									);
 								})}
@@ -341,7 +468,7 @@ export const ProductFormImages = ({
 								onChange={handleNewImg}
 								className="hidden"
 							/>
-							{files.length < MAX_IMAGES && (
+							{displayImages.length < MAX_IMAGES && (
 								<Button
 									type="button"
 									variant="outline"

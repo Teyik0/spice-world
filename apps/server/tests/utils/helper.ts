@@ -8,7 +8,6 @@ import type {
 	TestDatabase,
 } from "@spice-world/server/utils/db-manager";
 import type { BunFile } from "bun";
-import type Elysia from "elysia";
 import type { UploadedFileData } from "uploadthing/types";
 
 export function expectDefined<T>(value: T): asserts value is NonNullable<T> {

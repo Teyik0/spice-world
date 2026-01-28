@@ -139,7 +139,7 @@ export const ProductForm = ({
 					})),
 					delete: undefined,
 				});
-				form.setFieldValue("imagesOps", {
+				form.setFieldValue("images", {
 					create: undefined,
 					update: undefined,
 					delete: undefined,
@@ -250,8 +250,7 @@ export const ProductForm = ({
 					: undefined,
 				delete: undefined,
 			},
-			images: undefined,
-			imagesOps: {
+			images: {
 				create: undefined,
 				update: undefined,
 				delete: undefined,
