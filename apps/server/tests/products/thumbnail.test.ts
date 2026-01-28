@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
 import { treaty } from "@elysiajs/eden";
+import type { Image } from "@spice-world/server/db";
 import * as imagesModule from "@spice-world/server/lib/images";
 import type { productsRouter } from "@spice-world/server/modules/products";
-import type { Image } from "@spice-world/server/prisma/client";
 import { createTestDatabase } from "@spice-world/server/utils/db-manager";
 import {
 	createSetupProduct,

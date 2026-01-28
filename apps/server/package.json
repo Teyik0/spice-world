@@ -6,12 +6,14 @@
 	"type": "module",
 	"main": "src/index.ts",
 	"scripts": {
-		"dev": "prisma generate && PORT=3001 bun run --bun --watch --cpu-prof --cpu-prof-name '@spice-world/server' --inspect --title '@spice-world/server' src/index.ts",
+		"dev": "PORT=3001 bun run --bun --watch --cpu-prof --cpu-prof-name '@spice-world/server' --inspect --title '@spice-world/server' src/index.ts",
 		"test": "bun test --randomize --concurrent --bail",
-		"build": "bunx prisma generate && bun run build.ts",
+		"build": "bun run build.ts",
 		"start": "PORT=3001 ./dist/server",
-		"db:start": "bunx prisma dev",
-		"db:reset": "bunx prisma migrate reset"
+		"db:push": "bunx drizzle-kit push",
+		"db:generate": "bunx drizzle-kit generate",
+		"db:migrate": "bunx drizzle-kit migrate",
+		"db:studio": "bunx drizzle-kit studio"
 	},
 	"dependencies": {
 		"@elysiajs/cors": "^1.4.1",
@@ -25,11 +27,9 @@
 		"@opentelemetry/sdk-trace-node": "^2.5.0",
 		"@polar-sh/better-auth": "^1.6.4",
 		"@polar-sh/sdk": "^0.42.2",
-		"@prisma/adapter-neon": "^7.3.0",
-		"@prisma/adapter-pg": "^7.3.0",
-		"@prisma/client": "^7.3.0",
 		"@react-email/components": "^1.0.6",
 		"better-auth": "^1.4.17",
+		"drizzle-orm": "^0.39.3",
 		"elysia": "catalog:",
 		"file-type": "^21.3.0",
 		"lru-cache": "^11.2.5",
@@ -43,8 +43,9 @@
 	"devDependencies": {
 		"@faker-js/faker": "^10.2.0",
 		"@spice-world/emails": "workspace:*",
+		"@types/pg": "^8.11.6",
 		"@types/react": "catalog:",
 		"@types/ws": "^8.18.1",
-		"prisma": "^7.3.0"
+		"drizzle-kit": "^0.30.5"
 	}
 }

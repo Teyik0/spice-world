@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import type { attributeRouter } from "@spice-world/server/modules/attributes";
 import type {
 	Attribute,
 	AttributeValue,
 	Category,
-} from "@spice-world/server/prisma/client";
+} from "@spice-world/server/db";
+import type { attributeRouter } from "@spice-world/server/modules/attributes";
 import { createTestDatabase } from "@spice-world/server/utils/db-manager";
 import { expectDefined } from "@spice-world/server/utils/helper";
 

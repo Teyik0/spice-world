@@ -1,7 +1,4 @@
-import type {
-	ProductStatus,
-	ProductVariant,
-} from "@spice-world/server/prisma/client";
+import type { ProductStatus, ProductVariant } from "@spice-world/server/db";
 import type { CategoryModel } from "../../categories/model";
 import type { ProductModel } from "../model";
 import {

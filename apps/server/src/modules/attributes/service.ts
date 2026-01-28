@@ -1,91 +1,140 @@
-import { prisma } from "@spice-world/server/lib/prisma";
+import { attribute, attributeValue, db } from "@spice-world/server/db";
+import { NotFoundError } from "@spice-world/server/plugins/db.plugin";
+import { eq } from "drizzle-orm";
 import { status } from "elysia";
 import type { uuidGuard } from "../shared";
 import type { AttributeModel, AttributeValueModel } from "./model";
 
 export const attributeService = {
 	async get({ categoryId }: AttributeModel.getQuery) {
-		const attributes = await prisma.attribute.findMany({
-			where: categoryId ? { categoryId } : undefined,
-			include: { values: true },
+		const attributes = await db.query.attribute.findMany({
+			where: categoryId ? eq(attribute.categoryId, categoryId) : undefined,
+			with: { values: true },
 		});
 		return attributes;
 	},
 
 	async getById({ id }: { id: string }) {
-		const attribute = await prisma.attribute.findUnique({
-			where: { id },
-			include: { values: true, category: true },
+		const result = await db.query.attribute.findFirst({
+			where: eq(attribute.id, id),
+			with: { values: true, category: true },
 		});
 
-		return attribute ?? status("Not Found", "Attribute not found");
+		if (!result) {
+			return status("Not Found", "Attribute not found");
+		}
+
+		return result;
 	},
 
 	async post({ categoryId, name, values }: AttributeModel.postBody) {
-		const attribute = await prisma.attribute.create({
-			data: {
+		const [newAttribute] = await db
+			.insert(attribute)
+			.values({
 				name,
 				categoryId,
-				values: {
-					createMany: {
-						data: values.map((value) => ({ value })),
-					},
-				},
-			},
-			include: { values: true },
+			})
+			.returning();
+
+		if (!newAttribute) {
+			throw new Error("Failed to create attribute");
+		}
+
+		// Create attribute values
+		if (values.length > 0) {
+			await db.insert(attributeValue).values(
+				values.map((value) => ({
+					value,
+					attributeId: newAttribute.id,
+				})),
+			);
+		}
+
+		// Fetch the created attribute with values
+		const createdAttribute = await db.query.attribute.findFirst({
+			where: eq(attribute.id, newAttribute.id),
+			with: { values: true },
 		});
-		return status("Created", attribute);
+
+		return status("Created", createdAttribute);
 	},
 
 	async count() {
-		const count = await prisma.attribute.count();
-		return count;
+		const result = await db.select().from(attribute);
+		return result.length;
 	},
 
 	async patch({ id, name }: AttributeModel.patchBody & uuidGuard) {
-		const attribute = prisma.attribute.update({
-			where: { id },
-			data: {
-				name,
-			},
-			include: { values: true },
+		const [updatedAttribute] = await db
+			.update(attribute)
+			.set({ name })
+			.where(eq(attribute.id, id))
+			.returning();
+
+		if (!updatedAttribute) {
+			throw new NotFoundError("Attribute");
+		}
+
+		// Fetch with values
+		const result = await db.query.attribute.findFirst({
+			where: eq(attribute.id, id),
+			with: { values: true },
 		});
-		return attribute;
+
+		return result;
 	},
 
 	async delete({ id }: uuidGuard) {
-		await prisma.attribute.delete({
-			where: {
-				id,
-			},
-		});
+		const [deleted] = await db
+			.delete(attribute)
+			.where(eq(attribute.id, id))
+			.returning();
+
+		if (!deleted) {
+			throw new NotFoundError("Attribute");
+		}
+
 		return status(200);
 	},
 };
 
 export const attributeValueService = {
 	async post({ id, name }: AttributeValueModel.postBody & uuidGuard) {
-		const attributeValue = await prisma.attributeValue.create({
-			data: {
+		const [newValue] = await db
+			.insert(attributeValue)
+			.values({
 				value: name,
 				attributeId: id,
-			},
-		});
-		return status("Created", attributeValue);
+			})
+			.returning();
+
+		return status("Created", newValue);
 	},
 
 	async patch({ id, name }: AttributeValueModel.patchBody & uuidGuard) {
-		const attributeValue = prisma.attributeValue.update({
-			where: { id },
-			data: { value: name },
-		});
-		return attributeValue;
+		const [updatedValue] = await db
+			.update(attributeValue)
+			.set({ value: name })
+			.where(eq(attributeValue.id, id))
+			.returning();
+
+		if (!updatedValue) {
+			throw new NotFoundError("AttributeValue");
+		}
+
+		return updatedValue;
 	},
 
 	async delete({ id }: uuidGuard) {
-		await prisma.attributeValue.delete({
-			where: { id },
-		});
+		const [deleted] = await db
+			.delete(attributeValue)
+			.where(eq(attributeValue.id, id))
+			.returning();
+
+		if (!deleted) {
+			throw new NotFoundError("AttributeValue");
+		}
+
 		return status(200);
 	},
 };

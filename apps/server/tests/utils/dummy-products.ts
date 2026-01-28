@@ -1,4 +1,5 @@
-import type { PrismaClient } from "@spice-world/server/prisma/client";
+import type { DrizzleClient } from "@spice-world/server/db";
+import * as schema from "@spice-world/server/db/schema";
 
 const categoriesData = [
 	{
@@ -206,83 +207,88 @@ const productsData = [
 	},
 ];
 
-export async function createDummyProducts(prisma: PrismaClient) {
-	await prisma.$transaction(async (tx) => {
-		await Promise.all(
-			categoriesData.map((categoryData) =>
-				tx.category.create({
-					data: {
-						name: categoryData.name,
-						id: categoryData.id,
-						image: {
-							create: {
-								key: categoryData.image.key,
-								url: categoryData.image.url,
-								altText: categoryData.image.altText,
-								isThumbnail: categoryData.image.isThumbnail,
-							},
-						},
-					},
-				}),
-			),
+export async function createDummyProducts(db: DrizzleClient) {
+	// Create images for categories first
+	for (const categoryData of categoriesData) {
+		const [newImage] = await db
+			.insert(schema.image)
+			.values({
+				key: categoryData.image.key,
+				url: categoryData.image.url,
+				altText: categoryData.image.altText,
+				isThumbnail: categoryData.image.isThumbnail,
+			})
+			.returning();
+
+		await db.insert(schema.category).values({
+			id: categoryData.id,
+			name: categoryData.name,
+			imageId: newImage!.id,
+		});
+	}
+
+	const categories = await db.query.category.findMany();
+
+	for (const productData of productsData) {
+		const category = categories.find(
+			(cat) => cat.name.toLowerCase() === productData.category.toLowerCase(),
 		);
-	});
+		if (!category) continue;
 
-	const categories = await prisma.category.findMany();
+		const [newProduct] = await db
+			.insert(schema.product)
+			.values({
+				name: productData.name,
+				slug: productData.slug,
+				description: productData.description,
+				status: Math.random() > 0.5 ? "PUBLISHED" : "DRAFT",
+				categoryId: category.id,
+			})
+			.returning();
 
-	await Promise.all(
-		productsData.map(async (productData) => {
-			const category = categories.find(
-				(cat) => cat.name === productData.category,
-			);
-			if (!category) return;
+		if (!newProduct) continue;
 
-			return prisma.product.create({
-				data: {
-					name: productData.name,
-					slug: productData.slug,
-					description: productData.description,
-					status: Math.random() > 0.5 ? "PUBLISHED" : "DRAFT",
-					categoryId: category.id,
-					variants: {
-						create: [
-							{
-								price: Math.random() * 100,
-								sku: `${productData.slug.toUpperCase()}-001`,
-								stock: Math.floor(Math.random() * 100),
-							},
-							{
-								price: Math.random() * 100,
-								sku: `${productData.slug.toUpperCase()}-002`,
-								stock: Math.floor(Math.random() * 100),
-							},
-						],
-					},
-					images: {
-						create: [
-							{
-								key: `${productData.slug}-image-key-1`,
-								url: `https://test-url.com/${productData.slug}-image-1.jpg`,
-								altText: `${productData.name} Image 1`,
-								isThumbnail: true,
-							},
-							{
-								key: `${productData.slug}-image-key-2`,
-								url: `https://test-url.com/${productData.slug}-image-2.jpg`,
-								altText: `${productData.name} Image 2`,
-								isThumbnail: false,
-							},
-						],
-					},
-				},
-			});
-		}),
-	);
-	const products = await prisma.product.findMany({
-		include: {
+		// Create variants
+		await db.insert(schema.productVariant).values([
+			{
+				productId: newProduct.id,
+				price: Math.random() * 100,
+				sku: `${productData.slug.toUpperCase()}-001`,
+				stock: Math.floor(Math.random() * 100),
+			},
+			{
+				productId: newProduct.id,
+				price: Math.random() * 100,
+				sku: `${productData.slug.toUpperCase()}-002`,
+				stock: Math.floor(Math.random() * 100),
+			},
+		]);
+
+		// Create images
+		await db.insert(schema.image).values([
+			{
+				key: `${productData.slug}-image-key-1`,
+				url: `https://test-url.com/${productData.slug}-image-1.jpg`,
+				altText: `${productData.name} Image 1`,
+				isThumbnail: true,
+				productId: newProduct.id,
+			},
+			{
+				key: `${productData.slug}-image-key-2`,
+				url: `https://test-url.com/${productData.slug}-image-2.jpg`,
+				altText: `${productData.name} Image 2`,
+				isThumbnail: false,
+				productId: newProduct.id,
+			},
+		]);
+	}
+
+	const products = await db.query.product.findMany({
+		with: {
 			images: true,
 			variants: true,
 		},
 	});
+
 	return { categories, products };
 }

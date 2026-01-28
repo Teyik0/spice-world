@@ -1,4 +1,4 @@
-import type { Product } from "@spice-world/server/prisma/client";
+import type { Product } from "@spice-world/server/db";
 import { type ElysiaCustomStatusResponse, t } from "elysia";
 import { nameLowerPattern, uuid } from "../shared";
 import type { productService } from "./service";

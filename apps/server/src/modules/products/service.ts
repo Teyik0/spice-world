@@ -1,7 +1,15 @@
+import {
+	db,
+	image,
+	type Product,
+	product,
+	productVariant,
+	productVariantsToAttributeValues,
+} from "@spice-world/server/db";
 import { uploadFiles, utapi } from "@spice-world/server/lib/images";
-import { prisma } from "@spice-world/server/lib/prisma";
-import type { Product } from "@spice-world/server/prisma/client";
+import { NotFoundError } from "@spice-world/server/plugins/db.plugin";
 import { sql } from "bun";
+import { and, eq, inArray } from "drizzle-orm";
 import { status } from "elysia";
 import { LRUCache } from "lru-cache";
 import type { UploadedFileData } from "uploadthing/types";
@@ -217,40 +225,77 @@ export const productService = {
 	},
 
 	async getById({ id }: uuidGuard) {
-		return await prisma.product.findUniqueOrThrow({
-			where: { id },
-			include: {
+		const result = await db.query.product.findFirst({
+			where: eq(product.id, id),
+			with: {
 				category: {
-					include: { attributes: { include: { values: true } } },
+					with: { attributes: { with: { values: true } } },
 				},
 				images: true,
 				variants: {
-					include: {
-						attributeValues: true,
+					with: {
+						attributeValues: {
+							with: {
+								attributeValue: true,
+							},
+						},
 					},
 				},
 			},
 		});
+
+		if (!result) {
+			throw new NotFoundError("Product");
+		}
+
+		// Transform the nested attributeValues structure to match Prisma's format
+		return {
+			...result,
+			variants: result.variants.map((v) => ({
+				...v,
+				attributeValues: v.attributeValues.map((av) => av.attributeValue),
+			})),
+		};
 	},
 
 	async getBySlug({ slug }: { slug: string }) {
-		return await prisma.product.findUniqueOrThrow({
-			where: { slug },
-			include: {
+		const result = await db.query.product.findFirst({
+			where: eq(product.slug, slug),
+			with: {
 				category: true,
 				images: true,
 				variants: {
-					include: {
-						attributeValues: true,
+					with: {
+						attributeValues: {
+							with: {
+								attributeValue: true,
+							},
+						},
 					},
 				},
 			},
 		});
+
+		if (!result) {
+			throw new NotFoundError("Product");
+		}
+
+		// Transform the nested attributeValues structure to match Prisma's format
+		return {
+			...result,
+			variants: result.variants.map((v) => ({
+				...v,
+				attributeValues: v.attributeValues.map((av) => av.attributeValue),
+			})),
+		};
 	},
 
-	async count({ status }: ProductModel.countQuery) {
-		const where = status ? { status } : {};
-		return prisma.product.count({ where });
+	async count({ status: productStatus }: ProductModel.countQuery) {
+		const result = await db.query.product.findMany({
+			where: productStatus ? eq(product.status, productStatus) : undefined,
+			columns: { id: true },
+		});
+		return result.length;
 	},
 
 	async post({
@@ -299,58 +344,88 @@ export const productService = {
 		}
 
 		try {
-			const product = await prisma.$transaction(async (tx) => {
-				const product = await tx.product.create({
-					data: {
-						name,
-						slug: name.toLowerCase().replace(/\s+/g, "-"),
-						description,
-						status: finalStatus,
-						categoryId,
-						images: {
-							createMany: {
-								data: iOps.create.map((op, index) => {
-									const file = uploadMap[index] as UploadedFileData;
-									return {
-										key: file.key,
-										url: file.ufsUrl,
-										altText: op.altText ?? `${name} image`,
-										isThumbnail: op.isThumbnail ?? false,
-									};
-								}),
-							},
+			// Create product
+			const [newProduct] = await db
+				.insert(product)
+				.values({
+					name,
+					slug: name.toLowerCase().replace(/\s+/g, "-"),
+					description,
+					status: finalStatus,
+					categoryId,
+				})
+				.returning();
+
+			if (!newProduct) {
+				throw new Error("Failed to create product");
+			}
+
+			// Create images
+			if (iOps.create.length > 0) {
+				await db.insert(image).values(
+					iOps.create.map((op, index) => {
+						const file = uploadMap[index] as UploadedFileData;
+						return {
+							key: file.key,
+							url: file.ufsUrl,
+							altText: op.altText ?? `${name} image`,
+							isThumbnail: op.isThumbnail ?? false,
+							productId: newProduct.id,
+						};
+					}),
+				);
+			}
+
+			// Create variants with attributeValues
+			const createdVariants = [];
+			for (const variant of vOps.create) {
+				const [newVariant] = await db
+					.insert(productVariant)
+					.values({
+						productId: newProduct.id,
+						price: variant.price,
+						sku: variant.sku,
+						stock: variant.stock ?? 0,
+						currency: variant.currency ?? "EUR",
+					})
+					.returning();
+
+				if (newVariant && variant.attributeValueIds.length > 0) {
+					await db.insert(productVariantsToAttributeValues).values(
+						variant.attributeValueIds.map((avId) => ({
+							A: avId,
+							B: newVariant.id,
+						})),
+					);
+				}
+
+				// Fetch variant with attributeValues
+				const variantWithAttrs = await db.query.productVariant.findFirst({
+					where: eq(productVariant.id, newVariant!.id),
+					with: {
+						attributeValues: {
+							with: { attributeValue: true },
 						},
-					},
-					include: {
-						category: true,
-						images: true,
 					},
 				});
 
-				const createdVariants = await Promise.all(
-					vOps.create.map((variant) => {
-						return tx.productVariant.create({
-							data: {
-								productId: product.id,
-								price: variant.price,
-								sku: variant.sku,
-								stock: variant.stock ?? 0,
-								currency: variant.currency ?? "EUR",
-								attributeValues: {
-									connect: variant.attributeValueIds.map((id) => ({ id })),
-								},
-							},
-							include: {
-								attributeValues: true,
-							},
-						});
-					}),
-				);
+				if (variantWithAttrs) {
+					createdVariants.push({
+						...variantWithAttrs,
+						attributeValues: variantWithAttrs.attributeValues.map(
+							(av) => av.attributeValue,
+						),
+					});
+				}
+			}
 
-				return {
-					...product,
-					variants: createdVariants,
-				};
+			// Fetch created product with relations
+			const createdProduct = await db.query.product.findFirst({
+				where: eq(product.id, newProduct.id),
+				with: {
+					category: true,
+					images: true,
+				},
 			});
 
 			invalidateProductListings({
@@ -358,7 +433,10 @@ export const productService = {
 				statuses: [finalStatus],
 			});
 
-			return status("Created", product);
+			return status("Created", {
+				...createdProduct,
+				variants: createdVariants,
+			});
 		} catch (err: unknown) {
 			if (uploadMap.length > 0) {
 				await utapi.deleteFiles(uploadMap.map((file) => file.key));
@@ -483,80 +561,77 @@ export const productService = {
 		const updateOpsWithFiles = iOps?.update?.filter((op) => op.file) ?? [];
 
 		try {
-			const product = await prisma.$transaction(async (tx) => {
-				// 1. Update product
-				const updatedProduct = await tx.product.update({
-					where: { id },
-					data: {
-						...(name && {
-							name,
-							slug: name.toLowerCase().replace(/\s+/g, "-"),
+			// 1. Update product
+			const [updatedProduct] = await db
+				.update(product)
+				.set({
+					...(name && {
+						name,
+						slug: name.toLowerCase().replace(/\s+/g, "-"),
+					}),
+					...(description !== undefined && { description }),
+					status: finalStatus,
+					...(categoryId && { categoryId }),
+					version: currentProduct.version + 1,
+				})
+				.where(eq(product.id, id))
+				.returning();
+
+			if (!updatedProduct) {
+				throw new NotFoundError("Product");
+			}
+
+			// 2. Handle image operations
+			if (iOps) {
+				// Delete images
+				if (iOps.delete && iOps.delete.length > 0) {
+					const oldImages = await db.query.image.findMany({
+						where: inArray(image.id, iOps.delete),
+						columns: { key: true },
+					});
+					await db.delete(image).where(inArray(image.id, iOps.delete));
+					oldKeysToDelete.push(...oldImages.map((i) => i.key));
+				}
+
+				// Create new images
+				if (iOps.create && iOps.create.length > 0) {
+					await db.insert(image).values(
+						iOps.create.map((op, index) => {
+							// biome-ignore lint/style/noNonNullAssertion: already checked at upload time
+							const file = createUploads.data![index] as UploadedFileData;
+							return {
+								key: file.key,
+								url: file.ufsUrl,
+								altText: op.altText ?? `${updatedProduct.name} image`,
+								isThumbnail: op.isThumbnail ?? false,
+								productId: id,
+							};
 						}),
-						...(description !== undefined && { description }),
-						status: finalStatus,
-						...(categoryId && {
-							category: { connect: { id: categoryId } },
-						}),
-						version: { increment: 1 },
-					},
-					include: {
-						category: true,
-					},
-				});
+					);
+				}
 
-				// 2. Handle image operations
-				if (iOps) {
-					// Delete images
-					if (iOps.delete && iOps.delete.length > 0) {
-						const oldImages = await tx.image.findMany({
-							where: { id: { in: iOps.delete } },
-							select: { key: true },
-						});
-						await tx.image.deleteMany({
-							where: { id: { in: iOps.delete } },
-						});
-						oldKeysToDelete.push(...oldImages.map((i) => i.key));
-					}
+				// Update images
+				if (iOps.update && iOps.update.length > 0) {
+					const currentImages = await db.query.image.findMany({
+						where: inArray(
+							image.id,
+							iOps.update.map((op) => op.id),
+						),
+					});
 
-					// Create new images (uploadMap sequentially)
-					if (iOps.create && iOps.create.length > 0) {
-						await tx.image.createMany({
-							data: iOps.create.map((op, index) => {
-								// biome-ignore lint/style/noNonNullAssertion: already checked at upload time
-								const file = createUploads.data![index] as UploadedFileData;
-								return {
-									key: file.key,
-									url: file.ufsUrl,
-									altText: op.altText ?? `${updatedProduct.name} image`,
-									isThumbnail: op.isThumbnail ?? false,
-									productId: id,
-								};
-							}),
-						});
-					}
+					for (const op of iOps.update) {
+						const currentImage = currentImages.find((i) => i.id === op.id);
+						if (!currentImage) throw new Error(`Image not found: ${op.id}`);
 
-					// Update images (find by ID in uploadMap)
-					if (iOps.update && iOps.update.length > 0) {
-						// Parallel fetch all current images first
-						const currentImages = await Promise.all(
-							iOps.update.map((op) =>
-								tx.image.findUnique({ where: { id: op.id } }),
-							),
+						// biome-ignore lint/style/noNonNullAssertion: already checked at upload time
+						const uploaded = updateUploads.data!.find(
+							(_, i) => updateOpsWithFiles[i]?.id === op.id,
 						);
 
-						// Parallel update all images
-						const updatePromises = iOps.update.map((op, index) => {
-							const currentImage = currentImages[index];
-							if (!currentImage) throw new Error(`Image not found: ${op.id}`);
-
-							// biome-ignore lint/style/noNonNullAssertion: already checked at upload time
-							const uploaded = updateUploads.data!.find(
-								(_, i) => updateOpsWithFiles[i]?.id === op.id,
-							);
-
-							return tx.image.update({
-								where: { id: op.id },
-								data: uploaded
+						await db
+							.update(image)
+							.set(
+								uploaded
 									? {
 											key: uploaded.key,
 											url: uploaded.ufsUrl,
@@ -567,123 +642,143 @@ export const productService = {
 											altText: op.altText ?? currentImage.altText,
 											isThumbnail: op.isThumbnail ?? currentImage.isThumbnail,
 										},
-							});
-						});
-
-						await Promise.all(updatePromises);
+							)
+							.where(eq(image.id, op.id));
 					}
 				}
+			}
 
-				// 3. Handle variant operations
-				if (vOps) {
-					const promises: Promise<unknown>[] = [];
-
-					if (vOps.delete && vOps.delete.length > 0) {
-						promises.push(
-							tx.productVariant.deleteMany({
-								where: { id: { in: vOps.delete }, productId: id },
-							}),
+			// 3. Handle variant operations
+			if (vOps) {
+				// Delete variants
+				if (vOps.delete && vOps.delete.length > 0) {
+					await db
+						.delete(productVariant)
+						.where(
+							and(
+								inArray(productVariant.id, vOps.delete),
+								eq(productVariant.productId, id),
+							),
 						);
-					}
+				}
 
-					if (vOps.update && vOps.update.length > 0) {
-						for (const variant of vOps.update) {
-							promises.push(
-								tx.productVariant.update({
-									where: { id: variant.id },
-									data: {
-										...(variant.price !== undefined && {
-											price: variant.price,
-										}),
-										...(variant.sku !== undefined && { sku: variant.sku }),
-										...(variant.stock !== undefined && {
-											stock: variant.stock,
-										}),
-										...(variant.currency !== undefined && {
-											currency: variant.currency,
-										}),
-										...(variant.attributeValueIds !== undefined && {
-											attributeValues: {
-												set: variant.attributeValueIds.map((aid) => ({
-													id: aid,
-												})),
-											},
-										}),
-									},
-									include: { attributeValues: true },
+				// Update variants
+				if (vOps.update && vOps.update.length > 0) {
+					for (const variant of vOps.update) {
+						await db
+							.update(productVariant)
+							.set({
+								...(variant.price !== undefined && { price: variant.price }),
+								...(variant.sku !== undefined && { sku: variant.sku }),
+								...(variant.stock !== undefined && { stock: variant.stock }),
+								...(variant.currency !== undefined && {
+									currency: variant.currency,
 								}),
+							})
+							.where(eq(productVariant.id, variant.id));
+
+						// Update attributeValues (set operation)
+						if (variant.attributeValueIds !== undefined) {
+							// Delete existing relations
+							await db
+								.delete(productVariantsToAttributeValues)
+								.where(eq(productVariantsToAttributeValues.B, variant.id));
+
+							// Create new relations
+							if (variant.attributeValueIds.length > 0) {
+								await db.insert(productVariantsToAttributeValues).values(
+									variant.attributeValueIds.map((avId) => ({
+										A: avId,
+										B: variant.id,
+									})),
+								);
+							}
+						}
+					}
+				}
+
+				// Create new variants
+				if (vOps.create && vOps.create.length > 0) {
+					for (const variant of vOps.create) {
+						const [newVariant] = await db
+							.insert(productVariant)
+							.values({
+								productId: id,
+								price: variant.price,
+								sku: variant.sku,
+								stock: variant.stock ?? 0,
+								currency: variant.currency ?? "EUR",
+							})
+							.returning();
+
+						if (newVariant && variant.attributeValueIds.length > 0) {
+							await db.insert(productVariantsToAttributeValues).values(
+								variant.attributeValueIds.map((avId) => ({
+									A: avId,
+									B: newVariant.id,
+								})),
 							);
 						}
 					}
-
-					if (vOps.create && vOps.create.length > 0) {
-						for (const variant of vOps.create) {
-							promises.push(
-								tx.productVariant.create({
-									data: {
-										productId: id,
-										price: variant.price,
-										sku: variant.sku,
-										stock: variant.stock ?? 0,
-										currency: variant.currency ?? "EUR",
-										attributeValues: {
-											connect: variant.attributeValueIds.map((aid) => ({
-												id: aid,
-											})),
-										},
-									},
-									include: { attributeValues: true },
-								}),
-							);
-						}
-					}
-
-					await Promise.all(promises);
 				}
+			}
 
-				// 4. Clear attributeValues if category changed and not properly reconfigured
-				if (hasCategoryChanged && !analysis.isProperlyReconfigured) {
-					const variants = await tx.productVariant.findMany({
-						where: { productId: id },
-						select: { id: true },
-					});
+			// 4. Clear attributeValues if category changed and not properly reconfigured
+			if (hasCategoryChanged && !analysis.isProperlyReconfigured) {
+				const variants = await db.query.productVariant.findMany({
+					where: eq(productVariant.productId, id),
+					columns: { id: true },
+				});
 
-					await Promise.all(
-						variants.map((v) =>
-							tx.productVariant.update({
-								where: { id: v.id },
-								data: { attributeValues: { set: [] } },
-							}),
-						),
-					);
+				for (const v of variants) {
+					await db
+						.delete(productVariantsToAttributeValues)
+						.where(eq(productVariantsToAttributeValues.B, v.id));
 				}
+			}
 
-				// 5. Fetch and return updated product
-				const [updatedVariants, updatedImages] = await Promise.all([
-					tx.productVariant.findMany({
-						where: { productId: id },
-						include: { attributeValues: true },
+			// 5. Fetch and return updated product
+			const [updatedVariants, updatedImages, productCategory] =
+				await Promise.all([
+					db.query.productVariant.findMany({
+						where: eq(productVariant.productId, id),
+						with: {
+							attributeValues: {
+								with: { attributeValue: true },
+							},
+						},
 					}),
-					tx.image.findMany({ where: { productId: id } }),
+					db.query.image.findMany({
+						where: eq(image.productId, id),
+					}),
+					db.query.category.findFirst({
+						where: eq(
+							categoryId ? categoryId : currentProduct.categoryId,
+							categoryId ? categoryId : currentProduct.categoryId,
+						),
+					}),
 				]);
 
-				return {
-					...updatedProduct,
-					variants: updatedVariants,
-					images: updatedImages,
-				};
-			});
+			const finalProduct = {
+				...updatedProduct,
+				category: productCategory,
+				variants: updatedVariants.map((v) => ({
+					...v,
+					attributeValues: v.attributeValues.map((av) => av.attributeValue),
+				})),
+				images: updatedImages,
+			};
 
 			if (oldKeysToDelete.length > 0) {
 				await utapi.deleteFiles(oldKeysToDelete);
 			}
 
 			invalidateProductListings({
-				categoryIds: [product.categoryId],
-				statuses: [product.status],
+				categoryIds: [finalProduct.categoryId],
+				statuses: [finalProduct.status],
 			});
 
-			return product;
+			return finalProduct;
 		} catch (err: unknown) {
 			// Clean up orphaned files if transaction fails
 			if (createUploads.data && createUploads.data.length > 0)
@@ -703,24 +798,30 @@ export const productService = {
 
 		// If requesting PUBLISHED, validate each product first
 		if (requestedStatus === "PUBLISHED") {
-			const products = await prisma.product.findMany({
-				where: { id: { in: ids } },
-				include: {
+			const products = await db.query.product.findMany({
+				where: inArray(product.id, ids),
+				with: {
 					variants: {
-						include: { attributeValues: true },
+						with: {
+							attributeValues: {
+								with: { attributeValue: true },
+							},
+						},
 					},
 					category: {
-						include: { attributes: true },
+						with: { attributes: true },
 					},
 				},
 			});
 
-			for (const product of products) {
-				const categoryHasAttributes = product.category.attributes.length > 0;
-				const variantsData = product.variants.map((v) => ({
+			for (const prod of products) {
+				const categoryHasAttributes = prod.category.attributes.length > 0;
+				const variantsData = prod.variants.map((v) => ({
 					id: v.id,
 					price: v.price,
-					attributeValueIds: v.attributeValues.map((av) => av.id),
+					attributeValueIds: v.attributeValues.map(
+						(av) => av.attributeValue.id,
+					),
 				}));
 
 				// PUB1
@@ -730,7 +831,7 @@ export const productService = {
 
 				if (!priceResult.success) {
 					throw status("Bad Request", {
-						message: `Product "${product.name}": ${priceResult.error?.message ?? "Validation failed"}`,
+						message: `Product "${prod.name}": ${priceResult.error?.message ?? "Validation failed"}`,
 						code: "PUB1",
 					});
 				}
@@ -743,53 +844,64 @@ export const productService = {
 
 				if (!attrResult.success) {
 					throw status("Bad Request", {
-						message: `Product "${product.name}": ${attrResult.error?.message ?? "Validation failed"}`,
+						message: `Product "${prod.name}": ${attrResult.error?.message ?? "Validation failed"}`,
 						code: "PUB2",
 					});
 				}
 			}
 		}
 
-		return prisma.$transaction(async (tx) => {
-			const result = await tx.product.updateMany({
-				where: { id: { in: ids } },
-				data: {
-					...(requestedStatus && { status: requestedStatus }),
-					...(categoryId && { categoryId }),
-				},
+		// Update products
+		await db
+			.update(product)
+			.set({
+				...(requestedStatus && { status: requestedStatus }),
+				...(categoryId && { categoryId }),
+			})
+			.where(inArray(product.id, ids));
+
+		// Clear attributeValues if category changed
+		if (categoryId) {
+			const variants = await db.query.productVariant.findMany({
+				where: inArray(productVariant.productId, ids),
+				columns: { id: true },
 			});
 
-			if (categoryId) {
-				const variants = await tx.productVariant.findMany({
-					where: { productId: { in: ids } },
-					select: { id: true },
-				});
-
-				await Promise.all(
-					variants.map((v) =>
-						tx.productVariant.update({
-							where: { id: v.id },
-							data: { attributeValues: { set: [] } },
-						}),
-					),
-				);
+			for (const v of variants) {
+				await db
+					.delete(productVariantsToAttributeValues)
+					.where(eq(productVariantsToAttributeValues.B, v.id));
 			}
+		}
 
-			return result;
-		});
+		return { count: ids.length };
 	},
 
 	async delete({ id }: uuidGuard) {
-		const deletedProduct = await prisma.product.delete({
-			where: { id: id },
-			include: { images: true },
+		// Fetch product with images first
+		const productToDelete = await db.query.product.findFirst({
+			where: eq(product.id, id),
+			with: { images: true },
 		});
+
+		if (!productToDelete) {
+			throw new NotFoundError("Product");
+		}
+
+		// Delete the product (will cascade to variants and images)
+		const [deletedProduct] = await db
+			.delete(product)
+			.where(eq(product.id, id))
+			.returning();
 
 		invalidateProductListings({
-			categoryIds: [deletedProduct.categoryId],
-			statuses: [deletedProduct.status],
+			categoryIds: [productToDelete.categoryId],
+			statuses: [productToDelete.status],
 		});
 
-		return deletedProduct;
+		return {
+			...deletedProduct,
+			images: productToDelete.images,
+		};
 	},
 };

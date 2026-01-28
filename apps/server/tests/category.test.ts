@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { treaty } from "@elysiajs/eden";
+import { db, eq, image } from "@spice-world/server/db";
 import * as imagesModule from "@spice-world/server/lib/images";
-import { prisma } from "@spice-world/server/lib/prisma";
 import type { categoryRouter } from "@spice-world/server/modules/categories";
 import { createTestDatabase } from "@spice-world/server/utils/db-manager";
 import {

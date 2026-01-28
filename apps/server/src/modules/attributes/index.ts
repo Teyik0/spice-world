@@ -1,5 +1,4 @@
-import { prisma } from "@spice-world/server/lib/prisma";
-import { prismaErrorPlugin } from "@spice-world/server/plugins/prisma.plugin";
+import { dbErrorPlugin } from "@spice-world/server/plugins/db.plugin";
 import { Elysia } from "elysia";
 import { uuidGuard } from "../shared";
 import { AttributeModel, AttributeValueModel } from "./model";
@@ -10,7 +9,7 @@ export const attributeRouter = new Elysia({
 	prefix: "/attributes",
 	tags: ["Attributes"],
 })
-	.use(prismaErrorPlugin("Attribute"))
+	.use(dbErrorPlugin("Attribute"))
 	.get("/", async ({ query }) => await attributeService.get(query), {
 		query: AttributeModel.getQuery,
 	})
@@ -48,9 +47,8 @@ export const attributeRouter = new Elysia({
 					body: AttributeValueModel.patchBody,
 				},
 			)
-			.delete("/:id", async ({ params: { id } }) =>
-				prisma.attributeValue.delete({
-					where: { id },
-				}),
+			.delete(
+				"/:id",
+				async ({ params }) => await attributeValueService.delete(params),
 			),
 	);

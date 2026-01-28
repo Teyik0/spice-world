@@ -1,5 +1,13 @@
+import {
+	attribute,
+	attributeValue,
+	category,
+	db,
+	image,
+} from "@spice-world/server/db";
 import { uploadFile, utapi } from "@spice-world/server/lib/images";
-import { prisma } from "@spice-world/server/lib/prisma";
+import { NotFoundError } from "@spice-world/server/plugins/db.plugin";
+import { and, eq, ilike, inArray } from "drizzle-orm";
 import { status } from "elysia";
 import type { UploadedFileData } from "uploadthing/types";
 import { uploadFileErrStatus, type uuidGuard } from "../shared";
@@ -7,19 +15,13 @@ import type { CategoryModel } from "./model";
 
 export const categoryService = {
 	async get({ skip, take, name }: CategoryModel.getQuery) {
-		const categories = await prisma.category.findMany({
-			skip,
-			take,
-			where: {
-				name: {
-					contains: name,
-				},
-			},
-			include: {
+		const categories = await db.query.category.findMany({
+			limit: take,
+			offset: skip,
+			where: name ? ilike(category.name, `%${name}%`) : undefined,
+			with: {
 				image: {
-					select: {
-						url: true,
-					},
+					columns: { url: true },
 				},
 			},
 		});
@@ -27,61 +29,97 @@ export const categoryService = {
 	},
 
 	async getById({ id }: uuidGuard) {
-		return await prisma.category.findUniqueOrThrow({
-			where: { id },
-			include: {
+		const result = await db.query.category.findFirst({
+			where: eq(category.id, id),
+			with: {
 				image: true,
 				attributes: {
-					include: { values: true },
+					with: { values: true },
 				},
 			},
 		});
+
+		if (!result) {
+			throw new NotFoundError("Category");
+		}
+
+		return result;
 	},
 
-	async post({ name, file, attributes }: CategoryModel.postBody) {
-		const { data: image, error: fileError } = await uploadFile(name, file);
-		if (fileError || !image) {
+	async post({ name, file, attributes: attrs }: CategoryModel.postBody) {
+		const { data: uploadedImage, error: fileError } = await uploadFile(
+			name,
+			file,
+		);
+		if (fileError || !uploadedImage) {
 			return uploadFileErrStatus(fileError);
 		}
 
 		try {
-			const category = await prisma.category.create({
-				data: {
+			// Create image first
+			const [newImage] = await db
+				.insert(image)
+				.values({
+					key: uploadedImage.key,
+					url: uploadedImage.ufsUrl,
+					altText: name,
+					isThumbnail: true,
+				})
+				.returning();
+
+			if (!newImage) {
+				throw new Error("Failed to create image");
+			}
+
+			// Create category
+			const [newCategory] = await db
+				.insert(category)
+				.values({
 					name,
-					image: {
-						create: {
-							key: image.key,
-							url: image.ufsUrl,
-							altText: name,
-							isThumbnail: true,
-						},
-					},
-					...(attributes?.create &&
-						attributes.create.length > 0 && {
-							attributes: {
-								create: attributes.create.map((attr) => ({
-									name: attr.name,
-									values: {
-										createMany: {
-											data: attr.values.map((value) => ({ value })),
-										},
-									},
-								})),
-							},
-						}),
-				},
-				include: {
+					imageId: newImage.id,
+				})
+				.returning();
+
+			if (!newCategory) {
+				throw new Error("Failed to create category");
+			}
+
+			// Create attributes if provided
+			if (attrs?.create && attrs.create.length > 0) {
+				for (const attr of attrs.create) {
+					const [newAttr] = await db
+						.insert(attribute)
+						.values({
+							name: attr.name,
+							categoryId: newCategory.id,
+						})
+						.returning();
+
+					if (newAttr && attr.values.length > 0) {
+						await db.insert(attributeValue).values(
+							attr.values.map((value) => ({
+								value,
+								attributeId: newAttr.id,
+							})),
+						);
+					}
+				}
+			}
+
+			// Fetch the complete category
+			const createdCategory = await db.query.category.findFirst({
+				where: eq(category.id, newCategory.id),
+				with: {
 					image: true,
 					attributes: {
-						include: {
-							values: true,
-						},
+						with: { values: true },
 					},
 				},
 			});
-			return status("Created", category);
+
+			return status("Created", createdCategory);
 		} catch (err: unknown) {
-			await utapi.deleteFiles(image.key); // Cleanup uploaded file
+			await utapi.deleteFiles(uploadedImage.key);
 			throw err;
 		}
 	},
@@ -90,175 +128,200 @@ export const categoryService = {
 		id,
 		name,
 		file,
-		attributes,
+		attributes: attrs,
 	}: CategoryModel.patchBody & uuidGuard) {
 		let newFile: UploadedFileData | null = null;
 
 		if (file) {
-			const { data: image, error: fileError } = await uploadFile(name, file);
-			if (fileError || !image) {
+			const { data: uploadedImage, error: fileError } = await uploadFile(
+				name,
+				file,
+			);
+			if (fileError || !uploadedImage) {
 				return { data: null, error: uploadFileErrStatus(fileError) };
 			}
-			newFile = image;
+			newFile = uploadedImage;
 		}
 
 		try {
-			const tx = await prisma.$transaction(async (tx) => {
-				const category = await tx.category.findUniqueOrThrow({
-					where: { id },
-					include: {
-						image: { select: { key: true } },
-						attributes: { include: { values: true } },
-					},
-				});
+			// Fetch current category
+			const currentCategory = await db.query.category.findFirst({
+				where: eq(category.id, id),
+				with: {
+					image: { columns: { key: true } },
+					attributes: { with: { values: true } },
+				},
+			});
 
-				if (attributes) {
-					if (attributes.create) {
-						const existingNames = category.attributes.map((a) => a.name);
-						const newNames = attributes.create.map((a) => a.name);
-						const duplicates = newNames.filter((n) =>
-							existingNames.includes(n),
+			if (!currentCategory) {
+				throw new NotFoundError("Category");
+			}
+
+			// Validate attributes operations
+			if (attrs) {
+				if (attrs.create) {
+					const existingNames = currentCategory.attributes.map((a) => a.name);
+					const newNames = attrs.create.map((a) => a.name);
+					const duplicates = newNames.filter((n) => existingNames.includes(n));
+					if (duplicates.length > 0) {
+						throw status(
+							"Conflict",
+							`Attribute names already exist: ${duplicates.join(", ")}`,
 						);
-						if (duplicates.length > 0) {
-							throw status(
-								"Conflict",
-								`Attribute names already exist: ${duplicates.join(", ")}`,
-							);
-						}
+					}
+				}
+
+				if (attrs.update) {
+					const updateIds = attrs.update.map((u) => u.id);
+					const updateNames = attrs.update
+						.filter((u) => u.name !== undefined)
+						.map((u) => u.name as string);
+					const otherAttributes = currentCategory.attributes
+						.filter((a) => !updateIds.includes(a.id))
+						.map((a) => a.name);
+					const conflicts = updateNames.filter((n) =>
+						otherAttributes.includes(n),
+					);
+					if (conflicts.length > 0) {
+						throw status(
+							"Conflict",
+							`Attribute name conflicts: ${conflicts.join(", ")}`,
+						);
 					}
 
-					if (attributes.update) {
-						const updateIds = attributes.update.map((u) => u.id);
-						const updateNames = attributes.update
-							.filter((u) => u.name !== undefined)
-							.map((u) => u.name as string);
-						const otherAttributes = category.attributes
-							.filter((a) => !updateIds.includes(a.id))
-							.map((a) => a.name);
-						const conflicts = updateNames.filter((n) =>
-							otherAttributes.includes(n),
+					for (const attrUpdate of attrs.update) {
+						const existingAttr = currentCategory.attributes.find(
+							(a) => a.id === attrUpdate.id,
 						);
-						if (conflicts.length > 0) {
-							throw status(
-								"Conflict",
-								`Attribute name conflicts: ${conflicts.join(", ")}`,
-							);
+						if (!existingAttr) {
+							throw status("Not Found", `Attribute ${attrUpdate.id} not found`);
 						}
 
-						// Validation for values operations
-						for (const attrUpdate of attributes.update) {
-							const existingAttr = category.attributes.find(
-								(a) => a.id === attrUpdate.id,
+						if (attrUpdate.values?.create) {
+							const existingValues = existingAttr.values.map((v) => v.value);
+							const newValues = attrUpdate.values.create;
+							const duplicates = newValues.filter((v) =>
+								existingValues.includes(v),
 							);
-							if (!existingAttr) {
+
+							if (duplicates.length > 0) {
+								throw status(
+									"Conflict",
+									`Attribute ${existingAttr.name} already has values: ${duplicates.join(", ")}`,
+								);
+							}
+						}
+
+						if (attrUpdate.values?.delete) {
+							const valueIds = existingAttr.values.map((v) => v.id);
+							const invalidIds = attrUpdate.values.delete.filter(
+								(valId) => !valueIds.includes(valId),
+							);
+
+							if (invalidIds.length > 0) {
 								throw status(
 									"Not Found",
-									`Attribute ${attrUpdate.id} not found`,
+									`Value IDs not found: ${invalidIds.join(", ")}`,
 								);
-							}
-
-							if (attrUpdate.values?.create) {
-								// Check for duplicates with existing values
-								const existingValues = existingAttr.values.map((v) => v.value);
-								const newValues = attrUpdate.values.create;
-								const duplicates = newValues.filter((v) =>
-									existingValues.includes(v),
-								);
-
-								if (duplicates.length > 0) {
-									throw status(
-										"Conflict",
-										`Attribute ${existingAttr.name} already has values: ${duplicates.join(", ")}`,
-									);
-								}
-							}
-
-							if (attrUpdate.values?.delete) {
-								// Verify all value IDs exist
-								const valueIds = existingAttr.values.map((v) => v.id);
-								const invalidIds = attrUpdate.values.delete.filter(
-									(id) => !valueIds.includes(id),
-								);
-
-								if (invalidIds.length > 0) {
-									throw status(
-										"Not Found",
-										`Value IDs not found: ${invalidIds.join(", ")}`,
-									);
-								}
 							}
 						}
 					}
 				}
+			}
 
-				const updatedCategory = await tx.category.update({
-					where: { id },
-					data: {
-						name,
-						...(newFile && {
-							image: {
-								update: {
-									key: newFile.key,
-									url: newFile.ufsUrl,
-								},
-							},
-						}),
-						...(attributes && {
-							attributes: {
-								...(attributes.create &&
-									attributes.create.length > 0 && {
-										create: attributes.create.map((attr) => ({
-											name: attr.name,
-											values: {
-												createMany: {
-													data: attr.values.map((value) => ({ value })),
-												},
-											},
-										})),
-									}),
-								...(attributes.update &&
-									attributes.update.length > 0 && {
-										update: attributes.update.map((attr) => ({
-											where: { id: attr.id },
-											data: {
-												...(attr.name && { name: attr.name }),
-												...(attr.values && {
-													values: {
-														...(attr.values.create && {
-															create: attr.values.create.map((value) => ({
-																value,
-															})),
-														}),
-														...(attr.values.delete && {
-															deleteMany: {
-																id: { in: attr.values.delete },
-															},
-														}),
-													},
-												}),
-											},
-										})),
-									}),
-								...(attributes.delete &&
-									attributes.delete.length > 0 && {
-										delete: attributes.delete.map((attrId) => ({ id: attrId })),
-									}),
-							},
-						}),
+			// Update category name
+			await db.update(category).set({ name }).where(eq(category.id, id));
+
+			// Update image if new file provided
+			if (newFile) {
+				await db
+					.update(image)
+					.set({
+						key: newFile.key,
+						url: newFile.ufsUrl,
+					})
+					.where(eq(image.id, currentCategory.imageId));
+			}
+
+			// Handle attributes operations
+			if (attrs) {
+				// Delete attributes
+				if (attrs.delete && attrs.delete.length > 0) {
+					await db
+						.delete(attribute)
+						.where(
+							and(
+								eq(attribute.categoryId, id),
+								inArray(attribute.id, attrs.delete),
+							),
+						);
+				}
+
+				// Update attributes
+				if (attrs.update && attrs.update.length > 0) {
+					for (const attrUpdate of attrs.update) {
+						if (attrUpdate.name) {
+							await db
+								.update(attribute)
+								.set({ name: attrUpdate.name })
+								.where(eq(attribute.id, attrUpdate.id));
+						}
+
+						if (attrUpdate.values?.create) {
+							await db.insert(attributeValue).values(
+								attrUpdate.values.create.map((value) => ({
+									value,
+									attributeId: attrUpdate.id,
+								})),
+							);
+						}
+
+						if (attrUpdate.values?.delete) {
+							await db
+								.delete(attributeValue)
+								.where(inArray(attributeValue.id, attrUpdate.values.delete));
+						}
+					}
+				}
+
+				// Create new attributes
+				if (attrs.create && attrs.create.length > 0) {
+					for (const attr of attrs.create) {
+						const [newAttr] = await db
+							.insert(attribute)
+							.values({
+								name: attr.name,
+								categoryId: id,
+							})
+							.returning();
+
+						if (newAttr && attr.values.length > 0) {
+							await db.insert(attributeValue).values(
+								attr.values.map((value) => ({
+									value,
+									attributeId: newAttr.id,
+								})),
+							);
+						}
+					}
+				}
+			}
+
+			// Fetch updated category
+			const updatedCategory = await db.query.category.findFirst({
+				where: eq(category.id, id),
+				with: {
+					image: true,
+					attributes: {
+						with: { values: true },
 					},
-					include: {
-						image: true,
-						attributes: {
-							include: {
-								values: true,
-							},
-						},
-					},
-				});
-				return { updatedCategory, oldImage: category.image };
+				},
 			});
 
-			return { data: tx, error: null };
+			return {
+				data: { updatedCategory, oldImage: currentCategory.image },
+				error: null,
+			};
 		} catch (err: unknown) {
 			newFile && (await utapi.deleteFiles(newFile.key));
 			throw err;
@@ -266,22 +329,35 @@ export const categoryService = {
 	},
 
 	async delete({ id }: uuidGuard) {
-		const tx = await prisma.$transaction(async (tx) => {
-			const deletedCategory = await tx.category.delete({ where: { id } });
-			const deletedImage = await tx.image.delete({
-				where: { id: deletedCategory.imageId },
-			});
-			return {
-				deletedCategory,
-				deletedImage,
-			};
+		// Fetch category to get image ID
+		const categoryToDelete = await db.query.category.findFirst({
+			where: eq(category.id, id),
 		});
 
-		return tx;
+		if (!categoryToDelete) {
+			throw new NotFoundError("Category");
+		}
+
+		// Delete category (will cascade to attributes due to onDelete: cascade)
+		const [deletedCategory] = await db
+			.delete(category)
+			.where(eq(category.id, id))
+			.returning();
+
+		// Delete the image
+		const [deletedImage] = await db
+			.delete(image)
+			.where(eq(image.id, categoryToDelete.imageId))
+			.returning();
+
+		return {
+			deletedCategory,
+			deletedImage,
+		};
 	},
 
 	async count() {
-		const count = await prisma.category.count();
-		return count;
+		const result = await db.select().from(category);
+		return result.length;
 	},
 };
