@@ -1,10 +1,10 @@
 import * as z from "zod/mini";
-import { nameLowerPattern, nameLowerPatternWithNumber } from "../shared";
+import { nameLowerPattern, nameLowerPatternWithNumber, uuid } from "../shared";
 import type { attributeService, attributeValueService } from "./service";
 
 export namespace AttributeModel {
 	export const getQuery = z.object({
-		categoryId: z.optional(z.string().check(z.uuid())),
+		categoryId: z.optional(uuid),
 	});
 	export type getQuery = z.infer<typeof getQuery>;
 	export type getResult = Awaited<ReturnType<typeof attributeService.get>>;
@@ -13,7 +13,7 @@ export namespace AttributeModel {
 
 	export const postBody = z.object({
 		name: nameLowerPattern,
-		categoryId: z.string().check(z.uuid()),
+		categoryId: uuid,
 		values: z.array(nameLowerPatternWithNumber).check(z.minLength(1)),
 	});
 	export type postBody = z.infer<typeof postBody>;

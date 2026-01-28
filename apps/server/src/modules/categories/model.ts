@@ -1,6 +1,6 @@
 import { type ElysiaCustomStatusResponse, fileType } from "elysia";
 import * as z from "zod/mini";
-import { nameLowerPattern, nameLowerPatternWithNumber } from "../shared";
+import { nameLowerPattern, nameLowerPatternWithNumber, uuid } from "../shared";
 import type { categoryService } from "./service";
 
 const imageFile = z.file().check(
@@ -49,9 +49,7 @@ export namespace CategoryModel {
 		create: z.optional(
 			z.array(nameLowerPatternWithNumber).check(z.minLength(1)),
 		),
-		delete: z.optional(
-			z.array(z.string().check(z.uuid())).check(z.minLength(1)),
-		),
+		delete: z.optional(z.array(uuid).check(z.minLength(1))),
 	});
 	export type attributeValueOperations = z.infer<
 		typeof attributeValueOperations
@@ -63,16 +61,14 @@ export namespace CategoryModel {
 			z
 				.array(
 					z.object({
-						id: z.string().check(z.uuid()),
+						id: uuid,
 						name: z.optional(nameLowerPattern),
 						values: z.optional(attributeValueOperations),
 					}),
 				)
 				.check(z.minLength(1)),
 		),
-		delete: z.optional(
-			z.array(z.string().check(z.uuid())).check(z.minLength(1)),
-		),
+		delete: z.optional(z.array(uuid).check(z.minLength(1))),
 	});
 	export type attributeOperations = z.infer<typeof attributeOperations>;
 
