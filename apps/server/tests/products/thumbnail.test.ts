@@ -106,15 +106,21 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-C4", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: true, file: file(filePath2) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{ isThumbnail: true, altText: "Second image", file: file(filePath2) },
 				],
 			});
 
 			const thumbnails = product.images.filter((img) => img.isThumbnail);
 			expect(thumbnails.length).toBe(1);
-			expect(product.images[0]?.isThumbnail).toBe(true);
-			expect(product.images[1]?.isThumbnail).toBe(false);
+			const firstImg = product.images.find(
+				(img) => img.altText === "First image",
+			);
+			const secondImg = product.images.find(
+				(img) => img.altText === "Second image",
+			);
+			expect(firstImg?.isThumbnail).toBe(true);
+			expect(secondImg?.isThumbnail).toBe(false);
 		});
 
 		it("should keep second thumbnail when only second is marked in creates", async () => {
@@ -125,15 +131,21 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-C5", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: false, file: file(filePath1) },
-					{ isThumbnail: true, file: file(filePath2) },
+					{ isThumbnail: false, altText: "First image", file: file(filePath1) },
+					{ isThumbnail: true, altText: "Second image", file: file(filePath2) },
 				],
 			});
 
 			const thumbnails = product.images.filter((img) => img.isThumbnail);
 			expect(thumbnails.length).toBe(1);
-			expect(product.images[0]?.isThumbnail).toBe(false);
-			expect(product.images[1]?.isThumbnail).toBe(true);
+			const firstImg = product.images.find(
+				(img) => img.altText === "First image",
+			);
+			const secondImg = product.images.find(
+				(img) => img.altText === "Second image",
+			);
+			expect(firstImg?.isThumbnail).toBe(false);
+			expect(secondImg?.isThumbnail).toBe(true);
 		});
 
 		it("should auto-assign first image when multiple creates without thumbnail flag", async () => {
@@ -143,12 +155,18 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 				variants: [
 					{ price: 10, sku: "THU-C6", stock: 10, attributeValueIds: [] },
 				],
-				imagesCreate: [{ file: file(filePath1) }, { file: file(filePath2) }],
+				imagesCreate: [
+					{ altText: "First image", file: file(filePath1) },
+					{ altText: "Second image", file: file(filePath2) },
+				],
 			});
 
 			const thumbnails = product.images.filter((img) => img.isThumbnail);
 			expect(thumbnails.length).toBe(1);
-			expect(product.images[0]?.isThumbnail).toBe(true);
+			const firstImg = product.images.find(
+				(img) => img.altText === "First image",
+			);
+			expect(firstImg?.isThumbnail).toBe(true);
 		});
 
 		it("should auto-assign thumbnail even when all creates explicitly false", async () => {
@@ -159,14 +177,21 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-C7", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: false, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
+					{ isThumbnail: false, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
 				],
 			});
 
 			const thumbnails = product.images.filter((img) => img.isThumbnail);
 			expect(thumbnails.length).toBe(1);
-			expect(product.images[0]?.isThumbnail).toBe(true);
+			const firstImg = product.images.find(
+				(img) => img.altText === "First image",
+			);
+			expect(firstImg?.isThumbnail).toBe(true);
 		});
 
 		it("should auto-assign to second when first create is false and others undefined", async () => {
@@ -177,18 +202,26 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-C8", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: false, file: file(filePath1) },
-					{ file: file(filePath2) }, // undefined isThumbnail
-					{ file: file(filePath1) }, // undefined isThumbnail
+					{ isThumbnail: false, altText: "First image", file: file(filePath1) },
+					{ altText: "Second image", file: file(filePath2) },
+					{ altText: "Third image", file: file(filePath1) },
 				],
 			});
 
 			const thumbnails = product.images.filter((img) => img.isThumbnail);
 			expect(thumbnails.length).toBe(1);
-			// Should skip first (explicit false) and assign to second (index 1)
-			expect(product.images[0]?.isThumbnail).toBe(false);
-			expect(product.images[1]?.isThumbnail).toBe(true);
-			expect(product.images[2]?.isThumbnail).toBe(false);
+			const firstImg = product.images.find(
+				(img) => img.altText === "First image",
+			);
+			const secondImg = product.images.find(
+				(img) => img.altText === "Second image",
+			);
+			const thirdImg = product.images.find(
+				(img) => img.altText === "Third image",
+			);
+			expect(firstImg?.isThumbnail).toBe(false);
+			expect(secondImg?.isThumbnail).toBe(true);
+			expect(thirdImg?.isThumbnail).toBe(false);
 		});
 	});
 
@@ -201,14 +234,22 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-U1", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
 				],
 			});
 
-			const firstImage = product.images[0] as Image;
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
 			expect(firstImage.isThumbnail).toBe(true);
-			const secondImage = product.images[1] as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
 			expect(secondImage.isThumbnail).toBe(false);
 
 			const { data, status } = await api.products({ id: product.id }).patch({
@@ -238,17 +279,27 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-U2", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
-					{ isThumbnail: false, file: file(filePath1) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
+					{ isThumbnail: false, altText: "Third image", file: file(filePath1) },
 				],
 			});
 
-			const firstImage = product.images[0] as Image;
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
 			expect(firstImage.isThumbnail).toBe(true);
-			const secondImage = product.images[1] as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
 			expect(secondImage.isThumbnail).toBe(false);
-			const thirdImage = product.images[2] as Image;
+			const thirdImage = product.images.find(
+				(img) => img.altText === "Third image",
+			) as Image;
 			expect(thirdImage.isThumbnail).toBe(false);
 
 			const { data, status } = await api.products({ id: product.id }).patch({
@@ -281,17 +332,27 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-U3", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
-					{ isThumbnail: false, file: file(filePath1) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
+					{ isThumbnail: false, altText: "Third image", file: file(filePath1) },
 				],
 			});
 
-			const firstImage = product.images[0] as Image;
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
 			expect(firstImage.isThumbnail).toBe(true);
-			const secondImage = product.images[1] as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
 			expect(secondImage.isThumbnail).toBe(false);
-			const thirdImage = product.images[2] as Image;
+			const thirdImage = product.images.find(
+				(img) => img.altText === "Third image",
+			) as Image;
 			expect(thirdImage.isThumbnail).toBe(false);
 
 			const { data, status } = await api.products({ id: product.id }).patch({
@@ -319,19 +380,27 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-U4", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
 				],
 			});
 
-			const firstImage = product.images[0] as Image;
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
 			expect(firstImage.isThumbnail).toBe(true);
-			const secondImage = product.images[1] as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
 			expect(secondImage.isThumbnail).toBe(false);
 
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
-					update: [{ id: product.images[1]?.id as string, altText: "Updated" }],
+					update: [{ id: secondImage.id, altText: "Updated" }],
 				},
 			});
 
@@ -339,7 +408,6 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 			expectDefined(data);
 			const thumbnails = data.images.filter((img) => img.isThumbnail);
 			expect(thumbnails.length).toBe(1);
-			// Use ID to find the correct image instead of index
 			const updatedFirst = data.images.find((img) => img.id === firstImage.id);
 			expect(updatedFirst?.isThumbnail).toBe(true);
 		});
@@ -352,14 +420,22 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-U5", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
 				],
 			});
 
-			const firstImage = product.images[0] as Image;
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
 			expect(firstImage.isThumbnail).toBe(true);
-			const secondImage = product.images[1] as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
 			expect(secondImage.isThumbnail).toBe(false);
 
 			const { data, status } = await api.products({ id: product.id }).patch({
@@ -385,15 +461,25 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-U6", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
-					{ isThumbnail: false, file: file(filePath1) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
+					{ isThumbnail: false, altText: "Third image", file: file(filePath1) },
 				],
 			});
 
-			const firstImage = product.images[0] as Image;
-			const secondImage = product.images[1] as Image;
-			const thirdImage = product.images[2] as Image;
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
+			const thirdImage = product.images.find(
+				(img) => img.altText === "Third image",
+			) as Image;
 
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
@@ -408,7 +494,6 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 			expectDefined(data);
 			const thumbnails = data.images.filter((img) => img.isThumbnail);
 			expect(thumbnails.length).toBe(1);
-			// Should skip first two (explicit false) and assign to third
 			expect(
 				data.images.find((img) => img.id === thirdImage.id)?.isThumbnail,
 			).toBe(true);
@@ -430,15 +515,23 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-P1", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
 				],
 			});
+
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
 
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
 					create: [{ isThumbnail: true, file: file(filePath1) }],
-					update: [{ id: product.images[1]?.id as string, isThumbnail: true }],
+					update: [{ id: secondImage.id, isThumbnail: true }],
 				},
 			});
 
@@ -453,9 +546,7 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 			expectDefined(newImage);
 			expect(newImage.isThumbnail).toBe(true);
 
-			const updatedImage = data.images.find(
-				(img) => img.id === product.images[1]?.id,
-			);
+			const updatedImage = data.images.find((img) => img.id === secondImage.id);
 			expect(updatedImage?.isThumbnail).toBe(false);
 		});
 
@@ -467,14 +558,22 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-P2", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
 				],
 			});
 
-			const firstImage = product.images[0] as Image;
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
 			expect(firstImage.isThumbnail).toBe(true);
-			const secondImage = product.images[1] as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
 			expect(secondImage.isThumbnail).toBe(false);
 
 			const { data, status } = await api.products({ id: product.id }).patch({
@@ -502,23 +601,31 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-P3", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
 				],
 			});
 
-			const firstImage = product.images[0] as Image;
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
 			expect(firstImage.isThumbnail).toBe(true);
-			const secondImage = product.images[1] as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
 			expect(secondImage.isThumbnail).toBe(false);
 
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
 					create: [
-						{ isThumbnail: false, file: file(filePath1) },
-						{ isThumbnail: true, file: file(filePath2) },
+						{ isThumbnail: false, altText: "New first", file: file(filePath1) },
+						{ isThumbnail: true, altText: "New second", file: file(filePath2) },
 					],
-					update: [{ id: product.images[1]?.id as string, isThumbnail: true }],
+					update: [{ id: secondImage.id, isThumbnail: true }],
 				},
 			});
 
@@ -531,8 +638,10 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 				(img) => !product.images.some((old) => old.id === img.id),
 			);
 			expect(newImages.length).toBe(2);
-			expect(newImages[0]?.isThumbnail).toBe(false);
-			expect(newImages[1]?.isThumbnail).toBe(true);
+			const newFirst = newImages.find((img) => img.altText === "New first");
+			const newSecond = newImages.find((img) => img.altText === "New second");
+			expect(newFirst?.isThumbnail).toBe(false);
+			expect(newSecond?.isThumbnail).toBe(true);
 		});
 	});
 
@@ -545,14 +654,22 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-H1", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
 				],
 			});
 
-			const firstImage = product.images[0] as Image;
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
 			expect(firstImage.isThumbnail).toBe(true);
-			const secondImage = product.images[1] as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
 			expect(secondImage.isThumbnail).toBe(false);
 
 			const { data, status } = await api.products({ id: product.id }).patch({
@@ -577,10 +694,14 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 				variants: [
 					{ price: 10, sku: "THU-H2", stock: 10, attributeValueIds: [] },
 				],
-				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
+				imagesCreate: [
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+				],
 			});
 
-			const firstImage = product.images[0] as Image;
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
 			expect(firstImage.isThumbnail).toBe(true);
 
 			const { data, status } = await api.products({ id: product.id }).patch({
@@ -606,26 +727,34 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-H3", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
 				],
 			});
 
-			const currentId = product.images[0]?.id as string;
-			const newThumbnailId = product.images[1]?.id as string;
+			const currentImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
+			const newThumbnailImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
 
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
 					update: [
-						{ id: currentId, altText: "Old thumbnail" },
-						{ id: newThumbnailId, isThumbnail: true },
+						{ id: currentImage.id, altText: "Old thumbnail" },
+						{ id: newThumbnailImage.id, isThumbnail: true },
 					],
 				},
 			});
 
 			expect(status).toBe(200);
 			expectDefined(data);
-			const current = data.images.find((img) => img.id === currentId);
+			const current = data.images.find((img) => img.id === currentImage.id);
 			expectDefined(current);
 			expect(current.isThumbnail).toBe(false);
 			expect(current.altText).toBe("Old thumbnail");
@@ -639,25 +768,37 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-H4", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
 				],
 			});
 
-			const currentId = product.images[0]?.id as string;
-			const secondId = product.images[1]?.id as string;
+			const currentImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
 
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
-					update: [{ id: currentId, isThumbnail: true }],
+					update: [{ id: currentImage.id, isThumbnail: true }],
 				},
 			});
 
 			expect(status).toBe(200);
 			expectDefined(data);
 
-			const updatedCurrent = data.images.find((img) => img.id === currentId);
-			const updatedSecond = data.images.find((img) => img.id === secondId);
+			const updatedCurrent = data.images.find(
+				(img) => img.id === currentImage.id,
+			);
+			const updatedSecond = data.images.find(
+				(img) => img.id === secondImage.id,
+			);
 			expect(updatedCurrent?.isThumbnail).toBe(true);
 			expect(updatedSecond?.isThumbnail).toBe(false);
 		});
@@ -672,19 +813,33 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-A1", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
-					{ isThumbnail: false, file: file(filePath1) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
+					{ isThumbnail: false, altText: "Third image", file: file(filePath1) },
 				],
 			});
 
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
+			const thirdImage = product.images.find(
+				(img) => img.altText === "Third image",
+			) as Image;
+
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
-					delete: [product.images[0]?.id as string],
+					delete: [firstImage.id],
 					update: [
-						{ id: product.images[1]?.id as string, altText: "No file" },
+						{ id: secondImage.id, altText: "No file" },
 						{
-							id: product.images[2]?.id as string,
+							id: thirdImage.id,
 							file: file(filePath2),
 						},
 					],
@@ -696,8 +851,7 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 			const thumbnails = data.images.filter((img) => img.isThumbnail);
 			expect(thumbnails.length).toBe(1);
 			expect(
-				data.images.find((img) => img.id === product.images[2]?.id)
-					?.isThumbnail,
+				data.images.find((img) => img.id === thirdImage.id)?.isThumbnail,
 			).toBe(true);
 		});
 
@@ -709,21 +863,32 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-A2", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
-					{ isThumbnail: false, file: file(filePath1) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
+					{ isThumbnail: false, altText: "Third image", file: file(filePath1) },
 				],
 			});
 
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
+			const thirdImage = product.images.find(
+				(img) => img.altText === "Third image",
+			) as Image;
+
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
-					delete: [
-						product.images[0]?.id as string,
-						product.images[1]?.id as string,
-					],
+					delete: [firstImage.id, secondImage.id],
 					update: [
 						{
-							id: product.images[2]?.id as string,
+							id: thirdImage.id,
 							file: file(filePath2),
 						},
 					],
@@ -733,7 +898,10 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 			expect(status).toBe(200);
 			expectDefined(data);
 			expect(data.images.length).toBe(1);
-			expect(data.images[0]?.isThumbnail).toBe(true);
+			const remainingImage = data.images.find(
+				(img) => img.id === thirdImage.id,
+			);
+			expect(remainingImage?.isThumbnail).toBe(true);
 		});
 
 		it("should skip update with file when explicitly marked false", async () => {
@@ -744,22 +912,36 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-A3", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
-					{ isThumbnail: false, file: file(filePath1) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
+					{ isThumbnail: false, altText: "Third image", file: file(filePath1) },
 				],
 			});
 
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
+			const thirdImage = product.images.find(
+				(img) => img.altText === "Third image",
+			) as Image;
+
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
-					delete: [product.images[0]?.id as string],
+					delete: [firstImage.id],
 					update: [
 						{
-							id: product.images[1]?.id as string,
+							id: secondImage.id,
 							file: file(filePath2),
 							isThumbnail: false,
 						},
-						{ id: product.images[2]?.id as string, altText: "No file" },
+						{ id: thirdImage.id, altText: "No file" },
 					],
 				},
 			});
@@ -768,14 +950,11 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 			expectDefined(data);
 			const thumbnails = data.images.filter((img) => img.isThumbnail);
 			expect(thumbnails.length).toBe(1);
-			// Should auto-assign to remaining image (third), not the one with file+false
 			expect(
-				data.images.find((img) => img.id === product.images[2]?.id)
-					?.isThumbnail,
+				data.images.find((img) => img.id === thirdImage.id)?.isThumbnail,
 			).toBe(true);
 			expect(
-				data.images.find((img) => img.id === product.images[1]?.id)
-					?.isThumbnail,
+				data.images.find((img) => img.id === secondImage.id)?.isThumbnail,
 			).toBe(false);
 		});
 	});
@@ -789,21 +968,32 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-D1", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
 				],
 			});
 
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
+
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
-					delete: [product.images[1]?.id as string],
+					delete: [secondImage.id],
 				},
 			});
 
 			expect(status).toBe(200);
 			expectDefined(data);
 			expect(data.images.length).toBe(1);
-			expect(data.images[0]?.isThumbnail).toBe(true);
+			const remainingImage = data.images.find(
+				(img) => img.altText === "First image",
+			);
+			expect(remainingImage?.isThumbnail).toBe(true);
 		});
 
 		it("should auto-assign to third when deleting thumbnail and marking second false", async () => {
@@ -814,16 +1004,30 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-D4", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
-					{ isThumbnail: false, file: file(filePath1) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
+					{ isThumbnail: false, altText: "Third image", file: file(filePath1) },
 				],
 			});
 
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
+			const thirdImage = product.images.find(
+				(img) => img.altText === "Third image",
+			) as Image;
+
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
-					delete: [product.images[0]?.id as string],
-					update: [{ id: product.images[1]?.id as string, isThumbnail: false }],
+					delete: [firstImage.id],
+					update: [{ id: secondImage.id, isThumbnail: false }],
 				},
 			});
 
@@ -831,14 +1035,11 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 			expectDefined(data);
 			const thumbnails = data.images.filter((img) => img.isThumbnail);
 			expect(thumbnails.length).toBe(1);
-			// Should skip second (explicit false) and assign to third
 			expect(
-				data.images.find((img) => img.id === product.images[2]?.id)
-					?.isThumbnail,
+				data.images.find((img) => img.id === thirdImage.id)?.isThumbnail,
 			).toBe(true);
 			expect(
-				data.images.find((img) => img.id === product.images[1]?.id)
-					?.isThumbnail,
+				data.images.find((img) => img.id === secondImage.id)?.isThumbnail,
 			).toBe(false);
 		});
 
@@ -849,12 +1050,18 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 				variants: [
 					{ price: 10, sku: "THU-D2", stock: 10, attributeValueIds: [] },
 				],
-				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
+				imagesCreate: [
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+				],
 			});
+
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
 
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
-					delete: [product.images[0]?.id as string],
+					delete: [firstImage.id],
 					create: [{ file: file(filePath2) }],
 				},
 			});
@@ -862,7 +1069,8 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 			expect(status).toBe(200);
 			expectDefined(data);
 			expect(data.images.length).toBe(1);
-			expect(data.images[0]?.isThumbnail).toBe(true);
+			const newImage = data.images[0];
+			expect(newImage?.isThumbnail).toBe(true);
 		});
 
 		it("should auto-assign thumbnail from remaining images after multiple deletes", async () => {
@@ -873,20 +1081,29 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-D3", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
-					{ isThumbnail: false, file: file(filePath1) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
+					{ isThumbnail: false, altText: "Third image", file: file(filePath1) },
 				],
 			});
 
-			const thirdId = product.images[2]?.id as string;
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
+			const thirdImage = product.images.find(
+				(img) => img.altText === "Third image",
+			) as Image;
 
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
-					delete: [
-						product.images[0]?.id as string,
-						product.images[1]?.id as string,
-					],
+					delete: [firstImage.id, secondImage.id],
 				},
 			});
 
@@ -894,7 +1111,7 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 			expectDefined(data);
 			expect(data.images.length).toBe(1);
 
-			const remaining = data.images.find((img) => img.id === thirdId);
+			const remaining = data.images.find((img) => img.id === thirdImage.id);
 			expectDefined(remaining);
 			expect(remaining.isThumbnail).toBe(true);
 		});
@@ -909,17 +1126,28 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-X1", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
-					{ isThumbnail: false, file: file(filePath1) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
+					{ isThumbnail: false, altText: "Third image", file: file(filePath1) },
 				],
 			});
+
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
+			const thirdImage = product.images.find(
+				(img) => img.altText === "Third image",
+			) as Image;
 
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
 					create: [{ isThumbnail: true, file: file(filePath2) }],
-					update: [{ id: product.images[2]?.id as string, isThumbnail: true }],
-					delete: [product.images[1]?.id as string],
+					update: [{ id: thirdImage.id, isThumbnail: true }],
+					delete: [secondImage.id],
 				},
 			});
 
@@ -942,15 +1170,25 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 				variants: [
 					{ price: 10, sku: "THU-X3", stock: 10, attributeValueIds: [] },
 				],
-				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
+				imagesCreate: [
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+				],
 			});
+
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
 
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
-					delete: [product.images[0]?.id as string],
+					delete: [firstImage.id],
 					create: [
-						{ isThumbnail: false, file: file(filePath1) },
-						{ isThumbnail: false, file: file(filePath2) },
+						{ isThumbnail: false, altText: "New first", file: file(filePath1) },
+						{
+							isThumbnail: false,
+							altText: "New second",
+							file: file(filePath2),
+						},
 					],
 				},
 			});
@@ -959,8 +1197,10 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 			expectDefined(data);
 			const thumbnails = data.images.filter((img) => img.isThumbnail);
 			expect(thumbnails.length).toBe(1);
-			// Fallback: should assign to first create (index 0) even though it's marked false
-			expect(data.images[0]?.isThumbnail).toBe(true);
+			const newFirstImage = data.images.find(
+				(img) => img.altText === "New first",
+			);
+			expect(newFirstImage?.isThumbnail).toBe(true);
 		});
 
 		it("should fallback to first remaining when all updates marked false (priority 8)", async () => {
@@ -971,20 +1211,32 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-X4", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
-					{ isThumbnail: false, file: file(filePath1) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
+					{ isThumbnail: false, altText: "Third image", file: file(filePath1) },
 				],
 			});
 
-			const firstId = product.images[0]?.id as string;
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
+			const thirdImage = product.images.find(
+				(img) => img.altText === "Third image",
+			) as Image;
 
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
 					update: [
-						{ id: product.images[0]?.id as string, isThumbnail: false },
-						{ id: product.images[1]?.id as string, isThumbnail: false },
-						{ id: product.images[2]?.id as string, isThumbnail: false },
+						{ id: firstImage.id, isThumbnail: false },
+						{ id: secondImage.id, isThumbnail: false },
+						{ id: thirdImage.id, isThumbnail: false },
 					],
 				},
 			});
@@ -993,10 +1245,9 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 			expectDefined(data);
 			const thumbnails = data.images.filter((img) => img.isThumbnail);
 			expect(thumbnails.length).toBe(1);
-			// Fallback: should assign to first remaining (first image) even though marked false
-			expect(data.images.find((img) => img.id === firstId)?.isThumbnail).toBe(
-				true,
-			);
+			expect(
+				data.images.find((img) => img.id === firstImage.id)?.isThumbnail,
+			).toBe(true);
 		});
 
 		it("should auto-assign to update without file when thumbnail deleted (priority 6)", async () => {
@@ -1007,17 +1258,26 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-X5", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
 				],
 			});
 
-			const secondId = product.images[1]?.id as string;
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
 
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
-					delete: [product.images[0]?.id as string],
-					update: [{ id: secondId, altText: "No file, just text" }],
+					delete: [firstImage.id],
+					update: [{ id: secondImage.id, altText: "No file, just text" }],
 				},
 			});
 
@@ -1026,10 +1286,9 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 			const thumbnails = data.images.filter((img) => img.isThumbnail);
 			expect(thumbnails.length).toBe(1);
 			expect(data.images.length).toBe(1);
-			// Should auto-assign to remaining image via priority 6
-			expect(data.images.find((img) => img.id === secondId)?.isThumbnail).toBe(
-				true,
-			);
+			expect(
+				data.images.find((img) => img.id === secondImage.id)?.isThumbnail,
+			).toBe(true);
 		});
 
 		it("should preserve current thumbnail with only delete operations", async () => {
@@ -1040,17 +1299,22 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					{ price: 10, sku: "THU-X2", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
-					{ isThumbnail: false, file: file(filePath1) },
-					{ isThumbnail: true, file: file(filePath2) },
-					{ isThumbnail: false, file: file(filePath1) },
+					{ isThumbnail: false, altText: "First image", file: file(filePath1) },
+					{ isThumbnail: true, altText: "Second image", file: file(filePath2) },
+					{ isThumbnail: false, altText: "Third image", file: file(filePath1) },
 				],
 			});
 
-			const currentThumbnailId = product.images[1]?.id as string;
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
 
 			const { data, status } = await api.products({ id: product.id }).patch({
 				images: {
-					delete: [product.images[0]?.id as string],
+					delete: [firstImage.id],
 				},
 			});
 
@@ -1058,7 +1322,7 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 			expectDefined(data);
 			expect(data.images.length).toBe(2);
 			expect(
-				data.images.find((img) => img.id === currentThumbnailId)?.isThumbnail,
+				data.images.find((img) => img.id === secondImage.id)?.isThumbnail,
 			).toBe(true);
 		});
 	});
@@ -1077,22 +1341,28 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					},
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
 				],
 			});
 
-			const imageId = product.images[0]?.id as string;
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
 
 			const { error } = await api.products({ id: product.id }).patch({
 				images: {
 					update: [
 						{
-							id: imageId,
+							id: firstImage.id,
 							file: file(filePath2),
 						},
 					],
-					delete: [imageId],
+					delete: [firstImage.id],
 				},
 			});
 
@@ -1124,17 +1394,25 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 					},
 				],
 				imagesCreate: [
-					{ isThumbnail: true, file: file(filePath1) },
-					{ isThumbnail: false, file: file(filePath2) },
+					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
+					{
+						isThumbnail: false,
+						altText: "Second image",
+						file: file(filePath2),
+					},
 				],
 			});
 
+			const firstImage = product.images.find(
+				(img) => img.altText === "First image",
+			) as Image;
+			const secondImage = product.images.find(
+				(img) => img.altText === "Second image",
+			) as Image;
+
 			const { error } = await api.products({ id: product.id }).patch({
 				images: {
-					delete: [
-						product.images[0]?.id as string,
-						product.images[1]?.id as string,
-					],
+					delete: [firstImage.id, secondImage.id],
 				},
 			});
 
