@@ -9,7 +9,7 @@ export interface AllowedAttributeValue {
 
 interface ValidateVariants {
 	category: CategoryModel.getByIdResult;
-	vOps?: typeof ProductModel.variantOperations.static;
+	vOps?: ProductModel.variantOperations;
 	currVariants?: {
 		id: string;
 		attributeValueIds: string[];

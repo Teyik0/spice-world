@@ -94,7 +94,7 @@ export const nameLowerPatternWithNumber = z
 	.string()
 	.check(z.minLength(3), z.regex(/^[a-zà-ÿ0-9][a-zà-ÿ0-9 ]*$/));
 
-export const uuid = z.string().check(z.uuid());
+export const uuid = z.uuid();
 export type uuid = z.infer<typeof uuid>;
 
 export const uuidGuard = z.object({ id: uuid });

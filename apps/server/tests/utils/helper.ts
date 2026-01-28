@@ -8,7 +8,6 @@ import type {
 	TestDatabase,
 } from "@spice-world/server/utils/db-manager";
 import type { BunFile } from "bun";
-import type Elysia from "elysia";
 import type { UploadedFileData } from "uploadthing/types";
 
 export function expectDefined<T>(value: T): asserts value is NonNullable<T> {
@@ -204,9 +203,9 @@ export const createTestCategory = async ({
 interface SetupProductOptions {
 	attributeCount: number;
 	attributeValueCount: number;
-	variants: (typeof ProductModel.variantCreate)["static"][];
-	imagesCreate: (Omit<(typeof ProductModel.imageCreate)["static"], "file"> & {
-		file: BunFile;
+	variants: ProductModel.variantCreate[];
+	imagesCreate: (Omit<ProductModel.imageCreate, "file"> & {
+		file: BunFile | File;
 	})[];
 }
 

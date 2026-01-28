@@ -6,33 +6,14 @@ import type { productService } from "./service";
 
 export const MAX_IMAGES_PER_PRODUCT = 5;
 
-const imageFile = z
-	.file()
-	.check(z.maxSize(7 * 1024 * 1024))
-	.check(async (ctx) => {
-		if (!(await fileType(ctx.value, "image"))) {
-			// biome-ignore lint/suspicious/noExplicitAny: zod-mini issues type is overly narrow for custom checks
-			(ctx.issues as any[]).push({
-				code: "custom",
-				message: "Must be a valid image file",
-			});
-		}
-	});
-
-const imageFileOptional = z.optional(
-	z
-		.file()
-		.check(z.maxSize(7 * 1024 * 1024))
-		.check(async (ctx) => {
-			if (!(await fileType(ctx.value, "image"))) {
-				// biome-ignore lint/suspicious/noExplicitAny: zod-mini issues type is overly narrow for custom checks
-				(ctx.issues as any[]).push({
-					code: "custom",
-					message: "Must be a valid image file",
-				});
-			}
-		}),
+const imageFile = z.file().check(
+	z.maxSize(7 * 1024 * 1024),
+	z.refine(async (file) => await fileType(file, "image"), {
+		message: "Must be a valid image file",
+	}),
 );
+
+const imageFileOptional = z.optional(imageFile);
 
 export namespace ProductModel {
 	export const productStatus = z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]);
@@ -42,10 +23,10 @@ export namespace ProductModel {
 		name: z.optional(z.string()),
 		skip: z.optional(z._default(z.number().check(z.minimum(0)), 0)),
 		take: z.optional(
-			z._default(z.number().check(z.minimum(1), z.maximum(100)), 25),
+			z._default(z.coerce.number().check(z.minimum(1), z.maximum(100)), 25),
 		),
 		status: z.optional(productStatus),
-		categories: z.optional(z.array(z.string())),
+		categories: z.optional(z.union([z.string(), z.array(z.string())])),
 		sortBy: z.optional(
 			z.enum(["name", "createdAt", "updatedAt", "priceMin", "priceMax"]),
 		),
@@ -67,8 +48,9 @@ export namespace ProductModel {
 	export const imageCreate = z.object({
 		file: imageFile,
 		altText: z.optional(z.string()),
-		isThumbnail: z.optional(z._default(z.boolean(), false)),
+		isThumbnail: z.optional(z.boolean()),
 	});
+	export type imageCreate = z.infer<typeof imageCreate>;
 
 	export const imageOperations = z.object({
 		create: z.optional(
@@ -81,7 +63,7 @@ export namespace ProductModel {
 						id: uuid,
 						file: imageFileOptional,
 						altText: z.optional(z.string()),
-						isThumbnail: z.optional(z._default(z.boolean(), false)),
+						isThumbnail: z.optional(z.boolean()),
 					}),
 				)
 				.check(z.maxLength(MAX_IMAGES_PER_PRODUCT)),
@@ -97,6 +79,7 @@ export namespace ProductModel {
 		currency: z.optional(z._default(z.string(), "EUR")),
 		attributeValueIds: z.array(uuid),
 	});
+	export type variantCreate = z.infer<typeof variantCreate>;
 
 	const variantUpdate = z.object({
 		id: uuid,

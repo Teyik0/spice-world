@@ -3,15 +3,12 @@ import * as z from "zod/mini";
 import { nameLowerPattern, nameLowerPatternWithNumber } from "../shared";
 import type { categoryService } from "./service";
 
-const imageFile = z.file().check(async (ctx) => {
-	if (!(await fileType(ctx.value, "image"))) {
-		// biome-ignore lint/suspicious/noExplicitAny: zod-mini issues type is overly narrow for custom checks
-		(ctx.issues as any[]).push({
-			code: "custom",
-			message: "Must be a valid image file",
-		});
-	}
-});
+const imageFile = z.file().check(
+	z.maxSize(7 * 1024 * 1024),
+	z.refine(async (file) => await fileType(file, "image"), {
+		message: "Must be a valid image file",
+	}),
+);
 
 export namespace CategoryModel {
 	export const getQuery = z.object({

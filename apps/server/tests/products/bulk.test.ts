@@ -76,7 +76,7 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
 					},
 				],
 			},
-			imagesOps: { create: [{ file: files[0] as File, isThumbnail: true }] },
+			images: { create: [{ file: files[0] as File, isThumbnail: true }] },
 		});
 
 		expect(s1).toBe(201);
@@ -131,7 +131,7 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
 					},
 				],
 			},
-			imagesOps: { create: [{ file: files[0] as File, isThumbnail: true }] },
+			images: { create: [{ file: files[0] as File, isThumbnail: true }] },
 		});
 
 		expect(createStatus).toBe(201);

@@ -145,9 +145,15 @@ export const productService = {
 		sortBy,
 		sortDir,
 	}: ProductModel.getQuery) {
+		const categoriesArray = Array.isArray(categories)
+			? categories
+			: categories
+				? [categories]
+				: undefined;
+
 		const cacheKey =
 			`products:${sortBy ?? "default"}:${sortDir}:${skip}:${take}:` +
-			`${name ?? ""}:${status ?? ""}:${categories?.join(",") ?? ""}`;
+			`${name ?? ""}:${status ?? ""}:${categoriesArray?.join(",") ?? ""}`;
 
 		type getProduct = Product & {
 			img: string | null;
@@ -169,9 +175,9 @@ export const productService = {
 			conditions.push(
 				sql`to_tsvector('french', p.name) @@ plainto_tsquery('french', ${name})`,
 			);
-		if (categories?.length) {
+		if (categoriesArray?.length) {
 			conditions.push(
-				sql`p."categoryId" IN (SELECT id FROM "Category" WHERE name IN ${sql(categories)})`,
+				sql`p."categoryId" IN (SELECT id FROM "Category" WHERE name IN ${sql(categoriesArray)})`,
 			);
 		}
 
