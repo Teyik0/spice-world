@@ -118,10 +118,8 @@ describe.concurrent("DELETE /products/:id - Integration Tests", () => {
 	});
 
 	it("should return an error if the product ID does not exist", async () => {
-		const nonExistentProductId = "00000000-0000-0000-0000-000000000023";
-
 		const { status, error } = await api
-			.products({ id: nonExistentProductId })
+			.products({ id: crypto.randomUUID() })
 			.delete();
 
 		expect(status).toBe(404);

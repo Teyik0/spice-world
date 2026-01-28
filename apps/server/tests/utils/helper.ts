@@ -203,9 +203,9 @@ export const createTestCategory = async ({
 interface SetupProductOptions {
 	attributeCount: number;
 	attributeValueCount: number;
-	variants: (typeof ProductModel.variantCreate)["static"][];
-	imagesCreate: (Omit<(typeof ProductModel.imageCreate)["static"], "file"> & {
-		file: BunFile;
+	variants: ProductModel.variantCreate[];
+	imagesCreate: (Omit<ProductModel.imageCreate, "file"> & {
+		file: BunFile | File;
 	})[];
 }
 

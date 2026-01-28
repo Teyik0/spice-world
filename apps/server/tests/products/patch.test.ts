@@ -52,7 +52,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	describe("PATCH /products - Business Logic Validations", () => {
 		it("should return an error if the product ID does not exist", async () => {
 			const { status, error } = await api
-				.products({ id: "00000000-0000-0000-0000-000000000023" })
+				.products({ id: crypto.randomUUID() })
 				.patch({
 					name: "non existent product",
 					description: "this product does not exist",
