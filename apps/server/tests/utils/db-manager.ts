@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
+import type { DrizzleClient } from "@spice-world/server/db";
+import * as schema from "@spice-world/server/db/schema";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import * as schema from "@spice-world/server/db/schema";
-import type { DrizzleClient } from "@spice-world/server/db";
 
 export interface TestDatabase {
 	client: DrizzleClient;
@@ -53,9 +53,7 @@ export async function createTestDatabase(
 
 	try {
 		// Create an EMPTY database (no template = uses template0 which is empty)
-		await adminClient.execute(
-			sql.raw(`CREATE DATABASE "${databaseName}"`),
-		);
+		await adminClient.execute(sql.raw(`CREATE DATABASE "${databaseName}"`));
 	} catch (error) {
 		console.error(`Failed to create database ${databaseName}:`, error);
 		throw error;
@@ -71,15 +69,12 @@ export async function createTestDatabase(
 	Bun.env.DATABASE_URL = testConnectionString;
 
 	try {
-		const proc = Bun.spawn(
-			["bunx", "drizzle-kit", "push", "--force"],
-			{
-				cwd: `${import.meta.dir}/../../`,
-				env: { ...Bun.env, DATABASE_URL: testConnectionString },
-				stdout: "pipe",
-				stderr: "pipe",
-			},
-		);
+		const proc = Bun.spawn(["bunx", "drizzle-kit", "push", "--force"], {
+			cwd: `${import.meta.dir}/../../`,
+			env: { ...Bun.env, DATABASE_URL: testConnectionString },
+			stdout: "pipe",
+			stderr: "pipe",
+		});
 
 		const exitCode = await proc.exited;
 		if (exitCode !== 0) {

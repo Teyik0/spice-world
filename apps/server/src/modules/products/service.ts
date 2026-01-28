@@ -1,18 +1,18 @@
-import { and, eq, inArray } from "drizzle-orm";
-import { sql } from "bun";
-import { status } from "elysia";
-import { LRUCache } from "lru-cache";
-import type { UploadedFileData } from "uploadthing/types";
 import {
 	db,
-	product,
 	image,
+	type Product,
+	product,
 	productVariant,
 	productVariantsToAttributeValues,
-	type Product,
 } from "@spice-world/server/db";
 import { uploadFiles, utapi } from "@spice-world/server/lib/images";
 import { NotFoundError } from "@spice-world/server/plugins/db.plugin";
+import { sql } from "bun";
+import { and, eq, inArray } from "drizzle-orm";
+import { status } from "elysia";
+import { LRUCache } from "lru-cache";
+import type { UploadedFileData } from "uploadthing/types";
 import type { CategoryModel } from "../categories/model";
 import { categoryService } from "../categories/service";
 import { uploadFileErrStatus, type uuidGuard } from "../shared";
@@ -738,22 +738,26 @@ export const productService = {
 			}
 
 			// 5. Fetch and return updated product
-			const [updatedVariants, updatedImages, productCategory] = await Promise.all([
-				db.query.productVariant.findMany({
-					where: eq(productVariant.productId, id),
-					with: {
-						attributeValues: {
-							with: { attributeValue: true },
+			const [updatedVariants, updatedImages, productCategory] =
+				await Promise.all([
+					db.query.productVariant.findMany({
+						where: eq(productVariant.productId, id),
+						with: {
+							attributeValues: {
+								with: { attributeValue: true },
+							},
 						},
-					},
-				}),
-				db.query.image.findMany({
-					where: eq(image.productId, id),
-				}),
-				db.query.category.findFirst({
-					where: eq(categoryId ? categoryId : currentProduct.categoryId, categoryId ? categoryId : currentProduct.categoryId),
-				}),
-			]);
+					}),
+					db.query.image.findMany({
+						where: eq(image.productId, id),
+					}),
+					db.query.category.findFirst({
+						where: eq(
+							categoryId ? categoryId : currentProduct.categoryId,
+							categoryId ? categoryId : currentProduct.categoryId,
+						),
+					}),
+				]);
 
 			const finalProduct = {
 				...updatedProduct,
@@ -815,7 +819,9 @@ export const productService = {
 				const variantsData = prod.variants.map((v) => ({
 					id: v.id,
 					price: v.price,
-					attributeValueIds: v.attributeValues.map((av) => av.attributeValue.id),
+					attributeValueIds: v.attributeValues.map(
+						(av) => av.attributeValue.id,
+					),
 				}));
 
 				// PUB1

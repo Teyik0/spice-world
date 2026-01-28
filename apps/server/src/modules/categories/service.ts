@@ -1,15 +1,15 @@
-import { and, eq, ilike, inArray } from "drizzle-orm";
-import { status } from "elysia";
-import type { UploadedFileData } from "uploadthing/types";
 import {
-	db,
-	category,
-	image,
 	attribute,
 	attributeValue,
+	category,
+	db,
+	image,
 } from "@spice-world/server/db";
 import { uploadFile, utapi } from "@spice-world/server/lib/images";
 import { NotFoundError } from "@spice-world/server/plugins/db.plugin";
+import { and, eq, ilike, inArray } from "drizzle-orm";
+import { status } from "elysia";
+import type { UploadedFileData } from "uploadthing/types";
 import { uploadFileErrStatus, type uuidGuard } from "../shared";
 import type { CategoryModel } from "./model";
 
@@ -230,10 +230,7 @@ export const categoryService = {
 			}
 
 			// Update category name
-			await db
-				.update(category)
-				.set({ name })
-				.where(eq(category.id, id));
+			await db.update(category).set({ name }).where(eq(category.id, id));
 
 			// Update image if new file provided
 			if (newFile) {

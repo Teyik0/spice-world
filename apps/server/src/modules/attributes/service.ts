@@ -1,7 +1,7 @@
+import { attribute, attributeValue, db } from "@spice-world/server/db";
+import { NotFoundError } from "@spice-world/server/plugins/db.plugin";
 import { eq } from "drizzle-orm";
 import { status } from "elysia";
-import { db, attribute, attributeValue } from "@spice-world/server/db";
-import { NotFoundError } from "@spice-world/server/plugins/db.plugin";
 import type { uuidGuard } from "../shared";
 import type { AttributeModel, AttributeValueModel } from "./model";
 

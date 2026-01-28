@@ -169,7 +169,9 @@ export const attribute = pgTable(
 			.notNull()
 			.references(() => category.id, { onDelete: "cascade" }),
 	},
-	(table) => [unique("Attribute_categoryId_name_key").on(table.categoryId, table.name)],
+	(table) => [
+		unique("Attribute_categoryId_name_key").on(table.categoryId, table.name),
+	],
 );
 
 export const attributeRelations = relations(attribute, ({ one, many }) => ({
@@ -190,7 +192,10 @@ export const attributeValue = pgTable(
 			.references(() => attribute.id, { onDelete: "cascade" }),
 	},
 	(table) => [
-		unique("AttributeValue_attributeId_value_key").on(table.attributeId, table.value),
+		unique("AttributeValue_attributeId_value_key").on(
+			table.attributeId,
+			table.value,
+		),
 	],
 );
 
@@ -217,7 +222,12 @@ export const image = pgTable(
 			onDelete: "cascade",
 		}),
 	},
-	(table) => [index("Image_productId_isThumbnail_idx").on(table.productId, table.isThumbnail)],
+	(table) => [
+		index("Image_productId_isThumbnail_idx").on(
+			table.productId,
+			table.isThumbnail,
+		),
+	],
 );
 
 export const imageRelations = relations(image, ({ one }) => ({
