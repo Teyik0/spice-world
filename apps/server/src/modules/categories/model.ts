@@ -1,14 +1,27 @@
-import { type ElysiaCustomStatusResponse, t } from "elysia";
+import { type ElysiaCustomStatusResponse, fileType } from "elysia";
+import * as z from "zod/mini";
 import { nameLowerPattern, nameLowerPatternWithNumber } from "../shared";
 import type { categoryService } from "./service";
 
+const imageFile = z.file().check(async (ctx) => {
+	if (!(await fileType(ctx.value, "image"))) {
+		// biome-ignore lint/suspicious/noExplicitAny: zod-mini issues type is overly narrow for custom checks
+		(ctx.issues as any[]).push({
+			code: "custom",
+			message: "Must be a valid image file",
+		});
+	}
+});
+
 export namespace CategoryModel {
-	export const getQuery = t.Object({
-		skip: t.Optional(t.Number({ default: 0, minimum: 0 })),
-		take: t.Optional(t.Number({ default: 25, minimum: 1, maximum: 100 })),
-		name: t.Optional(t.String()),
+	export const getQuery = z.object({
+		skip: z.optional(z._default(z.number().check(z.minimum(0)), 0)),
+		take: z.optional(
+			z._default(z.number().check(z.minimum(1), z.maximum(100)), 25),
+		),
+		name: z.optional(z.string()),
 	});
-	export type getQuery = typeof getQuery.static;
+	export type getQuery = z.infer<typeof getQuery>;
 	export type getResult = Awaited<ReturnType<typeof categoryService.get>>;
 
 	export type getByIdResult = Exclude<
@@ -17,53 +30,61 @@ export namespace CategoryModel {
 		ElysiaCustomStatusResponse<any>
 	>;
 
-	export const postAttributes = t.Array(
-		t.Object({
-			name: nameLowerPattern,
-			values: t.Array(nameLowerPatternWithNumber, {
-				minItems: 1,
+	export const postAttributes = z
+		.array(
+			z.object({
+				name: nameLowerPattern,
+				values: z.array(nameLowerPatternWithNumber).check(z.minLength(1)),
 			}),
-		}),
-		{ minItems: 1 },
-	);
-	export type postAttribute = typeof postAttributes.static;
+		)
+		.check(z.minLength(1));
+	export type postAttribute = z.infer<typeof postAttributes>;
 
-	export const postBody = t.Object({
+	export const postBody = z.object({
 		name: nameLowerPattern,
-		file: t.File({ type: "image/*" }),
-		attributes: t.Optional(t.Object({ create: t.Optional(postAttributes) })),
+		file: imageFile,
+		attributes: z.optional(z.object({ create: z.optional(postAttributes) })),
 	});
-	export type postBody = typeof postBody.static;
+	export type postBody = z.infer<typeof postBody>;
 	export type postResult = typeof categoryService.post;
 
-	export const attributeValueOperations = t.Object({
-		create: t.Optional(t.Array(nameLowerPatternWithNumber, { minItems: 1 })),
-		delete: t.Optional(t.Array(t.String({ format: "uuid" }), { minItems: 1 })),
-	});
-	export type attributeValueOperations = typeof attributeValueOperations.static;
-
-	export const attributeOperations = t.Object({
-		create: t.Optional(postAttributes),
-		update: t.Optional(
-			t.Array(
-				t.Object({
-					id: t.String({ format: "uuid" }),
-					name: t.Optional(nameLowerPattern),
-					values: t.Optional(attributeValueOperations),
-				}),
-				{ minItems: 1 },
-			),
+	export const attributeValueOperations = z.object({
+		create: z.optional(
+			z.array(nameLowerPatternWithNumber).check(z.minLength(1)),
 		),
-		delete: t.Optional(t.Array(t.String({ format: "uuid" }), { minItems: 1 })),
+		delete: z.optional(
+			z.array(z.string().check(z.uuid())).check(z.minLength(1)),
+		),
 	});
-	export type attributeOperations = typeof attributeOperations.static;
+	export type attributeValueOperations = z.infer<
+		typeof attributeValueOperations
+	>;
 
-	export const patchBody = t.Object({
-		name: nameLowerPattern,
-		file: t.Optional(t.File({ type: "image/*" })),
-		attributes: t.Optional(attributeOperations),
+	export const attributeOperations = z.object({
+		create: z.optional(postAttributes),
+		update: z.optional(
+			z
+				.array(
+					z.object({
+						id: z.string().check(z.uuid()),
+						name: z.optional(nameLowerPattern),
+						values: z.optional(attributeValueOperations),
+					}),
+				)
+				.check(z.minLength(1)),
+		),
+		delete: z.optional(
+			z.array(z.string().check(z.uuid())).check(z.minLength(1)),
+		),
 	});
-	export type patchBody = typeof patchBody.static;
+	export type attributeOperations = z.infer<typeof attributeOperations>;
+
+	export const patchBody = z.object({
+		name: nameLowerPattern,
+		file: z.optional(imageFile),
+		attributes: z.optional(attributeOperations),
+	});
+	export type patchBody = z.infer<typeof patchBody>;
 	export type patchResult = typeof categoryService.patch;
 
 	export type deleteResult = typeof categoryService.delete;

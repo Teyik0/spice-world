@@ -14,9 +14,8 @@ import { MultiSelect } from "@spice-world/web/components/ui/multi-select";
 import { Select } from "@spice-world/web/components/ui/select";
 import { Switch } from "@spice-world/web/components/ui/switch";
 import { Textarea } from "@spice-world/web/components/ui/textarea";
-import { typeboxToStandardSchema } from "@spice-world/web/lib/utils";
 import { createFormHook, createFormHookContexts } from "@tanstack/react-form";
-import type { TSchema } from "elysia";
+import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { AlertCircle, Loader2 } from "lucide-react";
 import type * as React from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -153,32 +152,30 @@ export const { useAppForm } = createFormHook({
 	formContext,
 });
 
-export function useForm<TSchemaType extends TSchema>({
+export function useForm<TOutput, TInput = TOutput>({
 	schema,
 	defaultValues,
 	onSubmit,
 	onSubmitInvalid,
 	validationMode = "onSubmit",
 }: {
-	schema: TSchemaType;
-	defaultValues: TSchemaType["static"];
-	onSubmit: (values: TSchemaType["static"]) => void | Promise<void>;
+	schema: StandardSchemaV1<TInput, TOutput>;
+	defaultValues: TOutput;
+	onSubmit: (values: TOutput) => void | Promise<void>;
 	onSubmitInvalid?: (props: {
-		value: TSchemaType["static"];
+		value: TOutput;
 		formApi: unknown;
 		meta: unknown;
 	}) => void;
 	validationMode?: "onChange" | "onBlur" | "onSubmit";
 }) {
-	const standardSchema = typeboxToStandardSchema(schema);
-
 	return useAppForm({
 		defaultValues,
 		validators: {
-			[validationMode]: standardSchema,
+			[validationMode]: schema,
 		},
 		onSubmit: async ({ value }) => {
-			await onSubmit(value as TSchemaType["static"]);
+			await onSubmit(value as TOutput);
 		},
 		onSubmitInvalid: onSubmitInvalid,
 	});
