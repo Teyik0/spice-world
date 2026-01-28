@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@spice-world/server/prisma/client";
-import type { UploadedFileData } from "uploadthing/types";
+import type { MultiSizeUploadData } from "../../../lib/images";
 import type { ProductModel } from "../model";
 
 type PrismaTransaction = Omit<
@@ -12,7 +12,7 @@ export async function executeImageCreates(
 	productId: string,
 	productName: string,
 	createOps: NonNullable<ProductModel.imageOperations["create"]>,
-	uploadMap: Map<number, UploadedFileData>,
+	uploadMap: Map<number, MultiSizeUploadData>,
 ): Promise<void> {
 	if (!createOps.length) return;
 
@@ -32,8 +32,12 @@ export async function executeImageCreates(
 			}
 			return {
 				productId,
-				key: file.key,
-				url: file.ufsUrl,
+				keyThumb: file.thumb.key,
+				keyMedium: file.medium.key,
+				keyLarge: file.large.key,
+				urlThumb: file.thumb.url,
+				urlMedium: file.medium.url,
+				urlLarge: file.large.url,
 				altText: op.altText || `${productName} image`,
 				isThumbnail: op.isThumbnail ?? false,
 			};
@@ -45,7 +49,7 @@ export async function executeImageUpdates(
 	tx: PrismaTransaction,
 	productId: string,
 	updateOps: NonNullable<ProductModel.imageOperations["update"]>,
-	uploadMap: Map<number, UploadedFileData>,
+	uploadMap: Map<number, MultiSizeUploadData>,
 ): Promise<string[]> {
 	if (!updateOps.length) return [];
 
@@ -63,10 +67,10 @@ export async function executeImageUpdates(
 		if (op.fileIndex !== undefined) {
 			const oldImg = await tx.image.findUnique({
 				where: { id: op.id },
-				select: { key: true },
+				select: { keyThumb: true, keyMedium: true, keyLarge: true },
 			});
 			if (oldImg) {
-				oldKeysToDelete.push(oldImg.key);
+				oldKeysToDelete.push(oldImg.keyThumb, oldImg.keyMedium, oldImg.keyLarge);
 			}
 
 			const file = uploadMap.get(op.fileIndex);
@@ -77,8 +81,12 @@ export async function executeImageUpdates(
 			await tx.image.update({
 				where: { id: op.id },
 				data: {
-					key: file.key,
-					url: file.ufsUrl,
+					keyThumb: file.thumb.key,
+					keyMedium: file.medium.key,
+					keyLarge: file.large.key,
+					urlThumb: file.thumb.url,
+					urlMedium: file.medium.url,
+					urlLarge: file.large.url,
 					...(op.altText !== undefined && { altText: op.altText }),
 					...(op.isThumbnail !== undefined && { isThumbnail: op.isThumbnail }),
 				},
@@ -106,12 +114,12 @@ export async function executeImageDeletes(
 
 	const toDelete = await tx.image.findMany({
 		where: { id: { in: deleteIds }, productId },
-		select: { key: true },
+		select: { keyThumb: true, keyMedium: true, keyLarge: true },
 	});
 
 	await tx.image.deleteMany({
 		where: { id: { in: deleteIds }, productId },
 	});
 
-	return toDelete.map((img) => img.key);
+	return toDelete.flatMap((img) => [img.keyThumb, img.keyMedium, img.keyLarge]);
 }

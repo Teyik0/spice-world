@@ -143,8 +143,13 @@ model AttributeValue {
 
 model Image {
     id          String  @id @default(uuid())
-    key         String  @unique
-    url         String
+    // Multi-size image keys and URLs
+    keyThumb    String  @unique
+    keyMedium   String  @unique
+    keyLarge    String  @unique
+    urlThumb    String
+    urlMedium   String
+    urlLarge    String
     altText     String?
     isThumbnail Boolean @default(false)
 

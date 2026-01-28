@@ -41,7 +41,9 @@ const MAX_FILE_SIZE = 1024 * 1024 * 3;
 
 interface ImageMetadata {
 	id: string;
-	url: string;
+	urlThumb: string;
+	urlMedium: string;
+	urlLarge: string;
 	isThumbnail: boolean;
 	altText: string | null;
 }
@@ -106,7 +108,7 @@ export const ProductFormImages = ({
 	useEffect(() => {
 		// Sync product card on sidebar
 		const newThum = files.find((img) => img.isThumbnail);
-		updateSidebarImg(newThum ? newThum.url : null);
+		updateSidebarImg(newThum ? newThum.urlThumb : null);
 	}, [files]);
 
 	const syncToForm = useCallback(
@@ -174,14 +176,19 @@ export const ProductFormImages = ({
 
 		// Créer les nouvelles images
 		const needsThumbnail = files.length === 0;
-		const newImgs: UnifiedImage[] = selectedFiles.map((file, index) => ({
-			id: crypto.randomUUID(),
-			url: URL.createObjectURL(file),
-			altText: file.name,
-			isThumbnail: needsThumbnail && index === 0, // Only first new image is thumbnail if none exist
-			state: "toCreate",
-			file,
-		}));
+		const newImgs: UnifiedImage[] = selectedFiles.map((file, index) => {
+			const blobUrl = URL.createObjectURL(file);
+			return {
+				id: crypto.randomUUID(),
+				urlThumb: blobUrl,
+				urlMedium: blobUrl,
+				urlLarge: blobUrl,
+				altText: file.name,
+				isThumbnail: needsThumbnail && index === 0, // Only first new image is thumbnail if none exist
+				state: "toCreate",
+				file,
+			};
+		});
 
 		setFiles((prev) => {
 			const updated = [...prev, ...newImgs];
@@ -207,13 +214,16 @@ export const ProductFormImages = ({
 				if (img.id !== imgId) return img;
 
 				// Révoquer l'ancien blob URL si c'était un fichier local
-				if (img.url.startsWith("blob:")) {
-					URL.revokeObjectURL(img.url);
+				if (img.urlMedium.startsWith("blob:")) {
+					URL.revokeObjectURL(img.urlMedium);
 				}
 
+				const blobUrl = URL.createObjectURL(newFile);
 				return {
 					...img,
-					url: URL.createObjectURL(newFile),
+					urlThumb: blobUrl,
+					urlMedium: blobUrl,
+					urlLarge: blobUrl,
 					altText: newFile.name,
 					file: newFile,
 					state: img.state === null ? "toUpdate" : img.state, // null → toUpdate
@@ -234,8 +244,8 @@ export const ProductFormImages = ({
 			const updated = prev.filter((img) => {
 				if (img.id !== imgId) return true;
 				// Revoke blob url if local file
-				if (img.url.startsWith("blob:")) {
-					URL.revokeObjectURL(img.url);
+				if (img.urlMedium.startsWith("blob:")) {
+					URL.revokeObjectURL(img.urlMedium);
 				}
 				if (img.state === "toCreate") return false;
 				return false;
@@ -311,7 +321,7 @@ export const ProductFormImages = ({
 											key={item.id}
 											altText={item.altText ?? item.file?.name ?? "image"}
 											imgId={item.id}
-											imgUrl={item.url}
+											imgUrl={item.urlMedium}
 											isThumbnail={item.isThumbnail}
 											handleDeleteImg={
 												files.length > 1 ? () => handleDeleteImg(item.id) : null

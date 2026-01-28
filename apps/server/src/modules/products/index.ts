@@ -43,9 +43,11 @@ export const productsRouter = new Elysia({
 	)
 	.delete("/:id", async ({ params }) => {
 		const product = await productService.delete(params);
-		// Cleanup images after deletion
+		// Cleanup images after deletion (all sizes)
 		if (product.images.length > 0) {
-			await utapi.deleteFiles(product.images.map((img) => img.key));
+			await utapi.deleteFiles(
+				product.images.flatMap((img) => [img.keyThumb, img.keyMedium, img.keyLarge]),
+			);
 		}
 		return status(200);
 	});

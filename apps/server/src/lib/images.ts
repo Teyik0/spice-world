@@ -7,17 +7,68 @@ export const utapi = new UTApi({
 	token: process.env.UPLOADTHING_TOKEN,
 });
 
-const _uploadFile = async (filename: string, file: File | BunFile) => {
+// Image size configurations for multi-size upload
+const IMAGE_SIZES = {
+	thumb: { width: 128, quality: 75 },
+	medium: { width: 500, quality: 80 },
+	large: { width: 1500, quality: 85 },
+} as const;
+
+type ImageSize = keyof typeof IMAGE_SIZES;
+
+export type MultiSizeUploadData = {
+	thumb: UploadedFileData;
+	medium: UploadedFileData;
+	large: UploadedFileData;
+};
+
+// Upload a single size variant of an image
+const _uploadSingleSize = async (
+	filename: string,
+	file: File | BunFile,
+	size: ImageSize,
+) => {
+	const config = IMAGE_SIZES[size];
 	const arrayBuffer = await file.arrayBuffer();
 	const buffer = Buffer.from(arrayBuffer);
 	const transformer = new Transformer(buffer);
 	const outputBuffer = await transformer
-		.resize({ width: 1000, height: 1000, fit: ResizeFit.Cover })
-		.webp(85);
+		.resize({ width: config.width, height: config.width, fit: ResizeFit.Cover })
+		.webp(config.quality);
 
 	return await utapi.uploadFiles(
-		new File([new Uint8Array(outputBuffer)], `${filename}.webp`),
+		new File([new Uint8Array(outputBuffer)], `${filename}-${size}.webp`),
 	);
+};
+
+// Upload all size variants of an image
+const _uploadFile = async (filename: string, file: File | BunFile) => {
+	const sizes: ImageSize[] = ["thumb", "medium", "large"];
+	const uploadPromises = sizes.map((size) =>
+		_uploadSingleSize(filename, file, size),
+	);
+	const results = await Promise.all(uploadPromises);
+
+	// Check for errors in any upload
+	const errors = results.filter((r) => r.error);
+	if (errors.length > 0) {
+		// Cleanup successful uploads if any failed
+		for (const result of results) {
+			if (result.data) {
+				await utapi.deleteFiles(result.data.key);
+			}
+		}
+		return { data: null, error: errors[0].error };
+	}
+
+	return {
+		data: {
+			thumb: results[0].data!,
+			medium: results[1].data!,
+			large: results[2].data!,
+		} as MultiSizeUploadData,
+		error: null,
+	};
 };
 
 export const uploadFile = async (filename: string, file: File | BunFile) => {
@@ -28,7 +79,10 @@ export const uploadFile = async (filename: string, file: File | BunFile) => {
 		if (resp.data) return { data: resp.data, error: null };
 	}
 
-	return { data: null, error: { message: "Upload failed after 3 attempts" } };
+	return {
+		data: null,
+		error: { message: "Upload failed after 3 attempts" },
+	};
 };
 
 export const uploadFiles = async (
@@ -46,14 +100,18 @@ export const uploadFiles = async (
 	// Check for errors in the results
 	const errors = results.filter((result) => result.error);
 	const successfulUploads = results.filter(
-		(result): result is { data: UploadedFileData; error: null } =>
+		(result): result is { data: MultiSizeUploadData; error: null } =>
 			!!result?.data,
 	);
 
 	if (errors.length > 0) {
-		// Clean up if only one upload has failed
-		for (const file of successfulUploads) {
-			await utapi.deleteFiles(file.data.key);
+		// Clean up if any upload has failed
+		for (const upload of successfulUploads) {
+			await utapi.deleteFiles([
+				upload.data.thumb.key,
+				upload.data.medium.key,
+				upload.data.large.key,
+			]);
 		}
 		return { data: null, error: errors.map((e) => e.error).join(", ") };
 	}

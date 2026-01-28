@@ -1,10 +1,13 @@
-import { uploadFiles, utapi } from "@spice-world/server/lib/images";
+import {
+	type MultiSizeUploadData,
+	uploadFiles,
+	utapi,
+} from "@spice-world/server/lib/images";
 import { prisma } from "@spice-world/server/lib/prisma";
 import type { Product } from "@spice-world/server/prisma/client";
 import { sql } from "bun";
 import { status } from "elysia";
 import { LRUCache } from "lru-cache";
-import type { UploadedFileData } from "uploadthing/types";
 import { uploadFileErrStatus, type uuidGuard } from "../shared";
 import { MAX_IMAGES_PER_PRODUCT, type ProductModel } from "./model";
 import {
@@ -195,7 +198,7 @@ export const productService = {
 
 		const products = await sql<getProduct[]>`SELECT
 			p.*,
-			(SELECT url FROM "Image" WHERE "productId" = p.id AND "isThumbnail" = true LIMIT 1) AS "img",
+			(SELECT "urlThumb" FROM "Image" WHERE "productId" = p.id AND "isThumbnail" = true LIMIT 1) AS "img",
 			v_agg."priceMin",
 			v_agg."priceMax",
 			v_agg."totalStock"
@@ -346,8 +349,12 @@ export const productService = {
 										throw new Error(`File not found for index ${op.fileIndex}`);
 									}
 									return {
-										key: file.key,
-										url: file.ufsUrl,
+										keyThumb: file.thumb.key,
+										keyMedium: file.medium.key,
+										keyLarge: file.large.key,
+										urlThumb: file.thumb.url,
+										urlMedium: file.medium.url,
+										urlLarge: file.large.url,
 										altText: op.altText ?? `${name} image`,
 										isThumbnail: op.isThumbnail ?? false,
 									};
@@ -410,7 +417,11 @@ export const productService = {
 		} catch (err: unknown) {
 			if (uploadMap.size > 0) {
 				await utapi.deleteFiles(
-					Array.from(uploadMap.values()).map((file) => file.key),
+					Array.from(uploadMap.values()).flatMap((file) => [
+						file.thumb.key,
+						file.medium.key,
+						file.large.key,
+					]),
 				);
 			}
 			throw err;
@@ -929,7 +940,11 @@ export const productService = {
 		} catch (err: unknown) {
 			if (uploadMap.size > 0) {
 				await utapi.deleteFiles(
-					Array.from(uploadMap.values()).map((file) => file.key),
+					Array.from(uploadMap.values()).flatMap((file) => [
+						file.thumb.key,
+						file.medium.key,
+						file.large.key,
+					]),
 				);
 			}
 			throw err;
@@ -1043,7 +1058,7 @@ async function validateAndUploadFiles(
 	productName: string,
 ) {
 	if (!images?.length || !imagesOps) {
-		return { data: new Map<number, UploadedFileData>(), error: null };
+		return { data: new Map<number, MultiSizeUploadData>(), error: null };
 	}
 	const referencedIndices = validateImagesOps(images, imagesOps);
 	return await uploadValidFiles({
@@ -1064,11 +1079,11 @@ async function uploadValidFiles({
 	images,
 	productName,
 }: UploadValidFilesProps): Promise<
-	| { data: Map<number, UploadedFileData>; error: null }
+	| { data: Map<number, MultiSizeUploadData>; error: null }
 	| { data: null; error: string }
 > {
 	if (referencedIndices.length === 0) {
-		return { data: new Map<number, UploadedFileData>(), error: null };
+		return { data: new Map<number, MultiSizeUploadData>(), error: null };
 	}
 
 	const sortedIndices = referencedIndices.sort((a, b) => a - b);
@@ -1081,7 +1096,7 @@ async function uploadValidFiles({
 		return { data: null, error };
 	}
 
-	const uploadMap = new Map<number, UploadedFileData>();
+	const uploadMap = new Map<number, MultiSizeUploadData>();
 	uploaded.forEach((file, i) => {
 		uploadMap.set(sortedIndices[i] as number, file);
 	});
