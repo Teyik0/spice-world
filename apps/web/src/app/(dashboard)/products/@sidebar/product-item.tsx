@@ -93,6 +93,8 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
 					alt={product.name}
 					width={48}
 					height={48}
+					loading="lazy"
+					sizes="48px"
 					className="rounded-md shrink-0 object-cover"
 				/>
 			)}

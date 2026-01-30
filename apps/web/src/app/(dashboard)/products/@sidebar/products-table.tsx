@@ -189,6 +189,8 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 										alt={product.name}
 										width={48}
 										height={48}
+										loading="lazy"
+										sizes="48px"
 										className="rounded-md object-cover"
 									/>
 								) : (

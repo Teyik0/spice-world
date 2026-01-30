@@ -43,7 +43,9 @@ const MAX_FILE_SIZE = 1024 * 1024 * 3;
 
 interface ImageMetadata {
 	id: string;
-	url: string;
+	urlThumb: string;
+	urlMedium: string;
+	urlLarge: string;
 	isThumbnail: boolean;
 	altText: string | null;
 }
@@ -154,7 +156,7 @@ export const ProductFormImages = ({
 			if (updateOp) {
 				result.push({
 					id,
-					url: updateOp.file ? getBlobUrl(updateOp.file) : img.url,
+					url: updateOp.file ? getBlobUrl(updateOp.file) : img.urlMedium,
 					isThumbnail: updateOp.isThumbnail ?? img.isThumbnail,
 					altText: updateOp.altText ?? img.altText ?? "image",
 					source: "update",
@@ -163,7 +165,7 @@ export const ProductFormImages = ({
 			} else {
 				result.push({
 					id,
-					url: img.url,
+					url: img.urlMedium,
 					isThumbnail: img.isThumbnail,
 					altText: img.altText ?? "image",
 					source: "existing",
