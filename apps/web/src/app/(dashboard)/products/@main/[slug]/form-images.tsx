@@ -440,7 +440,7 @@ export const ProductFormImages = ({
 											key={item.id}
 											altText={item.altText}
 											imgId={item.id}
-											imgUrl={item.url}
+											imgUrl={item.urlMedium}
 											isThumbnail={item.isThumbnail}
 											handleDeleteImg={
 												displayImages.length > 1
