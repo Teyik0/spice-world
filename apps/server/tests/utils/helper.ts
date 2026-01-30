@@ -167,8 +167,12 @@ export const createTestCategory = async ({
 			name: categoryName,
 			image: {
 				create: {
-					key: `key-${testId}`,
-					url: `https://test-url.com/${testId}.webp`,
+					keyThumb: `key-thumb-${testId}`,
+					keyMedium: `key-medium-${testId}`,
+					keyLarge: `key-large-${testId}`,
+					urlThumb: `https://test-url.com/${testId}-thumb.webp`,
+					urlMedium: `https://test-url.com/${testId}-medium.webp`,
+					urlLarge: `https://test-url.com/${testId}-large.webp`,
 					altText: categoryName,
 					isThumbnail: true,
 				},

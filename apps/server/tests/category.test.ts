@@ -61,11 +61,17 @@ describe.concurrent("Category routes test", () => {
 			expect(status).toBe(201);
 			expectDefined(data);
 			expect(data.name).toBe(name);
-			expect(data.image).toHaveProperty("id");
-			expect(data.image).toHaveProperty("key");
-			expect(data.image).toHaveProperty("url");
-			expect(data.image).toHaveProperty("altText");
-			expect(data.image).toHaveProperty("isThumbnail");
+			expect(data.image).toMatchObject({
+				id: expect.any(String),
+				keyThumb: expect.any(String),
+				keyMedium: expect.any(String),
+				keyLarge: expect.any(String),
+				urlThumb: expect.any(String),
+				urlMedium: expect.any(String),
+				urlLarge: expect.any(String),
+				altText: expect.any(String),
+				isThumbnail: true,
+			});
 			expect(data.attributes).toEqual([]);
 		});
 
@@ -78,11 +84,17 @@ describe.concurrent("Category routes test", () => {
 			expect(status).toBe(201);
 			expectDefined(data);
 			expect(data.name).toBe(name);
-			expect(data.image).toHaveProperty("id");
-			expect(data.image).toHaveProperty("key");
-			expect(data.image).toHaveProperty("url");
-			expect(data.image).toHaveProperty("altText");
-			expect(data.image).toHaveProperty("isThumbnail");
+			expect(data.image).toMatchObject({
+				id: expect.any(String),
+				keyThumb: expect.any(String),
+				keyMedium: expect.any(String),
+				keyLarge: expect.any(String),
+				urlThumb: expect.any(String),
+				urlMedium: expect.any(String),
+				urlLarge: expect.any(String),
+				altText: expect.any(String),
+				isThumbnail: true,
+			});
 		});
 
 		test("should error if name is already taken", async () => {

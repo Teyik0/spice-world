@@ -1,10 +1,13 @@
-import { uploadFiles, utapi } from "@spice-world/server/lib/images";
+import {
+	type MultiSizeUploadData,
+	uploadFiles,
+	utapi,
+} from "@spice-world/server/lib/images";
 import { prisma } from "@spice-world/server/lib/prisma";
 import type { Product } from "@spice-world/server/prisma/client";
 import { sql } from "bun";
 import { status } from "elysia";
 import { LRUCache } from "lru-cache";
-import type { UploadedFileData } from "uploadthing/types";
 import type { CategoryModel } from "../categories/model";
 import { categoryService } from "../categories/service";
 import { uploadFileErrStatus, type uuidGuard } from "../shared";
@@ -156,7 +159,7 @@ export const productService = {
 			`${name ?? ""}:${status ?? ""}:${categoriesArray?.join(",") ?? ""}`;
 
 		type getProduct = Product & {
-			img: string | null;
+			img: string;
 			priceMin: number | null;
 			priceMax: number | null;
 			totalStock: number;
@@ -202,7 +205,7 @@ export const productService = {
 
 		const products = await sql<getProduct[]>`SELECT
 			p.*,
-			(SELECT url FROM "Image" WHERE "productId" = p.id AND "isThumbnail" = true LIMIT 1) AS "img",
+			(SELECT "urlThumb" FROM "Image" WHERE "productId" = p.id AND "isThumbnail" = true LIMIT 1) AS "img",
 			v_agg."priceMin",
 			v_agg."priceMax",
 			v_agg."totalStock"
@@ -316,10 +319,14 @@ export const productService = {
 						images: {
 							createMany: {
 								data: iOps.create.map((op, index) => {
-									const file = uploadMap[index] as UploadedFileData;
+									const file = uploadMap[index] as MultiSizeUploadData;
 									return {
-										key: file.key,
-										url: file.ufsUrl,
+										keyThumb: file.thumb.key,
+										keyMedium: file.medium.key,
+										keyLarge: file.large.key,
+										urlThumb: file.thumb.ufsUrl,
+										urlMedium: file.medium.ufsUrl,
+										urlLarge: file.large.ufsUrl,
 										altText: op.altText ?? `${name} image`,
 										isThumbnail: op.isThumbnail ?? false,
 									};
@@ -367,7 +374,13 @@ export const productService = {
 			return status("Created", product);
 		} catch (err: unknown) {
 			if (uploadMap.length > 0) {
-				await utapi.deleteFiles(uploadMap.map((file) => file.key));
+				await utapi.deleteFiles(
+					uploadMap.flatMap((file) => [
+						file.thumb.key,
+						file.medium.key,
+						file.large.key,
+					]),
+				);
 			}
 			throw err;
 		}
@@ -461,13 +474,13 @@ export const productService = {
 						productName,
 						iOps.create.map((img) => img.file),
 					)
-				: Promise.resolve({ data: [], error: null }),
+				: Promise.resolve({ data: [] as MultiSizeUploadData[], error: null }),
 			iOps?.update?.filter((op) => op.file)?.length
 				? uploadFiles(
 						productName,
 						iOps.update.filter((op) => op.file).map((op) => op.file as File),
 					)
-				: Promise.resolve({ data: [], error: null }),
+				: Promise.resolve({ data: [] as MultiSizeUploadData[], error: null }),
 		]);
 
 		// Handle upload errors
@@ -477,7 +490,13 @@ export const productService = {
 				...(updateUploads.data ?? []),
 			];
 			if (allSuccessful.length > 0) {
-				await utapi.deleteFiles(allSuccessful.map((f) => f.key));
+				await utapi.deleteFiles(
+					allSuccessful.flatMap((f) => [
+						f.thumb.key,
+						f.medium.key,
+						f.large.key,
+					]),
+				);
 			}
 			return uploadFileErrStatus({
 				message: [createUploads.error, updateUploads.error]
@@ -516,23 +535,33 @@ export const productService = {
 					if (iOps.delete && iOps.delete.length > 0) {
 						const oldImages = await tx.image.findMany({
 							where: { id: { in: iOps.delete } },
-							select: { key: true },
+							select: { keyThumb: true, keyMedium: true, keyLarge: true },
 						});
 						await tx.image.deleteMany({
 							where: { id: { in: iOps.delete } },
 						});
-						oldKeysToDelete.push(...oldImages.map((i) => i.key));
+						oldKeysToDelete.push(
+							...oldImages.flatMap((i) => [
+								i.keyThumb,
+								i.keyMedium,
+								i.keyLarge,
+							]),
+						);
 					}
 
-					// Create new images (uploadMap sequentially)
-					if (iOps.create && iOps.create.length > 0) {
+					// Create new images
+					if (iOps.create && iOps.create.length > 0 && createUploads.data) {
 						await tx.image.createMany({
 							data: iOps.create.map((op, index) => {
-								// biome-ignore lint/style/noNonNullAssertion: already checked at upload time
-								const file = createUploads.data![index] as UploadedFileData;
+								// biome-ignore lint/style/noNonNullAssertion: ok
+								const file = createUploads.data![index] as MultiSizeUploadData;
 								return {
-									key: file.key,
-									url: file.ufsUrl,
+									keyThumb: file.thumb.key,
+									keyMedium: file.medium.key,
+									keyLarge: file.large.key,
+									urlThumb: file.thumb.ufsUrl,
+									urlMedium: file.medium.ufsUrl,
+									urlLarge: file.large.ufsUrl,
 									altText: op.altText ?? `${updatedProduct.name} image`,
 									isThumbnail: op.isThumbnail ?? false,
 									productId: id,
@@ -541,7 +570,7 @@ export const productService = {
 						});
 					}
 
-					// Update images (find by ID in uploadMap)
+					// Update images
 					if (iOps.update && iOps.update.length > 0) {
 						// Parallel fetch all current images first
 						const currentImages = await Promise.all(
@@ -555,17 +584,34 @@ export const productService = {
 							const currentImage = currentImages[index];
 							if (!currentImage) throw new Error(`Image not found: ${op.id}`);
 
-							// biome-ignore lint/style/noNonNullAssertion: already checked at upload time
-							const uploaded = updateUploads.data!.find(
-								(_, i) => updateOpsWithFiles[i]?.id === op.id,
+							// Find uploaded file if this op has a file
+							const uploadIndex = updateOpsWithFiles.findIndex(
+								(uop) => uop.id === op.id,
 							);
+							const uploaded =
+								uploadIndex !== -1 && updateUploads.data
+									? updateUploads.data[uploadIndex]
+									: null;
+
+							if (uploaded) {
+								// Track old keys to delete
+								oldKeysToDelete.push(
+									currentImage.keyThumb,
+									currentImage.keyMedium,
+									currentImage.keyLarge,
+								);
+							}
 
 							return tx.image.update({
 								where: { id: op.id },
 								data: uploaded
 									? {
-											key: uploaded.key,
-											url: uploaded.ufsUrl,
+											keyThumb: uploaded.thumb.key,
+											keyMedium: uploaded.medium.key,
+											keyLarge: uploaded.large.key,
+											urlThumb: uploaded.thumb.ufsUrl,
+											urlMedium: uploaded.medium.ufsUrl,
+											urlLarge: uploaded.large.ufsUrl,
 											altText: op.altText ?? currentImage.altText,
 											isThumbnail: op.isThumbnail ?? currentImage.isThumbnail,
 										}
@@ -692,10 +738,15 @@ export const productService = {
 			return product;
 		} catch (err: unknown) {
 			// Clean up orphaned files if transaction fails
-			if (createUploads.data && createUploads.data.length > 0)
-				await utapi.deleteFiles(createUploads.data.map((f) => f.key));
-			if (updateUploads.data && updateUploads.data.length > 0)
-				await utapi.deleteFiles(updateUploads.data.map((f) => f.key));
+			const allUploaded = [
+				...(createUploads.data ?? []),
+				...(updateUploads.data ?? []),
+			];
+			if (allUploaded.length > 0) {
+				await utapi.deleteFiles(
+					allUploaded.flatMap((f) => [f.thumb.key, f.medium.key, f.large.key]),
+				);
+			}
 			throw err;
 		}
 	},
@@ -787,7 +838,7 @@ export const productService = {
 
 	async delete({ id }: uuidGuard) {
 		const deletedProduct = await prisma.product.delete({
-			where: { id: id },
+			where: { id },
 			include: { images: true },
 		});
 

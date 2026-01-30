@@ -407,7 +407,10 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			expectDefined(data);
 			expect(data.variants).toHaveLength(27); // 3×3×3
 			expect(data.images).toHaveLength(5);
-			expect(data.images[0]?.isThumbnail).toBe(true);
+			expect(data.images.filter((img) => img.isThumbnail).length).toBe(1);
+			expect(
+				data.images.find((img) => img.altText === "Image 1")?.isThumbnail,
+			).toBe(true);
 		});
 	});
 

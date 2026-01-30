@@ -1,7 +1,10 @@
-import { uploadFile, utapi } from "@spice-world/server/lib/images";
+import {
+	type MultiSizeUploadData,
+	uploadFile,
+	utapi,
+} from "@spice-world/server/lib/images";
 import { prisma } from "@spice-world/server/lib/prisma";
 import { status } from "elysia";
-import type { UploadedFileData } from "uploadthing/types";
 import { uploadFileErrStatus, type uuidGuard } from "../shared";
 import type { CategoryModel } from "./model";
 
@@ -18,7 +21,7 @@ export const categoryService = {
 			include: {
 				image: {
 					select: {
-						url: true,
+						urlThumb: true,
 					},
 				},
 			},
@@ -50,8 +53,12 @@ export const categoryService = {
 					name,
 					image: {
 						create: {
-							key: image.key,
-							url: image.ufsUrl,
+							keyThumb: image.thumb.key,
+							urlThumb: image.thumb.ufsUrl,
+							keyMedium: image.medium.key,
+							urlMedium: image.medium.ufsUrl,
+							keyLarge: image.medium.key,
+							urlLarge: image.medium.ufsUrl,
 							altText: name,
 							isThumbnail: true,
 						},
@@ -81,7 +88,12 @@ export const categoryService = {
 			});
 			return status("Created", category);
 		} catch (err: unknown) {
-			await utapi.deleteFiles(image.key); // Cleanup uploaded file
+			// Cleanup uploaded files
+			await utapi.deleteFiles([
+				image.thumb.key,
+				image.medium.key,
+				image.large.key,
+			]);
 			throw err;
 		}
 	},
@@ -92,7 +104,7 @@ export const categoryService = {
 		file,
 		attributes,
 	}: CategoryModel.patchBody & uuidGuard) {
-		let newFile: UploadedFileData | null = null;
+		let newFile: MultiSizeUploadData | null = null;
 
 		if (file) {
 			const { data: image, error: fileError } = await uploadFile(name, file);
@@ -107,7 +119,9 @@ export const categoryService = {
 				const category = await tx.category.findUniqueOrThrow({
 					where: { id },
 					include: {
-						image: { select: { key: true } },
+						image: {
+							select: { keyThumb: true, keyMedium: true, keyLarge: true },
+						},
 						attributes: { include: { values: true } },
 					},
 				});
@@ -198,8 +212,12 @@ export const categoryService = {
 						...(newFile && {
 							image: {
 								update: {
-									key: newFile.key,
-									url: newFile.ufsUrl,
+									keyThumb: newFile.thumb.key,
+									urlThumb: newFile.thumb.ufsUrl,
+									keyMedium: newFile.medium.key,
+									urlMedium: newFile.medium.ufsUrl,
+									keyLarge: newFile.large.key,
+									urlLarge: newFile.large.ufsUrl,
 								},
 							},
 						}),
@@ -260,7 +278,13 @@ export const categoryService = {
 
 			return { data: tx, error: null };
 		} catch (err: unknown) {
-			newFile && (await utapi.deleteFiles(newFile.key));
+			if (newFile) {
+				await utapi.deleteFiles([
+					newFile.thumb.key,
+					newFile.medium.key,
+					newFile.large.key,
+				]);
+			}
 			throw err;
 		}
 	},

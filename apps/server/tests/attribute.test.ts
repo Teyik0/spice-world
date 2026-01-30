@@ -29,8 +29,12 @@ describe.concurrent("Attribute routes test", () => {
 				name: "Spice",
 				image: {
 					create: {
-						key: "test-key",
-						url: "https://test-url.com/image.webp",
+						keyThumb: "test-key",
+						urlThumb: "https://test-url.com/image.webp",
+						keyMedium: "test-key",
+						urlMedium: "https://test-url.com/image.webp",
+						keyLarge: "test-key",
+						urlLarge: "https://test-url.com/image.webp",
 						altText: "Spice",
 						isThumbnail: true,
 					},
