@@ -13,7 +13,7 @@ import { file } from "bun";
 
 let api: ReturnType<typeof treaty<typeof productsRouter>>;
 
-describe.concurrent("Thumbnail Validation & Auto Assign", () => {
+describe("Thumbnail Validation & Auto Assign", () => {
 	let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
 	let setupProduct: ReturnType<typeof createSetupProduct>;
 
@@ -27,6 +27,7 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 			"@spice-world/server/modules/products"
 		);
 
+		// Mock uploadFiles
 		spyOn(imagesModule.utapi, "uploadFiles").mockImplementation((async (
 			files,
 		) => {
@@ -36,9 +37,23 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 			};
 		}) as typeof imagesModule.utapi.uploadFiles);
 
+		// Mock deleteFiles
 		spyOn(imagesModule.utapi, "deleteFiles").mockImplementation((async () => {
 			return { success: true, deletedCount: 1 };
 		}) as typeof imagesModule.utapi.deleteFiles);
+
+		// Mock _uploadSingleSize to skip actual image processing
+		// Needed because resize is leading to timeout in test for 35+ tests in parallel
+		spyOn(imagesModule, "_uploadSingleSize").mockImplementation((async (
+			filename,
+			_file,
+			size,
+		) => {
+			return {
+				data: createUploadedFileData(new File([], `${filename}-${size}.webp`)),
+				error: null,
+			};
+		}) as typeof imagesModule._uploadSingleSize);
 
 		api = treaty(productsRouter);
 		setupProduct = createSetupProduct(testDb, api);
@@ -61,10 +76,10 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 				],
 			});
 
-			const thumbnails = product.images.filter((img) => img.isThumbnail);
+			const thumbnails = product.images.filter((img: Image) => img.isThumbnail);
 			expect(thumbnails.length).toBe(1);
 			const firstImg = product.images.find(
-				(img) => img.altText === "First image",
+				(img: Image) => img.altText === "First image",
 			);
 			expect(firstImg?.isThumbnail).toBe(true);
 		});
@@ -1221,7 +1236,7 @@ describe.concurrent("Thumbnail Validation & Auto Assign", () => {
 			expect(newFirstImage?.isThumbnail).toBe(true);
 		});
 
-		it.skip("should fallback to first remaining when all updates marked false (priority 8)", async () => {
+		it("should fallback to first remaining when all updates marked false (priority 8)", async () => {
 			const { product } = await setupProduct({
 				attributeCount: 2,
 				attributeValueCount: 2,

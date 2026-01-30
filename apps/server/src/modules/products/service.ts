@@ -232,7 +232,9 @@ export const productService = {
 				category: {
 					include: { attributes: { include: { values: true } } },
 				},
-				images: true,
+				images: {
+					orderBy: { id: "asc" },
+				},
 				variants: {
 					include: {
 						attributeValues: true,
@@ -509,7 +511,7 @@ export const productService = {
 
 		try {
 			const product = await prisma.$transaction(async (tx) => {
-				// 1. Update product
+				// 1. Update product (must be first - needed for image altText fallback)
 				const updatedProduct = await tx.product.update({
 					where: { id },
 					data: {
@@ -529,109 +531,146 @@ export const productService = {
 					},
 				});
 
-				// 2. Handle image operations
+				// 2. Parallel execution of independent operations
+				const operationPromises: Promise<unknown>[] = [];
+
+				// Image operations
 				if (iOps) {
 					// Delete images
 					if (iOps.delete && iOps.delete.length > 0) {
-						const oldImages = await tx.image.findMany({
-							where: { id: { in: iOps.delete } },
-							select: { keyThumb: true, keyMedium: true, keyLarge: true },
-						});
-						await tx.image.deleteMany({
-							where: { id: { in: iOps.delete } },
-						});
-						oldKeysToDelete.push(
-							...oldImages.flatMap((i) => [
-								i.keyThumb,
-								i.keyMedium,
-								i.keyLarge,
-							]),
+						operationPromises.push(
+							(async () => {
+								const oldImages = await tx.image.findMany({
+									where: { id: { in: iOps.delete } },
+									select: { keyThumb: true, keyMedium: true, keyLarge: true },
+								});
+								await tx.image.deleteMany({
+									where: { id: { in: iOps.delete } },
+								});
+								oldKeysToDelete.push(
+									...oldImages.flatMap((i) => [
+										i.keyThumb,
+										i.keyMedium,
+										i.keyLarge,
+									]),
+								);
+							})(),
 						);
 					}
 
 					// Create new images
 					if (iOps.create && iOps.create.length > 0 && createUploads.data) {
-						await tx.image.createMany({
-							data: iOps.create.map((op, index) => {
-								// biome-ignore lint/style/noNonNullAssertion: ok
-								const file = createUploads.data![index] as MultiSizeUploadData;
-								return {
-									keyThumb: file.thumb.key,
-									keyMedium: file.medium.key,
-									keyLarge: file.large.key,
-									urlThumb: file.thumb.ufsUrl,
-									urlMedium: file.medium.ufsUrl,
-									urlLarge: file.large.ufsUrl,
-									altText: op.altText ?? `${updatedProduct.name} image`,
-									isThumbnail: op.isThumbnail ?? false,
-									productId: id,
-								};
+						operationPromises.push(
+							tx.image.createMany({
+								data: iOps.create.map((op, index) => {
+									// biome-ignore lint/style/noNonNullAssertion: ok
+									const file = createUploads.data![
+										index
+									] as MultiSizeUploadData;
+									return {
+										keyThumb: file.thumb.key,
+										keyMedium: file.medium.key,
+										keyLarge: file.large.key,
+										urlThumb: file.thumb.ufsUrl,
+										urlMedium: file.medium.ufsUrl,
+										urlLarge: file.large.ufsUrl,
+										altText: op.altText ?? `${updatedProduct.name} image`,
+										isThumbnail: op.isThumbnail ?? false,
+										productId: id,
+									};
+								}),
 							}),
-						});
+						);
 					}
 
-					// Update images
+					// Update images - optimized with updateMany for thumbnail-only updates
 					if (iOps.update && iOps.update.length > 0) {
-						// Parallel fetch all current images first
-						const currentImages = await Promise.all(
-							iOps.update.map((op) =>
-								tx.image.findUnique({ where: { id: op.id } }),
-							),
-						);
-
-						// Parallel update all images
-						const updatePromises = iOps.update.map((op, index) => {
-							const currentImage = currentImages[index];
-							if (!currentImage) throw new Error(`Image not found: ${op.id}`);
-
-							// Find uploaded file if this op has a file
-							const uploadIndex = updateOpsWithFiles.findIndex(
-								(uop) => uop.id === op.id,
-							);
-							const uploaded =
-								uploadIndex !== -1 && updateUploads.data
-									? updateUploads.data[uploadIndex]
-									: null;
-
-							if (uploaded) {
-								// Track old keys to delete
-								oldKeysToDelete.push(
-									currentImage.keyThumb,
-									currentImage.keyMedium,
-									currentImage.keyLarge,
+						const updates = iOps.update; // Capture for TypeScript
+						operationPromises.push(
+							(async () => {
+								// Separate thumbnail-only updates (no file, no altText) from complex updates
+								const thumbnailOnlyUpdates = updates.filter(
+									(op) =>
+										op.isThumbnail !== undefined && !op.file && !op.altText,
 								);
-							}
+								const complexUpdates = updates.filter(
+									(op) => op.file || op.altText,
+								);
 
-							return tx.image.update({
-								where: { id: op.id },
-								data: uploaded
-									? {
-											keyThumb: uploaded.thumb.key,
-											keyMedium: uploaded.medium.key,
-											keyLarge: uploaded.large.key,
-											urlThumb: uploaded.thumb.ufsUrl,
-											urlMedium: uploaded.medium.ufsUrl,
-											urlLarge: uploaded.large.ufsUrl,
-											altText: op.altText ?? currentImage.altText,
-											isThumbnail: op.isThumbnail ?? currentImage.isThumbnail,
-										}
-									: {
-											altText: op.altText ?? currentImage.altText,
-											isThumbnail: op.isThumbnail ?? currentImage.isThumbnail,
-										},
-							});
-						});
+								// Batch update thumbnails only - single query for all
+								if (thumbnailOnlyUpdates.length > 0) {
+									await Promise.all(
+										thumbnailOnlyUpdates.map((op) =>
+											tx.image.update({
+												where: { id: op.id },
+												data: { isThumbnail: op.isThumbnail },
+											}),
+										),
+									);
+								}
 
-						await Promise.all(updatePromises);
+								// Complex updates (with file upload or altText change)
+								if (complexUpdates.length > 0) {
+									const currentImages = await Promise.all(
+										complexUpdates.map((op) =>
+											tx.image.findUnique({ where: { id: op.id } }),
+										),
+									);
+
+									await Promise.all(
+										complexUpdates.map((op, index) => {
+											const currentImage = currentImages[index];
+											if (!currentImage)
+												throw new Error(`Image not found: ${op.id}`);
+
+											const uploadIndex = updateOpsWithFiles.findIndex(
+												(uop) => uop.id === op.id,
+											);
+											const uploaded =
+												uploadIndex !== -1 && updateUploads.data
+													? updateUploads.data[uploadIndex]
+													: null;
+
+											if (uploaded) {
+												oldKeysToDelete.push(
+													currentImage.keyThumb,
+													currentImage.keyMedium,
+													currentImage.keyLarge,
+												);
+											}
+
+											return tx.image.update({
+												where: { id: op.id },
+												data: uploaded
+													? {
+															keyThumb: uploaded.thumb.key,
+															keyMedium: uploaded.medium.key,
+															keyLarge: uploaded.large.key,
+															urlThumb: uploaded.thumb.ufsUrl,
+															urlMedium: uploaded.medium.ufsUrl,
+															urlLarge: uploaded.large.ufsUrl,
+															altText: op.altText ?? currentImage.altText,
+															isThumbnail:
+																op.isThumbnail ?? currentImage.isThumbnail,
+														}
+													: {
+															altText: op.altText ?? currentImage.altText,
+															isThumbnail:
+																op.isThumbnail ?? currentImage.isThumbnail,
+														},
+											});
+										}),
+									);
+								}
+							})(),
+						);
 					}
 				}
 
-				// 3. Handle variant operations
+				// Variant operations (independent from images)
 				if (vOps) {
-					const promises: Promise<unknown>[] = [];
-
 					if (vOps.delete && vOps.delete.length > 0) {
-						promises.push(
+						operationPromises.push(
 							tx.productVariant.deleteMany({
 								where: { id: { in: vOps.delete }, productId: id },
 							}),
@@ -639,61 +678,66 @@ export const productService = {
 					}
 
 					if (vOps.update && vOps.update.length > 0) {
-						for (const variant of vOps.update) {
-							promises.push(
-								tx.productVariant.update({
-									where: { id: variant.id },
-									data: {
-										...(variant.price !== undefined && {
-											price: variant.price,
-										}),
-										...(variant.sku !== undefined && { sku: variant.sku }),
-										...(variant.stock !== undefined && {
-											stock: variant.stock,
-										}),
-										...(variant.currency !== undefined && {
-											currency: variant.currency,
-										}),
-										...(variant.attributeValueIds !== undefined && {
-											attributeValues: {
-												set: variant.attributeValueIds.map((aid) => ({
-													id: aid,
-												})),
-											},
-										}),
-									},
-									include: { attributeValues: true },
-								}),
-							);
-						}
+						operationPromises.push(
+							Promise.all(
+								vOps.update.map((variant) =>
+									tx.productVariant.update({
+										where: { id: variant.id },
+										data: {
+											...(variant.price !== undefined && {
+												price: variant.price,
+											}),
+											...(variant.sku !== undefined && { sku: variant.sku }),
+											...(variant.stock !== undefined && {
+												stock: variant.stock,
+											}),
+											...(variant.currency !== undefined && {
+												currency: variant.currency,
+											}),
+											...(variant.attributeValueIds !== undefined && {
+												attributeValues: {
+													set: variant.attributeValueIds.map((aid) => ({
+														id: aid,
+													})),
+												},
+											}),
+										},
+										include: { attributeValues: true },
+									}),
+								),
+							),
+						);
 					}
 
 					if (vOps.create && vOps.create.length > 0) {
-						for (const variant of vOps.create) {
-							promises.push(
-								tx.productVariant.create({
-									data: {
-										productId: id,
-										price: variant.price,
-										sku: variant.sku,
-										stock: variant.stock ?? 0,
-										currency: variant.currency ?? "EUR",
-										attributeValues: {
-											connect: variant.attributeValueIds.map((aid) => ({
-												id: aid,
-											})),
+						operationPromises.push(
+							Promise.all(
+								vOps.create.map((variant) =>
+									tx.productVariant.create({
+										data: {
+											productId: id,
+											price: variant.price,
+											sku: variant.sku,
+											stock: variant.stock ?? 0,
+											currency: variant.currency ?? "EUR",
+											attributeValues: {
+												connect: variant.attributeValueIds.map((aid) => ({
+													id: aid,
+												})),
+											},
 										},
-									},
-									include: { attributeValues: true },
-								}),
-							);
-						}
+										include: { attributeValues: true },
+									}),
+								),
+							),
+						);
 					}
-
-					await Promise.all(promises);
 				}
 
-				// 4. Clear attributeValues if category changed and not properly reconfigured
+				// Execute all independent operations in parallel
+				await Promise.all(operationPromises);
+
+				// 3. Clear attributeValues if category changed (depends on variant operations above)
 				if (hasCategoryChanged && !analysis.isProperlyReconfigured) {
 					const variants = await tx.productVariant.findMany({
 						where: { productId: id },
@@ -710,7 +754,7 @@ export const productService = {
 					);
 				}
 
-				// 5. Fetch and return updated product
+				// 4. Fetch and return updated product
 				const [updatedVariants, updatedImages] = await Promise.all([
 					tx.productVariant.findMany({
 						where: { productId: id },

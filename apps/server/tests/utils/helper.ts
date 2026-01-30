@@ -20,7 +20,7 @@ export const createUploadedFileData = (
 ): UploadedFileData[] | UploadedFileData => {
 	if (Array.isArray(files)) {
 		return files.map((file) => ({
-			key: `mock-key-${Date.now()}-${Math.random()}`,
+			key: `mock-key-${Date.now()}-${crypto.randomUUID()}`,
 			url: "https://mock-uploadthing.com/image.webp",
 			appUrl: "https://mock-uploadthing.com/image.webp",
 			ufsUrl: "https://mock-uploadthing.com/image.webp",
@@ -32,7 +32,7 @@ export const createUploadedFileData = (
 		}));
 	}
 	return {
-		key: `mock-key-${Date.now()}-${Math.random()}`,
+		key: `mock-key-${Date.now()}-${crypto.randomUUID()}`,
 		url: "https://mock-uploadthing.com/image.webp",
 		appUrl: "https://mock-uploadthing.com/image.webp",
 		ufsUrl: "https://mock-uploadthing.com/image.webp",

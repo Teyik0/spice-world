@@ -11,7 +11,7 @@ export const utapi = new UTApi({
 const IMAGE_SIZES = {
 	thumb: { width: 128, quality: 75 },
 	medium: { width: 500, quality: 80 },
-	large: { width: 1500, quality: 85 },
+	large: { width: 1200, quality: 85 },
 } as const;
 
 type ImageSize = keyof typeof IMAGE_SIZES;
@@ -23,7 +23,7 @@ export interface MultiSizeUploadData {
 }
 
 // Upload a single size variant of an image
-const _uploadSingleSize = async (
+export const _uploadSingleSize = async (
 	filename: string,
 	file: File | BunFile,
 	size: ImageSize,
