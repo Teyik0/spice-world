@@ -3,13 +3,10 @@ import { treaty } from "@elysiajs/eden";
 import * as imagesModule from "@spice-world/server/lib/images";
 import { prisma } from "@spice-world/server/lib/prisma";
 import type { categoryRouter } from "@spice-world/server/modules/categories";
-import { createTestDatabase } from "@spice-world/server/utils/db-manager";
-import {
-	createUploadedFileData,
-	expectDefined,
-} from "@spice-world/server/utils/helper";
 import type { BunFile } from "bun";
 import { file } from "bun";
+import { createTestDatabase } from "./utils/db-manager";
+import { createUploadedFileData, expectDefined } from "./utils/helper";
 
 describe.concurrent("Category routes test", () => {
 	let testDb: Awaited<ReturnType<typeof createTestDatabase>>;

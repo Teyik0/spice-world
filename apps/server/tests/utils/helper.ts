@@ -3,12 +3,9 @@ import type { treaty } from "@elysiajs/eden";
 import { faker } from "@faker-js/faker";
 import type { productsRouter } from "@spice-world/server/modules/products";
 import type { ProductModel } from "@spice-world/server/modules/products/model";
-import type {
-	createTestDatabase,
-	TestDatabase,
-} from "@spice-world/server/utils/db-manager";
 import type { BunFile } from "bun";
 import type { UploadedFileData } from "uploadthing/types";
+import type { createTestDatabase, TestDatabase } from "./db-manager";
 
 export function expectDefined<T>(value: T): asserts value is NonNullable<T> {
 	expect(value).not.toBeUndefined();

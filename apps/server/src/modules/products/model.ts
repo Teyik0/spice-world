@@ -1,38 +1,43 @@
 import type { Product } from "@spice-world/server/prisma/client";
 import { type ElysiaCustomStatusResponse, fileType } from "elysia";
-import * as z from "zod/mini";
+import * as v from "valibot";
 import { nameLowerPattern, uuid } from "../shared";
 import type { productService } from "./service";
 
 export const MAX_IMAGES_PER_PRODUCT = 5;
 
-const imageFile = z.file().check(
-	z.maxSize(7 * 1024 * 1024),
-	z.refine(async (file) => await fileType(file, "image"), {
-		message: "Must be a valid image file",
-	}),
+const imageFile = v.pipeAsync(
+	v.file(),
+	v.maxSize(7 * 1024 * 1024),
+	v.checkAsync(
+		async (file) => await fileType(file, "image"),
+		"Must be a valid image file",
+	),
 );
 
-const imageFileOptional = z.optional(imageFile);
-
 export namespace ProductModel {
-	export const productStatus = z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]);
-	export type productStatus = z.infer<typeof productStatus>;
+	export const productStatus = v.picklist(["DRAFT", "PUBLISHED", "ARCHIVED"]);
+	export type productStatus = v.InferOutput<typeof productStatus>;
 
-	export const getQuery = z.object({
-		name: z.optional(z.string()),
-		skip: z.optional(z._default(z.number().check(z.minimum(0)), 0)),
-		take: z.optional(
-			z._default(z.coerce.number().check(z.minimum(1), z.maximum(100)), 25),
+	export const getQuery = v.object({
+		name: v.optional(v.string()),
+		skip: v.optional(v.pipe(v.number(), v.minValue(0))),
+		take: v.optional(
+			v.pipe(
+				v.pipe(v.unknown(), v.transform(Number)),
+				v.number(),
+				v.minValue(1),
+				v.maxValue(100),
+			),
 		),
-		status: z.optional(productStatus),
-		categories: z.optional(z.union([z.string(), z.array(z.string())])),
-		sortBy: z.optional(
-			z.enum(["name", "createdAt", "updatedAt", "priceMin", "priceMax"]),
+		status: v.optional(productStatus),
+		categories: v.optional(v.union([v.string(), v.array(v.string())])),
+		sortBy: v.optional(
+			v.picklist(["name", "createdAt", "updatedAt", "priceMin", "priceMax"]),
 		),
-		sortDir: z.optional(z.enum(["asc", "desc"])),
+		sortDir: v.optional(v.picklist(["asc", "desc"])),
 	});
-	export type getQuery = z.infer<typeof getQuery>;
+	export type getQuery = v.InferOutput<typeof getQuery>;
 	export type getResult = Awaited<ReturnType<typeof productService.get>>;
 	export type getByIdResult = Exclude<
 		Awaited<ReturnType<typeof productService.getById>>,
@@ -40,113 +45,114 @@ export namespace ProductModel {
 		ElysiaCustomStatusResponse<any>
 	>;
 
-	export const countQuery = z.object({
-		status: z.optional(productStatus),
+	export const countQuery = v.object({
+		status: v.optional(productStatus),
 	});
-	export type countQuery = z.infer<typeof countQuery>;
+	export type countQuery = v.InferOutput<typeof countQuery>;
 
-	export const imageCreate = z.object({
+	export const imageCreate = v.objectAsync({
 		file: imageFile,
-		altText: z.optional(z.string()),
-		isThumbnail: z.optional(z.boolean()),
+		altText: v.optional(v.string()),
+		isThumbnail: v.optional(v.boolean()),
 	});
-	export type imageCreate = z.infer<typeof imageCreate>;
+	export type imageCreate = v.InferOutput<typeof imageCreate>;
 
-	export const imageOperations = z.object({
-		create: z.optional(
-			z.array(imageCreate).check(z.maxLength(MAX_IMAGES_PER_PRODUCT)),
-		),
-		update: z.optional(
-			z
-				.array(
-					z.object({
-						id: uuid,
-						file: imageFileOptional,
-						altText: z.optional(z.string()),
-						isThumbnail: z.optional(z.boolean()),
-					}),
-				)
-				.check(z.maxLength(MAX_IMAGES_PER_PRODUCT)),
-		),
-		delete: z.optional(z.array(uuid)),
-	});
-	export type imageOperations = z.infer<typeof imageOperations>;
-
-	export const variantCreate = z.object({
-		price: z.number().check(z.minimum(0)),
-		sku: z.optional(z.string().check(z.minLength(3))),
-		stock: z.optional(z._default(z.number().check(z.minimum(0)), 0)),
-		currency: z.optional(z._default(z.string(), "EUR")),
-		attributeValueIds: z.array(uuid),
-	});
-	export type variantCreate = z.infer<typeof variantCreate>;
-
-	const variantUpdate = z.object({
+	const imageUpdate = v.objectAsync({
 		id: uuid,
-		price: z.optional(z.number().check(z.minimum(0))),
-		sku: z.optional(z.string().check(z.minLength(3))),
-		stock: z.optional(z.number().check(z.minimum(0))),
-		currency: z.optional(z.string()),
-		attributeValueIds: z.optional(z.array(uuid)),
+		file: v.optionalAsync(imageFile),
+		altText: v.optional(v.string()),
+		isThumbnail: v.optional(v.boolean()),
+	});
+	export type imageUpdate = v.InferOutput<typeof imageUpdate>;
+
+	export const imageOperations = v.objectAsync({
+		create: v.optionalAsync(
+			v.pipeAsync(v.arrayAsync(imageCreate), v.maxLength(MAX_IMAGES_PER_PRODUCT)),
+		),
+		update: v.optionalAsync(
+			v.pipeAsync(v.arrayAsync(imageUpdate), v.maxLength(MAX_IMAGES_PER_PRODUCT)),
+		),
+		delete: v.optional(v.array(uuid)),
+	});
+	export type imageOperations = v.InferOutput<typeof imageOperations>;
+
+	export const variantCreate = v.object({
+		price: v.pipe(v.number(), v.minValue(0)),
+		sku: v.optional(v.pipe(v.string(), v.minLength(3))),
+		stock: v.optional(v.pipe(v.number(), v.minValue(0))),
+		currency: v.optional(v.string()),
+		attributeValueIds: v.array(uuid),
+	});
+	export type variantCreate = v.InferOutput<typeof variantCreate>;
+
+	const variantUpdate = v.object({
+		id: uuid,
+		price: v.optional(v.pipe(v.number(), v.minValue(0))),
+		sku: v.optional(v.pipe(v.string(), v.minLength(3))),
+		stock: v.optional(v.pipe(v.number(), v.minValue(0))),
+		currency: v.optional(v.string()),
+		attributeValueIds: v.optional(v.array(uuid)),
 	});
 
-	export const variantOperations = z.object({
-		create: z.optional(z.array(variantCreate)),
-		update: z.optional(z.array(variantUpdate)),
-		delete: z.optional(z.array(uuid)),
+	export const variantOperations = v.object({
+		create: v.optional(v.array(variantCreate)),
+		update: v.optional(v.array(variantUpdate)),
+		delete: v.optional(v.array(uuid)),
 	});
-	export type variantOperations = z.infer<typeof variantOperations>;
+	export type variantOperations = v.InferOutput<typeof variantOperations>;
 
-	export const postBody = z.object({
+	export const postBody = v.objectAsync({
 		name: nameLowerPattern,
-		description: z.string().check(z.minLength(1)),
+		description: v.pipe(v.string(), v.minLength(1)),
 		status: productStatus,
 		categoryId: uuid,
-		variants: z.object({
-			create: z.array(variantCreate).check(z.minLength(1)),
+		variants: v.object({
+			create: v.pipe(v.array(variantCreate), v.minLength(1)),
 		}),
-		images: z.object({
-			create: z
-				.array(imageCreate)
-				.check(z.minLength(1), z.maxLength(MAX_IMAGES_PER_PRODUCT)),
+		images: v.objectAsync({
+			create: v.pipeAsync(
+				v.arrayAsync(imageCreate),
+				v.minLength(1),
+				v.maxLength(MAX_IMAGES_PER_PRODUCT),
+			),
 		}),
 	});
-	export type postBody = z.infer<typeof postBody>;
+	export type postBody = v.InferOutput<typeof postBody>;
 	export type postResult = Awaited<
 		ReturnType<typeof productService.post>
 	>["response"];
 
-	export const patchBody = z.object({
-		name: z.optional(nameLowerPattern),
-		description: z.optional(z.string()),
-		status: z.optional(productStatus),
-		categoryId: z.optional(uuid),
-		images: z.optional(imageOperations),
-		variants: z.optional(variantOperations),
-		_version: z.optional(z.coerce.number()),
+	export const patchBody = v.objectAsync({
+		name: v.optional(nameLowerPattern),
+		description: v.optional(v.string()),
+		status: v.optional(productStatus),
+		categoryId: v.optional(uuid),
+		images: v.optionalAsync(imageOperations),
+		variants: v.optional(variantOperations),
+		_version: v.optional(v.pipe(v.unknown(), v.transform(Number), v.number())),
 	});
-	export type patchBody = z.infer<typeof patchBody>;
+	export type patchBody = v.InferOutput<typeof patchBody>;
 	export type patchResult = Awaited<ReturnType<typeof productService.patch>>;
 
-	export const bulkPatchBody = z.object({
-		ids: z.array(uuid).check(z.minLength(1)),
-		status: z.optional(productStatus),
-		categoryId: z.optional(uuid),
+	export const bulkPatchBody = v.object({
+		ids: v.pipe(v.array(uuid), v.minLength(1)),
+		status: v.optional(productStatus),
+		categoryId: v.optional(uuid),
 	});
-	export type bulkPatchBody = z.infer<typeof bulkPatchBody>;
+	export type bulkPatchBody = v.InferOutput<typeof bulkPatchBody>;
 
-	export const bulkPatchResponse = z.object({
-		successes: z.array(z.string()),
-		failed: z.array(
-			z.object({
-				id: z.string(),
-				name: z.string(),
-				code: z.string(),
-				error: z.string(),
+	export const bulkPatchResponse = v.object({
+		successes: v.array(v.string()),
+		failed: v.array(
+			v.object({
+				id: v.string(),
+				name: v.string(),
+				code: v.string(),
+				error: v.string(),
 			}),
 		),
 	});
-	export type bulkPatchResponse = z.infer<typeof bulkPatchResponse>;
+	export type bulkPatchResponse = v.InferOutput<typeof bulkPatchResponse>;
 
 	export type bulkPatchResult = Awaited<
 		ReturnType<typeof productService.bulkPatch>

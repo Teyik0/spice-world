@@ -159,7 +159,7 @@ export const productService = {
 			`${name ?? ""}:${status ?? ""}:${categoriesArray?.join(",") ?? ""}`;
 
 		type getProduct = Product & {
-			img: string;
+			img: string | null;
 			priceMin: number | null;
 			priceMax: number | null;
 			totalStock: number;

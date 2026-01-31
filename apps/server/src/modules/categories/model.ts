@@ -1,24 +1,24 @@
 import { type ElysiaCustomStatusResponse, fileType } from "elysia";
-import * as z from "zod/mini";
+import * as v from "valibot";
 import { nameLowerPattern, nameLowerPatternWithNumber, uuid } from "../shared";
 import type { categoryService } from "./service";
 
-const imageFile = z.file().check(
-	z.maxSize(7 * 1024 * 1024),
-	z.refine(async (file) => await fileType(file, "image"), {
-		message: "Must be a valid image file",
-	}),
+const imageFile = v.pipeAsync(
+	v.file(),
+	v.maxSize(7 * 1024 * 1024),
+	v.checkAsync(
+		async (file) => await fileType(file, "image"),
+		"Must be a valid image file",
+	),
 );
 
 export namespace CategoryModel {
-	export const getQuery = z.object({
-		skip: z.optional(z._default(z.number().check(z.minimum(0)), 0)),
-		take: z.optional(
-			z._default(z.number().check(z.minimum(1), z.maximum(100)), 25),
-		),
-		name: z.optional(z.string()),
+	export const getQuery = v.object({
+		skip: v.optional(v.pipe(v.number(), v.minValue(0))),
+		take: v.optional(v.pipe(v.number(), v.minValue(1), v.maxValue(100))),
+		name: v.optional(v.string()),
 	});
-	export type getQuery = z.infer<typeof getQuery>;
+	export type getQuery = v.InferOutput<typeof getQuery>;
 	export type getResult = Awaited<ReturnType<typeof categoryService.get>>;
 
 	export type getByIdResult = Exclude<
@@ -27,57 +27,59 @@ export namespace CategoryModel {
 		ElysiaCustomStatusResponse<any>
 	>;
 
-	export const postAttributes = z
-		.array(
-			z.object({
+	export const postAttributes = v.pipe(
+		v.array(
+			v.object({
 				name: nameLowerPattern,
-				values: z.array(nameLowerPatternWithNumber).check(z.minLength(1)),
+				values: v.pipe(v.array(nameLowerPatternWithNumber), v.minLength(1)),
 			}),
-		)
-		.check(z.minLength(1));
-	export type postAttribute = z.infer<typeof postAttributes>;
+		),
+		v.minLength(1),
+	);
+	export type postAttribute = v.InferOutput<typeof postAttributes>;
 
-	export const postBody = z.object({
+	export const postBody = v.objectAsync({
 		name: nameLowerPattern,
 		file: imageFile,
-		attributes: z.optional(z.object({ create: z.optional(postAttributes) })),
+		attributes: v.optional(v.object({ create: v.optional(postAttributes) })),
 	});
-	export type postBody = z.infer<typeof postBody>;
+	export type postBody = v.InferOutput<typeof postBody>;
 	export type postResult = typeof categoryService.post;
 
-	export const attributeValueOperations = z.object({
-		create: z.optional(
-			z.array(nameLowerPatternWithNumber).check(z.minLength(1)),
+	export const attributeValueOperations = v.object({
+		create: v.optional(
+			v.pipe(v.array(nameLowerPatternWithNumber), v.minLength(1)),
 		),
-		delete: z.optional(z.array(uuid).check(z.minLength(1))),
+		delete: v.optional(v.pipe(v.array(uuid), v.minLength(1))),
 	});
-	export type attributeValueOperations = z.infer<
+	export type attributeValueOperations = v.InferOutput<
 		typeof attributeValueOperations
 	>;
 
-	export const attributeOperations = z.object({
-		create: z.optional(postAttributes),
-		update: z.optional(
-			z
-				.array(
-					z.object({
+	export const attributeOperations = v.object({
+		create: v.optional(postAttributes),
+		update: v.optional(
+			v.pipe(
+				v.array(
+					v.object({
 						id: uuid,
-						name: z.optional(nameLowerPattern),
-						values: z.optional(attributeValueOperations),
+						name: v.optional(nameLowerPattern),
+						values: v.optional(attributeValueOperations),
 					}),
-				)
-				.check(z.minLength(1)),
+				),
+				v.minLength(1),
+			),
 		),
-		delete: z.optional(z.array(uuid).check(z.minLength(1))),
+		delete: v.optional(v.pipe(v.array(uuid), v.minLength(1))),
 	});
-	export type attributeOperations = z.infer<typeof attributeOperations>;
+	export type attributeOperations = v.InferOutput<typeof attributeOperations>;
 
-	export const patchBody = z.object({
+	export const patchBody = v.objectAsync({
 		name: nameLowerPattern,
-		file: z.optional(imageFile),
-		attributes: z.optional(attributeOperations),
+		file: v.optionalAsync(imageFile),
+		attributes: v.optional(attributeOperations),
 	});
-	export type patchBody = z.infer<typeof patchBody>;
+	export type patchBody = v.InferOutput<typeof patchBody>;
 	export type patchResult = typeof categoryService.patch;
 
 	export type deleteResult = typeof categoryService.delete;

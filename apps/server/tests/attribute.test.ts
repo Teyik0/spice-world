@@ -6,8 +6,8 @@ import type {
 	AttributeValue,
 	Category,
 } from "@spice-world/server/prisma/client";
-import { createTestDatabase } from "@spice-world/server/utils/db-manager";
-import { expectDefined } from "@spice-world/server/utils/helper";
+import { createTestDatabase } from "./utils/db-manager";
+import { expectDefined } from "./utils/helper";
 
 describe.concurrent("Attribute routes test", () => {
 	let testCategory: Category;

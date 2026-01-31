@@ -3,13 +3,13 @@ import { treaty } from "@elysiajs/eden";
 import * as imagesModule from "@spice-world/server/lib/images";
 import type { productsRouter } from "@spice-world/server/modules/products";
 import type { Image } from "@spice-world/server/prisma/client";
-import { createTestDatabase } from "@spice-world/server/utils/db-manager";
+import { file } from "bun";
+import { createTestDatabase } from "../utils/db-manager";
 import {
 	createSetupProduct,
 	createUploadedFileData,
 	expectDefined,
-} from "@spice-world/server/utils/helper";
-import { file } from "bun";
+} from "../utils/helper";
 
 let api: ReturnType<typeof treaty<typeof productsRouter>>;
 
