@@ -58,7 +58,7 @@ export const categoryService = {
 							keyMedium: image.medium.key,
 							urlMedium: image.medium.ufsUrl,
 							keyLarge: image.medium.key,
-							urlLarge: image.medium.ufsUrl,
+							urlLarge: image.large.ufsUrl,
 							altText: name,
 							isThumbnail: true,
 						},
