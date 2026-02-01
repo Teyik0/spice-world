@@ -1,7 +1,5 @@
 "use client";
 
-import type { ProductModel } from "@spice-world/server/modules/products/model";
-import type { useForm } from "@spice-world/web/components/tanstack-form";
 import {
 	Card,
 	CardContent,
@@ -13,41 +11,18 @@ import {
 	FieldDescription,
 	FieldGroup,
 } from "@spice-world/web/components/ui/field";
-import { useSetAtom } from "jotai";
-import {
-	newProductAtom,
-	type ProductItemProps,
-	productPagesAtom,
-} from "../../store";
+import { type ProductForm, useProductSidebarSync } from "../../store";
 
 export const ProductFormDetails = ({
 	form,
 	isNew,
 	slug,
 }: {
-	form: ReturnType<
-		typeof useForm<typeof ProductModel.postBody | typeof ProductModel.patchBody>
-	>;
+	form: ProductForm;
 	isNew: boolean;
 	slug: string;
 }) => {
-	const setNewProduct = useSetAtom(newProductAtom);
-	const setPages = useSetAtom(productPagesAtom);
-
-	const updateSidebar = (field: keyof ProductItemProps, value: string) => {
-		if (isNew) {
-			setNewProduct((prev) => ({
-				...(prev as ProductItemProps),
-				[field]: value,
-			}));
-		} else {
-			setPages((pages) =>
-				pages.map((page) =>
-					page.map((p) => (p.slug === slug ? { ...p, [field]: value } : p)),
-				),
-			);
-		}
-	};
+	const updateSidebar = useProductSidebarSync(isNew, slug);
 
 	return (
 		<Card className="rounded-md">

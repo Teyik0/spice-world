@@ -1,7 +1,6 @@
 "use client";
 
 import type { ProductModel } from "@spice-world/server/modules/products/model";
-import type { useForm } from "@spice-world/web/components/tanstack-form";
 import { Button } from "@spice-world/web/components/ui/button";
 import {
 	Card,
@@ -20,7 +19,6 @@ import {
 } from "@spice-world/web/components/ui/carousel";
 import { formatBytes } from "@spice-world/web/hooks/use-file-upload";
 import { useStore } from "@tanstack/react-form";
-import { useSetAtom } from "jotai";
 import { ImageIcon, RefreshCw, Star, Trash2Icon, Upload } from "lucide-react";
 import Image from "next/image";
 import {
@@ -32,11 +30,7 @@ import {
 	useState,
 } from "react";
 import { toast } from "sonner";
-import {
-	newProductAtom,
-	type ProductItemProps,
-	productPagesAtom,
-} from "../../store";
+import { type ProductForm, useProductSidebarSync } from "../../store";
 
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE = 1024 * 1024 * 3;
@@ -63,9 +57,7 @@ interface DisplayImage {
 interface ProductFormImagesProps {
 	isNew: boolean;
 	slug: string;
-	form: ReturnType<
-		typeof useForm<typeof ProductModel.postBody | typeof ProductModel.patchBody>
-	>;
+	form: ProductForm;
 	existingImages?: ImageMetadata[];
 }
 
@@ -86,8 +78,7 @@ export const ProductFormImages = ({
 	}, [api]);
 
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const setNewProduct = useSetAtom(newProductAtom);
-	const setPages = useSetAtom(productPagesAtom);
+	const updateSidebar = useProductSidebarSync(isNew, slug);
 	const blobUrlCache = useRef(new Map<File, string>());
 
 	useEffect(() => {
@@ -115,24 +106,6 @@ export const ProductFormImages = ({
 			blobUrlCache.current.delete(file);
 		}
 	}, []);
-
-	const updateSidebarImg = useCallback(
-		(imgUrl: string | null) => {
-			if (isNew) {
-				setNewProduct((prev) => ({
-					...(prev as ProductItemProps),
-					img: imgUrl,
-				}));
-			} else {
-				setPages((pages) =>
-					pages.map((page) =>
-						page.map((p) => (p.slug === slug ? { ...p, img: imgUrl } : p)),
-					),
-				);
-			}
-		},
-		[isNew, slug, setNewProduct, setPages],
-	);
 
 	const existingMap = useMemo(
 		() => new Map(existingImages.map((img) => [img.id, img])),
@@ -190,7 +163,7 @@ export const ProductFormImages = ({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: sidebar sync on display change
 	useEffect(() => {
 		const thumb = displayImages.find((img) => img.isThumbnail);
-		updateSidebarImg(thumb ? thumb.url : null);
+		updateSidebar("img", thumb ? thumb.url : null);
 	}, [displayImages]);
 
 	const handleNewImg = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,7 +186,6 @@ export const ProductFormImages = ({
 
 		const needsThumbnail = displayImages.length === 0;
 		for (const [i, file] of selectedFiles.entries()) {
-			// @ts-expect-error - images.create exists on both postBody and patchBody
 			form.pushFieldValue("images.create", {
 				file,
 				altText: file.name,
@@ -264,7 +236,6 @@ export const ProductFormImages = ({
 		} else if (img.source === "existing") {
 			const existing = existingMap.get(img.id);
 			if (!existing) return;
-			// @ts-expect-error - images.update exists on patchBody
 			form.pushFieldValue("images.update", {
 				id: img.id,
 				file: newFile,
@@ -275,6 +246,8 @@ export const ProductFormImages = ({
 	};
 
 	const handleDeleteImg = (img: DisplayImage) => {
+		const wasThumbnail = img.isThumbnail;
+
 		if (img.source === "create" && img.createIndex !== undefined) {
 			const oldFile = (
 				form.getFieldValue(
@@ -290,20 +263,15 @@ export const ProductFormImages = ({
 				) as ProductModel.imageOperations["update"]
 			)?.[img.updateIndex]?.file;
 			if (oldFile) revokeBlobUrl(oldFile);
-			// @ts-expect-error - images.update exists
 			form.removeFieldValue("images.update", img.updateIndex);
-			// @ts-expect-error - images.delete exists
 			form.pushFieldValue("images.delete", img.id);
 		} else if (img.source === "existing") {
-			// @ts-expect-error - images.delete exists
 			form.pushFieldValue("images.delete", img.id);
 		}
 
-		// Auto-assign thumbnail if the deleted image was the thumbnail
-		if (img.isThumbnail) {
-			setTimeout(() => {
-				autoAssignThumbnail();
-			}, 0);
+		// Auto-assign thumbnail synchronously if the deleted image was the thumbnail
+		if (wasThumbnail) {
+			autoAssignThumbnail();
 		}
 		setCurrent(1);
 	};
@@ -322,7 +290,6 @@ export const ProductFormImages = ({
 			const inUpdate = updateOps.find((op) => op.id === id);
 			if (!inUpdate) {
 				// Push as update with isThumbnail
-				// @ts-expect-error - images.update exists
 				form.pushFieldValue("images.update", {
 					id,
 					isThumbnail: true,
@@ -372,7 +339,6 @@ export const ProductFormImages = ({
 			if (id === img.id) continue;
 			const alreadyInUpdate = updateOps.some((op) => op.id === id);
 			if (!alreadyInUpdate) {
-				// @ts-expect-error - images.update exists
 				form.pushFieldValue("images.update", {
 					id,
 					isThumbnail: false,
@@ -392,7 +358,6 @@ export const ProductFormImages = ({
 				const idx = updateOps.indexOf(alreadyInUpdate);
 				form.setFieldValue(`images.update[${idx}].isThumbnail`, true);
 			} else {
-				// @ts-expect-error - images.update exists
 				form.pushFieldValue("images.update", {
 					id: img.id,
 					isThumbnail: true,
