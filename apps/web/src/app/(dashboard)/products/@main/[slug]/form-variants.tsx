@@ -2,7 +2,6 @@
 
 import type { AttributeModel } from "@spice-world/server/modules/attributes/model";
 import type { ProductModel } from "@spice-world/server/modules/products/model";
-import type { useForm } from "@spice-world/web/components/tanstack-form";
 import {
 	type AttributeGroup,
 	AttributeSelect,
@@ -44,19 +43,18 @@ import { useStore } from "@tanstack/react-form";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import type { ProductForm } from "../../store";
 
-const DEFAULT_VARIANT = {
+const DEFAULT_VARIANT: (typeof ProductModel.variantCreate)["static"] = {
 	price: 0,
-	sku: "",
+	sku: undefined,
 	stock: 0,
 	currency: "EUR",
 	attributeValueIds: [],
 };
 
 interface ProductFormVariantsProps {
-	form: ReturnType<
-		typeof useForm<typeof ProductModel.postBody | typeof ProductModel.patchBody>
-	>;
+	form: ProductForm;
 }
 
 // Inline modal component for selecting attribute when creating new value
