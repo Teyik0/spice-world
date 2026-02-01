@@ -1,5 +1,6 @@
 import { faker } from "@faker-js/faker";
 import { prisma } from "../src/lib/prisma";
+import type { Image } from "../src/prisma/client";
 
 const NUM_PRODUCTS = 100_000;
 const VARIANTS_PER_PRODUCT = 5;
@@ -41,9 +42,13 @@ async function getOrCreateCategoryWithAttributes(categoryName: string) {
 			name: categoryName,
 			image: {
 				create: {
-					url: faker.image.url({ width: 1000, height: 1000 }),
+					urlThumb: faker.image.url({ width: 128, height: 128 }),
+					keyThumb: imageKey,
+					urlMedium: faker.image.url({ width: 500, height: 500 }),
+					keyMedium: imageKey,
+					urlLarge: faker.image.url({ width: 1200, height: 1200 }),
+					keyLarge: imageKey,
 					isThumbnail: true,
-					key: imageKey,
 				},
 			},
 		},
@@ -200,12 +205,7 @@ async function createProductBatch(batchSize: number): Promise<void> {
 		stock: number;
 		attributeValueIds: string[];
 	}> = [];
-	const imagesData: Array<{
-		productId: string;
-		url: string;
-		isThumbnail: boolean;
-		key: string;
-	}> = [];
+	const imagesData: Omit<Image, "altText" | "id">[] = [];
 
 	for (let i = 0; i < productsData.length; i++) {
 		const productData = productsData[i];
@@ -232,15 +232,23 @@ async function createProductBatch(batchSize: number): Promise<void> {
 		imagesData.push(
 			{
 				productId: product.id,
-				url: faker.image.url({ width: 1000, height: 1000 }),
+				urlThumb: faker.image.url({ width: 128, height: 128 }),
+				keyThumb: `${product.id}-1-thumb`,
+				urlMedium: faker.image.url({ width: 500, height: 500 }),
+				keyMedium: `${product.id}-1-medium`,
+				urlLarge: faker.image.url({ width: 1200, height: 1200 }),
+				keyLarge: `${product.id}-1-large`,
 				isThumbnail: true,
-				key: `${product.id}-thumb`,
 			},
 			{
 				productId: product.id,
-				url: faker.image.url({ width: 1000, height: 1000 }),
+				urlThumb: faker.image.url({ width: 128, height: 128 }),
+				keyThumb: `${product.id}-thumb`,
+				urlMedium: faker.image.url({ width: 500, height: 500 }),
+				keyMedium: `${product.id}-medium`,
+				urlLarge: faker.image.url({ width: 1200, height: 1200 }),
+				keyLarge: `${product.id}-large`,
 				isThumbnail: false,
-				key: `${product.id}-img-1`,
 			},
 		);
 	}

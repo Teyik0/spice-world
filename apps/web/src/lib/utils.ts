@@ -1,12 +1,10 @@
-// biome-ignore-all lint/suspicious/noExplicitAny: TypeBox schemas have dynamic structure
-
+import { Compile } from "@sinclair/typemap";
 import type { auth } from "@spice-world/server/plugins/better-auth.plugin";
 import { createEnv } from "@t3-oss/env-nextjs";
 import { createAuthClient } from "better-auth/client";
 import { adminClient, inferAdditionalFields } from "better-auth/client/plugins";
 import { type ClassValue, clsx } from "clsx";
-import { type TSchema, t } from "elysia";
-import { TypeCompiler } from "elysia/type-system";
+import { t } from "elysia";
 import {
 	createSafeActionClient,
 	DEFAULT_SERVER_ERROR_MESSAGE,
@@ -21,9 +19,7 @@ export const env = createEnv({
 	server: {},
 
 	client: {
-		NEXT_PUBLIC_BETTER_AUTH_URL: typeboxToStandardSchema(
-			t.String({ format: "uri" }),
-		),
+		NEXT_PUBLIC_BETTER_AUTH_URL: Compile(t.String({ format: "uri" })),
 	},
 	runtimeEnv: {
 		NEXT_PUBLIC_BETTER_AUTH_URL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
@@ -90,41 +86,4 @@ export async function urlToFile(url: string, filename: string): Promise<File> {
 
 	const blob = await response.blob();
 	return new File([blob], filename, { type: blob.type });
-}
-
-export function typeboxToStandardSchema<TSchemaType extends TSchema>(
-	schema: TSchemaType,
-) {
-	return {
-		"~standard": {
-			version: 1 as const,
-			vendor: "typebox",
-			validate: (value: unknown) => {
-				const compiled = TypeCompiler.Compile(schema);
-				if (compiled.Check(value)) {
-					return {
-						value: value as TSchemaType["static"],
-					};
-				}
-
-				// Convert TypeBox errors to StandardSchema issues
-				const errors = [...compiled.Errors(value)];
-				const issues = errors.map((err) => ({
-					message:
-						typeof err.schema.error === "string"
-							? err.schema.error
-							: err.message,
-					path: err.path.split("/").filter(Boolean),
-				}));
-
-				return {
-					issues,
-				};
-			},
-			types: {
-				input: undefined as unknown as TSchemaType["static"],
-				output: undefined as unknown as TSchemaType["static"],
-			},
-		},
-	} as const;
 }

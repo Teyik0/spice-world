@@ -17,12 +17,9 @@ import type {
 	Product,
 	ProductVariant,
 } from "@spice-world/server/prisma/client";
-import { createTestDatabase } from "@spice-world/server/utils/db-manager";
-import { createDummyProducts } from "@spice-world/server/utils/dummy-products";
-import {
-	createUploadedFileData,
-	expectDefined,
-} from "@spice-world/server/utils/helper";
+import { createTestDatabase } from "../utils/db-manager";
+import { createDummyProducts } from "../utils/dummy-products";
+import { createUploadedFileData, expectDefined } from "../utils/helper";
 
 let api: ReturnType<typeof treaty<typeof productsRouter>>;
 

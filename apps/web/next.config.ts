@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
 				hostname: "tlwuosttpx.ufs.sh",
 			},
 			{
+				hostname: "gdpoqnrsa5.ufs.sh",
+			},
+			{
 				hostname: "picsum.photos",
 			},
 		],

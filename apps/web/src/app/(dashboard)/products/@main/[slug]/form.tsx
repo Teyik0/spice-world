@@ -23,7 +23,11 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { newProductAtom, productPagesAtom } from "../../store";
+import {
+	newProductAtom,
+	type ProductItemProps,
+	productPagesAtom,
+} from "../../store";
 import { revalidateProductPath } from "./action";
 import { ProductFormClassification } from "./form-classification";
 import { ProductFormDetails } from "./form-details";
@@ -139,19 +143,18 @@ export const ProductForm = ({
 					})),
 					delete: undefined,
 				});
-				form.setFieldValue("imagesOps", {
+				form.setFieldValue("images", {
 					create: undefined,
 					update: undefined,
 					delete: undefined,
 				});
 			}
-			if (isNew) {
-				setNewProduct(null);
-			}
 			await revalidateProductPath(data.slug); // make discard work after any update
 
 			// Update sidebar list
-			const buildSidebarProduct = (existingImg?: string | null) => ({
+			const buildSidebarProduct = (
+				existingImg?: string | null,
+			): ProductItemProps => ({
 				id: data.id,
 				name: data.name,
 				status: data.status,
@@ -162,7 +165,7 @@ export const ProductForm = ({
 				categoryId: data.categoryId,
 				version: data.version,
 				img:
-					data.images.find((img) => img.isThumbnail)?.url ??
+					data.images.find((img) => img.isThumbnail)?.urlThumb ??
 					existingImg ??
 					null,
 				priceMin: data.variants.reduce(
@@ -250,8 +253,7 @@ export const ProductForm = ({
 					: undefined,
 				delete: undefined,
 			},
-			images: undefined,
-			imagesOps: {
+			images: {
 				create: undefined,
 				update: undefined,
 				delete: undefined,
@@ -292,6 +294,7 @@ export const ProductForm = ({
 			);
 		} else {
 			toast.success("Product created successfully");
+			setNewProduct(null);
 		}
 		return data;
 	};

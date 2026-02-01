@@ -2,15 +2,15 @@ import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
 import { treaty } from "@elysiajs/eden";
 import * as imagesModule from "@spice-world/server/lib/images";
 import type { productsRouter } from "@spice-world/server/modules/products";
-import { createTestDatabase } from "@spice-world/server/utils/db-manager";
+import { file } from "bun";
+import { createTestDatabase } from "../utils/db-manager";
 import {
 	createSetupProduct,
 	createTestCategory,
 	createUploadedFileData,
 	expectDefined,
 	randomLowerString,
-} from "@spice-world/server/utils/helper";
-import { file } from "bun";
+} from "../utils/helper";
 
 let api: ReturnType<typeof treaty<typeof productsRouter>>;
 
@@ -52,7 +52,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	describe("PATCH /products - Business Logic Validations", () => {
 		it("should return an error if the product ID does not exist", async () => {
 			const { status, error } = await api
-				.products({ id: "00000000-0000-0000-0000-000000000023" })
+				.products({ id: crypto.randomUUID() })
 				.patch({
 					name: "non existent product",
 					description: "this product does not exist",

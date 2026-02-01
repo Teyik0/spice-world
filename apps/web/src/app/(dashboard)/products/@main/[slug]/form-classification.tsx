@@ -1,9 +1,6 @@
 "use client";
 
 import type { CategoryModel } from "@spice-world/server/modules/categories/model";
-import type { ProductModel } from "@spice-world/server/modules/products/model";
-import type { ProductStatus } from "@spice-world/server/prisma/enums";
-import type { useForm } from "@spice-world/web/components/tanstack-form";
 import {
 	Card,
 	CardContent,
@@ -19,19 +16,12 @@ import {
 	SelectValue,
 } from "@spice-world/web/components/ui/select";
 import { app } from "@spice-world/web/lib/elysia";
-import { useSetAtom } from "jotai";
 import { useState } from "react";
-import {
-	newProductAtom,
-	type ProductItemProps,
-	productPagesAtom,
-} from "../../store";
+import { type ProductForm, useProductSidebarSync } from "../../store";
 import { CategoryDialog } from "./category-dialog";
 
 interface ProductFormClassificationProps {
-	form: ReturnType<
-		typeof useForm<typeof ProductModel.postBody | typeof ProductModel.patchBody>
-	>;
+	form: ProductForm;
 	isNew: boolean;
 	slug: string;
 	initialCategories: CategoryModel.getResult;
@@ -43,29 +33,7 @@ export const ProductFormClassification = ({
 	slug,
 	initialCategories,
 }: ProductFormClassificationProps) => {
-	const setNewProduct = useSetAtom(newProductAtom);
-	const setPages = useSetAtom(productPagesAtom);
-
-	const updateSidebar = (
-		field: keyof ProductItemProps,
-		value: string | ProductStatus,
-	) => {
-		if (isNew) {
-			setNewProduct((prev) => {
-				if (!prev) return prev;
-				return {
-					...prev,
-					[field]: value,
-				};
-			});
-		} else {
-			setPages((pages) =>
-				pages.map((page) =>
-					page.map((p) => (p.slug === slug ? { ...p, [field]: value } : p)),
-				),
-			);
-		}
-	};
+	const updateSidebar = useProductSidebarSync(isNew, slug);
 
 	const [categories, setCategories] =
 		useState<CategoryModel.getResult>(initialCategories);

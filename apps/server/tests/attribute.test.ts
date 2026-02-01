@@ -6,8 +6,8 @@ import type {
 	AttributeValue,
 	Category,
 } from "@spice-world/server/prisma/client";
-import { createTestDatabase } from "@spice-world/server/utils/db-manager";
-import { expectDefined } from "@spice-world/server/utils/helper";
+import { createTestDatabase } from "./utils/db-manager";
+import { expectDefined } from "./utils/helper";
 
 describe.concurrent("Attribute routes test", () => {
 	let testCategory: Category;
@@ -29,8 +29,12 @@ describe.concurrent("Attribute routes test", () => {
 				name: "Spice",
 				image: {
 					create: {
-						key: "test-key",
-						url: "https://test-url.com/image.webp",
+						keyThumb: "test-key",
+						urlThumb: "https://test-url.com/image.webp",
+						keyMedium: "test-key",
+						urlMedium: "https://test-url.com/image.webp",
+						keyLarge: "test-key",
+						urlLarge: "https://test-url.com/image.webp",
 						altText: "Spice",
 						isThumbnail: true,
 					},

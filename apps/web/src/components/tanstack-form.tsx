@@ -1,5 +1,6 @@
 "use client";
 
+import { Compile } from "@sinclair/typemap";
 import { Button } from "@spice-world/web/components/ui/button";
 import { Checkbox } from "@spice-world/web/components/ui/checkbox";
 import {
@@ -14,7 +15,6 @@ import { MultiSelect } from "@spice-world/web/components/ui/multi-select";
 import { Select } from "@spice-world/web/components/ui/select";
 import { Switch } from "@spice-world/web/components/ui/switch";
 import { Textarea } from "@spice-world/web/components/ui/textarea";
-import { typeboxToStandardSchema } from "@spice-world/web/lib/utils";
 import { createFormHook, createFormHookContexts } from "@tanstack/react-form";
 import type { TSchema } from "elysia";
 import { AlertCircle, Loader2 } from "lucide-react";
@@ -170,12 +170,12 @@ export function useForm<TSchemaType extends TSchema>({
 	}) => void;
 	validationMode?: "onChange" | "onBlur" | "onSubmit";
 }) {
-	const standardSchema = typeboxToStandardSchema(schema);
+	const validator = Compile(schema);
 
 	return useAppForm({
 		defaultValues,
 		validators: {
-			[validationMode]: standardSchema,
+			[validationMode]: validator,
 		},
 		onSubmit: async ({ value }) => {
 			await onSubmit(value as TSchemaType["static"]);

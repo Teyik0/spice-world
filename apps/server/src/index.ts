@@ -82,8 +82,10 @@ const app = new Elysia()
 	})
 	.use(categoryRouter)
 	.use(attributeRouter)
-	.use(productsRouter);
-// .listen(Bun.env.PORT ?? 3001);
+	.use(productsRouter)
+	.listen(Bun.env.PORT ?? 3001);
 
-export default app;
+console.log(
+	`🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`,
+);
 export type App = typeof app;
