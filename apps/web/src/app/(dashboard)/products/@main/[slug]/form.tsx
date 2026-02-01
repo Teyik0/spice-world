@@ -145,9 +145,6 @@ export const ProductForm = ({
 					delete: undefined,
 				});
 			}
-			if (isNew) {
-				setNewProduct(null);
-			}
 			await revalidateProductPath(data.slug); // make discard work after any update
 
 			// Update sidebar list
@@ -162,7 +159,7 @@ export const ProductForm = ({
 				categoryId: data.categoryId,
 				version: data.version,
 				img:
-					data.images.find((img) => img.isThumbnail)?.url ??
+					data.images.find((img) => img.isThumbnail)?.urlThumb ??
 					existingImg ??
 					null,
 				priceMin: data.variants.reduce(
@@ -291,6 +288,7 @@ export const ProductForm = ({
 			);
 		} else {
 			toast.success("Product created successfully");
+			setNewProduct(null);
 		}
 		return data;
 	};

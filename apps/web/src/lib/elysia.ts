@@ -10,12 +10,10 @@ export const app = treaty<App>(env.NEXT_PUBLIC_BETTER_AUTH_URL, {
 	},
 });
 
-interface EdenTreatyResponse {
+type TreatyMethod = (...args: any[]) => Promise<{
 	data: any;
 	error: any;
-}
-
-type TreatyMethod = (...args: any[]) => Promise<EdenTreatyResponse>;
+}>;
 
 type TreatyMethodError<T extends TreatyMethod> = Awaited<
 	ReturnType<T>

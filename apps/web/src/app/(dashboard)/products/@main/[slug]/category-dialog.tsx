@@ -330,7 +330,6 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
 								</div>
 
 								{field.state.value?.map((_, index) => (
-									// biome-ignore lint/suspicious/noArrayIndexKey: throw user from input field otherwise
 									<field.Content className="grid grid-cols-8 gap-4" key={index}>
 										<form.AppField name={`attributes.create[${index}].name`}>
 											{(aField) => (
@@ -399,7 +398,6 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
 						{(field) => (
 							<field.Field>
 								{field.state.value?.map((_, index) => (
-									// biome-ignore lint/suspicious/noArrayIndexKey: throw user from input field otherwise
 									<field.Content className="grid grid-cols-8 gap-4" key={index}>
 										<form.AppField name={`attributes.update[${index}].name`}>
 											{(aField) => (
@@ -501,13 +499,13 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
 												type="file"
 											/>
 										</div>
-									) : currentCategory?.image.url ? (
+									) : currentCategory?.image.urlThumb ? (
 										<div className="relative w-1/2">
 											<Image
 												alt="Category image"
 												className="aspect-square w-full rounded-md border-2 object-cover"
 												height={200}
-												src={currentCategory.image.url}
+												src={currentCategory.image.urlThumb}
 												width={200}
 											/>
 											<field.Input

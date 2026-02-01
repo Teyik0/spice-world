@@ -1,10 +1,7 @@
 "use server";
 
-import {
-	actionClient,
-	authClient,
-	typeboxToStandardSchema,
-} from "@spice-world/web/lib/utils";
+import { Compile } from "@sinclair/typemap";
+import { actionClient, authClient } from "@spice-world/web/lib/utils";
 import { t } from "elysia";
 
 const forgotPasswordSchema = t.Object({
@@ -15,7 +12,7 @@ const forgotPasswordSchema = t.Object({
 });
 
 export const forgotPasswordAction = actionClient
-	.inputSchema(typeboxToStandardSchema(forgotPasswordSchema))
+	.inputSchema(Compile(forgotPasswordSchema))
 	.action(async ({ parsedInput: { email } }) => {
 		try {
 			await authClient.requestPasswordReset({

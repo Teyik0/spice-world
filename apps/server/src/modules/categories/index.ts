@@ -20,21 +20,25 @@ export const categoryRouter = new Elysia({
 	.get("/count", async () => await categoryService.count())
 	.guard({ params: uuidGuard })
 	.get("/:id", async ({ params }) => await categoryService.getById(params))
-	.state("imageKey", null as null | string)
+	.state("imageKeys", null as null | string[])
 	.onAfterResponse(async ({ store }) => {
 		// cleanup patch and delete
-		if (!store.imageKey) return;
+		if (!store.imageKeys) return;
 
-		const { success } = await utapi.deleteFiles(store.imageKey);
+		const { success } = await utapi.deleteFiles(store.imageKeys);
 		if (!success) {
-			console.warn(`Failed to delete image ${store.imageKey}`);
+			console.warn(`Failed to delete images ${store.imageKeys.join(", ")}`);
 		}
 
-		store.imageKey = null; // Reset imageKey to null
+		store.imageKeys = null; // Reset imageKeys to null
 	})
 	.delete("/:id", async ({ params, store }) => {
 		const result = await categoryService.delete(params);
-		store.imageKey = result.deletedImage.key;
+		store.imageKeys = [
+			result.deletedImage.keyThumb,
+			result.deletedImage.keyMedium,
+			result.deletedImage.keyLarge,
+		];
 		return status(200);
 	})
 	.patch(
@@ -46,7 +50,13 @@ export const categoryRouter = new Elysia({
 			});
 			if (error) return error;
 
-			store.imageKey = data.oldImage.key;
+			if (data.oldImage) {
+				store.imageKeys = [
+					data.oldImage.keyThumb,
+					data.oldImage.keyMedium,
+					data.oldImage.keyLarge,
+				];
+			}
 			return data.updatedCategory;
 		},
 		{

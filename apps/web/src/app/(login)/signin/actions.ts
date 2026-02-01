@@ -1,11 +1,8 @@
 "use server";
 
+import { Compile } from "@sinclair/typemap";
 import { invalidateSessionCache } from "@spice-world/web/lib/dal";
-import {
-	actionClient,
-	authClient,
-	typeboxToStandardSchema,
-} from "@spice-world/web/lib/utils";
+import { actionClient, authClient } from "@spice-world/web/lib/utils";
 import { t } from "elysia";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -29,7 +26,7 @@ const signinSchema = t.Object({
 });
 
 export const signInAction = actionClient
-	.inputSchema(typeboxToStandardSchema(signinSchema))
+	.inputSchema(Compile(signinSchema))
 	.action(async ({ parsedInput: { email, password, rememberMe } }) => {
 		const response = await authClient.signIn.email({
 			email,

@@ -2,14 +2,14 @@ import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
 import { treaty } from "@elysiajs/eden";
 import * as imagesModule from "@spice-world/server/lib/images";
 import type { productsRouter } from "@spice-world/server/modules/products";
-import { createTestDatabase } from "@spice-world/server/utils/db-manager";
+import { file } from "bun";
+import { createTestDatabase } from "../utils/db-manager";
 import {
 	createTestCategory,
 	createUploadedFileData,
 	expectDefined,
 	randomLowerString,
-} from "@spice-world/server/utils/helper";
-import { file } from "bun";
+} from "../utils/helper";
 
 let api: ReturnType<typeof treaty<typeof productsRouter>>;
 
@@ -407,7 +407,10 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			expectDefined(data);
 			expect(data.variants).toHaveLength(27); // 3×3×3
 			expect(data.images).toHaveLength(5);
-			expect(data.images[0]?.isThumbnail).toBe(true);
+			expect(data.images.filter((img) => img.isThumbnail).length).toBe(1);
+			expect(
+				data.images.find((img) => img.altText === "Image 1")?.isThumbnail,
+			).toBe(true);
 		});
 	});
 

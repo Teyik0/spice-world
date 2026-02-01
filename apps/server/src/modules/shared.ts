@@ -1,6 +1,5 @@
-import { status } from "elysia";
+import { status, t } from "elysia";
 import type { UploadFileResult } from "uploadthing/types";
-import * as z from "zod/mini";
 
 type HttpStatus =
 	| "Bad Request"
@@ -80,9 +79,10 @@ Regex explanation:
 [a-zà-ÿ ]*       : followed by zero or more lowercase letters with latin char with accent (i.e éè) or spaces
 $                : end of string
 */
-export const nameLowerPattern = z
-	.string()
-	.check(z.minLength(3), z.regex(/^[a-zà-ÿ][a-zà-ÿ ]*$/));
+export const nameLowerPattern = t.String({
+	pattern: "^[a-zà-ÿ][a-zà-ÿ ]*$",
+	minLength: 3,
+});
 
 /*
 Regex explanation:
@@ -90,15 +90,16 @@ Regex explanation:
 [a-zà-ÿ0-9 ]*    : followed by zero or more lowercase letters with latin char with accent (i.e éè), numbers or spaces
 $                : end of string
 */
-export const nameLowerPatternWithNumber = z
-	.string()
-	.check(z.minLength(3), z.regex(/^[a-zà-ÿ0-9][a-zà-ÿ0-9 ]*$/));
+export const nameLowerPatternWithNumber = t.String({
+	pattern: "^[a-zà-ÿ0-9][a-zà-ÿ0-9 ]*$",
+	minLength: 3,
+});
 
-export const uuid = z.uuid();
-export type uuid = z.infer<typeof uuid>;
+export const uuid = t.String({ format: "uuid" });
+export type uuid = typeof uuid.static;
 
-export const uuidGuard = z.object({ id: uuid });
-export type uuidGuard = z.infer<typeof uuidGuard>;
+export const uuidGuard = t.Object({ id: uuid });
+export type uuidGuard = typeof uuidGuard.static;
 
 export const uploadFileErrStatus = (
 	fileError: UploadFileResult["error"] | { message: string },

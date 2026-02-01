@@ -3,12 +3,9 @@ import type { treaty } from "@elysiajs/eden";
 import { faker } from "@faker-js/faker";
 import type { productsRouter } from "@spice-world/server/modules/products";
 import type { ProductModel } from "@spice-world/server/modules/products/model";
-import type {
-	createTestDatabase,
-	TestDatabase,
-} from "@spice-world/server/utils/db-manager";
 import type { BunFile } from "bun";
 import type { UploadedFileData } from "uploadthing/types";
+import type { createTestDatabase, TestDatabase } from "./db-manager";
 
 export function expectDefined<T>(value: T): asserts value is NonNullable<T> {
 	expect(value).not.toBeUndefined();
@@ -20,7 +17,7 @@ export const createUploadedFileData = (
 ): UploadedFileData[] | UploadedFileData => {
 	if (Array.isArray(files)) {
 		return files.map((file) => ({
-			key: `mock-key-${Date.now()}-${Math.random()}`,
+			key: `mock-key-${Date.now()}-${crypto.randomUUID()}`,
 			url: "https://mock-uploadthing.com/image.webp",
 			appUrl: "https://mock-uploadthing.com/image.webp",
 			ufsUrl: "https://mock-uploadthing.com/image.webp",
@@ -32,7 +29,7 @@ export const createUploadedFileData = (
 		}));
 	}
 	return {
-		key: `mock-key-${Date.now()}-${Math.random()}`,
+		key: `mock-key-${Date.now()}-${crypto.randomUUID()}`,
 		url: "https://mock-uploadthing.com/image.webp",
 		appUrl: "https://mock-uploadthing.com/image.webp",
 		ufsUrl: "https://mock-uploadthing.com/image.webp",
@@ -167,8 +164,12 @@ export const createTestCategory = async ({
 			name: categoryName,
 			image: {
 				create: {
-					key: `key-${testId}`,
-					url: `https://test-url.com/${testId}.webp`,
+					keyThumb: `key-thumb-${testId}`,
+					keyMedium: `key-medium-${testId}`,
+					keyLarge: `key-large-${testId}`,
+					urlThumb: `https://test-url.com/${testId}-thumb.webp`,
+					urlMedium: `https://test-url.com/${testId}-medium.webp`,
+					urlLarge: `https://test-url.com/${testId}-large.webp`,
 					altText: categoryName,
 					isThumbnail: true,
 				},
@@ -203,9 +204,9 @@ export const createTestCategory = async ({
 interface SetupProductOptions {
 	attributeCount: number;
 	attributeValueCount: number;
-	variants: ProductModel.variantCreate[];
-	imagesCreate: (Omit<ProductModel.imageCreate, "file"> & {
-		file: BunFile | File;
+	variants: (typeof ProductModel.variantCreate)["static"][];
+	imagesCreate: (Omit<(typeof ProductModel.imageCreate)["static"], "file"> & {
+		file: BunFile;
 	})[];
 }
 
