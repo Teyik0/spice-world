@@ -3,6 +3,13 @@
   "format_on_save": "on",
   "languages": {
     "JavaScript": {
+      "language_servers": [
+        "vtsls",
+        "biome"
+      ],
+      "prettier": {
+        "allowed": false
+      },
       "formatter": {
         "language_server": {
           "name": "biome"
@@ -14,6 +21,13 @@
       }
     },
     "TypeScript": {
+      "language_servers": [
+        "vtsls",
+        "biome"
+      ],
+      "prettier": {
+        "allowed": false
+      },
       "formatter": {
         "language_server": {
           "name": "biome"
@@ -25,6 +39,13 @@
       }
     },
     "TSX": {
+      "language_servers": [
+        "vtsls",
+        "biome"
+      ],
+      "prettier": {
+        "allowed": false
+      },
       "formatter": {
         "language_server": {
           "name": "biome"
@@ -43,6 +64,18 @@
           "preferences": {
             "includePackageJsonAutoImports": "on"
           }
+        }
+      },
+      "initialization_options": {
+        "preferences": {
+          "includeInlayParameterNameHints": "all",
+          "includeInlayParameterNameHintsWhenArgumentMatchesName": true,
+          "includeInlayFunctionParameterTypeHints": true,
+          "includeInlayVariableTypeHints": true,
+          "includeInlayVariableTypeHintsWhenTypeMatchesName": true,
+          "includeInlayPropertyDeclarationTypeHints": true,
+          "includeInlayFunctionLikeReturnTypeHints": true,
+          "includeInlayEnumMemberValueHints": true
         }
       }
     }

@@ -156,7 +156,7 @@ export const ProductFormImages = ({
 			if (updateOp) {
 				result.push({
 					id,
-					url: updateOp.file ? getBlobUrl(updateOp.file) : img.urlMedium,
+					url: updateOp.file ? getBlobUrl(updateOp.file) : img.urlThumb,
 					isThumbnail: updateOp.isThumbnail ?? img.isThumbnail,
 					altText: updateOp.altText ?? img.altText ?? "image",
 					source: "update",
@@ -165,7 +165,7 @@ export const ProductFormImages = ({
 			} else {
 				result.push({
 					id,
-					url: img.urlMedium,
+					url: img.urlThumb,
 					isThumbnail: img.isThumbnail,
 					altText: img.altText ?? "image",
 					source: "existing",
@@ -440,7 +440,7 @@ export const ProductFormImages = ({
 											key={item.id}
 											altText={item.altText}
 											imgId={item.id}
-											imgUrl={item.urlMedium}
+											imgUrl={item.url}
 											isThumbnail={item.isThumbnail}
 											handleDeleteImg={
 												displayImages.length > 1

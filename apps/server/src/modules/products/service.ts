@@ -248,8 +248,12 @@ export const productService = {
 		return await prisma.product.findUniqueOrThrow({
 			where: { slug },
 			include: {
-				category: true,
-				images: true,
+				category: {
+					include: { attributes: { include: { values: true } } },
+				},
+				images: {
+					orderBy: { id: "asc" },
+				},
 				variants: {
 					include: {
 						attributeValues: true,

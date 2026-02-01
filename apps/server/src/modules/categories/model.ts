@@ -1,24 +1,14 @@
-import { type ElysiaCustomStatusResponse, fileType } from "elysia";
-import * as v from "valibot";
-import { nameLowerPattern, nameLowerPatternWithNumber, uuid } from "../shared";
+import { type ElysiaCustomStatusResponse, t } from "elysia";
+import { nameLowerPattern, nameLowerPatternWithNumber } from "../shared";
 import type { categoryService } from "./service";
 
-const imageFile = v.pipeAsync(
-	v.file(),
-	v.maxSize(7 * 1024 * 1024),
-	v.checkAsync(
-		async (file) => await fileType(file, "image"),
-		"Must be a valid image file",
-	),
-);
-
 export namespace CategoryModel {
-	export const getQuery = v.object({
-		skip: v.optional(v.pipe(v.number(), v.minValue(0))),
-		take: v.optional(v.pipe(v.number(), v.minValue(1), v.maxValue(100))),
-		name: v.optional(v.string()),
+	export const getQuery = t.Object({
+		skip: t.Optional(t.Number({ default: 0, minimum: 0 })),
+		take: t.Optional(t.Number({ default: 25, minimum: 1, maximum: 100 })),
+		name: t.Optional(t.String()),
 	});
-	export type getQuery = v.InferOutput<typeof getQuery>;
+	export type getQuery = typeof getQuery.static;
 	export type getResult = Awaited<ReturnType<typeof categoryService.get>>;
 
 	export type getByIdResult = Exclude<
@@ -27,59 +17,53 @@ export namespace CategoryModel {
 		ElysiaCustomStatusResponse<any>
 	>;
 
-	export const postAttributes = v.pipe(
-		v.array(
-			v.object({
-				name: nameLowerPattern,
-				values: v.pipe(v.array(nameLowerPatternWithNumber), v.minLength(1)),
+	export const postAttributes = t.Array(
+		t.Object({
+			name: nameLowerPattern,
+			values: t.Array(nameLowerPatternWithNumber, {
+				minItems: 1,
 			}),
-		),
-		v.minLength(1),
+		}),
+		{ minItems: 1 },
 	);
-	export type postAttribute = v.InferOutput<typeof postAttributes>;
+	export type postAttribute = typeof postAttributes.static;
 
-	export const postBody = v.objectAsync({
+	export const postBody = t.Object({
 		name: nameLowerPattern,
-		file: imageFile,
-		attributes: v.optional(v.object({ create: v.optional(postAttributes) })),
+		file: t.File({ type: "image/*" }),
+		attributes: t.Optional(t.Object({ create: t.Optional(postAttributes) })),
 	});
-	export type postBody = v.InferOutput<typeof postBody>;
+	export type postBody = typeof postBody.static;
 	export type postResult = typeof categoryService.post;
 
-	export const attributeValueOperations = v.object({
-		create: v.optional(
-			v.pipe(v.array(nameLowerPatternWithNumber), v.minLength(1)),
-		),
-		delete: v.optional(v.pipe(v.array(uuid), v.minLength(1))),
+	export const attributeValueOperations = t.Object({
+		create: t.Optional(t.Array(nameLowerPatternWithNumber, { minItems: 1 })),
+		delete: t.Optional(t.Array(t.String({ format: "uuid" }), { minItems: 1 })),
 	});
-	export type attributeValueOperations = v.InferOutput<
-		typeof attributeValueOperations
-	>;
+	export type attributeValueOperations = typeof attributeValueOperations.static;
 
-	export const attributeOperations = v.object({
-		create: v.optional(postAttributes),
-		update: v.optional(
-			v.pipe(
-				v.array(
-					v.object({
-						id: uuid,
-						name: v.optional(nameLowerPattern),
-						values: v.optional(attributeValueOperations),
-					}),
-				),
-				v.minLength(1),
+	export const attributeOperations = t.Object({
+		create: t.Optional(postAttributes),
+		update: t.Optional(
+			t.Array(
+				t.Object({
+					id: t.String({ format: "uuid" }),
+					name: t.Optional(nameLowerPattern),
+					values: t.Optional(attributeValueOperations),
+				}),
+				{ minItems: 1 },
 			),
 		),
-		delete: v.optional(v.pipe(v.array(uuid), v.minLength(1))),
+		delete: t.Optional(t.Array(t.String({ format: "uuid" }), { minItems: 1 })),
 	});
-	export type attributeOperations = v.InferOutput<typeof attributeOperations>;
+	export type attributeOperations = typeof attributeOperations.static;
 
-	export const patchBody = v.objectAsync({
+	export const patchBody = t.Object({
 		name: nameLowerPattern,
-		file: v.optionalAsync(imageFile),
-		attributes: v.optional(attributeOperations),
+		file: t.Optional(t.File({ type: "image/*" })),
+		attributes: t.Optional(attributeOperations),
 	});
-	export type patchBody = v.InferOutput<typeof patchBody>;
+	export type patchBody = typeof patchBody.static;
 	export type patchResult = typeof categoryService.patch;
 
 	export type deleteResult = typeof categoryService.delete;

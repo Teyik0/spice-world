@@ -36,7 +36,6 @@
     "react": "catalog:",
     "resend": "^6.9.1",
     "uploadthing": "^7.7.4",
-    "valibot": "^1.2.0",
     "ws": "^8.19.0"
   },
   "devDependencies": {

@@ -26,7 +26,7 @@ export const NewProductItem = () => {
 	const isSelected = pathname === "/products/new";
 	const params = searchParams.toString();
 	const href = `/products/new${params ? `?${params}` : ""}`;
-	const firstLetter = newProduct.name[0]?.toUpperCase() ?? "N";
+	const firstLetter = (newProduct.name ?? "N")[0]?.toUpperCase() ?? "N";
 
 	return (
 		<Link
@@ -56,7 +56,7 @@ export const NewProductItem = () => {
 						variant="secondary"
 						className="bg-blue-500 text-white font-semibold dark:bg-blue-600 ml-auto text-xs shrink-0"
 					>
-						{newProduct.status.toLowerCase()}
+						{(newProduct.status ?? "DRAFT").toLowerCase()}
 					</Badge>
 				</div>
 				<span className="font-medium text-muted-foreground text-xs text-left truncate w-full">

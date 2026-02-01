@@ -89,7 +89,7 @@ const NewProductTableRow = ({ categories }: { categories: Category[] }) => {
 					variant="secondary"
 					className="bg-blue-500 text-white font-semibold dark:bg-blue-600"
 				>
-					{newProduct.status.toLowerCase()}
+					{(newProduct.status ?? "DRAFT").toLowerCase()}
 				</Badge>
 			</TableCell>
 			<TableCell className="relative z-10">
