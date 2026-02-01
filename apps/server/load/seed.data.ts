@@ -233,11 +233,11 @@ async function createProductBatch(batchSize: number): Promise<void> {
 			{
 				productId: product.id,
 				urlThumb: faker.image.url({ width: 128, height: 128 }),
-				keyThumb: `${product.id}-thumb`,
+				keyThumb: `${product.id}-1-thumb`,
 				urlMedium: faker.image.url({ width: 500, height: 500 }),
-				keyMedium: `${product.id}-medium`,
+				keyMedium: `${product.id}-1-medium`,
 				urlLarge: faker.image.url({ width: 1200, height: 1200 }),
-				keyLarge: `${product.id}-large`,
+				keyLarge: `${product.id}-1-large`,
 				isThumbnail: true,
 			},
 			{
