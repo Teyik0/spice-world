@@ -1,10 +1,11 @@
 import { ResizeFit, Transformer } from "@napi-rs/image";
+import { env } from "@spice-world/server/lib/env";
 import type { BunFile } from "bun";
 import { UTApi } from "uploadthing/server";
 import type { UploadedFileData } from "uploadthing/types";
 
 export const utapi = new UTApi({
-	token: process.env.UPLOADTHING_TOKEN,
+	token: env.UPLOADTHING_TOKEN,
 });
 
 // Image size configurations for multi-size upload

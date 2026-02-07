@@ -1,16 +1,29 @@
+import { checkout, polar, portal, webhooks } from "@polar-sh/better-auth";
+import { Polar } from "@polar-sh/sdk";
 import { ChangeEmailVerification } from "@spice-world/emails/src/change-email-verification";
 import { PasswordReset } from "@spice-world/emails/src/password-reset";
 import { ResetPassword } from "@spice-world/emails/src/reset-password";
 import { VerifyEmail } from "@spice-world/emails/src/spiceworld-welcome";
+import { env } from "@spice-world/server/lib/env";
 import { prisma } from "@spice-world/server/lib/prisma";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { betterAuth } from "better-auth/minimal";
 import { admin, openAPI } from "better-auth/plugins";
 import { Elysia } from "elysia";
 import { Resend } from "resend";
+import { orderService } from "../modules/orders/service";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(env.RESEND_API_KEY);
 const from = "Spice World <noreply@teyik0.dev>";
+
+const polarClient = new Polar({
+	accessToken: env.POLAR_ACCESS_TOKEN,
+	server: env.NODE_ENV === "production" ? "production" : "sandbox",
+});
+
+// Disable Polar customer creation in test/mock mode
+const isPolarMockMode =
+	env.NODE_ENV === "test" || env.POLAR_MOCK_MODE === "true";
 
 export const auth = betterAuth({
 	database: prismaAdapter(prisma, {
@@ -99,11 +112,48 @@ export const auth = betterAuth({
 	},
 	socialProviders: {
 		google: {
-			clientId: process.env.GOOGLE_CLIENT_ID as string,
-			clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+			clientId: env.GOOGLE_CLIENT_ID ?? "",
+			clientSecret: env.GOOGLE_CLIENT_SECRET,
 		},
 	},
-	plugins: [openAPI(), admin()],
+	plugins: [
+		openAPI(),
+		admin(),
+		polar({
+			client: polarClient,
+			createCustomerOnSignUp: !isPolarMockMode,
+			use: [
+				checkout({
+					successUrl: env.POLAR_SUCCESS_URL,
+					authenticatedUsersOnly: true,
+				}),
+				portal(),
+				webhooks({
+					secret: env.POLAR_WEBHOOK_SECRET ?? "",
+					// biome-ignore lint/suspicious/noExplicitAny: Polar webhook types vary
+					onOrderPaid: async (payload: any) => {
+						const checkoutId = payload.checkout?.id ?? payload.id;
+						const orderId =
+							payload.order?.metadata?.orderId ?? payload.metadata?.orderId;
+						if (checkoutId && orderId) {
+							await orderService.handleOrderPaid(
+								String(checkoutId),
+								String(orderId),
+							);
+						}
+					},
+					// biome-ignore lint/suspicious/noExplicitAny: Polar webhook types vary
+					onOrderRefunded: async (payload: any) => {
+						const orderId =
+							payload.order?.metadata?.orderId ?? payload.metadata?.orderId;
+						if (orderId) {
+							await orderService.updateStatus(String(orderId), "REFUNDED");
+						}
+					},
+				}),
+			],
+		}),
+	],
 });
 
 export const betterAuthPlugin = new Elysia({

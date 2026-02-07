@@ -1,18 +1,9 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "include": [
-    "src/**/*",
-    "tests/**/*",
-    "prisma.config.ts",
-    "sst-env.d.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "src/prisma"
-  ],
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "strictNullChecks": true
-  }
+	"extends": "../../tsconfig.base.json",
+	"include": ["src/**/*", "tests/**/*", "prisma.config.ts", "sst-env.d.ts"],
+	"exclude": ["node_modules", "dist", "src/prisma"],
+	"compilerOptions": {
+		"jsx": "react-jsx",
+		"strictNullChecks": true
+	}
 }

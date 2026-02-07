@@ -10,6 +10,7 @@ import { status } from "elysia";
 import { LRUCache } from "lru-cache";
 import type { CategoryModel } from "../categories/model";
 import { categoryService } from "../categories/service";
+import { createPolarProduct } from "../polar-sync";
 import { uploadFileErrStatus, type uuidGuard } from "../shared";
 import type { ProductModel } from "./model";
 import { setFinalStatus, type ValidationResults } from "./operations/status";
@@ -346,6 +347,7 @@ export const productService = {
 					},
 				});
 
+				// Create variants without Polar sync first
 				const createdVariants = await Promise.all(
 					vOps.create.map((variant) => {
 						return tx.productVariant.create({
@@ -366,9 +368,39 @@ export const productService = {
 					}),
 				);
 
+				// If product is PUBLISHED, sync variants to Polar
+				if (finalStatus === "PUBLISHED") {
+					await Promise.all(
+						createdVariants.map(async (variant) => {
+							const polarProductId = await createPolarProduct({
+								name: `${product.name} - ${variant.sku || variant.id.slice(0, 8)}`,
+								description: product.description,
+								price: variant.price,
+								currency: variant.currency,
+								metadata: {
+									internalVariantId: variant.id,
+									internalProductId: product.id,
+									sku: variant.sku ?? "",
+								},
+							});
+
+							await tx.productVariant.update({
+								where: { id: variant.id },
+								data: { polarProductId },
+							});
+						}),
+					);
+				}
+
+				// Refetch variants with updated polarProductId
+				const variantsWithPolar = await tx.productVariant.findMany({
+					where: { productId: product.id },
+					include: { attributeValues: true },
+				});
+
 				return {
 					...product,
-					variants: createdVariants,
+					variants: variantsWithPolar,
 				};
 			});
 
@@ -512,6 +544,15 @@ export const productService = {
 		}
 
 		const updateOpsWithFiles = iOps?.update?.filter((op) => op.file) ?? [];
+
+		// Store created variants for potential Polar sync (outside transaction)
+		const createdVariantsResults: Array<{
+			id: string;
+			price: number;
+			sku: string | null;
+			currency: string;
+			attributeValues: Array<{ id: string }>;
+		}> = [];
 
 		try {
 			const product = await prisma.$transaction(async (tx) => {
@@ -714,27 +755,32 @@ export const productService = {
 					}
 
 					if (vOps.create && vOps.create.length > 0) {
-						operationPromises.push(
-							Promise.all(
-								vOps.create.map((variant) =>
-									tx.productVariant.create({
-										data: {
-											productId: id,
-											price: variant.price,
-											sku: variant.sku,
-											stock: variant.stock ?? 0,
-											currency: variant.currency ?? "EUR",
-											attributeValues: {
-												connect: variant.attributeValueIds.map((aid) => ({
-													id: aid,
-												})),
-											},
-										},
-										include: { attributeValues: true },
-									}),
-								),
-							),
-						);
+						const createPromises = vOps.create.map(async (variant) => {
+							const created = await tx.productVariant.create({
+								data: {
+									productId: id,
+									price: variant.price,
+									sku: variant.sku,
+									stock: variant.stock ?? 0,
+									currency: variant.currency ?? "EUR",
+									attributeValues: {
+										connect: variant.attributeValueIds.map((aid) => ({
+											id: aid,
+										})),
+									},
+								},
+								include: { attributeValues: true },
+							});
+							createdVariantsResults.push({
+								id: created.id,
+								price: created.price,
+								sku: created.sku,
+								currency: created.currency,
+								attributeValues: created.attributeValues,
+							});
+							return created;
+						});
+						operationPromises.push(Promise.all(createPromises));
 					}
 				}
 
@@ -778,12 +824,89 @@ export const productService = {
 				await utapi.deleteFiles(oldKeysToDelete);
 			}
 
+			// Sync variants to Polar after successful transaction
+			const isPublishing =
+				finalStatus === "PUBLISHED" && currentProduct.status !== "PUBLISHED";
+			const isAlreadyPublished = currentProduct.status === "PUBLISHED";
+
+			if (finalStatus === "PUBLISHED") {
+				if (isPublishing) {
+					// Publishing product: sync ALL existing variants without polarProductId
+					const variantsToSync = await prisma.productVariant.findMany({
+						where: {
+							productId: id,
+							polarProductId: null,
+						},
+						include: { product: true },
+					});
+
+					await Promise.all(
+						variantsToSync.map(async (variant) => {
+							const polarProductId = await createPolarProduct({
+								name: `${product.name} - ${variant.sku || variant.id.slice(0, 8)}`,
+								description: product.description,
+								price: variant.price,
+								currency: variant.currency,
+								metadata: {
+									internalVariantId: variant.id,
+									internalProductId: id,
+									sku: variant.sku ?? "",
+								},
+							});
+
+							await prisma.productVariant.update({
+								where: { id: variant.id },
+								data: { polarProductId },
+							});
+						}),
+					);
+				} else if (isAlreadyPublished && createdVariantsResults.length > 0) {
+					// Already published: sync only newly created variants
+					await Promise.all(
+						createdVariantsResults.map(async (variant) => {
+							const polarProductId = await createPolarProduct({
+								name: `${product.name} - ${variant.sku || variant.id.slice(0, 8)}`,
+								description: product.description,
+								price: variant.price,
+								currency: variant.currency,
+								metadata: {
+									internalVariantId: variant.id,
+									internalProductId: id,
+									sku: variant.sku ?? "",
+								},
+							});
+
+							await prisma.productVariant.update({
+								where: { id: variant.id },
+								data: { polarProductId },
+							});
+						}),
+					);
+				}
+			}
+
 			invalidateProductListings({
 				categoryIds: [product.categoryId],
 				statuses: [product.status],
 			});
 
-			return product;
+			// Refetch product to include updated polarProductIds after sync
+			const updatedProduct = await prisma.product.findUnique({
+				where: { id: product.id },
+				include: {
+					category: true,
+					images: true,
+					variants: {
+						include: { attributeValues: true },
+					},
+				},
+			});
+
+			if (!updatedProduct) {
+				throw new Error(`Product ${product.id} not found after update`);
+			}
+
+			return updatedProduct;
 		} catch (err: unknown) {
 			// Clean up orphaned files if transaction fails
 			const allUploaded = [
