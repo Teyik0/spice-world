@@ -35,7 +35,10 @@ export const statusVariants: Record<
 	ARCHIVED: "outline",
 };
 
-export const getCategoryName = (categoryId: string, categories: Category[]) => {
+export const getCategoryName = (
+	categoryId: string | undefined,
+	categories: Category[],
+) => {
 	return categories.find((c) => c.id === categoryId)?.name ?? "-";
 };
 

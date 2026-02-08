@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: setup
     steps:
-      - uses: ./.github/workflows/setup-wc.yml
+      - uses: ./.github/workflows/setup-wc.yaml
         with:
           bun-version: latest
           install-dependencies: true
@@ -30,25 +30,25 @@ jobs:
     runs-on: ubuntu-latest
     needs: setup
     steps:
-      - uses: ./.github/workflows/setup-wc.yml
+      - uses: ./.github/workflows/setup-wc.yaml
         with:
           bun-version: latest
           install-dependencies: true
 
       - name: Generate prisma client
         working-directory: apps/server
-        run: bunx prisma generate
+        run: bun run prisma generate
 
       - name: Type check workspace
         working-directory: ${{ matrix.workspace }}
-        run: bunx tsc --build --noEmit
+        run: bun run tsc --build --noEmit
 
   test:
     name: Run Tests
     runs-on: ubuntu-latest
     needs: setup
     steps:
-      - uses: ./.github/workflows/setup-wc.yml
+      - uses: ./.github/workflows/setup-wc.yaml
         with:
           bun-version: latest
           install-dependencies: true
@@ -87,7 +87,7 @@ jobs:
           - apps/dashboard
           - packages/emails
     steps:
-      - uses: ./.github/workflows/setup-wc.yml
+      - uses: ./.github/workflows/setup-wc.yaml
         with:
           bun-version: latest
           install-dependencies: true

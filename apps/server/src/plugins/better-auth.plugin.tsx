@@ -17,7 +17,7 @@ const resend = new Resend(env.RESEND_API_KEY);
 const from = "Spice World <noreply@teyik0.dev>";
 
 export const stripeClient = new Stripe(env.STRIPE_SECRET_KEY, {
-	apiVersion: "2025-02-24.acacia",
+	apiVersion: "2026-01-28.clover",
 });
 
 export const auth = betterAuth({
