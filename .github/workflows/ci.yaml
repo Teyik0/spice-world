@@ -23,7 +23,7 @@ jobs:
           install-dependencies: true
 
       - name: Run ultracite linting
-        run: bunx ultracite check
+        run: bun run ultracite check
 
   typecheck:
     name: TypeScript type check
