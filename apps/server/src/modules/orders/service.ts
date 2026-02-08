@@ -2,7 +2,7 @@ import { env } from "@spice-world/server/lib/env";
 import { prisma } from "@spice-world/server/lib/prisma";
 import type { OrderStatus } from "@spice-world/server/prisma/client";
 import { Resend } from "resend";
-import { createPolarCheckout } from "../polar-sync";
+import { createStripeCheckout } from "../stripe-checkout";
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
@@ -14,7 +14,6 @@ interface CartItem {
 	variantSku?: string;
 	price: number;
 	quantity: number;
-	polarProductId: string;
 }
 
 interface ShippingAddress {
@@ -50,23 +49,13 @@ export const orderService = {
 		const enrichedItems: CartItem[] = [];
 
 		for (const item of items) {
-			const variant = await prisma.productVariant.findUnique({
+			const variant = await prisma.productVariant.findUniqueOrThrow({
 				where: { id: item.variantId },
 				include: { product: true },
 			});
 
-			if (!variant) {
-				throw new Error(`Variant ${item.variantId} not found`);
-			}
-
 			if (variant.stock < item.quantity) {
 				throw new Error(`Insufficient stock for variant ${item.variantId}`);
-			}
-
-			if (!variant.polarProductId) {
-				throw new Error(
-					`Variant ${item.variantId} is not available for purchase`,
-				);
 			}
 
 			enrichedItems.push({
@@ -77,7 +66,6 @@ export const orderService = {
 				variantSku: variant.sku || undefined,
 				price: variant.price,
 				quantity: item.quantity,
-				polarProductId: variant.polarProductId,
 			});
 		}
 
@@ -88,11 +76,12 @@ export const orderService = {
 			);
 			const shipping = subtotal > 50 ? 0 : 5;
 
+			// Create order with temporary stripe session id
 			const order = await tx.order.create({
 				data: {
 					userId,
 					status: "PENDING",
-					polarCheckoutId: "temp",
+					stripeSessionId: "temp",
 					subtotalAmount: subtotal,
 					shippingAmount: shipping,
 					totalAmount: subtotal + shipping,
@@ -107,38 +96,39 @@ export const orderService = {
 							unitPrice: item.price,
 							quantity: item.quantity,
 							totalPrice: item.price * item.quantity,
-							polarProductId: item.polarProductId,
 						})),
 					},
 				},
 				include: { items: true },
 			});
 
-			const successUrl =
-				env.POLAR_SUCCESS_URL || `${env.BETTER_AUTH_URL}/orders/success`;
-			const checkout = await createPolarCheckout({
-				products: enrichedItems.map((i) => i.polarProductId),
+			const checkout = await createStripeCheckout({
+				items: enrichedItems.map((item) => ({
+					name: item.productName,
+					price: item.price,
+					currency: "EUR", // Default to EUR, can be made dynamic
+					quantity: item.quantity,
+				})),
 				metadata: { orderId: order.id },
-				successUrl,
 			});
 
 			await tx.order.update({
 				where: { id: order.id },
-				data: { polarCheckoutId: checkout.id },
+				data: { stripeSessionId: checkout.id },
 			});
 
 			return {
-				order: { ...order, polarCheckoutId: checkout.id },
+				order: { ...order, stripeSessionId: checkout.id },
 				checkoutUrl: checkout.url,
 			};
 		});
 	},
 
-	async handleOrderPaid(checkoutId: string, polarOrderId: string) {
+	async handleOrderPaid(stripeSessionId: string, orderId: string) {
 		return await prisma.$transaction(async (tx) => {
 			const order = await tx.order.update({
-				where: { polarCheckoutId: checkoutId },
-				data: { status: "PAID", polarOrderId },
+				where: { stripeSessionId },
+				data: { status: "PAID", stripePaymentIntentId: orderId },
 				include: { items: true, user: true },
 			});
 

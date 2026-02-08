@@ -1,5 +1,4 @@
-import { checkout, polar, portal, webhooks } from "@polar-sh/better-auth";
-import { Polar } from "@polar-sh/sdk";
+import { stripe } from "@better-auth/stripe";
 import { ChangeEmailVerification } from "@spice-world/emails/src/change-email-verification";
 import { PasswordReset } from "@spice-world/emails/src/password-reset";
 import { ResetPassword } from "@spice-world/emails/src/reset-password";
@@ -11,19 +10,15 @@ import { betterAuth } from "better-auth/minimal";
 import { admin, openAPI } from "better-auth/plugins";
 import { Elysia } from "elysia";
 import { Resend } from "resend";
+import Stripe from "stripe";
 import { orderService } from "../modules/orders/service";
 
 const resend = new Resend(env.RESEND_API_KEY);
 const from = "Spice World <noreply@teyik0.dev>";
 
-const polarClient = new Polar({
-	accessToken: env.POLAR_ACCESS_TOKEN,
-	server: env.NODE_ENV === "production" ? "production" : "sandbox",
+export const stripeClient = new Stripe(env.STRIPE_SECRET_KEY, {
+	apiVersion: "2025-02-24.acacia",
 });
-
-// Disable Polar customer creation in test/mock mode
-const isPolarMockMode =
-	env.NODE_ENV === "test" || env.POLAR_MOCK_MODE === "true";
 
 export const auth = betterAuth({
 	database: prismaAdapter(prisma, {
@@ -119,39 +114,27 @@ export const auth = betterAuth({
 	plugins: [
 		openAPI(),
 		admin(),
-		polar({
-			client: polarClient,
-			createCustomerOnSignUp: !isPolarMockMode,
-			use: [
-				checkout({
-					successUrl: env.POLAR_SUCCESS_URL,
-					authenticatedUsersOnly: true,
-				}),
-				portal(),
-				webhooks({
-					secret: env.POLAR_WEBHOOK_SECRET ?? "",
-					// biome-ignore lint/suspicious/noExplicitAny: Polar webhook types vary
-					onOrderPaid: async (payload: any) => {
-						const checkoutId = payload.checkout?.id ?? payload.id;
-						const orderId =
-							payload.order?.metadata?.orderId ?? payload.metadata?.orderId;
-						if (checkoutId && orderId) {
-							await orderService.handleOrderPaid(
-								String(checkoutId),
-								String(orderId),
-							);
-						}
-					},
-					// biome-ignore lint/suspicious/noExplicitAny: Polar webhook types vary
-					onOrderRefunded: async (payload: any) => {
-						const orderId =
-							payload.order?.metadata?.orderId ?? payload.metadata?.orderId;
-						if (orderId) {
-							await orderService.updateStatus(String(orderId), "REFUNDED");
-						}
-					},
-				}),
-			],
+		stripe({
+			stripeClient,
+			stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
+			createCustomerOnSignUp: true,
+			onCheckoutSessionCompleted: async (session: {
+				metadata?: Record<string, string>;
+				id: string;
+			}) => {
+				const orderId = session.metadata?.orderId;
+				if (orderId && session.id) {
+					await orderService.handleOrderPaid(session.id, orderId);
+				}
+			},
+			onPaymentFailed: async (session: {
+				metadata?: Record<string, string>;
+			}) => {
+				const orderId = session.metadata?.orderId;
+				if (orderId) {
+					await orderService.updateStatus(orderId, "CANCELLED");
+				}
+			},
 		}),
 	],
 });
@@ -191,39 +174,3 @@ export const betterAuthPlugin = new Elysia({
 	.get("/api/is-admin", ({ session, user }) => ({ session, user }), {
 		isAdmin: true,
 	});
-
-let _schema: ReturnType<typeof auth.api.generateOpenAPISchema>;
-const getSchema = async () => {
-	if (!_schema) {
-		_schema = auth.api.generateOpenAPISchema();
-	}
-	return _schema;
-};
-
-export const OpenAPI = {
-	getPaths: (prefix = "/api/auth") =>
-		getSchema().then(({ paths }) => {
-			const reference: typeof paths = Object.create(null);
-
-			for (const path of Object.keys(paths)) {
-				const key = prefix + path;
-				const pathItem = paths[path];
-
-				if (!pathItem) continue;
-
-				reference[key] = pathItem;
-
-				for (const method of Object.keys(pathItem)) {
-					// biome-ignore lint/suspicious/noExplicitAny: OpenAPI schema requires dynamic typing
-					const operation = (reference[key] as any)[method] as any;
-
-					operation.tags = ["Better Auth"];
-				}
-			}
-
-			return reference;
-			// biome-ignore lint/suspicious/noExplicitAny: OpenAPI schema requires dynamic typing
-		}) as Promise<any>,
-	// biome-ignore lint/suspicious/noExplicitAny: OpenAPI schema requires dynamic typing
-	components: getSchema().then(({ components }) => components) as Promise<any>,
-} as const;

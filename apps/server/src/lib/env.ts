@@ -24,23 +24,17 @@ const envSchema = t.Object({
 		{ default: "development" },
 	),
 	PORT: t.String({ default: "3001" }),
+	STRIPE_SECRET_KEY: t.String(),
+	STRIPE_WEBHOOK_SECRET: t.String(),
+	STRIPE_PUBLISHABLE_KEY: t.String(),
+	STRIPE_SUCCESS_URL: t.String({ format: "uri" }),
+	RESEND_API_KEY: t.String(),
 
 	// Feature environment variables (required in production, optional in dev)
 	GOOGLE_CLIENT_ID: t.Optional(t.String()),
 	GOOGLE_CLIENT_SECRET: t.Optional(t.String()),
-	RESEND_API_KEY: t.Optional(t.String()),
-	POLAR_ACCESS_TOKEN: t.Optional(t.String()),
-	POLAR_WEBHOOK_SECRET: t.Optional(t.String()),
 	AXIOM_TOKEN: t.Optional(t.String()),
-	POLAR_SUCCESS_URL: t.Optional(t.String({ format: "uri" })),
-
-	// Optional with defaults
-	POLAR_MOCK_MODE: t.Optional(t.String()),
 });
-
-/**
- * Type definition for environment variables derived from the schema
- */
 export type EnvSchema = typeof envSchema.static;
 
 /**
@@ -50,11 +44,7 @@ export type EnvSchema = typeof envSchema.static;
 const featureVars = [
 	"GOOGLE_CLIENT_ID",
 	"GOOGLE_CLIENT_SECRET",
-	"RESEND_API_KEY",
-	"POLAR_ACCESS_TOKEN",
-	"POLAR_WEBHOOK_SECRET",
 	"AXIOM_TOKEN",
-	"POLAR_SUCCESS_URL",
 ] as const satisfies (keyof EnvSchema)[];
 
 /**
@@ -72,10 +62,10 @@ function validateEnv(): EnvSchema {
 		GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
 		RESEND_API_KEY: process.env.RESEND_API_KEY,
 		AXIOM_TOKEN: process.env.AXIOM_TOKEN,
-		POLAR_ACCESS_TOKEN: process.env.POLAR_ACCESS_TOKEN,
-		POLAR_SUCCESS_URL: process.env.POLAR_SUCCESS_URL,
-		POLAR_WEBHOOK_SECRET: process.env.POLAR_WEBHOOK_SECRET,
-		POLAR_MOCK_MODE: process.env.POLAR_MOCK_MODE,
+		STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+		STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+		STRIPE_PUBLISHABLE_KEY: process.env.STRIPE_PUBLISHABLE_KEY,
+		STRIPE_SUCCESS_URL: process.env.STRIPE_SUCCESS_URL,
 		NODE_ENV: process.env.NODE_ENV,
 		PORT: process.env.PORT,
 	} satisfies Record<keyof EnvSchema, unknown>);

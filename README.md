@@ -2,6 +2,7 @@
 ```bash
 bun install
 bunx sst install
+stripe listen --forward-to localhost:3001/api/auth/stripe/webhook
 # Development (votre username)
 bun sst:dev
 # Crée : spice-world-db-teyik0

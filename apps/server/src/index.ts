@@ -1,6 +1,5 @@
 import "@spice-world/server/lib/env";
 import { cors } from "@elysiajs/cors";
-import { openapi } from "@elysiajs/openapi";
 import { opentelemetry } from "@elysiajs/opentelemetry";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
@@ -10,7 +9,7 @@ import { categoryRouter } from "@spice-world/server/modules/categories";
 import { ordersRouter } from "@spice-world/server/modules/orders";
 import { productsRouter } from "@spice-world/server/modules/products";
 import { Elysia } from "elysia";
-import { betterAuthPlugin, OpenAPI } from "./plugins/better-auth.plugin.tsx";
+import { betterAuthPlugin } from "./plugins/better-auth.plugin.tsx";
 
 const formattedDate = () =>
 	new Date().toLocaleString("en-US", {
@@ -42,14 +41,6 @@ const app = new Elysia()
 		}),
 	)
 	.use(
-		openapi({
-			documentation: {
-				components: await OpenAPI.components,
-				paths: await OpenAPI.getPaths(),
-			},
-		}),
-	)
-	.use(
 		cors({
 			origin: ["http://localhost:3000", "http://localhost:3001"],
 			methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -70,7 +61,7 @@ const app = new Elysia()
 	})
 	.onAfterResponse(({ user, path, set }) => {
 		console.log(`${formattedDate()} - RESPONSE ${path}`, {
-			performance: `${((performance.now() - startTime) / 1000).toFixed(2)} s`,
+			performance: `${(performance.now() - startTime).toFixed(2)} ms`,
 			status: set.status,
 			user: user ? user.id : "anonymous",
 		});

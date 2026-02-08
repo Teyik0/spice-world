@@ -5,7 +5,6 @@ import {
 	checkoutBody,
 	getByIdParams,
 	getQuery,
-	type OrderModel,
 	updateStatusBody,
 } from "./model";
 import { orderService } from "./service";
@@ -96,6 +95,3 @@ export const ordersRouter = new Elysia({
 			isAdmin: true,
 		},
 	);
-
-export type OrdersRouter = typeof ordersRouter;
-export type { OrderModel };

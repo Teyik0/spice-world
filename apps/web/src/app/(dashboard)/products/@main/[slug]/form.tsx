@@ -292,6 +292,7 @@ export const ProductForm = ({
 			toast.warning(
 				"Product saved as DRAFT. To publish, ensure at least one variant has price > 0 and all variants have attribute values.",
 			);
+			form.setFieldValue("status", data.status);
 		} else {
 			toast.success("Product created successfully");
 			setNewProduct(null);
@@ -316,6 +317,7 @@ export const ProductForm = ({
 			toast.warning(
 				"Product saved as DRAFT. Category changed - variants need attribute values from the new category to be published.",
 			);
+			form.setFieldValue("status", data.status);
 		} else {
 			toast.success("Product updated successfully");
 		}
