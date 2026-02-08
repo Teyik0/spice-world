@@ -45,31 +45,39 @@ export const orderService = {
 		items: { variantId: string; quantity: number }[],
 		shippingAddress: ShippingAddress,
 	) {
-		// Validate items first (outside transaction)
-		const enrichedItems: CartItem[] = [];
-
-		for (const item of items) {
-			const variant = await prisma.productVariant.findUniqueOrThrow({
-				where: { id: item.variantId },
-				include: { product: true },
-			});
-
-			if (variant.stock < item.quantity) {
-				throw new Error(`Insufficient stock for variant ${item.variantId}`);
-			}
-
-			enrichedItems.push({
-				variantId: item.variantId,
-				productId: variant.productId,
-				productName: variant.product.name,
-				variantName: variant.sku || undefined,
-				variantSku: variant.sku || undefined,
-				price: variant.price,
-				quantity: item.quantity,
-			});
-		}
-
 		return await prisma.$transaction(async (tx) => {
+			// Validate items inside transaction with atomic stock check
+			const enrichedItems: CartItem[] = [];
+
+			for (const item of items) {
+				// Use update with decrement to atomically check and reserve stock
+				// This prevents TOCTOU race conditions by locking the row
+				try {
+					const updatedVariant = await tx.productVariant.update({
+						where: {
+							id: item.variantId,
+							stock: { gte: item.quantity }, // Atomic check: only update if stock >= quantity
+						},
+						data: {
+							stock: { decrement: item.quantity }, // Reserve stock immediately
+						},
+						include: { product: true },
+					});
+
+					enrichedItems.push({
+						variantId: item.variantId,
+						productId: updatedVariant.productId,
+						productName: updatedVariant.product.name,
+						variantName: updatedVariant.sku || undefined,
+						variantSku: updatedVariant.sku || undefined,
+						price: updatedVariant.price,
+						quantity: item.quantity,
+					});
+				} catch {
+					// If update fails due to stock constraint, throw insufficient stock error
+					throw new Error(`Insufficient stock for variant ${item.variantId}`);
+				}
+			}
 			const subtotal = enrichedItems.reduce(
 				(sum, item) => sum + item.price * item.quantity,
 				0,
@@ -124,22 +132,30 @@ export const orderService = {
 		});
 	},
 
-	async handleOrderPaid(stripeSessionId: string, orderId: string) {
+	async handleOrderPaid(
+		stripeSessionId: string,
+		orderId: string,
+		stripePaymentIntentId: string | null,
+	) {
 		return await prisma.$transaction(async (tx) => {
-			const order = await tx.order.update({
+			// Verify the order exists and matches the metadata orderId
+			const existingOrder = await tx.order.findUnique({
 				where: { stripeSessionId },
-				data: { status: "PAID", stripePaymentIntentId: orderId },
-				include: { items: true, user: true },
 			});
 
-			for (const item of order.items) {
-				if (item.variantId) {
-					await tx.productVariant.update({
-						where: { id: item.variantId },
-						data: { stock: { decrement: item.quantity } },
-					});
-				}
+			if (!existingOrder || existingOrder.id !== orderId) {
+				throw new Error(
+					`Order mismatch: session ${stripeSessionId} does not match order ${orderId}`,
+				);
 			}
+
+			// Stock is already reserved in createCheckout via atomic decrement
+			// No need to decrement again here
+			const order = await tx.order.update({
+				where: { stripeSessionId },
+				data: { status: "PAID", stripePaymentIntentId },
+				include: { items: true, user: true },
+			});
 
 			return order;
 		});

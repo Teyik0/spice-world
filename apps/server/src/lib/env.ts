@@ -28,6 +28,7 @@ const envSchema = t.Object({
 	STRIPE_WEBHOOK_SECRET: t.String(),
 	STRIPE_PUBLISHABLE_KEY: t.String(),
 	STRIPE_SUCCESS_URL: t.String({ format: "uri" }),
+	STRIPE_CANCEL_URL: t.String({ format: "uri" }),
 	RESEND_API_KEY: t.String(),
 
 	// Feature environment variables (required in production, optional in dev)
@@ -66,9 +67,10 @@ function validateEnv(): EnvSchema {
 		STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
 		STRIPE_PUBLISHABLE_KEY: process.env.STRIPE_PUBLISHABLE_KEY,
 		STRIPE_SUCCESS_URL: process.env.STRIPE_SUCCESS_URL,
+		STRIPE_CANCEL_URL: process.env.STRIPE_CANCEL_URL,
 		NODE_ENV: process.env.NODE_ENV,
 		PORT: process.env.PORT,
-	} satisfies Record<keyof EnvSchema, unknown>);
+	});
 
 	// Check feature vars
 	const isProd = parsed.NODE_ENV === "production";

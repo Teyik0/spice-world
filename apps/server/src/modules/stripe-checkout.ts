@@ -35,7 +35,6 @@ export class StripeApiError extends Error {
 export async function createStripeCheckout({
 	items,
 	metadata,
-	cancelUrl,
 	customerEmail,
 }: {
 	items: CheckoutItem[];
@@ -62,7 +61,7 @@ export async function createStripeCheckout({
 			line_items: lineItems,
 			mode: "payment",
 			success_url: env.STRIPE_SUCCESS_URL,
-			cancel_url: cancelUrl ?? env.STRIPE_SUCCESS_URL,
+			cancel_url: env.STRIPE_CANCEL_URL,
 			metadata,
 			...(customerEmail && { customer_email: customerEmail }),
 		});

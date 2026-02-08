@@ -118,18 +118,22 @@ export const auth = betterAuth({
 			stripeClient,
 			stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
 			createCustomerOnSignUp: true,
-			onCheckoutSessionCompleted: async (session: {
-				metadata?: Record<string, string>;
-				id: string;
-			}) => {
+			onCheckoutSessionCompleted: async (session: Stripe.Checkout.Session) => {
 				const orderId = session.metadata?.orderId;
 				if (orderId && session.id) {
-					await orderService.handleOrderPaid(session.id, orderId);
+					// payment_intent can be string, PaymentIntent object, or null
+					const paymentIntentId =
+						typeof session.payment_intent === "string"
+							? session.payment_intent
+							: null;
+					await orderService.handleOrderPaid(
+						session.id,
+						orderId,
+						paymentIntentId,
+					);
 				}
 			},
-			onPaymentFailed: async (session: {
-				metadata?: Record<string, string>;
-			}) => {
+			onPaymentFailed: async (session: Stripe.Checkout.Session) => {
 				const orderId = session.metadata?.orderId;
 				if (orderId) {
 					await orderService.updateStatus(orderId, "CANCELLED");
