@@ -78,7 +78,7 @@ jobs:
 
       - name: Type check ${{ matrix.workspace }}
         working-directory: ${{ matrix.workspace }}
-        run: bun run tsc --noEmit
+        run: bun run tsc --build --noEmit
 
   test:
     name: Run Tests
