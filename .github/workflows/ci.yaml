@@ -6,40 +6,96 @@ on:
 
 jobs:
   setup:
-    name: Setup Project
-    uses: ./.github/workflows/setup-wc.yaml
-    with:
-      bun-version: latest
-      install-dependencies: true
+    name: Setup & Cache
+    runs-on: ubuntu-latest
+    outputs:
+      cache-hit: ${{ steps.cache-deps.outputs.cache-hit }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache dependencies
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            */*/node_modules
+            ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb', '**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Upload node_modules artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: node_modules
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          retention-days: 1
 
   lint:
-    name: Lint & format check
+    name: Lint & Format Check
     runs-on: ubuntu-latest
     needs: setup
     steps:
-      - uses: ./.github/workflows/setup-wc.yaml
-        with:
-          bun-version: latest
-          install-dependencies: true
+      - uses: actions/checkout@v4
 
-      - name: Run ultracite linting
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Download node_modules
+        uses: actions/download-artifact@v4
+        with:
+          name: node_modules
+
+      - name: Run linting
         run: bun run ultracite check
 
   typecheck:
-    name: TypeScript type check
+    name: Type Check (${{ matrix.workspace }})
     runs-on: ubuntu-latest
     needs: setup
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace:
+          - apps/server
+          - apps/web
+          - packages/emails
+
     steps:
-      - uses: ./.github/workflows/setup-wc.yaml
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
-          install-dependencies: true
+          bun-version: ${{ env.BUN_VERSION }}
 
-      - name: Generate prisma client
+      - name: Download node_modules
+        uses: actions/download-artifact@v4
+        with:
+          name: node_modules
+
+      - name: Generate Prisma Client (server only)
+        if: matrix.workspace == 'apps/server'
         working-directory: apps/server
-        run: bun run prisma generate
+        run: bunx prisma generate
 
-      - name: Type check workspace
+      - name: Type check ${{ matrix.workspace }}
         working-directory: ${{ matrix.workspace }}
         run: bun run tsc --build --noEmit
 
@@ -47,24 +103,42 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
     needs: setup
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     steps:
-      - uses: ./.github/workflows/setup-wc.yaml
+      - uses: actions/checkout@v4
+      - name: Setup Bun
+
+        uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
-          install-dependencies: true
+          bun-version: ${{ env.BUN_VERSION }}
 
-      - name: Setup test database
-        run: docker compose up -d postresdb
+      - name: Download node_modules
+        uses: actions/download-artifact@v4
+        with:
+          name: node_modules
 
-      - name: Setup test database
+      - name: Setup Database
         working-directory: apps/server
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
         run: |
           bunx prisma generate
-          bunx prisma db push
+          bunx prisma db push --skip-generate
 
-      - name: Run server tests
+      - name: Run tests
         working-directory: apps/server
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
@@ -77,26 +151,44 @@ jobs:
         run: bun run test
 
   build:
-    name: Build Applications
+    name: Build (${{ matrix.app }})
     runs-on: ubuntu-latest
-    needs: [setup, lint, typecheck, test]
+    needs: [lint, typecheck, test]
+    if: always() && !cancelled() && needs.lint.result == 'success' && needs.typecheck.result == 'success' && needs.test.result == 'success'
     strategy:
+      fail-fast: false
       matrix:
-        workspace:
-          - apps/server
-          - apps/dashboard
-          - packages/emails
+        app:
+          - name: server
+            path: apps/server
+          - name: web
+            path: apps/web
     steps:
-      - uses: ./.github/workflows/setup-wc.yaml
-        with:
-          bun-version: latest
-          install-dependencies: true
+      - uses: actions/checkout@v4
 
-      - name: Generate prisma client
-        if: matrix.workspace == 'apps/server'
-        working-directory: ${{ matrix.workspace }}
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Download node_modules
+        uses: actions/download-artifact@v4
+        with:
+          name: node_modules
+
+      - name: Generate Prisma Client (server only)
+        if: matrix.app.name == 'server'
+        working-directory: ${{ matrix.app.path }}
         run: bunx prisma generate
 
-      - name: Build ${{ matrix.workspace }}
-        working-directory: ${{ matrix.workspace }}
+      - name: Build ${{ matrix.app.name }}
+        working-directory: ${{ matrix.app.path }}
         run: bun run build
+
+      - name: Upload build artifacts
+        if: matrix.app.name == 'web'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.app.name }}
+          path: ${{ matrix.app.path }}/dist
+          retention-days: 7
