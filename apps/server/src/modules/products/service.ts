@@ -1,4 +1,5 @@
 import {
+	deleteUploads,
 	type MultiSizeUploadData,
 	uploadFiles,
 	utapi,
@@ -310,7 +311,7 @@ export const productService = {
 			iOps.create.map((img) => img.file),
 		);
 		if (uploadError || !uploadMap) {
-			return uploadFileErrStatus({ message: uploadError });
+			return uploadFileErrStatus(uploadError ?? "Unknown upload error");
 		}
 
 		try {
@@ -346,6 +347,7 @@ export const productService = {
 					},
 				});
 
+				// Create variants
 				const createdVariants = await Promise.all(
 					vOps.create.map((variant) => {
 						return tx.productVariant.create({
@@ -380,13 +382,7 @@ export const productService = {
 			return status("Created", product);
 		} catch (err: unknown) {
 			if (uploadMap.length > 0) {
-				await utapi.deleteFiles(
-					uploadMap.flatMap((file) => [
-						file.thumb.key,
-						file.medium.key,
-						file.large.key,
-					]),
-				);
+				await deleteUploads(uploadMap);
 			}
 			throw err;
 		}
@@ -496,13 +492,7 @@ export const productService = {
 				...(updateUploads.data ?? []),
 			];
 			if (allSuccessful.length > 0) {
-				await utapi.deleteFiles(
-					allSuccessful.flatMap((f) => [
-						f.thumb.key,
-						f.medium.key,
-						f.large.key,
-					]),
-				);
+				await deleteUploads(allSuccessful);
 			}
 			return uploadFileErrStatus({
 				message: [createUploads.error, updateUploads.error]
@@ -714,27 +704,25 @@ export const productService = {
 					}
 
 					if (vOps.create && vOps.create.length > 0) {
-						operationPromises.push(
-							Promise.all(
-								vOps.create.map((variant) =>
-									tx.productVariant.create({
-										data: {
-											productId: id,
-											price: variant.price,
-											sku: variant.sku,
-											stock: variant.stock ?? 0,
-											currency: variant.currency ?? "EUR",
-											attributeValues: {
-												connect: variant.attributeValueIds.map((aid) => ({
-													id: aid,
-												})),
-											},
-										},
-										include: { attributeValues: true },
-									}),
-								),
-							),
-						);
+						const createPromises = vOps.create.map(async (variant) => {
+							const created = await tx.productVariant.create({
+								data: {
+									productId: id,
+									price: variant.price,
+									sku: variant.sku,
+									stock: variant.stock ?? 0,
+									currency: variant.currency ?? "EUR",
+									attributeValues: {
+										connect: variant.attributeValueIds.map((aid) => ({
+											id: aid,
+										})),
+									},
+								},
+								include: { attributeValues: true },
+							});
+							return created;
+						});
+						operationPromises.push(Promise.all(createPromises));
 					}
 				}
 
@@ -783,7 +771,23 @@ export const productService = {
 				statuses: [product.status],
 			});
 
-			return product;
+			// Refetch product to include all updates
+			const updatedProduct = await prisma.product.findUnique({
+				where: { id: product.id },
+				include: {
+					category: true,
+					images: true,
+					variants: {
+						include: { attributeValues: true },
+					},
+				},
+			});
+
+			if (!updatedProduct) {
+				throw new Error(`Product ${product.id} not found after update`);
+			}
+
+			return updatedProduct;
 		} catch (err: unknown) {
 			// Clean up orphaned files if transaction fails
 			const allUploaded = [
@@ -791,9 +795,7 @@ export const productService = {
 				...(updateUploads.data ?? []),
 			];
 			if (allUploaded.length > 0) {
-				await utapi.deleteFiles(
-					allUploaded.flatMap((f) => [f.thumb.key, f.medium.key, f.large.key]),
-				);
+				await deleteUploads(allUploaded);
 			}
 			throw err;
 		}

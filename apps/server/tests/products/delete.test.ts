@@ -1,22 +1,9 @@
-import {
-	afterAll,
-	beforeAll,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	spyOn,
-} from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import * as imagesModule from "@spice-world/server/lib/images";
 import type { productsRouter } from "@spice-world/server/modules/products";
 import { file } from "bun";
 import { createTestDatabase } from "../utils/db-manager";
-import {
-	createTestCategory,
-	createUploadedFileData,
-	expectDefined,
-} from "../utils/helper";
+import { createTestCategory, expectDefined, mockUtapi } from "../utils/helper";
 
 let api: ReturnType<typeof treaty<typeof productsRouter>>;
 
@@ -27,6 +14,9 @@ describe.concurrent("DELETE /products/:id - Integration Tests", () => {
 	const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
 
 	beforeAll(async () => {
+		// Mock uploadthing BEFORE importing the router
+		await mockUtapi();
+
 		testDb = await createTestDatabase("delete.test.ts");
 
 		const { productsRouter } = await import(
@@ -38,17 +28,6 @@ describe.concurrent("DELETE /products/:id - Integration Tests", () => {
 	afterAll(async () => {
 		await testDb.destroy();
 	}, 10000);
-
-	beforeEach(() => {
-		spyOn(imagesModule.utapi, "uploadFiles").mockImplementation((async (
-			files,
-		) => {
-			return {
-				data: createUploadedFileData(files as File | File[]),
-				error: null,
-			};
-		}) as typeof imagesModule.utapi.uploadFiles);
-	});
 
 	it("should delete a product successfully", async () => {
 		const category = await createTestCategory({ testDb, attributeCount: 1 });
@@ -65,7 +44,7 @@ describe.concurrent("DELETE /products/:id - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 10,
+							price: 1000,
 							sku: "DELETE-TEST-1",
 							stock: 10,
 							attributeValueIds: [

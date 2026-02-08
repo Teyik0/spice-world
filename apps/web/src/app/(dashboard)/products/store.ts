@@ -27,8 +27,8 @@ export interface ProductItemProps {
 	createdAt: Date;
 	updatedAt: Date;
 	version: number;
-	priceMin: number;
-	priceMax: number;
+	priceMin: number | null;
+	priceMax: number | null;
 	totalStock: number;
 }
 

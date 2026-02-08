@@ -46,7 +46,6 @@ function UsersSidebarSkeleton() {
 			</header>
 			<div className="flex-1 overflow-auto">
 				{Array.from({ length: 5 }).map((_, index) => (
-					// biome-ignore lint/suspicious/noArrayIndexKey: mandatory here
 					<div key={index} className="border-b p-4 flex items-center gap-3">
 						<Skeleton className="h-10 w-10 rounded-full shrink-0" />
 						<div className="flex-1">

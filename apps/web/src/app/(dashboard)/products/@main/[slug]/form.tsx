@@ -135,7 +135,7 @@ export const ProductForm = ({
 					create: undefined,
 					update: data.variants.map((v) => ({
 						id: v.id,
-						price: v.price,
+						price: v.price / 100, // Convert cents to decimal for display
 						sku: v.sku ?? undefined,
 						stock: v.stock,
 						currency: v.currency,
@@ -171,11 +171,11 @@ export const ProductForm = ({
 				priceMin: data.variants.reduce(
 					(min, v) => (v.price < min ? v.price : min),
 					data.variants[0]?.price ?? 0,
-				),
+				), // Stored in cents, converted to decimal by formatPrice
 				priceMax: data.variants.reduce(
 					(max, v) => (v.price > max ? v.price : max),
 					data.variants[0]?.price ?? 0,
-				),
+				), // Stored in cents, converted to decimal by formatPrice
 				totalStock: data.variants.reduce((sum, v) => sum + v.stock, 0),
 			});
 
@@ -233,7 +233,7 @@ export const ProductForm = ({
 				create: isNew
 					? [
 							{
-								price: 0,
+								price: 0, // Display as €0.00 in decimal format
 								sku: undefined,
 								stock: 0,
 								currency: "EUR",
@@ -244,7 +244,7 @@ export const ProductForm = ({
 				update: !isNew
 					? product.variants.map((v) => ({
 							id: v.id,
-							price: v.price,
+							price: v.price / 100, // Convert cents to decimal for display (1999 → 19.99)
 							sku: v.sku ?? undefined,
 							stock: v.stock,
 							currency: v.currency,
@@ -279,7 +279,19 @@ export const ProductForm = ({
 	};
 
 	const handleCreate = async (values: ProductModel.postBody) => {
-		const { data, error } = await app.products.post(values);
+		// Convert prices from decimal (user input) to cents (backend storage)
+		const convertedValues = {
+			...values,
+			variants: {
+				...values.variants,
+				create: values.variants.create?.map((variant) => ({
+					...variant,
+					price: Math.round(variant.price * 100), // Convert €19.99 → 1999 cents
+				})),
+			},
+		};
+
+		const { data, error } = await app.products.post(convertedValues);
 		if (error) {
 			toast.error(
 				`Failed to create product with error ${error.status}: ${elysiaErrorToString(error)}`,
@@ -288,10 +300,12 @@ export const ProductForm = ({
 		}
 
 		// Check for auto-DRAFT (requested PUBLISHED but got DRAFT)
+		// Note: values.price is in decimal (19.99), backend stores in cents (1999)
 		if (values.status === "PUBLISHED" && data.status === "DRAFT") {
 			toast.warning(
 				"Product saved as DRAFT. To publish, ensure at least one variant has price > 0 and all variants have attribute values.",
 			);
+			form.setFieldValue("status", data.status);
 		} else {
 			toast.success("Product created successfully");
 			setNewProduct(null);
@@ -300,9 +314,28 @@ export const ProductForm = ({
 	};
 
 	const handleUpdate = async (values: ProductModel.patchBody) => {
+		// Convert prices from decimal (user input) to cents (backend storage)
+		const variants = values.variants;
+		const convertedValues = {
+			...values,
+			variants: variants
+				? {
+						...variants,
+						create: variants.create?.map((variant) => ({
+							...variant,
+							price: Math.round((variant.price ?? 0) * 100), // Convert €19.99 → 1999 cents
+						})),
+						update: variants.update?.map((variant) => ({
+							...variant,
+							price: Math.round((variant.price ?? 0) * 100), // Convert €19.99 → 1999 cents
+						})),
+					}
+				: undefined,
+		};
+
 		const { data, error } = await app
 			.products({ id: product.id })
-			.patch(values);
+			.patch(convertedValues);
 		if (error) {
 			toast.error(
 				`Failed to update product with error ${error.status}: ${elysiaErrorToString(error)}`,
@@ -316,6 +349,7 @@ export const ProductForm = ({
 			toast.warning(
 				"Product saved as DRAFT. Category changed - variants need attribute values from the new category to be published.",
 			);
+			form.setFieldValue("status", data.status);
 		} else {
 			toast.success("Product updated successfully");
 		}

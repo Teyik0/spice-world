@@ -1,16 +1,24 @@
+import { stripe } from "@better-auth/stripe";
 import { ChangeEmailVerification } from "@spice-world/emails/src/change-email-verification";
 import { PasswordReset } from "@spice-world/emails/src/password-reset";
 import { ResetPassword } from "@spice-world/emails/src/reset-password";
 import { VerifyEmail } from "@spice-world/emails/src/spiceworld-welcome";
+import { env } from "@spice-world/server/lib/env";
 import { prisma } from "@spice-world/server/lib/prisma";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { betterAuth } from "better-auth/minimal";
 import { admin, openAPI } from "better-auth/plugins";
 import { Elysia } from "elysia";
 import { Resend } from "resend";
+import Stripe from "stripe";
+import { orderService } from "../modules/orders/service";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(env.RESEND_API_KEY);
 const from = "Spice World <noreply@teyik0.dev>";
+
+export const stripeClient = new Stripe(env.STRIPE_SECRET_KEY, {
+	apiVersion: "2026-01-28.clover",
+});
 
 export const auth = betterAuth({
 	database: prismaAdapter(prisma, {
@@ -99,11 +107,40 @@ export const auth = betterAuth({
 	},
 	socialProviders: {
 		google: {
-			clientId: process.env.GOOGLE_CLIENT_ID as string,
-			clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+			clientId: env.GOOGLE_CLIENT_ID ?? "",
+			clientSecret: env.GOOGLE_CLIENT_SECRET,
 		},
 	},
-	plugins: [openAPI(), admin()],
+	plugins: [
+		openAPI(),
+		admin(),
+		stripe({
+			stripeClient,
+			stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
+			createCustomerOnSignUp: true,
+			onCheckoutSessionCompleted: async (session: Stripe.Checkout.Session) => {
+				const orderId = session.metadata?.orderId;
+				if (orderId && session.id) {
+					// payment_intent can be string, PaymentIntent object, or null
+					const paymentIntentId =
+						typeof session.payment_intent === "string"
+							? session.payment_intent
+							: null;
+					await orderService.handleOrderPaid(
+						session.id,
+						orderId,
+						paymentIntentId,
+					);
+				}
+			},
+			onPaymentFailed: async (session: Stripe.Checkout.Session) => {
+				const orderId = session.metadata?.orderId;
+				if (orderId) {
+					await orderService.updateStatus(orderId, "CANCELLED");
+				}
+			},
+		}),
+	],
 });
 
 export const betterAuthPlugin = new Elysia({
@@ -141,39 +178,3 @@ export const betterAuthPlugin = new Elysia({
 	.get("/api/is-admin", ({ session, user }) => ({ session, user }), {
 		isAdmin: true,
 	});
-
-let _schema: ReturnType<typeof auth.api.generateOpenAPISchema>;
-const getSchema = async () => {
-	if (!_schema) {
-		_schema = auth.api.generateOpenAPISchema();
-	}
-	return _schema;
-};
-
-export const OpenAPI = {
-	getPaths: (prefix = "/api/auth") =>
-		getSchema().then(({ paths }) => {
-			const reference: typeof paths = Object.create(null);
-
-			for (const path of Object.keys(paths)) {
-				const key = prefix + path;
-				const pathItem = paths[path];
-
-				if (!pathItem) continue;
-
-				reference[key] = pathItem;
-
-				for (const method of Object.keys(pathItem)) {
-					// biome-ignore lint/suspicious/noExplicitAny: OpenAPI schema requires dynamic typing
-					const operation = (reference[key] as any)[method] as any;
-
-					operation.tags = ["Better Auth"];
-				}
-			}
-
-			return reference;
-			// biome-ignore lint/suspicious/noExplicitAny: OpenAPI schema requires dynamic typing
-		}) as Promise<any>,
-	// biome-ignore lint/suspicious/noExplicitAny: OpenAPI schema requires dynamic typing
-	components: getSchema().then(({ components }) => components) as Promise<any>,
-} as const;

@@ -1,13 +1,12 @@
-import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import * as imagesModule from "@spice-world/server/lib/images";
 import type { productsRouter } from "@spice-world/server/modules/products";
 import { file } from "bun";
 import { createTestDatabase } from "../utils/db-manager";
 import {
 	createTestCategory,
-	createUploadedFileData,
 	expectDefined,
+	mockUtapi,
 	randomLowerString,
 } from "../utils/helper";
 
@@ -19,23 +18,13 @@ describe.concurrent("POST /products - Integration Tests", () => {
 	const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
 
 	beforeAll(async () => {
+		// Mock uploadthing BEFORE importing the router
+		await mockUtapi();
+
 		testDb = await createTestDatabase("post-integration.test.ts");
 		const { productsRouter } = await import(
 			"@spice-world/server/modules/products"
 		);
-
-		spyOn(imagesModule.utapi, "uploadFiles").mockImplementation((async (
-			files,
-		) => {
-			return {
-				data: createUploadedFileData(files as File | File[]),
-				error: null,
-			};
-		}) as typeof imagesModule.utapi.uploadFiles);
-
-		spyOn(imagesModule.utapi, "deleteFiles").mockImplementation((async () => {
-			return { success: true, deletedCount: 1 };
-		}) as typeof imagesModule.utapi.deleteFiles);
 
 		api = treaty(productsRouter);
 	});
@@ -61,7 +50,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 10.99,
+							price: 1099,
 							sku: `sku${testId}one`,
 							stock: 100,
 							attributeValueIds: [category.attributes[0].values[0].id],
@@ -98,7 +87,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 10.99,
+							price: 1099,
 							sku: `sku${testId}one`,
 							stock: 100,
 							attributeValueIds: [],
@@ -133,7 +122,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 					variants: {
 						create: [
 							{
-								price: 10.99,
+								price: 1099,
 								sku: `first${testId}`,
 								stock: 100,
 								attributeValueIds: [],
@@ -157,7 +146,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 10.99,
+							price: 1099,
 							sku: `second${testId}`,
 							stock: 100,
 							attributeValueIds: [],
@@ -185,7 +174,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 8.99,
+							price: 899,
 							sku: `invalid${testId}`,
 							stock: 20,
 							attributeValueIds: [],
@@ -216,19 +205,19 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 5.99,
+							price: 599,
 							sku: "MULTI-VAR-001",
 							stock: 50,
 							attributeValueIds: [attributes[0]?.values[0]?.id as string],
 						},
 						{
-							price: 9.99,
+							price: 999,
 							sku: "MULTI-VAR-002",
 							stock: 30,
 							attributeValueIds: [attributes[1]?.values[0]?.id as string],
 						},
 						{
-							price: 14.99,
+							price: 1499,
 							sku: "MULTI-VAR-003",
 							stock: 20,
 							attributeValueIds: [attributes[2]?.values[0]?.id as string],
@@ -246,9 +235,9 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			expect(status).toBe(201);
 			expectDefined(data);
 			expect(data.variants.length).toBe(3);
-			expect(data.variants[0]?.price).toBe(5.99);
-			expect(data.variants[1]?.price).toBe(9.99);
-			expect(data.variants[2]?.price).toBe(14.99);
+			expect(data.variants[0]?.price).toBe(599);
+			expect(data.variants[1]?.price).toBe(999);
+			expect(data.variants[2]?.price).toBe(1499);
 		});
 	});
 
@@ -271,7 +260,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 19.99,
+							price: 1999,
 							sku: `sku${testId}one`,
 							attributeValueIds: [
 								category.attributes[0].values[0].id,
@@ -315,19 +304,19 @@ describe.concurrent("POST /products - Integration Tests", () => {
 					create: [
 						// Valid variant
 						{
-							price: 9.99,
+							price: 999,
 							sku: `valid-${testId}`,
 							attributeValueIds: [category.attributes[0].values[0].id],
 						},
 						// Duplicate combination (VVA4)
 						{
-							price: 14.99,
+							price: 1499,
 							sku: `dup-${testId}`,
 							attributeValueIds: [category.attributes[0].values[0].id],
 						},
 						// Exceeds capacity (VVA3)
 						{
-							price: 19.99,
+							price: 1999,
 							sku: `extra-${testId}`,
 							attributeValueIds: [category.attributes[0].values[1].id],
 						},
@@ -380,7 +369,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				for (const attr1 of category.attributes[1].values) {
 					for (const attr2 of category.attributes[2].values) {
 						variants.push({
-							price: 9.99 + variants.length * 0.01,
+							price: 999 + variants.length,
 							sku: `max-${testId}-${variants.length}`,
 							attributeValueIds: [attr0.id, attr1.id, attr2.id],
 						});
@@ -435,7 +424,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 9.99,
+							price: 999,
 							sku: `sku${testId}one`,
 							attributeValueIds: [crypto.randomUUID()], // does not exist in db
 						},
@@ -486,7 +475,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 9.99,
+							price: 999,
 							sku: `sku${testId}one`,
 							// Use attribute value from OTHER category
 							attributeValueIds: [otherCategory.attributes[0].values[0].id],
@@ -533,7 +522,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 9.99,
+							price: 999,
 							sku: `sku${testId}one`,
 							attributeValueIds: [
 								category.attributes[0].values[0].id,
@@ -577,7 +566,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
 			const variants = category.attributes[0].values.map(
 				(value: { id: string }, idx: number) => ({
-					price: 9.99 + idx,
+					price: 999 + idx,
 					sku: `sku${testId}${idx}`,
 					attributeValueIds: [value.id],
 				}),
@@ -637,12 +626,12 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 9.99,
+							price: 999,
 							sku: `sku${testId}one`,
 							attributeValueIds: [category.attributes[0].values[0].id],
 						},
 						{
-							price: 14.99,
+							price: 1499,
 							sku: `sku${testId}two`,
 							attributeValueIds: [category.attributes[0].values[0].id],
 						},
@@ -693,12 +682,12 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 9.99,
+							price: 999,
 							sku: `sku${testId}one`,
 							attributeValueIds: [attr1ValueId, attr2ValueId],
 						},
 						{
-							price: 14.99,
+							price: 1499,
 							sku: `sku${testId}two`,
 							attributeValueIds: [attr2ValueId, attr1ValueId],
 						},
@@ -741,12 +730,12 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 9.99,
+							price: 999,
 							sku: `sku${testId}one`,
 							attributeValueIds: [],
 						},
 						{
-							price: 14.99,
+							price: 1499,
 							sku: `sku${testId}two`,
 							attributeValueIds: [], // Both empty = duplicate combination
 						},
@@ -836,7 +825,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 			// Create variants using all values
 			const variants = category.attributes[0].values.map(
 				(value: { id: string }, idx: number) => ({
-					price: 9.99 + idx,
+					price: 999 + idx,
 					sku: `sku${testId}${idx}`,
 					attributeValueIds: [value.id],
 				}),
@@ -894,12 +883,12 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 9.99,
+							price: 999,
 							sku: `sku${testId}one`,
 							attributeValueIds: [],
 						},
 						{
-							price: 14.99,
+							price: 1499,
 							sku: `sku${testId}two`,
 							attributeValueIds: [],
 						},
@@ -941,12 +930,12 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 9.99,
+							price: 999,
 							sku: `sku${testId}one`,
 							attributeValueIds: [], // Empty when category requires attributes
 						},
 						{
-							price: 14.99,
+							price: 1499,
 							sku: `sku${testId}two`,
 							attributeValueIds: [],
 						},
@@ -989,7 +978,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 9.99,
+							price: 999,
 							sku: `sku${testId}one`,
 							attributeValueIds: [valueId, valueId], // Same ID twice
 						},

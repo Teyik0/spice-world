@@ -11,6 +11,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@spice-world/web/components/ui/table";
+import { formatPrice } from "@spice-world/web/lib/utils";
 import { useAtom, useAtomValue } from "jotai";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -35,7 +36,10 @@ export const statusVariants: Record<
 	ARCHIVED: "outline",
 };
 
-export const getCategoryName = (categoryId: string, categories: Category[]) => {
+export const getCategoryName = (
+	categoryId: string | undefined,
+	categories: Category[],
+) => {
 	return categories.find((c) => c.id === categoryId)?.name ?? "-";
 };
 
@@ -209,10 +213,10 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 								{getCategoryName(product.categoryId, categories)}
 							</TableCell>
 							<TableCell className="text-muted-foreground relative z-10">
-								{product.priceMin}€
+								{formatPrice(product.priceMin)}
 							</TableCell>
 							<TableCell className="text-muted-foreground relative z-10">
-								{product.priceMax}€
+								{formatPrice(product.priceMax)}
 							</TableCell>
 							<TableCell className="relative z-10">
 								<Badge variant="outline">{product.totalStock}</Badge>
@@ -222,12 +226,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 				})}
 				{products.length === 0 && (
 					<TableRow>
-						<TableCell
-							colSpan={8}
-							className="text-center text-muted-foreground"
-						>
-							No products found
-						</TableCell>
+						<TableCell colSpan={8}>No products found</TableCell>
 					</TableRow>
 				)}
 			</TableBody>

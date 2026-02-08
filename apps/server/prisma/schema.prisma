@@ -59,18 +59,19 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified Boolean   @default(false)
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
-  Comments      Comment[]
-  Order         Order[]
-  role          String    @default("user")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  name             String?
+  email            String?   @unique
+  emailVerified    Boolean   @default(false)
+  image            String?
+  accounts         Account[]
+  sessions         Session[]
+  Comments         Comment[]
+  Order            Order[]
+  role             String    @default("user")
+  stripeCustomerId String?   @unique
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   banned     Boolean?
   banReason  String?
@@ -174,7 +175,6 @@ model Product {
   comments Comment[]
 
   variants ProductVariant[] // All variations of this product (e.g., Poivre Noir 100g, Poivre Blanc 250g)
-  orders   Order[]
 
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   categoryId String
@@ -197,12 +197,12 @@ model ProductVariant {
   attributeValues AttributeValue[] // Combination of attributes (e.g., [Noir, 100g])
 
   sku      String? @unique // Stock Keeping Unit - unique code (e.g., "POIV-NOIR-100G")
-  price    Float // Price for this specific variant
+  price    Int // Price in cents (e.g., 1999 = €19.99)
   currency String  @default("EUR")
 
   stock Int @default(0) // Available stock for this variant
 
-  // Additional fields like weight, dimensions, etc. can be added here
+  orderItems OrderItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -217,22 +217,68 @@ enum ProductStatus {
   ARCHIVED
 }
 
-model Order {
-  id            String      @id @default(uuid())
-  paymentIntent String      @unique
-  stripeSession String
-  status        OrderStatus
-  user          User        @relation(fields: [userId], references: [id])
-  userId        String
-  products      Product[]
-  totalPrice    Float
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-}
-
 enum OrderStatus {
   PENDING
-  FULLFILLED
+  PAID
+  FULFILLED
   CANCELLED
-  DECLINED
+  REFUNDED
+}
+
+enum ShippingStatus {
+  PENDING
+  SHIPPED
+  DELIVERED
+}
+
+model Order {
+  id                    String      @id @default(uuid())
+  stripeSessionId       String      @unique
+  stripePaymentIntentId String?     @unique
+  status                OrderStatus @default(PENDING)
+
+  userId String
+  user   User        @relation(fields: [userId], references: [id])
+  items  OrderItem[]
+
+  subtotalAmount Int // Amount in cents
+  taxAmount      Int @default(0) // Amount in cents
+  shippingAmount Int @default(0) // Amount in cents
+  totalAmount    Int // Amount in cents
+
+  shippingAddress Json?
+  shippingStatus  ShippingStatus @default(PENDING)
+  trackingNumber  String?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id      String @id @default(uuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId    String
+  productName  String
+  productImage String?
+
+  variantId   String?
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+  variantName String?
+  variantSku  String?
+
+  unitPrice  Int // Price in cents
+  quantity   Int
+  totalPrice Int // Amount in cents
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([variantId])
 }

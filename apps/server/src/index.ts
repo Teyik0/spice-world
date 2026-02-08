@@ -1,13 +1,15 @@
+import "@spice-world/server/lib/env";
 import { cors } from "@elysiajs/cors";
-import { openapi } from "@elysiajs/openapi";
 import { opentelemetry } from "@elysiajs/opentelemetry";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
+import { env } from "@spice-world/server/lib/env";
 import { attributeRouter } from "@spice-world/server/modules/attributes";
 import { categoryRouter } from "@spice-world/server/modules/categories";
+import { ordersRouter } from "@spice-world/server/modules/orders";
 import { productsRouter } from "@spice-world/server/modules/products";
 import { Elysia } from "elysia";
-import { betterAuthPlugin, OpenAPI } from "./plugins/better-auth.plugin.tsx";
+import { betterAuthPlugin } from "./plugins/better-auth.plugin.tsx";
 
 const formattedDate = () =>
 	new Date().toLocaleString("en-US", {
@@ -30,20 +32,12 @@ const app = new Elysia()
 					new OTLPTraceExporter({
 						url: "https://api.axiom.co/v1/traces",
 						headers: {
-							Authorization: `Bearer ${Bun.env.AXIOM_TOKEN}`,
+							Authorization: `Bearer ${env.AXIOM_TOKEN}`,
 							"X-Axiom-Dataset": "spice-world",
 						},
 					}),
 				),
 			],
-		}),
-	)
-	.use(
-		openapi({
-			documentation: {
-				components: await OpenAPI.components,
-				paths: await OpenAPI.getPaths(),
-			},
 		}),
 	)
 	.use(
@@ -67,7 +61,7 @@ const app = new Elysia()
 	})
 	.onAfterResponse(({ user, path, set }) => {
 		console.log(`${formattedDate()} - RESPONSE ${path}`, {
-			performance: `${((performance.now() - startTime) / 1000).toFixed(2)} s`,
+			performance: `${(performance.now() - startTime).toFixed(2)} ms`,
 			status: set.status,
 			user: user ? user.id : "anonymous",
 		});
@@ -83,6 +77,7 @@ const app = new Elysia()
 	.use(categoryRouter)
 	.use(attributeRouter)
 	.use(productsRouter)
+	.use(ordersRouter)
 	.listen(Bun.env.PORT ?? 3001);
 
 console.log(

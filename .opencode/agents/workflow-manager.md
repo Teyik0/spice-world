@@ -5,7 +5,27 @@ mode: primary
 temperature: 0.2
 permission:
   edit: ask
-  bash: ask
+  bash:
+    "*": ask
+    "git commit*": deny
+    "git push*": deny
+    "git *": allow
+    "cd *": allow
+    "ls": allow
+    "ls *": allow
+    "cat *": allow
+    "head *": allow
+    "tail *": allow
+    "find *": allow
+    "grep *": allow
+    "sed *": allow
+    "pwd": allow
+    "echo *": allow
+    "wc *": allow
+    "bun test": allow
+    "bun test *": allow
+    "bun run tsc *": allow
+    "bun run biome *": allow
 tools:
   task: true
   read: true

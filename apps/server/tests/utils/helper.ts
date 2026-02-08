@@ -1,4 +1,4 @@
-import { expect } from "bun:test";
+import { expect, spyOn } from "bun:test";
 import type { treaty } from "@elysiajs/eden";
 import { faker } from "@faker-js/faker";
 import type { productsRouter } from "@spice-world/server/modules/products";
@@ -12,33 +12,34 @@ export function expectDefined<T>(value: T): asserts value is NonNullable<T> {
 	expect(value).not.toBeNull();
 }
 
-export const createUploadedFileData = (
-	files: File | File[],
-): UploadedFileData[] | UploadedFileData => {
-	if (Array.isArray(files)) {
-		return files.map((file) => ({
-			key: `mock-key-${Date.now()}-${crypto.randomUUID()}`,
-			url: "https://mock-uploadthing.com/image.webp",
-			appUrl: "https://mock-uploadthing.com/image.webp",
-			ufsUrl: "https://mock-uploadthing.com/image.webp",
-			name: file.name,
-			size: file.size,
-			customId: null,
-			type: "image/webp",
-			fileHash: "mock-hash",
+const createUploadedFileData = (file: File): UploadedFileData => ({
+	key: `mock-key-${Date.now()}-${crypto.randomUUID()}`,
+	url: "https://mock-uploadthing.com/image.webp",
+	appUrl: "https://mock-uploadthing.com/image.webp",
+	ufsUrl: "https://mock-uploadthing.com/image.webp",
+	name: file.name,
+	size: file.size,
+	customId: null,
+	type: "image/webp",
+	fileHash: "mock-hash",
+});
+
+export const mockUtapi = async () => {
+	const imagesModule = await import("@spice-world/server/lib/images");
+
+	spyOn(imagesModule.utapi, "uploadFiles").mockImplementation((async (
+		files: File | File[],
+	) => {
+		const fileArray = Array.isArray(files) ? files : [files];
+		return fileArray.map((file) => ({
+			data: createUploadedFileData(file as File),
+			error: null,
 		}));
-	}
-	return {
-		key: `mock-key-${Date.now()}-${crypto.randomUUID()}`,
-		url: "https://mock-uploadthing.com/image.webp",
-		appUrl: "https://mock-uploadthing.com/image.webp",
-		ufsUrl: "https://mock-uploadthing.com/image.webp",
-		name: files.name,
-		size: files.size,
-		customId: null,
-		type: "image/webp",
-		fileHash: "mock-hash",
-	};
+	}) as typeof imagesModule.utapi.uploadFiles);
+
+	spyOn(imagesModule.utapi, "deleteFiles").mockImplementation((async () => {
+		return { success: true, deletedCount: 1 };
+	}) as typeof imagesModule.utapi.deleteFiles);
 };
 
 export function randomLowerString(length: number = 10): string {
@@ -222,7 +223,7 @@ interface SetupProductOptions {
  * const { product, category } = await setupProduct({
  *   attributeCount: 2,
  *   attributeValueCount: 2,
- *   variants: [{ price: 10, sku: "TEST", stock: 10, attributeValueIds: [] }],
+ *   variants: [{ price: 1000, sku: "TEST", stock: 10, attributeValueIds: [] }],
  *   imagesCreate: [{ isThumbnail: true, file: file(filePath) }]
  * });
  */

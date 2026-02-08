@@ -1,16 +1,17 @@
-import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import * as imagesModule from "@spice-world/server/lib/images";
 import { prisma } from "@spice-world/server/lib/prisma";
 import type { categoryRouter } from "@spice-world/server/modules/categories";
 import type { BunFile } from "bun";
 import { file } from "bun";
 import { createTestDatabase } from "./utils/db-manager";
-import { createUploadedFileData, expectDefined } from "./utils/helper";
+import { expectDefined, mockUtapi } from "./utils/helper";
 
 describe.concurrent("Category routes test", () => {
 	let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
 	let api: ReturnType<typeof treaty<typeof categoryRouter>>;
+	const filePath1 = `${import.meta.dir}/public/cumin.webp`;
+	const filePath2 = `${import.meta.dir}/public/curcuma.jpg`;
 
 	beforeAll(async () => {
 		if (Bun.env.NODE_ENV === "production") {
@@ -19,16 +20,11 @@ describe.concurrent("Category routes test", () => {
 		if (!Bun.env.DATABASE_URL) {
 			throw new Error("DATABASE_URL should be set");
 		}
-		testDb = await createTestDatabase("category.test.ts");
 
-		spyOn(imagesModule.utapi, "uploadFiles").mockImplementation((async (
-			files,
-		) => {
-			return {
-				data: createUploadedFileData(files as File),
-				error: null,
-			};
-		}) as typeof imagesModule.utapi.uploadFiles);
+		// Mock uploadthing BEFORE importing the router
+		await mockUtapi();
+
+		testDb = await createTestDatabase("category.test.ts");
 
 		const { categoryRouter } = await import(
 			"@spice-world/server/modules/categories"
@@ -370,10 +366,7 @@ describe.concurrent("Category routes test", () => {
 
 	describe("Update category - PATCH/:id", () => {
 		test("should update category with new name only", async () => {
-			const category = await postCategory(
-				"initial category",
-				file(`${import.meta.dir}/public/cumin.webp`),
-			);
+			const category = await postCategory("initial category", file(filePath1));
 			expectDefined(category.data);
 
 			const { data, status } = await api
@@ -389,17 +382,14 @@ describe.concurrent("Category routes test", () => {
 		});
 
 		test("should update category with new file only", async () => {
-			const category = await postCategory(
-				"categoryuno",
-				file(`${import.meta.dir}/public/cumin.webp`),
-			);
+			const category = await postCategory("categoryuno", file(filePath1));
 			expectDefined(category.data);
 
 			const { data, status } = await api
 				.categories({ id: category.data.id })
 				.patch({
 					name: category.data.name,
-					file: file(`${import.meta.dir}/public/garlic.webp`),
+					file: file(filePath2),
 				});
 
 			expect(status).toBe(200);

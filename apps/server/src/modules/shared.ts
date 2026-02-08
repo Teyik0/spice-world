@@ -102,10 +102,11 @@ export const uuidGuard = t.Object({ id: uuid });
 export type uuidGuard = typeof uuidGuard.static;
 
 export const uploadFileErrStatus = (
-	fileError: UploadFileResult["error"] | { message: string },
+	fileError: UploadFileResult["error"] | { message: string } | string | null,
 ) => {
-	throw status(
-		"Bad Gateway",
-		fileError ?? "Unknown error while uploading file(s)",
-	);
+	const message =
+		typeof fileError === "string"
+			? fileError
+			: (fileError?.message ?? "Unknown error while uploading file(s)");
+	throw status("Bad Gateway", message);
 };

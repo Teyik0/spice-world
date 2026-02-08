@@ -23,14 +23,6 @@ describe.concurrent("Prisma client singleton", () => {
 		expect(globalThis.__prisma).toBeDefined();
 	});
 
-	test("should throw error when DATABASE_URL is not defined", async () => {
-		globalThis.__prisma = undefined;
-		Bun.env.DATABASE_URL = undefined;
-		expect(() => {
-			prisma.$connect;
-		}).toThrow("DATABASE_URL environment variable is not defined");
-	});
-
 	test("should reuse existing client and not create multiple connections", async () => {
 		globalThis.__prisma = undefined;
 		const firstAccess = prisma.$connect;
