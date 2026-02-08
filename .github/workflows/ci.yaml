@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [dev]
 
+env:
+  BUN_VERSION: latest
+
 jobs:
   setup:
     name: Setup & Cache
@@ -27,7 +30,7 @@ jobs:
             node_modules
             */*/node_modules
             ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb', '**/package.json') }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock', '**/package.json') }}
           restore-keys: |
             ${{ runner.os }}-bun-
 
@@ -93,7 +96,7 @@ jobs:
       - name: Generate Prisma Client (server only)
         if: matrix.workspace == 'apps/server'
         working-directory: apps/server
-        run: bunx prisma generate
+        run: bun run prisma generate
 
       - name: Type check ${{ matrix.workspace }}
         working-directory: ${{ matrix.workspace }}
@@ -117,6 +120,7 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
+
     steps:
       - uses: actions/checkout@v4
       - name: Setup Bun
@@ -135,8 +139,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
         run: |
-          bunx prisma generate
-          bunx prisma db push --skip-generate
+          bun run prisma generate
+          bun run prisma db push
 
       - name: Run tests
         working-directory: apps/server
@@ -154,7 +158,6 @@ jobs:
     name: Build (${{ matrix.app }})
     runs-on: ubuntu-latest
     needs: [lint, typecheck, test]
-    if: always() && !cancelled() && needs.lint.result == 'success' && needs.typecheck.result == 'success' && needs.test.result == 'success'
     strategy:
       fail-fast: false
       matrix:
@@ -163,6 +166,7 @@ jobs:
             path: apps/server
           - name: web
             path: apps/web
+
     steps:
       - uses: actions/checkout@v4
 
@@ -179,16 +183,8 @@ jobs:
       - name: Generate Prisma Client (server only)
         if: matrix.app.name == 'server'
         working-directory: ${{ matrix.app.path }}
-        run: bunx prisma generate
+        run: bun run prisma generate
 
       - name: Build ${{ matrix.app.name }}
         working-directory: ${{ matrix.app.path }}
         run: bun run build
-
-      - name: Upload build artifacts
-        if: matrix.app.name == 'web'
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-${{ matrix.app.name }}
-          path: ${{ matrix.app.path }}/dist
-          retention-days: 7
