@@ -91,7 +91,7 @@ describe("Stripe Checkout", () => {
 				attributeValueCount: 2,
 				variants: [
 					{
-						price: 10,
+						price: 1000,
 						sku: "NO-SYNC-NEEDED-001",
 						stock: 5,
 						attributeValueIds: [],
@@ -141,7 +141,7 @@ describe("Stripe Checkout", () => {
 				attributeValueCount: 2,
 				variants: [
 					{
-						price: 10,
+						price: 1000,
 						sku: "STRIPE-TEST-001",
 						stock: 5,
 						attributeValueIds: [],

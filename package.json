@@ -8,6 +8,7 @@
     "dev": "bun run --parallel --filter './apps/*' dev stripe",
     "test": "bun run --parallel --filter './apps/*' test",
     "build": "bun run --parallel --filter './apps/*' build",
+    "start": "bun run --parallel --filter './apps/*' start stripe",
     "format": "ultracite fix",
     "cache:clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules && bun pm cache rm",
     "iup": "bun update --interactive --recursive"

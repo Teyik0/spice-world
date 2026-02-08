@@ -4,7 +4,7 @@ import { stripeClient } from "../plugins/better-auth.plugin";
 export interface CheckoutItem {
 	name: string;
 	description?: string | null;
-	price: number;
+	price: number; // Price in cents (e.g., 1999 = €19.99)
 	currency: string;
 	quantity: number;
 	images?: string[];
@@ -25,12 +25,12 @@ export class StripeApiError extends Error {
  * No product synchronization needed - prices are created at checkout time
  *
  * @param params - Checkout creation parameters
- * @param params.items - Array of items to include in checkout
- * @param params.metadata - Additional metadata to attach to the session
+ * @param params.items - Array of items to include in checkout (prices in cents)
+ * @param params.metadata - Additional metadata to attach to session
  * @param params.successUrl - URL to redirect to after successful checkout
  * @param params.cancelUrl - URL to redirect to if checkout is cancelled
- * @returns Stripe checkout session containing the session ID and URL
- * @throws {StripeApiError} If the Stripe API call fails
+ * @returns Stripe checkout session containing session ID and URL
+ * @throws {StripeApiError} If Stripe API call fails
  */
 export async function createStripeCheckout({
 	items,
@@ -51,7 +51,7 @@ export async function createStripeCheckout({
 					description: item.description ?? undefined,
 					images: item.images,
 				},
-				unit_amount: Math.round(item.price * 100), // Convert to cents
+				unit_amount: item.price, // Price is already in cents
 			},
 			quantity: item.quantity,
 		}));

@@ -73,6 +73,8 @@ export const ProductFormImages = ({
 	const updateSidebar = useProductSidebarSync(isNew, slug);
 	// Track all created blob URLs for proper cleanup
 	const createdBlobUrls = useRef<Set<string>>(new Set());
+	// Cache blob URLs by File object to prevent creating duplicate URLs for the same file
+	const fileUrlCache = useRef<Map<File, string>>(new Map());
 
 	useEffect(() => {
 		if (!api) return;
@@ -102,8 +104,15 @@ export const ProductFormImages = ({
 
 			let url = img.urlMedium;
 			if (updatedFile) {
-				url = URL.createObjectURL(updatedFile);
-				createdBlobUrls.current.add(url);
+				// Use cached URL if available, otherwise create new one
+				const cachedUrl = fileUrlCache.current.get(updatedFile);
+				if (cachedUrl) {
+					url = cachedUrl;
+				} else {
+					url = URL.createObjectURL(updatedFile);
+					fileUrlCache.current.set(updatedFile, url);
+					createdBlobUrls.current.add(url);
+				}
 			}
 
 			images.push({
@@ -119,10 +128,20 @@ export const ProductFormImages = ({
 
 		// Process new images
 		for (const op of createOps) {
-			const url = URL.createObjectURL(op.file);
-			const urlThumb = URL.createObjectURL(op.file);
-			createdBlobUrls.current.add(url);
-			createdBlobUrls.current.add(urlThumb);
+			// Use cached URL if available, otherwise create new one
+			let url = fileUrlCache.current.get(op.file);
+			if (!url) {
+				url = URL.createObjectURL(op.file);
+				fileUrlCache.current.set(op.file, url);
+				createdBlobUrls.current.add(url);
+			}
+
+			let urlThumb = fileUrlCache.current.get(op.file);
+			if (!urlThumb) {
+				urlThumb = URL.createObjectURL(op.file);
+				fileUrlCache.current.set(op.file, urlThumb);
+				createdBlobUrls.current.add(urlThumb);
+			}
 
 			images.push({
 				id: `new-${Math.random().toString(36).slice(2)}`,

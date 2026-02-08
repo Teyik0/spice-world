@@ -63,19 +63,22 @@ export const unknownError = (
 	} as const;
 };
 
-export const generateRandomColor = (): string => {
-	const colors = [
-		"#3b82f6",
-		"#ef4444",
-		"#10b981",
-		"#f59e0b",
-		"#8b5cf6",
-		"#ec4899",
-		"#06b6d4",
-		"#f97316",
-	];
-	return colors[Math.floor(Math.random() * colors.length)] || "#3b82f6";
-};
+/**
+ * Formats price in cents to decimal string with currency symbol.
+ * Converts backend storage (cents) to user-friendly display (decimal).
+ * @param cents - Price in cents (e.g., 1999 for €19.99)
+ * @returns Formatted price string (e.g., "19.99€")
+ * @example
+ * formatPrice(1999)  // Returns "19.99€"
+ * formatPrice(1099)  // Returns "10.99€"
+ * formatPrice(null)  // Returns "0.00€"
+ */
+export function formatPrice(cents: number | null | undefined): string {
+	if (cents == null || cents === undefined) {
+		return "0.00€";
+	}
+	return `${(cents / 100).toFixed(2)}€`;
+}
 
 export async function urlToFile(url: string, filename: string): Promise<File> {
 	const response = await fetch(url);

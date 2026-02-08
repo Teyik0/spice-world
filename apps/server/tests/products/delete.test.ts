@@ -44,7 +44,7 @@ describe.concurrent("DELETE /products/:id - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 10,
+							price: 1000,
 							sku: "DELETE-TEST-1",
 							stock: 10,
 							attributeValueIds: [

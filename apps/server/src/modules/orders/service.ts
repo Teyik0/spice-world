@@ -12,7 +12,7 @@ interface CartItem {
 	productName: string;
 	variantName?: string;
 	variantSku?: string;
-	price: number;
+	price: number; // Price in cents
 	quantity: number;
 }
 
@@ -74,7 +74,6 @@ export const orderService = {
 						quantity: item.quantity,
 					});
 				} catch {
-					// If update fails due to stock constraint, throw insufficient stock error
 					throw new Error(`Insufficient stock for variant ${item.variantId}`);
 				}
 			}
@@ -85,14 +84,15 @@ export const orderService = {
 			const shipping = subtotal > 50 ? 0 : 5;
 
 			// Create order with temporary stripe session id
+			// All monetary values stored as cents (Int)
 			const order = await tx.order.create({
 				data: {
 					userId,
 					status: "PENDING",
 					stripeSessionId: "temp",
-					subtotalAmount: subtotal,
-					shippingAmount: shipping,
-					totalAmount: subtotal + shipping,
+					subtotalAmount: Math.round(subtotal * 100),
+					shippingAmount: Math.round(shipping * 100),
+					totalAmount: Math.round((subtotal + shipping) * 100),
 					shippingAddress: toJsonValue(shippingAddress),
 					items: {
 						create: enrichedItems.map((item) => ({
@@ -101,9 +101,9 @@ export const orderService = {
 							variantId: item.variantId,
 							variantName: item.variantName,
 							variantSku: item.variantSku,
-							unitPrice: item.price,
+							unitPrice: Math.round(item.price * 100),
 							quantity: item.quantity,
-							totalPrice: item.price * item.quantity,
+							totalPrice: Math.round(item.price * item.quantity * 100),
 						})),
 					},
 				},
@@ -139,11 +139,11 @@ export const orderService = {
 	) {
 		return await prisma.$transaction(async (tx) => {
 			// Verify the order exists and matches the metadata orderId
-			const existingOrder = await tx.order.findUnique({
+			const existingOrder = await tx.order.findUniqueOrThrow({
 				where: { stripeSessionId },
 			});
 
-			if (!existingOrder || existingOrder.id !== orderId) {
+			if (existingOrder.id !== orderId) {
 				throw new Error(
 					`Order mismatch: session ${stripeSessionId} does not match order ${orderId}`,
 				);

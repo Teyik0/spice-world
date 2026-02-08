@@ -48,7 +48,7 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
 			variants: {
 				create: [
 					{
-						price: 10,
+						price: 1000,
 						sku: "BULK-STATUS-1",
 						stock: 10,
 						attributeValueIds: [categoryAttributes[0]?.values[0]?.id as string],
@@ -103,7 +103,7 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
 			variants: {
 				create: [
 					{
-						price: 15,
+						price: 1500,
 						sku: "BULK-CAT-1",
 						stock: 20,
 						attributeValueIds: [spicesAttributes[0]?.values[0]?.id as string],

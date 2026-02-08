@@ -92,7 +92,7 @@ describe("Order Service - Stock Validation & Reservation", () => {
 					},
 					variants: {
 						create: {
-							price: 10.99,
+							price: 1099, // €10.99 in cents
 							currency: "EUR",
 							stock: 10,
 							sku: `STOCK-TEST-${testId}`,
@@ -157,7 +157,7 @@ describe("Order Service - Stock Validation & Reservation", () => {
 					},
 					variants: {
 						create: {
-							price: 10.99,
+							price: 1099, // €10.99 in cents
 							currency: "EUR",
 							stock: 2,
 							sku: `STOCK-TEST-LOW-${testId}`,
@@ -173,7 +173,7 @@ describe("Order Service - Stock Validation & Reservation", () => {
 			const variantId = product.variants[0].id;
 
 			// Attempt checkout with quantity 5 (more than available stock of 2)
-			await expect(
+			expect(
 				orderService.createCheckout(
 					normalUser.user.id,
 					[{ variantId, quantity: 5 }],
@@ -202,7 +202,7 @@ describe("Order Service - Stock Validation & Reservation", () => {
 			const nonExistentVariantId = crypto.randomUUID();
 
 			// Attempt checkout with non-existent variant
-			await expect(
+			expect(
 				orderService.createCheckout(
 					normalUser.user.id,
 					[{ variantId: nonExistentVariantId, quantity: 1 }],
@@ -244,7 +244,7 @@ describe("Order Service - Stock Validation & Reservation", () => {
 					},
 					variants: {
 						create: {
-							price: 10,
+							price: 1000, // €10.00 in cents
 							currency: "EUR",
 							stock: 5,
 							sku: `MULTI-1-${testId}`,
@@ -277,7 +277,7 @@ describe("Order Service - Stock Validation & Reservation", () => {
 					},
 					variants: {
 						create: {
-							price: 15,
+							price: 1500, // €15.00 in cents
 							currency: "EUR",
 							stock: 1, // Only 1 in stock
 							sku: `MULTI-2-${testId}`,
@@ -355,7 +355,7 @@ describe("Order Service - Stock Validation & Reservation", () => {
 					},
 					variants: {
 						create: {
-							price: 10.99,
+							price: 1099, // €10.99 in cents
 							currency: "EUR",
 							stock: 10,
 							sku: `PAID-TEST-${testId}`,

@@ -223,7 +223,7 @@ interface SetupProductOptions {
  * const { product, category } = await setupProduct({
  *   attributeCount: 2,
  *   attributeValueCount: 2,
- *   variants: [{ price: 10, sku: "TEST", stock: 10, attributeValueIds: [] }],
+ *   variants: [{ price: 1000, sku: "TEST", stock: 10, attributeValueIds: [] }],
  *   imagesCreate: [{ isThumbnail: true, file: file(filePath) }]
  * });
  */

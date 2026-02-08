@@ -39,7 +39,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-C1", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-C1", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -59,7 +59,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-C2", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-C2", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [{ altText: "First image", file: file(filePath1) }],
 			});
@@ -77,7 +77,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-C3", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-C3", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -106,7 +106,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-C4", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-C4", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -131,7 +131,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-C5", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-C5", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: false, altText: "First image", file: file(filePath1) },
@@ -156,7 +156,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-C6", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-C6", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ altText: "First image", file: file(filePath1) },
@@ -177,7 +177,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-C7", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-C7", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: false, altText: "First image", file: file(filePath1) },
@@ -202,7 +202,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-C8", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-C8", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: false, altText: "First image", file: file(filePath1) },
@@ -234,7 +234,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-U1", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-U1", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -279,7 +279,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-U2", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-U2", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -332,7 +332,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-U3", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-U3", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -380,7 +380,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-U4", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-U4", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -420,7 +420,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-U5", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-U5", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -461,7 +461,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-U6", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-U6", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -515,7 +515,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-P1", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-P1", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -558,7 +558,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-P2", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-P2", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -601,7 +601,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-P3", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-P3", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -654,7 +654,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-H1", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-H1", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -695,7 +695,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-H2", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-H2", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -727,7 +727,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-H3", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-H3", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -768,7 +768,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-H4", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-H4", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -813,7 +813,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-A1", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-A1", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -863,7 +863,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-A2", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-A2", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -912,7 +912,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-A3", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-A3", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -968,7 +968,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-D1", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-D1", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -1004,7 +1004,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-D4", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-D4", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -1051,7 +1051,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-D2", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-D2", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -1081,7 +1081,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-D3", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-D3", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -1126,7 +1126,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-X1", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-X1", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -1171,7 +1171,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-X3", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-X3", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -1211,7 +1211,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-X4", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-X4", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -1257,7 +1257,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-X5", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-X5", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: true, altText: "First image", file: file(filePath1) },
@@ -1298,7 +1298,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "THU-X2", stock: 10, attributeValueIds: [] },
+					{ price: 1000, sku: "THU-X2", stock: 10, attributeValueIds: [] },
 				],
 				imagesCreate: [
 					{ isThumbnail: false, altText: "First image", file: file(filePath1) },
@@ -1336,7 +1336,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeValueCount: 2,
 				variants: [
 					{
-						price: 10,
+						price: 1000,
 						sku: "DUP-IMG-TEST-4",
 						stock: 10,
 						attributeValueIds: [],
@@ -1389,7 +1389,7 @@ describe("Thumbnail Validation & Auto Assign", () => {
 				attributeValueCount: 2,
 				variants: [
 					{
-						price: 10,
+						price: 1000,
 						sku: "DUP-IMG-TEST-6",
 						stock: 10,
 						attributeValueIds: [],

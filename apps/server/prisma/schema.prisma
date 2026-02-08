@@ -197,7 +197,7 @@ model ProductVariant {
   attributeValues AttributeValue[] // Combination of attributes (e.g., [Noir, 100g])
 
   sku      String? @unique // Stock Keeping Unit - unique code (e.g., "POIV-NOIR-100G")
-  price    Float // Price for this specific variant
+  price    Int // Price in cents (e.g., 1999 = €19.99)
   currency String  @default("EUR")
 
   stock Int @default(0) // Available stock for this variant
@@ -241,10 +241,10 @@ model Order {
   user   User        @relation(fields: [userId], references: [id])
   items  OrderItem[]
 
-  subtotalAmount Float
-  taxAmount      Float @default(0)
-  shippingAmount Float @default(0)
-  totalAmount    Float
+  subtotalAmount Int // Amount in cents
+  taxAmount      Int @default(0) // Amount in cents
+  shippingAmount Int @default(0) // Amount in cents
+  totalAmount    Int // Amount in cents
 
   shippingAddress Json?
   shippingStatus  ShippingStatus @default(PENDING)
@@ -274,9 +274,9 @@ model OrderItem {
   variantName String?
   variantSku  String?
 
-  unitPrice  Float
+  unitPrice  Int // Price in cents
   quantity   Int
-  totalPrice Float
+  totalPrice Int // Amount in cents
 
   @@index([orderId])
   @@index([productId])

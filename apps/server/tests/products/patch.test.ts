@@ -66,7 +66,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 10.99,
+							price: 1099,
 							sku: "first product variant",
 							stock: 10,
 							attributeValueIds: [],
@@ -87,7 +87,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 11.99,
+							price: 1199,
 							sku: "second product variant",
 							stock: 11,
 							attributeValueIds: [],
@@ -113,7 +113,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 			const { product, category } = await setupProduct({
 				attributeCount: 2,
 				attributeValueCount: 2,
-				variants: [{ price: 10, stock: 10, attributeValueIds: [] }],
+				variants: [{ price: 1000, stock: 10, attributeValueIds: [] }],
 				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
 
@@ -124,7 +124,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 					variants: {
 						create: [
 							{
-								price: 15,
+								price: 1500,
 								stock: 15,
 								attributeValueIds: [
 									category.attributes[0]?.values[0]?.id as string,
@@ -161,7 +161,12 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "VERSION-TEST", stock: 10, attributeValueIds: [] },
+					{
+						price: 1000,
+						sku: "VERSION-TEST",
+						stock: 10,
+						attributeValueIds: [],
+					},
 				],
 				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
@@ -203,7 +208,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 					variants: {
 						create: [
 							{
-								price: 10,
+								price: 1000,
 								sku: "ATTR-ERR-TEST",
 								stock: 10,
 								attributeValueIds: [
@@ -222,7 +227,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 15,
+							price: 1500,
 							sku: "INVALID-VARIANT",
 							stock: 20,
 							attributeValueIds: [herbsAttributes[0]?.values[0]?.id as string],
@@ -270,7 +275,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 					variants: {
 						create: [
 							{
-								price: 10,
+								price: 1000,
 								sku: "ATTR-UPD-TEST",
 								stock: 10,
 								attributeValueIds: [
@@ -337,7 +342,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 					variants: {
 						create: [
 							{
-								price: 10,
+								price: 1000,
 								sku: "CAT-CHG-TEST",
 								stock: 10,
 								attributeValueIds: [
@@ -396,7 +401,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 					variants: {
 						create: [
 							{
-								price: 10,
+								price: 1000,
 								sku: "CAT-ATOMIC-1",
 								stock: 10,
 								attributeValueIds: [
@@ -422,7 +427,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 						delete: [existingVariantId],
 						create: [
 							{
-								price: 15,
+								price: 1500,
 								sku: "CAT-ATOMIC-NEW",
 								stock: 20,
 								attributeValueIds: [
@@ -448,7 +453,12 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "DUP-ATTR-TEST", stock: 10, attributeValueIds: [] },
+					{
+						price: 1000,
+						sku: "DUP-ATTR-TEST",
+						stock: 10,
+						attributeValueIds: [],
+					},
 				],
 				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
@@ -491,7 +501,12 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				attributeCount: 2,
 				attributeValueCount: 3,
 				variants: [
-					{ price: 10, sku: "UPDATE-TEST-1", stock: 50, attributeValueIds: [] },
+					{
+						price: 1000,
+						sku: "UPDATE-TEST-1",
+						stock: 50,
+						attributeValueIds: [],
+					},
 				],
 				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
@@ -504,7 +519,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				description: "an updated description",
 				status: "DRAFT",
 				variants: {
-					update: [{ id: variantToUpdate.id, price: 12.99, stock: 524 }],
+					update: [{ id: variantToUpdate.id, price: 1299, stock: 524 }],
 				},
 			});
 
@@ -520,7 +535,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				(v) => v.id === variantToUpdate.id,
 			);
 			expectDefined(updatedVariant);
-			expect(updatedVariant.price).toBe(12.99);
+			expect(updatedVariant.price).toBe(1299);
 			expect(updatedVariant.price).not.toBe(product.variants[0]?.price);
 			expect(updatedVariant.stock).toBe(524);
 			expect(updatedVariant.price).not.toBe(product.variants[0]?.stock);
@@ -532,7 +547,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				attributeValueCount: 2,
 				variants: [
 					{
-						price: 10,
+						price: 1000,
 						sku: "IMG-UPDATE-TEST",
 						stock: 10,
 						attributeValueIds: [],
@@ -563,7 +578,12 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "ASG-IMG-TEST", stock: 10, attributeValueIds: [] },
+					{
+						price: 1000,
+						sku: "ASG-IMG-TEST",
+						stock: 10,
+						attributeValueIds: [],
+					},
 				],
 				imagesCreate: [
 					{ isThumbnail: false, file: file(filePath1) },
@@ -590,7 +610,12 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "IMG-META-TEST", stock: 10, attributeValueIds: [] },
+					{
+						price: 1000,
+						sku: "IMG-META-TEST",
+						stock: 10,
+						attributeValueIds: [],
+					},
 				],
 				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
@@ -619,7 +644,12 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				attributeCount: 4,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "ADD-VAR-TEST", stock: 10, attributeValueIds: [] },
+					{
+						price: 1000,
+						sku: "ADD-VAR-TEST",
+						stock: 10,
+						attributeValueIds: [],
+					},
 				],
 				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
@@ -630,7 +660,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				variants: {
 					create: [
 						{
-							price: 15,
+							price: 1500,
 							sku: "NEW-VARIANT-1",
 							stock: 20,
 							attributeValueIds: [
@@ -661,7 +691,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				attributeValueCount: 2,
 				variants: [
 					{
-						price: 10,
+						price: 1000,
 						stock: 10,
 						attributeValueIds: [],
 					},
@@ -676,7 +706,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 					variants: {
 						create: [
 							{
-								price: 15,
+								price: 1500,
 								stock: 15,
 								attributeValueIds: [
 									category.attributes[0]?.values[0]?.id as string,
@@ -703,7 +733,12 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				attributeCount: 2,
 				attributeValueCount: 2,
 				variants: [
-					{ price: 10, sku: "FILE-REP-TEST", stock: 10, attributeValueIds: [] },
+					{
+						price: 1000,
+						sku: "FILE-REP-TEST",
+						stock: 10,
+						attributeValueIds: [],
+					},
 				],
 				imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
 			});
@@ -727,7 +762,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 				attributeValueCount: 2,
 				variants: [
 					{
-						price: 10,
+						price: 1000,
 						sku: "EARLY-EXIT-001",
 						stock: 50,
 						attributeValueIds: [],
