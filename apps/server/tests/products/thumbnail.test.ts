@@ -1,15 +1,10 @@
-import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import * as imagesModule from "@spice-world/server/lib/images";
 import type { productsRouter } from "@spice-world/server/modules/products";
 import type { Image } from "@spice-world/server/prisma/client";
 import { file } from "bun";
 import { createTestDatabase } from "../utils/db-manager";
-import {
-	createSetupProduct,
-	createUploadedFileData,
-	expectDefined,
-} from "../utils/helper";
+import { createSetupProduct, expectDefined, mockUtapi } from "../utils/helper";
 
 let api: ReturnType<typeof treaty<typeof productsRouter>>;
 
@@ -21,39 +16,14 @@ describe("Thumbnail Validation & Auto Assign", () => {
 	const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
 
 	beforeAll(async () => {
+		// Mock uploadthing BEFORE importing the router
+		await mockUtapi();
+
 		testDb = await createTestDatabase("thumbnail.test.ts");
 
 		const { productsRouter } = await import(
 			"@spice-world/server/modules/products"
 		);
-
-		// Mock uploadFiles
-		spyOn(imagesModule.utapi, "uploadFiles").mockImplementation((async (
-			files,
-		) => {
-			return {
-				data: createUploadedFileData(files as File | File[]),
-				error: null,
-			};
-		}) as typeof imagesModule.utapi.uploadFiles);
-
-		// Mock deleteFiles
-		spyOn(imagesModule.utapi, "deleteFiles").mockImplementation((async () => {
-			return { success: true, deletedCount: 1 };
-		}) as typeof imagesModule.utapi.deleteFiles);
-
-		// Mock _uploadSingleSize to skip actual image processing
-		// Needed because resize is leading to timeout in test for 35+ tests in parallel
-		spyOn(imagesModule, "_uploadSingleSize").mockImplementation((async (
-			filename,
-			_file,
-			size,
-		) => {
-			return {
-				data: createUploadedFileData(new File([], `${filename}-${size}.webp`)),
-				error: null,
-			};
-		}) as typeof imagesModule._uploadSingleSize);
 
 		api = treaty(productsRouter);
 		setupProduct = createSetupProduct(testDb, api);

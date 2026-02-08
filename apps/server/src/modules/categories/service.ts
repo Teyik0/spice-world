@@ -1,7 +1,7 @@
 import {
+	deleteUploads,
 	type MultiSizeUploadData,
-	uploadFile,
-	utapi,
+	uploadFiles,
 } from "@spice-world/server/lib/images";
 import { prisma } from "@spice-world/server/lib/prisma";
 import { status } from "elysia";
@@ -42,8 +42,8 @@ export const categoryService = {
 	},
 
 	async post({ name, file, attributes }: CategoryModel.postBody) {
-		const { data: image, error: fileError } = await uploadFile(name, file);
-		if (fileError || !image) {
+		const { data: images, error: fileError } = await uploadFiles(name, file);
+		if (fileError || images?.length !== 1) {
 			return uploadFileErrStatus(fileError);
 		}
 
@@ -53,12 +53,12 @@ export const categoryService = {
 					name,
 					image: {
 						create: {
-							keyThumb: image.thumb.key,
-							urlThumb: image.thumb.ufsUrl,
-							keyMedium: image.medium.key,
-							urlMedium: image.medium.ufsUrl,
-							keyLarge: image.large.key,
-							urlLarge: image.large.ufsUrl,
+							keyThumb: images[0]?.thumb.key as string,
+							urlThumb: images[0]?.thumb.ufsUrl as string,
+							keyMedium: images[0]?.medium.key as string,
+							urlMedium: images[0]?.medium.ufsUrl as string,
+							keyLarge: images[0]?.large.key as string,
+							urlLarge: images[0]?.large.ufsUrl as string,
 							altText: name,
 							isThumbnail: true,
 						},
@@ -88,12 +88,7 @@ export const categoryService = {
 			});
 			return status("Created", category);
 		} catch (err: unknown) {
-			// Cleanup uploaded files
-			await utapi.deleteFiles([
-				image.thumb.key,
-				image.medium.key,
-				image.large.key,
-			]);
+			await deleteUploads(images);
 			throw err;
 		}
 	},
@@ -107,11 +102,11 @@ export const categoryService = {
 		let newFile: MultiSizeUploadData | null = null;
 
 		if (file) {
-			const { data: image, error: fileError } = await uploadFile(name, file);
-			if (fileError || !image) {
+			const { data: images, error: fileError } = await uploadFiles(name, file);
+			if (fileError || images?.length !== 1) {
 				return { data: null, error: uploadFileErrStatus(fileError) };
 			}
-			newFile = image;
+			newFile = images[0] as MultiSizeUploadData;
 		}
 
 		try {
@@ -279,11 +274,7 @@ export const categoryService = {
 			return { data: tx, error: null };
 		} catch (err: unknown) {
 			if (newFile) {
-				await utapi.deleteFiles([
-					newFile.thumb.key,
-					newFile.medium.key,
-					newFile.large.key,
-				]);
+				await deleteUploads([newFile]);
 			}
 			throw err;
 		}

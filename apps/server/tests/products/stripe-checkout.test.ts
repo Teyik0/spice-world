@@ -1,17 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import * as imagesModule from "@spice-world/server/lib/images";
 import type { ordersRouter } from "@spice-world/server/modules/orders";
 import type { productsRouter } from "@spice-world/server/modules/products";
 import * as stripeCheckoutModule from "@spice-world/server/modules/stripe-checkout";
 import { file } from "bun";
 import { createTestDatabase } from "../utils/db-manager";
-import {
-	createSetupProduct,
-	createTestCategory,
-	createUploadedFileData,
-	expectDefined,
-} from "../utils/helper";
+import { createSetupProduct, expectDefined, mockUtapi } from "../utils/helper";
 
 const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
 
@@ -23,21 +17,10 @@ describe("Stripe Checkout", () => {
 	let createStripeCheckoutMock: ReturnType<typeof spyOn>;
 
 	beforeAll(async () => {
+		// Mock uploadthing BEFORE importing the router
+		await mockUtapi();
+
 		testDb = await createTestDatabase("stripe-checkout.test.ts");
-
-		// Mock UploadThing
-		spyOn(imagesModule.utapi, "uploadFiles").mockImplementation((async (
-			files,
-		) => {
-			return {
-				data: createUploadedFileData(files as File | File[]),
-				error: null,
-			};
-		}) as typeof imagesModule.utapi.uploadFiles);
-
-		spyOn(imagesModule.utapi, "deleteFiles").mockImplementation((async () => {
-			return { success: true, deletedCount: 1 };
-		}) as typeof imagesModule.utapi.deleteFiles);
 
 		// Mock Stripe Checkout function
 		createStripeCheckoutMock = spyOn(

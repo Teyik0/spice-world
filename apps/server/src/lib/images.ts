@@ -23,102 +23,172 @@ export interface MultiSizeUploadData {
 	large: UploadedFileData;
 }
 
-// Upload a single size variant of an image
-export const _uploadSingleSize = async (
+interface ImageVariant {
+	originalIndex: number;
+	size: ImageSize;
+	filename: string;
+	file: File;
+}
+
+/**
+ * Transform a single image to all 3 sizes in parallel
+ * Returns variants ready for batch upload
+ */
+const transformImage = async (
 	filename: string,
 	file: File | BunFile,
-	size: ImageSize,
-) => {
-	const config = IMAGE_SIZES[size];
+	originalIndex: number,
+): Promise<ImageVariant[]> => {
 	const arrayBuffer = await file.arrayBuffer();
 	const buffer = Buffer.from(arrayBuffer);
-	const transformer = new Transformer(buffer);
-	const outputBuffer = await transformer
-		.resize({ width: config.width, height: config.width, fit: ResizeFit.Cover })
-		.webp(config.quality);
 
-	return await utapi.uploadFiles(
-		new File([new Uint8Array(outputBuffer)], `${filename}-${size}.webp`),
-	);
+	const sizes: ImageSize[] = ["thumb", "medium", "large"];
+
+	// Transform all sizes in parallel
+	const transformPromises = sizes.map(async (size) => {
+		const config = IMAGE_SIZES[size];
+		const transformer = new Transformer(buffer);
+		const outputBuffer = await transformer
+			.resize({
+				width: config.width,
+				height: config.width,
+				fit: ResizeFit.Cover,
+			})
+			.webp(config.quality);
+
+		const variantFile = new File(
+			[new Uint8Array(outputBuffer)],
+			`${filename}-${size}.webp`,
+		);
+
+		return {
+			originalIndex,
+			size,
+			filename: `${filename}-${size}.webp`,
+			file: variantFile,
+		};
+	});
+
+	return Promise.all(transformPromises);
 };
 
-// Upload all size variants of an image
-const _uploadFile = async (filename: string, file: File | BunFile) => {
-	const sizes: ImageSize[] = ["thumb", "medium", "large"];
-	const uploadPromises = sizes.map((size) =>
-		_uploadSingleSize(filename, file, size),
-	);
-	const results = await Promise.all(uploadPromises);
+/**
+ * Upload all image variants in a single atomic batch call
+ * All succeed or all fail
+ */
+const uploadBatch = async (
+	allVariants: ImageVariant[],
+): Promise<{ data: MultiSizeUploadData[] | null; error: string | null }> => {
+	const filesToUpload = allVariants.map((variant) => variant.file);
 
-	// Check for errors in any upload
+	// Single atomic upload call
+	const results = await utapi.uploadFiles(filesToUpload);
+
+	// Check for any errors
 	const errors = results.filter((r) => r.error);
 	if (errors.length > 0) {
-		// Cleanup successful uploads if any failed
-		for (const result of results) {
-			if (result.data) {
-				await utapi.deleteFiles(result.data.key);
-			}
+		// Cleanup any successful uploads
+		const successfulUploads = results
+			.filter((r) => r.data)
+			.map((r) => r.data as UploadedFileData);
+
+		if (successfulUploads.length > 0) {
+			await utapi.deleteFiles(successfulUploads.map((u) => u.key));
 		}
-		// biome-ignore lint/style/noNonNullAssertion: ok
-		return { data: null, error: errors[0]!.error };
+
+		return {
+			data: null,
+			error: errors.map((e) => e.error?.message || "Upload failed").join(", "),
+		};
 	}
 
-	return {
-		data: {
-			// biome-ignore-start lint/style/noNonNullAssertion: ok
-			thumb: results[0]!.data as UploadedFileData,
-			medium: results[1]!.data as UploadedFileData,
-			large: results[2]!.data as UploadedFileData,
-			// biome-ignore-end lint/style/noNonNullAssertion: ok
-		} as MultiSizeUploadData,
-		error: null,
-	};
-};
+	// Group results back by original image index
+	const resultsByIndex = new Map<number, Partial<MultiSizeUploadData>>();
 
-export const uploadFile = async (filename: string, file: File | BunFile) => {
-	for (let attempt = 0; attempt < 3; attempt++) {
-		const resp = await _uploadFile(filename, file);
-		if (resp.error && attempt === 2) return { data: null, error: resp.error };
-		if (resp.error && attempt < 2) continue;
-		if (resp.data) return { data: resp.data, error: null };
+	for (let i = 0; i < allVariants.length; i++) {
+		const variant = allVariants[i];
+		const result = results[i];
+
+		// biome-ignore lint/style/noNonNullAssertion: loop bounds guarantee existence
+		if (!resultsByIndex.has(variant!.originalIndex)) {
+			// biome-ignore lint/style/noNonNullAssertion: loop bounds guarantee existence
+			resultsByIndex.set(variant!.originalIndex, {});
+		}
+
+		// biome-ignore lint/style/noNonNullAssertion: loop bounds guarantee existence
+		const imageData = resultsByIndex.get(variant!.originalIndex)!;
+		// biome-ignore lint/style/noNonNullAssertion: loop bounds guarantee existence
+		imageData[variant!.size] = result!.data as UploadedFileData;
 	}
 
-	return {
-		data: null,
-		error: { message: "Upload failed after 3 attempts" },
-	};
+	// Convert map to array maintaining order
+	const numImages = Math.max(...allVariants.map((v) => v.originalIndex)) + 1;
+	const uploadData: MultiSizeUploadData[] = [];
+
+	for (let i = 0; i < numImages; i++) {
+		const data = resultsByIndex.get(i);
+		if (data?.thumb && data?.medium && data?.large) {
+			uploadData.push(data as MultiSizeUploadData);
+		}
+	}
+
+	return { data: uploadData, error: null };
 };
 
+/**
+ * Delete uploaded files by their upload data
+ * Useful for cleanup on rollback
+ */
+export const deleteUploads = async (
+	uploads: MultiSizeUploadData[],
+): Promise<void> => {
+	if (uploads.length === 0) return;
+
+	const keys = uploads.flatMap((upload) => [
+		upload.thumb.key,
+		upload.medium.key,
+		upload.large.key,
+	]);
+
+	await utapi.deleteFiles(keys);
+};
+
+/**
+ * Upload multiple images with all size variants
+ * Atomic operation - all succeed or all fail
+ */
 export const uploadFiles = async (
 	filename: string,
-	files: Array<File | BunFile>,
-) => {
-	const uploadPromises = files.map((file, i) => {
-		return uploadFile(
-			`${filename.toLowerCase().replace(/\s+/g, "-")}-${i}`,
-			file,
-		);
-	});
-	const results = await Promise.all(uploadPromises);
+	files: Array<File | BunFile> | File | BunFile,
+): Promise<{ data: MultiSizeUploadData[] | null; error: string | null }> => {
+	try {
+		// Transform all images to all sizes in parallel
+		const transformPromises = Array.isArray(files)
+			? files.map((file, index) => {
+					const sanitizedFilename = `${filename.toLowerCase().replace(/\s+/g, "-")}-${index}`;
+					return transformImage(sanitizedFilename, file, index);
+				})
+			: [
+					transformImage(
+						`${filename.toLowerCase().replace(/\s+/g, "-")}`,
+						files,
+						0,
+					),
+				];
 
-	// Check for errors in the results
-	const errors = results.filter((result) => result.error);
-	const successfulUploads = results.filter(
-		(result): result is { data: MultiSizeUploadData; error: null } =>
-			!!result?.data,
-	);
+		const transformedBatches = await Promise.all(transformPromises);
 
-	if (errors.length > 0) {
-		// Clean up if any upload has failed
-		for (const upload of successfulUploads) {
-			await utapi.deleteFiles([
-				upload.data.thumb.key,
-				upload.data.medium.key,
-				upload.data.large.key,
-			]);
-		}
-		return { data: null, error: errors.map((e) => e.error).join(", ") };
+		// Flatten all variants into a single array
+		const allVariants = transformedBatches.flat();
+
+		// Single atomic upload
+		const result = await uploadBatch(allVariants);
+
+		return result;
+	} catch (error) {
+		return {
+			data: null,
+			error: error instanceof Error ? error.message : "Upload failed",
+		};
 	}
-
-	return { data: successfulUploads.map((upload) => upload.data), error: null };
 };

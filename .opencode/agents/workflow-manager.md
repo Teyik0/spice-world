@@ -17,6 +17,7 @@ permission:
     "head *": allow
     "tail *": allow
     "find *": allow
+    "grep *": allow
     "pwd": allow
     "echo *": allow
     "wc *": allow

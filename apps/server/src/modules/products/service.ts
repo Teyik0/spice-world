@@ -1,4 +1,5 @@
 import {
+	deleteUploads,
 	type MultiSizeUploadData,
 	uploadFiles,
 	utapi,
@@ -310,7 +311,7 @@ export const productService = {
 			iOps.create.map((img) => img.file),
 		);
 		if (uploadError || !uploadMap) {
-			return uploadFileErrStatus({ message: uploadError });
+			return uploadFileErrStatus(uploadError ?? "Unknown upload error");
 		}
 
 		try {
@@ -381,13 +382,7 @@ export const productService = {
 			return status("Created", product);
 		} catch (err: unknown) {
 			if (uploadMap.length > 0) {
-				await utapi.deleteFiles(
-					uploadMap.flatMap((file) => [
-						file.thumb.key,
-						file.medium.key,
-						file.large.key,
-					]),
-				);
+				await deleteUploads(uploadMap);
 			}
 			throw err;
 		}
@@ -497,13 +492,7 @@ export const productService = {
 				...(updateUploads.data ?? []),
 			];
 			if (allSuccessful.length > 0) {
-				await utapi.deleteFiles(
-					allSuccessful.flatMap((f) => [
-						f.thumb.key,
-						f.medium.key,
-						f.large.key,
-					]),
-				);
+				await deleteUploads(allSuccessful);
 			}
 			return uploadFileErrStatus({
 				message: [createUploads.error, updateUploads.error]
@@ -806,9 +795,7 @@ export const productService = {
 				...(updateUploads.data ?? []),
 			];
 			if (allUploaded.length > 0) {
-				await utapi.deleteFiles(
-					allUploaded.flatMap((f) => [f.thumb.key, f.medium.key, f.large.key]),
-				);
+				await deleteUploads(allUploaded);
 			}
 			throw err;
 		}

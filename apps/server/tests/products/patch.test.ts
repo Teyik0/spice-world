@@ -1,14 +1,13 @@
-import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import * as imagesModule from "@spice-world/server/lib/images";
 import type { productsRouter } from "@spice-world/server/modules/products";
 import { file } from "bun";
 import { createTestDatabase } from "../utils/db-manager";
 import {
 	createSetupProduct,
 	createTestCategory,
-	createUploadedFileData,
 	expectDefined,
+	mockUtapi,
 	randomLowerString,
 } from "../utils/helper";
 
@@ -22,24 +21,13 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 	const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
 
 	beforeAll(async () => {
-		testDb = await createTestDatabase("patch.test.ts");
+		// Mock uploadthing BEFORE importing the router
+		await mockUtapi();
 
+		testDb = await createTestDatabase("patch.test.ts");
 		const { productsRouter } = await import(
 			"@spice-world/server/modules/products"
 		);
-
-		spyOn(imagesModule.utapi, "uploadFiles").mockImplementation((async (
-			files,
-		) => {
-			return {
-				data: createUploadedFileData(files as File | File[]),
-				error: null,
-			};
-		}) as typeof imagesModule.utapi.uploadFiles);
-
-		spyOn(imagesModule.utapi, "deleteFiles").mockImplementation((async () => {
-			return { success: true, deletedCount: 1 };
-		}) as typeof imagesModule.utapi.deleteFiles);
 
 		api = treaty(productsRouter);
 		setupProduct = createSetupProduct(testDb, api);
