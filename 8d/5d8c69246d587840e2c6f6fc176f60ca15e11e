@@ -1,0 +1,14 @@
+lefthook.yml
+  h_a2cbd1b0e3ae6e 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d5d8c69246d587840e2c6f6fc176f60ca15e11e",
+  "prompts": {},
+  "humans": {
+    "h_a2cbd1b0e3ae6e": {
+      "author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
