@@ -1,0 +1,28 @@
+packages/emails/biome.jsonc
+  h_a2cbd1b0e3ae6e 2-3
+packages/emails/package.json
+  h_a2cbd1b0e3ae6e 2-21
+packages/emails/src/change-email-verification.tsx
+  h_a2cbd1b0e3ae6e 3-13,17-18,21,23,25-89
+packages/emails/src/index.tsx
+  h_a2cbd1b0e3ae6e 11,13,19,21,27,29,35,39,43,47,52-55
+packages/emails/src/password-reset.tsx
+  h_a2cbd1b0e3ae6e 3-13,17-18,21-89
+packages/emails/src/reset-password.tsx
+  h_a2cbd1b0e3ae6e 3-13,17-18,21-85
+packages/emails/src/spiceworld-welcome.tsx
+  h_a2cbd1b0e3ae6e 3-13,17-18,21-81
+packages/emails/tsconfig.json
+  h_a2cbd1b0e3ae6e 2-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dbbc2afe2b6454f888f2922c17f5b86809f04ecf",
+  "prompts": {},
+  "humans": {
+    "h_a2cbd1b0e3ae6e": {
+      "author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
