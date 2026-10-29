@@ -1,0 +1,14 @@
+.zed/settings.json
+  h_a2cbd1b0e3ae6e 5-30,58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "40a332281b87118695a4eff700b101abd5659a7a",
+  "prompts": {},
+  "humans": {
+    "h_a2cbd1b0e3ae6e": {
+      "author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
