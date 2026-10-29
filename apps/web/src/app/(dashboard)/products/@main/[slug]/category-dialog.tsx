@@ -1,4 +1,9 @@
-import * as CategoryModel from "@spice-world/server/modules/categories/model";
+import {
+  type getByIdResult,
+  type getResult,
+  patchBody,
+  postBody,
+} from "@spice-world/server/modules/categories/model";
 import { Form, useForm } from "@spice-world/web/components/tanstack-form";
 import { Button } from "@spice-world/web/components/ui/button";
 import {
@@ -19,6 +24,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@spice-world/web/components/ui/drawer";
+import { FieldTitle } from "@spice-world/web/components/ui/field";
 import type { MultiSelectOption } from "@spice-world/web/components/ui/multi-select";
 import {
   Select,
@@ -39,7 +45,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface CategoryDialogProps {
-  categories: CategoryModel.getResult;
+  categories: getResult;
   onCategoryChange: () => void;
 }
 
@@ -105,14 +111,15 @@ export const CategoryDialog = ({
 };
 
 interface CategoryFormProps {
-  categories: CategoryModel.getResult;
+  categories: getResult;
   handleClose: () => void;
 }
 
 const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
   const [categoryId, setCategoryId] = useState<string>("new");
-  const [currentCategory, setCurrentCategory] =
-    useState<CategoryModel.getByIdResult | null>(null);
+  const [currentCategory, setCurrentCategory] = useState<getByIdResult | null>(
+    null
+  );
 
   const resetForm = () => {
     setCategoryId("new");
@@ -155,11 +162,8 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
     }
   };
 
-  const form = useForm<
-    typeof CategoryModel.postBody | typeof CategoryModel.patchBody
-  >({
-    schema:
-      categoryId === "new" ? CategoryModel.postBody : CategoryModel.patchBody,
+  const form = useForm<typeof postBody | typeof patchBody>({
+    schema: categoryId === "new" ? postBody : patchBody,
     validationMode: "onSubmit",
     defaultValues: {
       name: "",
@@ -174,12 +178,12 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
       try {
         switch (categoryId) {
           case "new": {
-            await handleCreate(values as CategoryModel.postBody);
+            await handleCreate(values as postBody);
             break;
           }
 
           default: {
-            await handleUpdate(values as CategoryModel.patchBody);
+            await handleUpdate(values as patchBody);
             break;
           }
         }
@@ -195,7 +199,7 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
     },
   });
 
-  const handleCreate = async (values: CategoryModel.postBody) => {
+  const handleCreate = async (values: postBody) => {
     const { error } = await app.categories.post(values);
     if (error) {
       toast.error(
@@ -207,7 +211,7 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
     handleClose();
   };
 
-  const handleUpdate = async (values: CategoryModel.patchBody) => {
+  const handleUpdate = async (values: patchBody) => {
     // Filter out duplicate attribute values to avoid conflicts
     if (values.attributes?.update && currentCategory?.attributes) {
       values.attributes.update = values.attributes.update.map((formAttr) => {
@@ -312,7 +316,7 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
           <form.AppField name="name">
             {(field) => (
               <field.Field>
-                <field.Label>Name</field.Label>
+                <field.Label htmlFor={field.name}>Name</field.Label>
                 <field.Input
                   id="name"
                   onChange={(e) =>
@@ -330,7 +334,7 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
             {(field) => (
               <field.Field>
                 <div className="flex items-center justify-between">
-                  <field.Label>Attributes</field.Label>
+                  <FieldTitle>Attributes</FieldTitle>
                   <Button
                     onClick={() => field.pushValue({ name: "", values: [] })}
                     size="sm"
@@ -342,6 +346,7 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
                 </div>
 
                 {field.state.value?.map((_, index) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: Unsaved TanStack fields are identified by their indexed form paths.
                   <field.Content className="grid grid-cols-8 gap-4" key={index}>
                     <form.AppField name={`attributes.create[${index}].name`}>
                       {(aField) => (
@@ -366,7 +371,7 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
                           <avField.MultiSelect
                             creatable
                             maxCount={5}
-                            onCreateNew={async (value) => {
+                            onCreateNew={(value) => {
                               avField.pushValue(value);
                               return {
                                 label: value.toLowerCase(),
@@ -413,8 +418,11 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
           <form.AppField mode="array" name="attributes.update">
             {(field) => (
               <field.Field>
-                {field.state.value?.map((_, index) => (
-                  <field.Content className="grid grid-cols-8 gap-4" key={index}>
+                {field.state.value?.map((attribute, index) => (
+                  <field.Content
+                    className="grid grid-cols-8 gap-4"
+                    key={attribute.id}
+                  >
                     <form.AppField name={`attributes.update[${index}].name`}>
                       {(aField) => (
                         <aField.Content className="col-span-3">
@@ -438,7 +446,7 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
                           <avField.MultiSelect
                             creatable
                             maxCount={10}
-                            onCreateNew={async (value) => {
+                            onCreateNew={(value) => {
                               avField.pushValue(value);
                               return {
                                 label: value.toLowerCase(),
@@ -502,7 +510,7 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
           <form.AppField name="file">
             {(field) => (
               <field.Field>
-                <field.Label>Image</field.Label>
+                <field.Label htmlFor={field.name}>Image</field.Label>
                 <field.Content className="relative flex items-center justify-center">
                   {files.length > 0 && files[0]?.preview ? (
                     <div className="relative w-1/2">
@@ -510,25 +518,14 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
                         alt="Category image"
                         className="aspect-square w-full rounded-md border-2 object-cover"
                         height={200}
-                        src={files[0].preview}
+                        src={
+                          files[0]?.preview ??
+                          currentCategory?.image.urlThumb ??
+                          ""
+                        }
                         width={200}
                       />
                       <input
-                        {...getInputProps()}
-                        className="absolute inset-0 z-50 h-full w-full cursor-pointer opacity-0"
-                        type="file"
-                      />
-                    </div>
-                  ) : currentCategory?.image.urlThumb ? (
-                    <div className="relative w-1/2">
-                      <Image
-                        alt="Category image"
-                        className="aspect-square w-full rounded-md border-2 object-cover"
-                        height={200}
-                        src={currentCategory.image.urlThumb}
-                        width={200}
-                      />
-                      <field.Input
                         {...getInputProps()}
                         className="absolute inset-0 z-50 h-full w-full cursor-pointer opacity-0"
                         type="file"

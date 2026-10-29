@@ -60,7 +60,7 @@ const app = new Elysia()
   })
   .use(betterAuthPlugin)
   .guard({
-    user: true,
+    access: "optional",
   })
   .onAfterResponse(({ user, path, set }) => {
     console.log(`${formattedDate()} - RESPONSE ${path}`, {

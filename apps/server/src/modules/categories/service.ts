@@ -110,6 +110,7 @@ export const categoryService = {
     }
 
     try {
+      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Keep dependent validation and writes together in this atomic product/category operation.
       const patchedProduct = await prisma.$transaction(async (tx) => {
         const category = await tx.category.findUniqueOrThrow({
           where: { id },

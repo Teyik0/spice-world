@@ -17,7 +17,7 @@ const baseUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "http://localhost:5173";
 
-export function VerifyEmail({ verifyLink }: { verifyLink: string }) {
+function VerifyEmail({ verifyLink }: { verifyLink: string }) {
   return (
     <Html>
       <Head />

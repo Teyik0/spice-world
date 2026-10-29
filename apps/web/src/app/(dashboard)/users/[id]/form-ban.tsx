@@ -45,7 +45,7 @@ export const UserFormBan = ({
         <Switch checked={banned} id="banned" onCheckedChange={onBannedChange} />
       </div>
 
-      {banned && (
+      {banned ? (
         <>
           <div className="space-y-2">
             <Label htmlFor="banReason">Ban Reason</Label>
@@ -67,7 +67,7 @@ export const UserFormBan = ({
               id="banExpires"
               min={0}
               onChange={(e) => {
-                const value = e.target.value;
+                const { value } = e.target;
                 onBanExpiresChange(value ? Number(value) : null);
               }}
               placeholder="Leave empty for permanent ban"
@@ -79,7 +79,7 @@ export const UserFormBan = ({
             </p>
           </div>
         </>
-      )}
+      ) : null}
     </CardContent>
   </Card>
 );

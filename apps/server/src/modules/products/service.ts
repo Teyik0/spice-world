@@ -395,6 +395,7 @@ export const productService = {
     }
   },
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Keep dependent validation and writes together in this atomic product/category operation.
   async patch({
     id,
     name,
@@ -510,6 +511,7 @@ export const productService = {
     const updateOpsWithFiles = iOps?.update?.filter((op) => op.file) ?? [];
 
     try {
+      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Keep dependent validation and writes together in this atomic product/category operation.
       const product = await prisma.$transaction(async (tx) => {
         // 1. Update product (must be first - needed for image altText fallback)
         const updatedProduct = await tx.product.update({
@@ -627,6 +629,7 @@ export const productService = {
                   );
 
                   await Promise.all(
+                    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Keep dependent validation and writes together in this atomic product/category operation.
                     complexUpdates.map((op, index) => {
                       const currentImage = currentImages[index];
                       if (!currentImage) {

@@ -1,7 +1,12 @@
 "use client";
 
 import type * as CategoryModel from "@spice-world/server/modules/categories/model";
-import * as ProductModel from "@spice-world/server/modules/products/model";
+import {
+  type getByIdResult,
+  patchBody,
+  type patchResult,
+  postBody,
+} from "@spice-world/server/modules/products/model";
 import { Form, useForm } from "@spice-world/web/components/tanstack-form";
 import { Badge } from "@spice-world/web/components/ui/badge";
 import { Button } from "@spice-world/web/components/ui/button";
@@ -43,7 +48,7 @@ export const ProductForm = ({
   product,
   categories,
 }: {
-  product: ProductModel.getByIdResult;
+  product: getByIdResult;
   categories: CategoryModel.getResult;
 }) => {
   const router = useRouter();
@@ -125,14 +130,14 @@ export const ProductForm = ({
   };
 
   const executeSubmit = async () => {
-    const values = form.store.state.values;
+    const { values } = form.store.state;
     try {
-      let data: ProductModel.patchResult;
+      let data: patchResult;
       if (isNew) {
-        const result = await handleCreate(values as ProductModel.postBody);
+        const result = await handleCreate(values as postBody);
         data = result;
       } else {
-        data = await handleUpdate(values as ProductModel.patchBody);
+        data = await handleUpdate(values as patchBody);
         form.setFieldValue("_version", data.version);
         form.setFieldValue("variants", {
           create: undefined,
@@ -172,11 +177,11 @@ export const ProductForm = ({
           existingImg ??
           null,
         priceMin: data.variants.reduce(
-          (min, v) => (v.price < min ? v.price : min),
+          (min, v) => Math.min(v.price, min),
           data.variants[0]?.price ?? 0
         ), // Stored in cents, converted to decimal by formatPrice
         priceMax: data.variants.reduce(
-          (max, v) => (v.price > max ? v.price : max),
+          (max, v) => Math.max(v.price, max),
           data.variants[0]?.price ?? 0
         ), // Stored in cents, converted to decimal by formatPrice
         totalStock: data.variants.reduce((sum, v) => sum + v.stock, 0),
@@ -228,10 +233,8 @@ export const ProductForm = ({
     }
   };
 
-  const form = useForm<
-    typeof ProductModel.postBody | typeof ProductModel.patchBody
-  >({
-    schema: isNew ? ProductModel.postBody : ProductModel.patchBody,
+  const form = useForm<typeof postBody | typeof patchBody>({
+    schema: isNew ? postBody : patchBody,
     defaultValues: {
       name: product.name,
       description: product.description,
@@ -287,7 +290,7 @@ export const ProductForm = ({
     await executeSubmit();
   };
 
-  const handleCreate = async (values: ProductModel.postBody) => {
+  const handleCreate = async (values: postBody) => {
     // Convert prices from decimal (user input) to cents (backend storage)
     const convertedValues = {
       ...values,
@@ -322,9 +325,9 @@ export const ProductForm = ({
     return data;
   };
 
-  const handleUpdate = async (values: ProductModel.patchBody) => {
+  const handleUpdate = async (values: patchBody) => {
     // Convert prices from decimal (user input) to cents (backend storage)
-    const variants = values.variants;
+    const { variants } = values;
     const convertedValues = {
       ...values,
       variants: variants
@@ -366,7 +369,7 @@ export const ProductForm = ({
   };
 
   const [isDeleting, startTransition] = useTransition();
-  const handleDelete = async () => {
+  const handleDelete = () => {
     startTransition(async () => {
       try {
         const { error } = await app.products({ id: product.id }).delete();

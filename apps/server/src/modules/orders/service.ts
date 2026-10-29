@@ -53,6 +53,7 @@ export const orderService = {
         // Use update with decrement to atomically check and reserve stock
         // This prevents TOCTOU race conditions by locking the row
         try {
+          // biome-ignore lint/performance/noAwaitInLoops: Reserve stock sequentially within the same transaction and preserve item order.
           const updatedVariant = await tx.productVariant.update({
             where: {
               id: item.variantId,
@@ -73,8 +74,10 @@ export const orderService = {
             price: updatedVariant.price,
             quantity: item.quantity,
           });
-        } catch {
-          throw new Error(`Insufficient stock for variant ${item.variantId}`);
+        } catch (cause) {
+          throw new Error(`Insufficient stock for variant ${item.variantId}`, {
+            cause,
+          });
         }
       }
       const subtotal = enrichedItems.reduce(
@@ -166,11 +169,10 @@ export const orderService = {
     isAdmin: boolean,
     query: { page: number; limit: number; status?: OrderStatus }
   ) {
-    const where = isAdmin
-      ? query.status
-        ? { status: query.status }
-        : {}
-      : { userId, ...(query.status && { status: query.status }) };
+    const where = {
+      ...(!isAdmin && { userId }),
+      ...(query.status && { status: query.status }),
+    };
 
     const [orders, total] = await Promise.all([
       prisma.order.findMany({

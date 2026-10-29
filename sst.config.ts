@@ -1,3 +1,4 @@
+// biome-ignore-all lint/correctness/noUnusedInstantiation: Pulumi constructors register resources through side effects.
 /// <reference path="./.sst/platform/config.d.ts" />
 // biome-ignore-all lint/correctness/noUndeclaredVariables: sst specific
 // biome-ignore-all lint/suspicious/useAwait: sst specific

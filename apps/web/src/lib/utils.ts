@@ -71,7 +71,7 @@ export const unknownError = (error: unknown, fallback = "Unknown error") => {
  * formatPrice(null)  // Returns "0.00€"
  */
 export function formatPrice(cents: number | null | undefined): string {
-  if (cents == null || cents === undefined) {
+  if (cents === null || cents === undefined) {
     return "0.00€";
   }
   return `${(cents / 100).toFixed(2)}€`;

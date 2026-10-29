@@ -40,6 +40,8 @@ interface BombardierResult {
   };
 }
 
+const JSON_OUTPUT = /\{.*\}/su;
+
 async function runLoadTest(
   endpoint: string,
   connections = 100,
@@ -51,7 +53,7 @@ async function runLoadTest(
     await $`bombardier -c ${connections} -d ${duration} -l -o json ${url}`.text();
 
   // Extract JSON from output (bombardier outputs progress text before JSON)
-  const jsonMatch = output.match(/\{.*\}/su);
+  const jsonMatch = output.match(JSON_OUTPUT);
   if (!jsonMatch) {
     throw new Error(`No JSON found in bombardier output:\n${output}`);
   }

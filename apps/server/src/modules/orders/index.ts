@@ -39,7 +39,7 @@ export const ordersRouter = new Elysia({
     "/checkout",
     {
       body: checkoutBody,
-      isLogin: true,
+      access: "login",
     },
     async ({ body, user }) => {
       const result = await orderService.createCheckout(
@@ -55,7 +55,7 @@ export const ordersRouter = new Elysia({
     "/",
     {
       query: getQuery,
-      isLogin: true,
+      access: "login",
     },
     async ({ query, user }) => {
       const isAdmin = user.role === "admin";
@@ -71,7 +71,7 @@ export const ordersRouter = new Elysia({
     "/by-id/:id",
     {
       params: getByIdParams,
-      isLogin: true,
+      access: "login",
     },
     async ({ params, user }) => {
       const isAdmin = user.role === "admin";
@@ -84,7 +84,7 @@ export const ordersRouter = new Elysia({
     {
       params: getByIdParams,
       body: updateStatusBody,
-      isAdmin: true,
+      access: "admin",
     },
     async ({ params, body }) =>
       await orderService.updateStatus(

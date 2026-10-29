@@ -96,7 +96,9 @@ export const validateVariants = ({
     variantCount: finalVariantCount,
     category,
   });
-  validateVA3Result && allErrors.push(validateVA3Result);
+  if (validateVA3Result) {
+    allErrors.push(validateVA3Result);
+  }
 
   const updatedIds = new Set(vOps?.update?.map((v) => v.id) || []);
   const deletedIds = new Set(vOps?.delete || []);
@@ -118,7 +120,9 @@ export const validateVariants = ({
     ) || []),
   ];
   const validateVA4Result = validateVA4(finalVariants);
-  validateVA4Result && allErrors.push(validateVA4Result);
+  if (validateVA4Result) {
+    allErrors.push(validateVA4Result);
+  }
 
   if (allErrors.length > 0) {
     throw new ProductValidationError({
@@ -256,7 +260,7 @@ function validateVA4(
   const combinations = new Map<string, string>();
 
   for (const variant of variants) {
-    const sortedIds = [...(variant.attributeValueIds || [])].sort();
+    const sortedIds = [...variant.attributeValueIds].sort();
     const key = sortedIds.join("|");
 
     const existingVariantId = combinations.get(key);

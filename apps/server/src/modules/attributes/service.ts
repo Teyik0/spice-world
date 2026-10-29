@@ -43,7 +43,7 @@ export const attributeService = {
     return count;
   },
 
-  async patch({ id, name }: AttributeModel.patchBody & uuidGuard) {
+  patch({ id, name }: AttributeModel.patchBody & uuidGuard) {
     const attribute = prisma.attribute.update({
       where: { id },
       data: {
@@ -75,7 +75,7 @@ export const attributeValueService = {
     return status("Created", attributeValue);
   },
 
-  async patch({ id, name }: AttributeValueModel.patchBody & uuidGuard) {
+  patch({ id, name }: AttributeValueModel.patchBody & uuidGuard) {
     const attributeValue = prisma.attributeValue.update({
       where: { id },
       data: { value: name },

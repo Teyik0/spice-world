@@ -117,9 +117,9 @@ export function ProductsSearchBar({ categories }: { categories: Category[] }) {
           render={
             <Button className="relative pl-2" variant="outline">
               <ChevronDownIcon />
-              {hasActiveFilters && (
+              {hasActiveFilters ? (
                 <span className="bg-primary absolute -top-1 -right-1 size-2 rounded-full" />
-              )}
+              ) : null}
             </Button>
           }
         />
@@ -135,11 +135,11 @@ export function ProductsSearchBar({ categories }: { categories: Category[] }) {
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 Status
-                {searchParams.status && (
+                {searchParams.status ? (
                   <span className="text-muted-foreground ml-auto text-xs">
                     {searchParams.status.toLowerCase()}
                   </span>
-                )}
+                ) : null}
               </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
@@ -238,7 +238,7 @@ export function ProductsSearchBar({ categories }: { categories: Category[] }) {
               )}
             </DropdownMenuItem>
 
-            {hasActiveFilters && (
+            {hasActiveFilters ? (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleClearFilters}>
@@ -246,7 +246,7 @@ export function ProductsSearchBar({ categories }: { categories: Category[] }) {
                   Clear all filters
                 </DropdownMenuItem>
               </>
-            )}
+            ) : null}
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>

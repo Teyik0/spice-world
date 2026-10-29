@@ -25,6 +25,7 @@ const getCachedSession = unstable_cache(
   }
 );
 
+// biome-ignore lint/suspicious/useAwait: Next.js Server Actions must expose async functions.
 export async function invalidateSessionCache() {
   "use server";
   revalidateTag("session", "default");

@@ -19,6 +19,7 @@ const prismaClientSingleton = () => {
 };
 
 declare global {
+  // biome-ignore lint/style/useVarsOnTop: ambient global declaration, not a runtime variable.
   var __prisma: undefined | ReturnType<typeof prismaClientSingleton>;
 }
 

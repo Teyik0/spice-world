@@ -107,6 +107,7 @@ function FieldContent({ className, ...props }: React.ComponentProps<"div">) {
 
 function FieldLabel({
   className,
+  children,
   ...props
 }: React.ComponentProps<typeof Label>) {
   return (
@@ -118,8 +119,11 @@ function FieldLabel({
         className
       )}
       data-slot="field-label"
+      htmlFor={props.htmlFor}
       {...props}
-    />
+    >
+      {children}
+    </Label>
   );
 }
 
@@ -169,14 +173,14 @@ function FieldSeparator({
       {...props}
     >
       <Separator className="absolute inset-0 top-1/2" />
-      {children && (
+      {children ? (
         <span
           className="bg-background text-muted-foreground relative mx-auto block w-fit px-2"
           data-slot="field-separator-content"
         >
           {children}
         </span>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -194,7 +198,7 @@ function FieldError({
       return children;
     }
 
-    if (!errors?.length) {
+    if (!errors || errors.length === 0) {
       return null;
     }
 
@@ -202,7 +206,7 @@ function FieldError({
       ...new Map(errors.map((error) => [error?.message, error])).values(),
     ];
 
-    if (uniqueErrors?.length === 1) {
+    if (uniqueErrors.length === 1) {
       return uniqueErrors[0]?.message;
     }
 

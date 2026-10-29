@@ -87,32 +87,28 @@ export const useFileUpload = (
 
   const validateFile = useCallback(
     (file: File | FileMetadata): string | null => {
-      if (file instanceof File) {
-        if (file.size > maxSize) {
-          return `File "${file.name}" exceeds the maximum size of ${formatBytes(maxSize)}.`;
-        }
-      } else if (file.size > maxSize) {
+      if (file.size > maxSize) {
         return `File "${file.name}" exceeds the maximum size of ${formatBytes(maxSize)}.`;
       }
 
       if (accept !== "*") {
         const acceptedTypes = accept.split(",").map((type) => type.trim());
-        const fileType = file instanceof File ? file.type || "" : file.type;
-        const fileExtension = `.${file instanceof File ? file.name.split(".").pop() : file.name.split(".").pop()}`;
+        const fileType = file.type;
+        const fileExtension = `.${file.name.split(".").pop()}`;
 
         const isAccepted = acceptedTypes.some((type) => {
           if (type.startsWith(".")) {
             return fileExtension.toLowerCase() === type.toLowerCase();
           }
           if (type.endsWith("/*")) {
-            const baseType = type.split("/")[0];
+            const [baseType] = type.split("/");
             return fileType.startsWith(`${baseType}/`);
           }
           return fileType === type;
         });
 
         if (!isAccepted) {
-          return `File "${file instanceof File ? file.name : file.name}" is not an accepted file type.`;
+          return `File "${file.name}" is not an accepted file type.`;
         }
       }
 
@@ -133,7 +129,7 @@ export const useFileUpload = (
 
   const generateUniqueId = useCallback((file: File | FileMetadata): string => {
     if (file instanceof File) {
-      return `${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      return `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     }
     return file.id;
   }, []);
@@ -141,7 +137,7 @@ export const useFileUpload = (
   const clearFiles = useCallback(() => {
     setState((prev) => {
       // Clean up object URLs
-      prev.files.forEach((file) => {
+      for (const file of prev.files) {
         if (
           file.preview &&
           file.file instanceof File &&
@@ -149,7 +145,7 @@ export const useFileUpload = (
         ) {
           URL.revokeObjectURL(file.preview);
         }
-      });
+      }
 
       if (inputRef.current) {
         inputRef.current.value = "";
@@ -180,6 +176,7 @@ export const useFileUpload = (
       }
 
       // Use functional setState to avoid stale closure issues
+      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Validate the whole file selection in a single state update to avoid stale state.
       setState((prev) => {
         const errors: string[] = [];
 
@@ -212,14 +209,6 @@ export const useFileUpload = (
               errors.push(`File "${file.name}" is already added.`);
               continue;
             }
-          }
-
-          // Check file size
-          if (file.size > maxSize) {
-            errors.push(
-              `File "${file.name}" exceeds the maximum size of ${formatBytes(maxSize)}.`
-            );
-            continue;
           }
 
           const error = validateFile(file);
@@ -257,7 +246,6 @@ export const useFileUpload = (
       // Removed state.files from dependencies since we now use prev.files
       maxFiles,
       multiple,
-      maxSize,
       validateFile,
       createPreview,
       generateUniqueId,
@@ -361,7 +349,7 @@ export const useFileUpload = (
         if (multiple) {
           addFiles(e.dataTransfer.files);
         } else {
-          const file = e.dataTransfer.files[0];
+          const [file] = e.dataTransfer.files;
           if (file) {
             addFiles([file]);
           }
@@ -424,7 +412,7 @@ export const formatBytes = (bytes: number, decimals = 2): string => {
   }
 
   const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
+  const dm = Math.max(decimals, 0);
   const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
   const i = Math.floor(Math.log(bytes) / Math.log(k));

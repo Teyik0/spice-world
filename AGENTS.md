@@ -36,7 +36,16 @@ const { data, status, error } = await api.attributes.post(newAttrData);
 - MUST check for type error after diff: bun run tsc <file_path> --noEmit
 - MUST check for lint error after diff: bun run biome check <file_path>
 - MUST create test without any mock, the only exception is third party such as the image upload (utapi)
-- MUST explain any proposed adjustment with code and <file_path>.{ts,tsx} inside de conversation, with less sentences. Code should be self-explaining.
+
+## Required code examples in responses
+
+- MUST include a concrete code example and its target file path for every proposed code change, even when answering a question without editing files.
+- MUST also show code for each proposed alternative.
+- MUST use the project’s actual names and conventions in examples.
+- MUST briefly explain differences, limitations, and effects on type inference.
+- MUST distinguish proposed code from changes actually applied and tested.
+- Before sending a response, MUST verify that every proposed code change has an accompanying code example; add any missing examples.
+- Keep explanations short and let the code explain itself.
 
 ## Running the project
 

@@ -5,9 +5,14 @@ import { ToggleGroup as ToggleGroupPrimitive } from "@base-ui/react/toggle-group
 import { toggleVariants } from "@spice-world/web/components/ui/toggle";
 import { cn } from "@spice-world/web/lib/utils";
 import type { VariantProps } from "class-variance-authority";
-import * as React from "react";
+import {
+  type ComponentProps,
+  type CSSProperties,
+  createContext,
+  useContext,
+} from "react";
 
-const ToggleGroupContext = React.createContext<
+const ToggleGroupContext = createContext<
   VariantProps<typeof toggleVariants> & {
     spacing?: number;
   }
@@ -24,7 +29,7 @@ function ToggleGroup({
   spacing = 0,
   children,
   ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive> &
+}: ComponentProps<typeof ToggleGroupPrimitive> &
   VariantProps<typeof toggleVariants> & {
     spacing?: number;
   }) {
@@ -38,7 +43,7 @@ function ToggleGroup({
       data-slot="toggle-group"
       data-spacing={spacing}
       data-variant={variant}
-      style={{ "--gap": spacing } as React.CSSProperties}
+      style={{ "--gap": spacing } as CSSProperties}
       {...props}
     >
       <ToggleGroupContext.Provider value={{ variant, size, spacing }}>
@@ -54,9 +59,9 @@ function ToggleGroupItem({
   variant,
   size,
   ...props
-}: React.ComponentProps<typeof TogglePrimitive> &
+}: ComponentProps<typeof TogglePrimitive> &
   VariantProps<typeof toggleVariants>) {
-  const context = React.useContext(ToggleGroupContext);
+  const context = useContext(ToggleGroupContext);
 
   return (
     <TogglePrimitive

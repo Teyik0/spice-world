@@ -3,7 +3,7 @@ import type { ValidationResult } from "../../shared";
 import type * as ProductModel from "../model";
 
 // Re-export for backwards compatibility with index.ts
-export type { ValidationResult };
+export type { ValidationResult } from "../../shared";
 
 export interface VariantPriceData {
   id?: string;
@@ -218,30 +218,16 @@ export function determinePublishStatus({
   }));
 
   // PUB1: Price validation requires price-only objects
-  const pub1VariantsToCreate =
-    variants?.create?.map((v) => ({
-      price: v.price,
-    })) ?? [];
+  const pub1VariantsToCreate = variants?.create;
 
-  const pub1VariantsToUpdate =
-    variants?.update?.map((v) => ({
-      id: v.id,
-      price: v.price,
-    })) ?? [];
+  const pub1VariantsToUpdate = variants?.update;
 
   const variantsToDelete = variants?.delete ?? [];
 
   // PUB2: Attribute validation requires attribute-value objects
-  const pub2VariantsToCreate =
-    variants?.create?.map((v) => ({
-      attributeValueIds: v.attributeValueIds,
-    })) ?? [];
+  const pub2VariantsToCreate = variants?.create;
 
-  const pub2VariantsToUpdate =
-    variants?.update?.map((v) => ({
-      id: v.id,
-      attributeValueIds: v.attributeValueIds,
-    })) ?? [];
+  const pub2VariantsToUpdate = variants?.update;
 
   // Validate PUB1: At least one variant must have positive price
   const pub1Result = validatePublishHasPositivePrice({
@@ -271,13 +257,13 @@ export function determinePublishStatus({
       if (!pub1Result.success) {
         warnings.push({
           code: "PUB1",
-          message: pub1Result.error?.message ?? "PUB1 validation failed",
+          message: pub1Result.error.message,
         });
       }
       if (!pub2Result.success) {
         warnings.push({
           code: "PUB2",
-          message: pub2Result.error?.message ?? "PUB2 validation failed",
+          message: pub2Result.error.message,
         });
       }
     }

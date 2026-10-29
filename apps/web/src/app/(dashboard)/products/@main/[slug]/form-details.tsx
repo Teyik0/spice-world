@@ -43,7 +43,7 @@ export const ProductFormDetails = ({
           >
             {(field) => (
               <field.Field>
-                <field.Label>Name</field.Label>
+                <field.Label htmlFor={field.name}>Name</field.Label>
                 <field.Input
                   autoComplete="off"
                   onChange={(e) =>
@@ -68,7 +68,7 @@ export const ProductFormDetails = ({
           >
             {(field) => (
               <field.Field>
-                <field.Label>Description</field.Label>
+                <field.Label htmlFor={field.name}>Description</field.Label>
                 <field.Textarea
                   className="min-h-32"
                   placeholder="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam auctor, nisl nec ultricies ultricies, nunc nisl ultricies nunc, nec ultricies nunc nisl nec nunc."

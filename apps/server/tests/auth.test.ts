@@ -151,9 +151,9 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
   describe("Macros testing", () => {
     const app = new Elysia()
       .use(betterAuthPlugin)
-      .get("/", { user: true }, async ({ user }) => user)
-      .get("/admin", { isAdmin: true }, async ({ user }) => user)
-      .get("/login", { isLogin: true }, async ({ user }) => user);
+      .get("/", { access: "optional" }, async ({ user }) => user)
+      .get("/admin", { access: "admin" }, async ({ user }) => user)
+      .get("/login", { access: "login" }, async ({ user }) => user);
     let api: ReturnType<typeof treaty<typeof app>>;
     let normalUserCookie: string;
     let adminUserCookie: string;
@@ -184,7 +184,13 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
       adminUserCookie = adminUserSetCookie?.split(";")[0] || "";
     });
 
-    test("should test user macro", async () => {
+    test("should allow optional access without authentication", async () => {
+      const response = await app.handle(new Request("http://localhost/"));
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe("");
+    });
+
+    test("should allow optional access with an authenticated user", async () => {
       const { data, status } = await api.get({
         headers: {
           cookie: normalUserCookie,
@@ -196,7 +202,7 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
       expect(status).toBe(200);
     });
 
-    test("should test isLogin macro with authenticated user", async () => {
+    test("should test login access with authenticated user", async () => {
       const { data, status } = await api.login.get({
         headers: {
           cookie: normalUserCookie,
@@ -208,14 +214,14 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
       expect(status).toBe(200);
     });
 
-    test("should test isLogin macro without authentication", async () => {
-      const { data, status } = await api.login.get();
+    test("should test login access without authentication", async () => {
+      const { error, status } = await api.login.get();
 
-      expect(data).toBeNull();
+      expect(error).toMatchObject({ status: 401 });
       expect(status).toBe(401);
     });
 
-    test("should test isAdmin macro with admin user", async () => {
+    test("should test admin access with admin user", async () => {
       const { data, status } = await api.admin.get({
         headers: {
           cookie: adminUserCookie,
@@ -228,21 +234,24 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
       expect(status).toBe(200);
     });
 
-    test("should test isAdmin macro with normal user (should fail)", async () => {
-      const { data, status } = await api.admin.get({
+    test("should test admin access with normal user (should fail)", async () => {
+      const { error, status } = await api.admin.get({
         headers: {
           cookie: normalUserCookie,
         },
       });
 
-      expect(data).toBeNull();
-      expect(status).toBe(401);
+      expect(error).toMatchObject({
+        status: 403,
+        value: { title: "Forbidden" },
+      });
+      expect(status).toBe(403);
     });
 
-    test("should test isAdmin macro without authentication", async () => {
-      const { data, status } = await api.admin.get();
+    test("should test admin access without authentication", async () => {
+      const { error, status } = await api.admin.get();
 
-      expect(data).toBeNull();
+      expect(error).toMatchObject({ status: 401 });
       expect(status).toBe(401);
     });
   });
@@ -342,7 +351,7 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
         });
 
         expect(data).toBeNull();
-        expect(status).toBe(401);
+        expect(status).toBe(403);
       });
 
       test("admin can update order status", async () => {
@@ -520,7 +529,7 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
         );
 
         expect(data).toBeNull();
-        expect(status).toBe(401);
+        expect(status).toBe(403);
       });
 
       test("admin can view all orders", async () => {

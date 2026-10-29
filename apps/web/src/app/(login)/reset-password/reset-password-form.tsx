@@ -126,7 +126,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
               />
             </div>
 
-            {result.serverError && (
+            {result.serverError ? (
               <div
                 aria-live="polite"
                 className="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200"
@@ -134,8 +134,8 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
               >
                 {result.serverError}
               </div>
-            )}
-            {result.validationErrors && (
+            ) : null}
+            {result.validationErrors ? (
               <div
                 aria-live="polite"
                 className="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200"
@@ -159,7 +159,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
                   ));
                 })()}
               </div>
-            )}
+            ) : null}
 
             <Button className="w-full" disabled={isExecuting} type="submit">
               {isExecuting ? (

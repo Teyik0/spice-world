@@ -1,13 +1,13 @@
 import { stripe } from "@better-auth/stripe";
-import { PasswordReset } from "@spice-world/emails/src/password-reset";
-import { ResetPassword } from "@spice-world/emails/src/reset-password";
-import { VerifyEmail } from "@spice-world/emails/src/spiceworld-welcome";
+import PasswordReset from "@spice-world/emails/src/password-reset";
+import ResetPassword from "@spice-world/emails/src/reset-password";
+import VerifyEmail from "@spice-world/emails/src/spiceworld-welcome";
 import { env } from "@spice-world/server/lib/env";
 import { prisma } from "@spice-world/server/lib/prisma";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { betterAuth } from "better-auth/minimal";
 import { admin, openAPI } from "better-auth/plugins";
-import { Elysia } from "elysia";
+import { Elysia, type MacroTypeLambda, macroType } from "elysia";
 import { Resend } from "resend";
 import Stripe from "stripe";
 import { orderService } from "../modules/orders/service";
@@ -134,52 +134,43 @@ export const auth = betterAuth({
   ],
 });
 
+interface AccessContext extends MacroTypeLambda {
+  output: "optional" extends this["input"]
+    ? {
+        [K in keyof typeof auth.$Infer.Session]:
+          | (typeof auth.$Infer.Session)[K]
+          | null;
+      }
+    : typeof auth.$Infer.Session;
+}
+
 export const betterAuthPlugin = new Elysia({
   name: "better-auth",
   tags: ["Auth"],
 })
   .mount(auth.handler)
   .macro({
-    user: {
-      async derive({ request: { headers } }): Promise<{
-        user: typeof auth.$Infer.Session.user | null;
-        session: typeof auth.$Infer.Session.session | null;
-      }> {
-        const session = await auth.api.getSession({
-          headers,
-        });
+    access: (level: "optional" | "login" | "admin") => ({
+      $type: macroType<AccessContext>(),
+      async derive({ request: { headers }, problem }) {
+        const session = await auth.api.getSession({ headers });
 
-        if (!session) {
-          return { user: null, session: null };
-        }
-
-        return session;
-      },
-    },
-  })
-  .macro({
-    isLogin: {
-      user: true,
-      derive: ({ session, user, problem }) => {
-        if (!(session && user)) {
+        if (!session && level !== "optional") {
           return problem("Unauthorized");
         }
-        return { user, session };
-      },
-    },
-  })
-  .macro({
-    isAdmin: {
-      isLogin: true,
-      derive: ({ session, user, problem }) => {
-        if (user.role !== "admin") {
-          return problem("Unauthorized");
+
+        if (level === "admin" && session && session.user.role !== "admin") {
+          return problem("Forbidden");
         }
-        return { user, session };
+
+        return {
+          user: session?.user ?? null,
+          session: session?.session ?? null,
+        };
       },
-    },
+    }),
   })
-  .get("/api/is-admin", { isAdmin: true }, ({ session, user }) => ({
+  .get("/api/is-admin", { access: "admin" }, ({ session, user }) => ({
     session,
     user,
   }));

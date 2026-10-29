@@ -47,6 +47,20 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { ProductForm } from "../../store";
 
+function getAttributePlaceholder(
+  loading: boolean,
+  hasCategory: boolean,
+  count: number
+) {
+  if (loading) {
+    return "Loading...";
+  }
+  if (!hasCategory) {
+    return "Select category first";
+  }
+  return count === 0 ? "No attributes available" : "Select attributes";
+}
+
 const DEFAULT_VARIANT: UnwrapSchema<typeof ProductModel.variantCreate> = {
   price: 0,
   sku: undefined,
@@ -215,14 +229,49 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 
   // Handler to initiate creation of new attribute value
   const handleCreateNew = (variantIndex: number) => {
-    return async (
+    return (
       valueName: string
     ): Promise<{ id: string; value: string } | null> => {
       setPendingValueName(valueName);
       setCurrentVariantIndex(variantIndex);
       setIsAttributeSelectorOpen(true);
-      return null; // Modal will handle the actual creation
+      return Promise.resolve(null); // Modal will handle the actual creation
     };
+  };
+
+  const selectCreatedValue = (valueId: string) => {
+    const variant = variantsArray[currentVariantIndex];
+    if (!(variant && variants)) {
+      return;
+    }
+    const currentValues = variant.attributeValueIds || [];
+    const newValues = [...currentValues, valueId];
+
+    if (isPatchVariants(variants)) {
+      // Determine if this is a create or update variant
+      const variantId = "id" in variant ? variant.id : undefined;
+      const updateIndex = variants.update?.findIndex((v) => v.id === variantId);
+      const createIndex = variants.create?.findIndex(
+        (_, i) => i === currentVariantIndex - (variants.update?.length || 0)
+      );
+
+      if (updateIndex !== undefined && updateIndex >= 0) {
+        form.setFieldValue(
+          `variants.update[${updateIndex as number}].attributeValueIds`,
+          newValues
+        );
+      } else if (createIndex !== undefined && createIndex >= 0) {
+        form.setFieldValue(
+          `variants.create[${createIndex as number}].attributeValueIds`,
+          newValues
+        );
+      }
+    } else {
+      form.setFieldValue(
+        `variants.create[${currentVariantIndex}].attributeValueIds`,
+        newValues
+      );
+    }
   };
 
   // Handler when user selects an attribute in the modal
@@ -250,44 +299,11 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
         }
 
         // Auto-select the newly created value
-        const variant = variantsArray[currentVariantIndex];
-        if (variant && variants) {
-          const currentValues = variant.attributeValueIds || [];
-          const newValues = [...currentValues, data.id];
-
-          if (isPatchVariants(variants)) {
-            // Determine if this is a create or update variant
-            const variantId = "id" in variant ? variant.id : undefined;
-            const updateIndex = variants.update?.findIndex(
-              (v) => v.id === variantId
-            );
-            const createIndex = variants.create?.findIndex(
-              (_, i) =>
-                i === currentVariantIndex - (variants.update?.length || 0)
-            );
-
-            if (updateIndex !== undefined && updateIndex >= 0) {
-              form.setFieldValue(
-                `variants.update[${updateIndex as number}].attributeValueIds`,
-                newValues
-              );
-            } else if (createIndex !== undefined && createIndex >= 0) {
-              form.setFieldValue(
-                `variants.create[${createIndex as number}].attributeValueIds`,
-                newValues
-              );
-            }
-          } else {
-            form.setFieldValue(
-              `variants.create[${currentVariantIndex}].attributeValueIds`,
-              newValues
-            );
-          }
-        }
+        selectCreatedValue(data.id);
 
         toast.success("Attribute value created successfully");
       }
-    } catch (_) {
+    } catch {
       toast.error("Failed to create attribute value");
     }
   };
@@ -421,15 +437,11 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
                             onValueChange={(newValues) => {
                               field.handleChange(newValues);
                             }}
-                            placeholder={
-                              isLoadingAttributes
-                                ? "Loading..."
-                                : categoryId
-                                  ? attributes.length === 0
-                                    ? "No attributes available"
-                                    : "Select attributes"
-                                  : "Select category first"
-                            }
+                            placeholder={getAttributePlaceholder(
+                              isLoadingAttributes,
+                              Boolean(categoryId),
+                              attributes.length
+                            )}
                             value={field.state.value}
                           />
                           <field.Message variant="tooltip" />

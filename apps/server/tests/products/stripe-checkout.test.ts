@@ -30,13 +30,13 @@ describe("Stripe Checkout", () => {
     createStripeCheckoutMock = spyOn(
       stripeCheckoutModule,
       "createStripeCheckout"
-    ).mockImplementation(async () => {
+    ).mockImplementation(() => {
       const mockSessionId = `mock_checkout_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      return {
+      return Promise.resolve({
         id: mockSessionId,
         url: `https://mock-stripe.checkout.url/${mockSessionId}`,
         status: "open" as const,
-      };
+      });
     });
 
     // Import auth after setting up mocks but before using it
@@ -69,13 +69,15 @@ describe("Stripe Checkout", () => {
     const setCookie = signInResp.headers.get("set-cookie");
     userCookie = setCookie?.split(";")[0] || "";
 
-    const { productsRouter } = await import(
+    const { productsRouter: authenticatedProductsRouter } = await import(
       "@spice-world/server/modules/products"
     );
-    const { ordersRouter } = await import("@spice-world/server/modules/orders");
+    const { ordersRouter: authenticatedOrdersRouter } = await import(
+      "@spice-world/server/modules/orders"
+    );
 
-    productsApi = treaty(productsRouter);
-    ordersApi = treaty(ordersRouter);
+    productsApi = treaty(authenticatedProductsRouter);
+    ordersApi = treaty(authenticatedOrdersRouter);
   });
 
   afterAll(async () => {
@@ -104,7 +106,7 @@ describe("Stripe Checkout", () => {
         imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
       });
 
-      const variant = product.variants[0];
+      const [variant] = product.variants;
       expectDefined(variant);
 
       // With Stripe, checkout should work without polarProductId
@@ -154,7 +156,7 @@ describe("Stripe Checkout", () => {
         imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
       });
 
-      const variant = product.variants[0];
+      const [variant] = product.variants;
       expectDefined(variant);
 
       // Checkout should create a Stripe session

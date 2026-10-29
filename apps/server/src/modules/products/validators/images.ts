@@ -36,7 +36,7 @@ function validateVIO2(
   currentImages: { id: string; isThumbnail: boolean }[],
   createCount: number
 ): ValidationError | null {
-  if (!currentImages?.length) {
+  if (!currentImages.length) {
     return null;
   }
   const deleteCount = deleteIds?.length ?? 0;

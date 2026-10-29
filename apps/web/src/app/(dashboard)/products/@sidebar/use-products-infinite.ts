@@ -56,14 +56,14 @@ export function useProductsInfinite() {
       .then(({ data }) => {
         setPages([data ?? []]);
         setHasNextPage(data ? data.length >= INITIAL_PAGE_SIZE : false);
-        scrollContainerRef?.current?.scrollTo({ top: 0, behavior: "smooth" });
+        scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
       });
 
     refParams.current = paramsKey;
   }, [paramsKey, params, setPages]);
 
   const [isFetchingNextPage, startTransition] = useTransition();
-  const fetchNextPage = useCallback(async () => {
+  const fetchNextPage = useCallback(() => {
     if (isFetchingNextPage || !hasNextPage) {
       return;
     }

@@ -98,7 +98,7 @@ export const ProductFormClassification = ({
           >
             {(field) => (
               <field.Field>
-                <field.Label>Category</field.Label>
+                <field.Label htmlFor={field.name}>Category</field.Label>
                 <field.Select
                   items={categories.map((category) => ({
                     value: category.id,
@@ -108,7 +108,7 @@ export const ProductFormClassification = ({
                     id !== null && handleCategoryChange(id)
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id={field.name}>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -137,7 +137,7 @@ export const ProductFormClassification = ({
           >
             {(field) => (
               <field.Field>
-                <field.Label>Status</field.Label>
+                <field.Label htmlFor={field.name}>Status</field.Label>
                 <field.Select
                   items={[
                     { value: "DRAFT", label: "Draft" },

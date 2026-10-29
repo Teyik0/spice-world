@@ -8,7 +8,7 @@ import { Suspense } from "react";
 import type { UserItemProps } from "./store";
 import { AddUserButton, NewUserItem, UserItem } from "./user-item";
 
-export async function SidebarRight({ users }: { users: UserItemProps[] }) {
+export function SidebarRight({ users }: { users: UserItemProps[] }) {
   return (
     <Suspense fallback={<UsersSidebarSkeleton />}>
       <aside className="bg-background hidden h-screen flex-1 flex-col overflow-hidden border-r md:flex">
@@ -27,7 +27,7 @@ export async function SidebarRight({ users }: { users: UserItemProps[] }) {
           <ClientOnly>
             <NewUserItem />
           </ClientOnly>
-          {users?.map((user) => (
+          {users.map((user) => (
             <UserItem key={user.id} user={user} />
           ))}
         </div>
@@ -45,8 +45,8 @@ function UsersSidebarSkeleton() {
         </div>
       </header>
       <div className="flex-1 overflow-auto">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <div className="flex items-center gap-3 border-b p-4" key={index}>
+        {["first", "second", "third", "fourth", "fifth"].map((key) => (
+          <div className="flex items-center gap-3 border-b p-4" key={key}>
             <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
             <div className="flex-1">
               <Skeleton className="mb-2 h-4 w-3/4" />

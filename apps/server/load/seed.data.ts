@@ -88,7 +88,11 @@ async function getOrCreateCategoryWithAttributes(categoryName: string) {
 
     for (const attrName of selectedAttrNames) {
       const values = ATTRIBUTE_VALUES[attrName];
+      if (!values) {
+        throw new Error(`Unknown attribute: ${attrName}`);
+      }
 
+      // biome-ignore lint/performance/noAwaitInLoops: Keep seed writes sequential to bound database load and preserve cache ordering.
       const attr = await prisma.attribute.create({
         data: {
           name: attrName,
@@ -127,6 +131,7 @@ async function seedCategoriesAndAttributes() {
   console.log("Creating categories and attributes...");
 
   for (const categoryName of CATEGORY_NAMES) {
+    // biome-ignore lint/performance/noAwaitInLoops: Keep seed writes sequential to bound database load and preserve cache ordering.
     await getOrCreateCategoryWithAttributes(categoryName);
   }
 
@@ -150,9 +155,10 @@ async function createProductBatch(batchSize: number): Promise<void> {
     attributesByAttrId: Map<string, string[]>;
   }> = [];
 
-  for (let i = 0; i < batchSize; i++) {
+  for (let i = 0; i < batchSize; i += 1) {
     const categoryName = faker.helpers.arrayElement(CATEGORY_NAMES);
     const { category, attributesByAttrId } =
+      // biome-ignore lint/performance/noAwaitInLoops: Keep seed writes sequential to bound database load and preserve cache ordering.
       await getOrCreateCategoryWithAttributes(categoryName);
 
     const baseName = faker.commerce.productName().toLowerCase();
@@ -207,17 +213,19 @@ async function createProductBatch(batchSize: number): Promise<void> {
   }> = [];
   const imagesData: Omit<Image, "altText" | "id">[] = [];
 
-  for (let i = 0; i < productsData.length; i++) {
-    const productData = productsData[i];
+  for (const [i, productData] of productsData.entries()) {
     const product = productMap.get(productData.slug);
     if (!product) {
       continue;
     }
 
     const categoryInfo = productsWithCategoryInfo[i];
+    if (!categoryInfo) {
+      throw new Error(`Missing category for product: ${productData.slug}`);
+    }
 
     // Generate variants
-    for (let v = 0; v < VARIANTS_PER_PRODUCT; v++) {
+    for (let v = 0; v < VARIANTS_PER_PRODUCT; v += 1) {
       const attributeValueIds = pickRandomAttributeValueIds(
         categoryInfo.attributesByAttrId
       );
@@ -265,6 +273,7 @@ async function createProductBatch(batchSize: number): Promise<void> {
   await prisma.$transaction(
     async (tx) => {
       for (const variantData of variantsData) {
+        // biome-ignore lint/performance/noAwaitInLoops: Keep seed writes sequential to bound database load and preserve cache ordering.
         await tx.productVariant.create({
           data: {
             productId: variantData.productId,
@@ -296,7 +305,7 @@ async function main() {
   const totalBatches = Math.ceil(NUM_PRODUCTS / BATCH_SIZE);
   const startTime = Date.now();
 
-  for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+  for (let batchIndex = 0; batchIndex < totalBatches; batchIndex += 1) {
     const isLastBatch = batchIndex === totalBatches - 1;
     const currentBatchSize = isLastBatch
       ? NUM_PRODUCTS - batchIndex * BATCH_SIZE
@@ -304,7 +313,8 @@ async function main() {
 
     const batchStartTime = Date.now();
 
-    await createProductBatch(batchIndex);
+    // biome-ignore lint/performance/noAwaitInLoops: Keep seed writes sequential to bound database load and preserve cache ordering.
+    await createProductBatch(currentBatchSize);
 
     const batchDuration = ((Date.now() - batchStartTime) / 1000).toFixed(2);
     const totalCreated = Math.min((batchIndex + 1) * BATCH_SIZE, NUM_PRODUCTS);

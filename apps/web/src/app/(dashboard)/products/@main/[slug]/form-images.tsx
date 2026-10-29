@@ -89,6 +89,16 @@ export const ProductFormImages = ({
     [existingImages]
   );
 
+  const getFileUrl = (file: File) => {
+    let url = fileUrlCache.current.get(file);
+    if (!url) {
+      url = URL.createObjectURL(file);
+      fileUrlCache.current.set(file, url);
+      createdBlobUrls.current.add(url);
+    }
+    return url;
+  };
+
   const { displayImages, imageOps } = useStore(form.store, (state) => {
     const ops = state.values.images as ProductModel.imageOperations | undefined;
     const createOps = ops?.create ?? [];
@@ -106,18 +116,7 @@ export const ProductFormImages = ({
       const updateOp = updateOps.find((op) => op.id === id);
       const updatedFile = updateOp?.file;
 
-      let url = img.urlMedium;
-      if (updatedFile) {
-        // Use cached URL if available, otherwise create new one
-        const cachedUrl = fileUrlCache.current.get(updatedFile);
-        if (cachedUrl) {
-          url = cachedUrl;
-        } else {
-          url = URL.createObjectURL(updatedFile);
-          fileUrlCache.current.set(updatedFile, url);
-          createdBlobUrls.current.add(url);
-        }
-      }
+      const url = updatedFile ? getFileUrl(updatedFile) : img.urlMedium;
 
       images.push({
         id,
@@ -132,20 +131,8 @@ export const ProductFormImages = ({
 
     // Process new images
     for (const op of createOps) {
-      // Use cached URL if available, otherwise create new one
-      let url = fileUrlCache.current.get(op.file);
-      if (!url) {
-        url = URL.createObjectURL(op.file);
-        fileUrlCache.current.set(op.file, url);
-        createdBlobUrls.current.add(url);
-      }
-
-      let urlThumb = fileUrlCache.current.get(op.file);
-      if (!urlThumb) {
-        urlThumb = URL.createObjectURL(op.file);
-        fileUrlCache.current.set(op.file, urlThumb);
-        createdBlobUrls.current.add(urlThumb);
-      }
+      const url = getFileUrl(op.file);
+      const urlThumb = url;
 
       images.push({
         id: `new-${Math.random().toString(36).slice(2)}`,
@@ -163,9 +150,9 @@ export const ProductFormImages = ({
   // Cleanup all blob URLs on component unmount
   useEffect(
     () => () => {
-      createdBlobUrls.current.forEach((url) => {
+      for (const url of createdBlobUrls.current) {
         URL.revokeObjectURL(url);
-      });
+      }
       createdBlobUrls.current.clear();
     },
     []

@@ -78,8 +78,10 @@ function getInitials(name: string | null, email: string | null): string {
   return "?";
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Keep the create/edit form workflow and its error handling together.
 export const UserForm = ({ user, isNew }: UserFormProps) => {
   const router = useRouter();
+  const submitLabel = isNew ? "Create User" : "Save Changes";
   const setSidebarUser = useSetAtom(isNew ? newUserAtom : currentUserAtom);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,7 +92,7 @@ export const UserForm = ({ user, isNew }: UserFormProps) => {
   const [email, setEmail] = useState(user.email ?? "");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"user" | "admin">(
-    (user.role as "user" | "admin") ?? "user"
+    (user.role ?? "user") as "user" | "admin"
   );
   const [banned, setBanned] = useState(user.banned ?? false);
   const [banReason, setBanReason] = useState(user.banReason ?? "");
@@ -108,6 +110,7 @@ export const UserForm = ({ user, isNew }: UserFormProps) => {
     });
   }, [name, email, role, banned, user.id, user.image, setSidebarUser]);
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Keep the create/edit form workflow and its error handling together.
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -220,7 +223,7 @@ export const UserForm = ({ user, isNew }: UserFormProps) => {
     setName(user.name ?? "");
     setEmail(user.email ?? "");
     setPassword("");
-    setRole((user.role as "user" | "admin") ?? "user");
+    setRole((user.role ?? "user") as "user" | "admin");
     setBanned(user.banned ?? false);
     setBanReason(user.banReason ?? "");
     setBanExpiresInDays(null);
@@ -318,10 +321,8 @@ export const UserForm = ({ user, isNew }: UserFormProps) => {
               <Loader2 className="animate-spin" size={16} />
               {isNew ? "Creating..." : "Saving..."}
             </>
-          ) : isNew ? (
-            "Create User"
           ) : (
-            "Save Changes"
+            submitLabel
           )}
         </Button>
       </div>
@@ -370,7 +371,7 @@ export const UserForm = ({ user, isNew }: UserFormProps) => {
             )}
           </div>
 
-          {isNew && (
+          {isNew ? (
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -384,7 +385,7 @@ export const UserForm = ({ user, isNew }: UserFormProps) => {
                 Minimum 8 characters
               </p>
             </div>
-          )}
+          ) : null}
 
           <div className="space-y-2">
             <Label htmlFor="role">Role</Label>

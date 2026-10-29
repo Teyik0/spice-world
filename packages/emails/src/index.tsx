@@ -1,8 +1,8 @@
 import { render } from "@react-email/components";
-import { ChangeEmailVerification } from "./change-email-verification";
-import { PasswordReset } from "./password-reset";
-import { ResetPassword } from "./reset-password";
-import { VerifyEmail } from "./spiceworld-welcome";
+import ChangeEmailVerification from "./change-email-verification";
+import PasswordReset from "./password-reset";
+import ResetPassword from "./reset-password";
+import VerifyEmail from "./spiceworld-welcome";
 
 /**
  * Renders the verify email template to HTML string

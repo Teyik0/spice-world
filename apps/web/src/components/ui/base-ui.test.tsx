@@ -57,7 +57,10 @@ async function render(ui: React.ReactNode) {
 async function click(selector: string) {
   const element = document.querySelector<HTMLElement>(selector);
   expect(element).not.toBeNull();
-  await act(async () => element?.click());
+  await act(async () => {
+    element?.click();
+    await window.happyDOM.whenAsyncComplete();
+  });
 }
 afterEach(async () => {
   await act(async () => root?.unmount());
@@ -152,4 +155,76 @@ test("menu item can stay open for multiple category selections", async () => {
   await click('[role="menuitem"]');
   expect(clicks).toBe(1);
   expect(document.querySelector('[role="menu"]')).not.toBeNull();
+});
+
+const { useFileUpload } = await import("../../hooks/use-file-upload");
+
+function UploadHarness({
+  valid,
+  oversized,
+  wrongType,
+}: Record<"valid" | "oversized" | "wrongType", File>) {
+  const [state, actions] = useFileUpload({
+    accept: "image/*",
+    maxSize: 3,
+    multiple: true,
+  });
+  return (
+    <>
+      <button
+        data-file="valid"
+        onClick={() => actions.addFiles([valid])}
+        type="button"
+      >
+        Add
+      </button>
+      <button
+        data-file="large"
+        onClick={() => actions.addFiles([oversized])}
+        type="button"
+      >
+        Oversized
+      </button>
+      <button
+        data-file="type"
+        onClick={() => actions.addFiles([wrongType])}
+        type="button"
+      >
+        Wrong type
+      </button>
+      <button data-file="clear" onClick={actions.clearFiles} type="button">
+        Clear
+      </button>
+      <output data-files>
+        {state.files.map(({ file }) => file.name).join(",")}
+      </output>
+      <output data-errors>{state.errors.join(",")}</output>
+    </>
+  );
+}
+
+test("file upload validates size, type and duplicates and can be cleared", async () => {
+  const valid = new File(["ok"], "valid.png", { type: "image/png" });
+  const oversized = new File(["large"], "large.png", { type: "image/png" });
+  const wrongType = new File(["x"], "text.txt", { type: "text/plain" });
+
+  await render(
+    <UploadHarness oversized={oversized} valid={valid} wrongType={wrongType} />
+  );
+  await click('[data-file="large"]');
+  expect(document.querySelector("[data-errors]")?.textContent).toContain(
+    "maximum size"
+  );
+  await click('[data-file="type"]');
+  expect(document.querySelector("[data-errors]")?.textContent).toContain(
+    "not an accepted file type"
+  );
+  await click('[data-file="valid"]');
+  expect(document.querySelector("[data-files]")?.textContent).toBe("valid.png");
+  await click('[data-file="valid"]');
+  expect(document.querySelector("[data-errors]")?.textContent).toContain(
+    "already added"
+  );
+  await click('[data-file="clear"]');
+  expect(document.querySelector("[data-files]")?.textContent).toBe("");
 });

@@ -255,12 +255,12 @@ export async function createDummyProducts(prisma: PrismaClient) {
   const categories = await prisma.category.findMany();
 
   await Promise.all(
-    productsData.map(async (productData) => {
+    productsData.map((productData) => {
       const category = categories.find(
         (cat) => cat.name === productData.category
       );
       if (!category) {
-        return;
+        return Promise.resolve();
       }
 
       return prisma.product.create({

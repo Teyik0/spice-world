@@ -87,7 +87,7 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
       className={`hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex w-full cursor-pointer items-start gap-3 border-b p-3 text-sm leading-tight last:border-b-0 ${isSelected ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""}`}
       href={href}
     >
-      {product.img && (
+      {product.img ? (
         <Image
           alt={product.name}
           className="shrink-0 rounded-md object-cover"
@@ -97,7 +97,7 @@ export const ProductItem = ({ product }: { product: ProductItemProps }) => {
           src={product.img}
           width={48}
         />
-      )}
+      ) : null}
       <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
         <div className="flex w-full items-center gap-2">
           <span className="truncate first-letter:capitalize">

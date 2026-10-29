@@ -71,9 +71,9 @@ export function ProductsSidebar({ categories }: ProductsSidebarProps) {
         </div>
 
         <div className="flex h-10 items-center justify-center" ref={ref}>
-          {isFetching && (
+          {isFetching ? (
             <Loader2Icon className="text-muted-foreground size-4 animate-spin" />
-          )}
+          ) : null}
         </div>
       </div>
     </aside>

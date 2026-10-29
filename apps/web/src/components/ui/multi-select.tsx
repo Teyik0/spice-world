@@ -17,7 +17,13 @@ import { Separator } from "@spice-world/web/components/ui/separator";
 import { cn } from "@spice-world/web/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import { CheckIcon, ChevronDown, XCircle, XIcon } from "lucide-react";
-import * as React from "react";
+import {
+  forwardRef,
+  type HTMLAttributes,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 const multiSelectVariants = cva("m-1 transition-all duration-300 ease-in-out", {
   variants: {
@@ -41,7 +47,7 @@ export interface MultiSelectOption {
 }
 
 interface MultiSelectProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onValueChange">,
+  extends Omit<HTMLAttributes<HTMLDivElement>, "onValueChange">,
     VariantProps<typeof multiSelectVariants> {
   className?: string;
   creatable?: boolean;
@@ -49,7 +55,9 @@ interface MultiSelectProps
   disabled?: boolean;
   maxCount?: number;
   onBlur?: () => void;
-  onCreateNew?: (value: string) => Promise<MultiSelectOption | null>;
+  onCreateNew?: (
+    value: string
+  ) => MultiSelectOption | null | Promise<MultiSelectOption | null>;
   onRemove?: (value: string, index: number) => void;
   onValueChange?: (value: string[]) => void;
   options: MultiSelectOption[] | null;
@@ -57,7 +65,7 @@ interface MultiSelectProps
   value?: string[];
 }
 
-export const MultiSelect = React.forwardRef<HTMLDivElement, MultiSelectProps>(
+export const MultiSelect = forwardRef<HTMLDivElement, MultiSelectProps>(
   (
     {
       options,
@@ -78,12 +86,12 @@ export const MultiSelect = React.forwardRef<HTMLDivElement, MultiSelectProps>(
     _ref
   ) => {
     const [selectedValues, setSelectedValues] =
-      React.useState<string[]>(defaultValue);
-    const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
-    const [searchValue, setSearchValue] = React.useState("");
-    const [isCreating, setIsCreating] = React.useState(false);
+      useState<string[]>(defaultValue);
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+    const [searchValue, setSearchValue] = useState("");
+    const [isCreating, setIsCreating] = useState(false);
 
-    React.useEffect(() => {
+    useEffect(() => {
       if (value !== undefined) {
         setSelectedValues(value);
       }
@@ -98,7 +106,9 @@ export const MultiSelect = React.forwardRef<HTMLDivElement, MultiSelectProps>(
         return;
       }
       const newSelectedValues = selectedValues.includes(optionValue)
-        ? selectedValues.filter((value) => value !== optionValue)
+        ? selectedValues.filter(
+            (selectedValue) => selectedValue !== optionValue
+          )
         : [...selectedValues, optionValue];
       setSelectedValues(newSelectedValues);
       onValueChange?.(newSelectedValues);
@@ -127,7 +137,7 @@ export const MultiSelect = React.forwardRef<HTMLDivElement, MultiSelectProps>(
       }
     };
 
-    const filteredOptions = React.useMemo(() => {
+    const filteredOptions = useMemo(() => {
       if (!searchValue) {
         return options;
       }
@@ -178,37 +188,39 @@ export const MultiSelect = React.forwardRef<HTMLDivElement, MultiSelectProps>(
               {selectedValues.length > 0 ? (
                 <div className="flex justify-between">
                   <div className="flex min-w-0 items-center gap-1 overflow-x-auto overflow-y-hidden px-2 py-1 [&::-webkit-scrollbar]:h-0">
-                    {selectedValues.slice(0, maxCount).map((value, index) => {
-                      const option = options?.find(
-                        (opt) => opt.value === value
-                      );
-                      if (!option) {
-                        return null;
-                      }
+                    {selectedValues
+                      .slice(0, maxCount)
+                      .map((selectedValue, index) => {
+                        const option = options?.find(
+                          (opt) => opt.value === selectedValue
+                        );
+                        if (!option) {
+                          return null;
+                        }
 
-                      return (
-                        <Badge
-                          className={cn(
-                            "border-foreground/10 bg-card text-foreground hover:bg-card/80 shrink-0 pr-0 whitespace-nowrap transition-all duration-300 ease-in-out"
-                          )}
-                          key={value}
-                        >
-                          <span>{option.label}</span>
-                          <button
-                            aria-label={`Remove ${option.label}`}
-                            className="ml-1 rounded-sm hover:bg-white/20"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              onRemove?.(value, index);
-                              toggleOption(value);
-                            }}
-                            type="button"
+                        return (
+                          <Badge
+                            className={cn(
+                              "border-foreground/10 bg-card text-foreground hover:bg-card/80 shrink-0 pr-0 whitespace-nowrap transition-all duration-300 ease-in-out"
+                            )}
+                            key={selectedValue}
                           >
-                            <XCircle className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      );
-                    })}
+                            <span>{option.label}</span>
+                            <button
+                              aria-label={`Remove ${option.label}`}
+                              className="ml-1 rounded-sm hover:bg-white/20"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onRemove?.(selectedValue, index);
+                                toggleOption(selectedValue);
+                              }}
+                              type="button"
+                            >
+                              <XCircle className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        );
+                      })}
                     {selectedValues.length > maxCount && (
                       <Badge className="border-foreground/1 text-foreground shrink-0 bg-transparent whitespace-nowrap hover:bg-transparent">
                         {`+ ${selectedValues.length - maxCount} more`}

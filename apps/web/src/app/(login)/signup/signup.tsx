@@ -64,7 +64,7 @@ export function SignUp() {
             : "",
           callbackURL: "http://localhost:3000/",
           fetchOptions: {
-            onSuccess: async () => {
+            onSuccess: () => {
               toast.success("Account created successfully!", {
                 description: "Welcome to Spice World",
               });
@@ -79,7 +79,7 @@ export function SignUp() {
             },
           },
         });
-      } catch (_error: unknown) {
+      } catch {
         toast.error("An unexpected error occurred", {
           description: "Please try again later.",
         });
@@ -108,7 +108,7 @@ export function SignUp() {
               <form.AppField name="firstName">
                 {(field) => (
                   <field.Field>
-                    <field.Label>First name</field.Label>
+                    <field.Label htmlFor={field.name}>First name</field.Label>
                     <field.Input placeholder="Max" type="text" />
                     <field.Message />
                   </field.Field>
@@ -118,7 +118,7 @@ export function SignUp() {
               <form.AppField name="lastName">
                 {(field) => (
                   <field.Field>
-                    <field.Label>Last name</field.Label>
+                    <field.Label htmlFor={field.name}>Last name</field.Label>
                     <field.Input placeholder="Robinson" type="text" />
                     <field.Message />
                   </field.Field>
@@ -129,7 +129,7 @@ export function SignUp() {
             <form.AppField name="email">
               {(field) => (
                 <field.Field>
-                  <field.Label>Email</field.Label>
+                  <field.Label htmlFor={field.name}>Email</field.Label>
                   <field.Input
                     placeholder="maxrobinson@gmail.com"
                     type="email"
@@ -142,7 +142,7 @@ export function SignUp() {
             <form.AppField name="password">
               {(field) => (
                 <field.Field>
-                  <field.Label>Password</field.Label>
+                  <field.Label htmlFor={field.name}>Password</field.Label>
                   <field.Input
                     autoComplete="new-password"
                     placeholder="********"
@@ -193,7 +193,9 @@ export function SignUp() {
             >
               {(field) => (
                 <field.Field>
-                  <field.Label>Profile Image (optional)</field.Label>
+                  <field.Label htmlFor={field.name}>
+                    Profile Image (optional)
+                  </field.Label>
                   <field.Content className="flex flex-row items-end gap-4">
                     {imagePreview && (
                       <div className="relative h-24 w-42 overflow-hidden rounded-sm">
@@ -250,7 +252,7 @@ export function SignUp() {
   );
 }
 
-async function convertImageToBase64(file: File): Promise<string> {
+function convertImageToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result as string);

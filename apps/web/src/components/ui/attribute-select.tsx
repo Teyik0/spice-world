@@ -16,7 +16,14 @@ import {
 import { Separator } from "@spice-world/web/components/ui/separator";
 import { cn } from "@spice-world/web/lib/utils";
 import { ChevronDown, Circle, CircleDot, XCircle, XIcon } from "lucide-react";
-import * as React from "react";
+import {
+  Fragment,
+  forwardRef,
+  type HTMLAttributes,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 export interface AttributeGroup {
   attributeId: string;
@@ -28,7 +35,7 @@ export interface AttributeGroup {
 }
 
 interface AttributeSelectProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onValueChange"> {
+  extends Omit<HTMLAttributes<HTMLDivElement>, "onValueChange"> {
   className?: string;
   creatable?: boolean;
   defaultValue?: string[];
@@ -44,10 +51,7 @@ interface AttributeSelectProps
   value?: string[];
 }
 
-export const AttributeSelect = React.forwardRef<
-  HTMLDivElement,
-  AttributeSelectProps
->(
+export const AttributeSelect = forwardRef<HTMLDivElement, AttributeSelectProps>(
   (
     {
       groups,
@@ -66,13 +70,13 @@ export const AttributeSelect = React.forwardRef<
     _ref
   ) => {
     const [selectedValues, setSelectedValues] =
-      React.useState<string[]>(defaultValue);
-    const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
-    const [searchValue, setSearchValue] = React.useState("");
-    const [isCreating, setIsCreating] = React.useState(false);
+      useState<string[]>(defaultValue);
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+    const [searchValue, setSearchValue] = useState("");
+    const [isCreating, setIsCreating] = useState(false);
 
     // Build a map: valueId -> attributeId for quick lookup
-    const valueToAttributeMap = React.useMemo(() => {
+    const valueToAttributeMap = useMemo(() => {
       const map = new Map<string, string>();
       for (const group of groups) {
         for (const val of group.values) {
@@ -83,7 +87,7 @@ export const AttributeSelect = React.forwardRef<
     }, [groups]);
 
     // Build a map: valueId -> value label for display
-    const valueToLabelMap = React.useMemo(() => {
+    const valueToLabelMap = useMemo(() => {
       const map = new Map<string, string>();
       for (const group of groups) {
         for (const val of group.values) {
@@ -93,7 +97,7 @@ export const AttributeSelect = React.forwardRef<
       return map;
     }, [groups]);
 
-    React.useEffect(() => {
+    useEffect(() => {
       if (value !== undefined) {
         setSelectedValues(value);
       }
@@ -164,7 +168,7 @@ export const AttributeSelect = React.forwardRef<
     };
 
     // Filter groups based on search
-    const filteredGroups = React.useMemo(() => {
+    const filteredGroups = useMemo(() => {
       if (!searchValue) {
         return groups;
       }
@@ -312,7 +316,7 @@ export const AttributeSelect = React.forwardRef<
                 )}
               </CommandEmpty>
               {filteredGroups.map((group, groupIndex) => (
-                <React.Fragment key={group.attributeId}>
+                <Fragment key={group.attributeId}>
                   {groupIndex > 0 && <Separator className="my-1" />}
                   <CommandGroup heading={group.attributeName}>
                     {group.values.map((val) => {
@@ -335,7 +339,7 @@ export const AttributeSelect = React.forwardRef<
                       );
                     })}
                   </CommandGroup>
-                </React.Fragment>
+                </Fragment>
               ))}
             </CommandList>
           </Command>

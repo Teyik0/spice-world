@@ -11,11 +11,8 @@ export interface CheckoutItem {
 }
 
 export class StripeApiError extends Error {
-  constructor(
-    message: string,
-    public override readonly cause?: unknown
-  ) {
-    super(message);
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = "StripeApiError";
   }
 }
@@ -74,7 +71,7 @@ export async function createStripeCheckout({
   } catch (error) {
     throw new StripeApiError(
       `Failed to create Stripe checkout: ${error instanceof Error ? error.message : "Unknown error"}`,
-      error
+      { cause: error }
     );
   }
 }

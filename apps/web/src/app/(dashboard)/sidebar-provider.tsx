@@ -44,14 +44,13 @@ export function SidebarRightProvider({
 
   const setExpanded = (value: boolean) => {
     setExpandedState(value);
-    void setSidebarExpanded(value);
+    setSidebarExpanded(value);
   };
 
-  const sidebarWidth = expanded
-    ? is2xl
-      ? SIDEBAR_WIDTH_EXPANDED_2XL
-      : SIDEBAR_WIDTH_EXPANDED
-    : SIDEBAR_WIDTH_COLLAPSED;
+  const expandedWidth = is2xl
+    ? SIDEBAR_WIDTH_EXPANDED_2XL
+    : SIDEBAR_WIDTH_EXPANDED;
+  const sidebarWidth = expanded ? expandedWidth : SIDEBAR_WIDTH_COLLAPSED;
 
   return (
     <SidebarContext.Provider

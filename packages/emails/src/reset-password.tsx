@@ -17,7 +17,7 @@ const baseUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "http://localhost:5173";
 
-export function ResetPassword({ resetLink }: { resetLink: string }) {
+function ResetPassword({ resetLink }: { resetLink: string }) {
   return (
     <Html>
       <Head />

@@ -126,7 +126,7 @@ export function BulkActionsBar({ categories }: BulkActionsBarProps) {
   return (
     <>
       <div className="bg-muted/50 flex flex-wrap items-center gap-2 border-b p-3">
-        {isPending && <Loader2Icon className="size-4 animate-spin" />}
+        {isPending ? <Loader2Icon className="size-4 animate-spin" /> : null}
         <span className="text-muted-foreground text-sm">
           {selectedIds.size} selected
         </span>
@@ -193,7 +193,7 @@ export function BulkActionsBar({ categories }: BulkActionsBarProps) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {hasPendingChanges && (
+        {hasPendingChanges ? (
           <>
             <Button
               disabled={isPending}
@@ -212,7 +212,7 @@ export function BulkActionsBar({ categories }: BulkActionsBarProps) {
               Reset
             </Button>
           </>
-        )}
+        ) : null}
 
         <Button
           className="ml-auto"
@@ -239,18 +239,18 @@ export function BulkActionsBar({ categories }: BulkActionsBarProps) {
           <div className="space-y-2">
             <p className="text-sm font-medium">Changes to apply:</p>
             <div className="flex flex-wrap gap-2">
-              {pendingChanges.status && (
+              {pendingChanges.status ? (
                 <Badge variant="secondary">
                   Status →{" "}
                   {pendingChanges.status.charAt(0) +
                     pendingChanges.status.slice(1).toLowerCase()}
                 </Badge>
-              )}
-              {pendingChanges.categoryName && (
+              ) : null}
+              {pendingChanges.categoryName ? (
                 <Badge variant="secondary">
                   Category → {pendingChanges.categoryName}
                 </Badge>
-              )}
+              ) : null}
             </div>
           </div>
 
@@ -263,9 +263,9 @@ export function BulkActionsBar({ categories }: BulkActionsBarProps) {
               Cancel
             </Button>
             <Button disabled={isPending} onClick={handleConfirm}>
-              {isPending && (
+              {isPending ? (
                 <Loader2Icon className="mr-2 size-4 animate-spin" />
-              )}
+              ) : null}
               Confirm
             </Button>
           </DialogFooter>
