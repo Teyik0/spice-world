@@ -8,26 +8,28 @@ import { getSidebarExpanded } from "./cookies";
 import { SidebarRightProvider } from "./sidebar-provider";
 
 export default async function DashboardLayout({
-	children,
+  children,
 }: Readonly<{
-	children: React.ReactNode;
+  children: React.ReactNode;
 }>) {
-	const login = await verifySession();
-	if (!login) redirect("/signin");
+  const login = await verifySession();
+  if (!login) {
+    redirect("/signin");
+  }
 
-	const sidebarExpanded = await getSidebarExpanded();
+  const sidebarExpanded = await getSidebarExpanded();
 
-	return (
-		<main className="flex-1 flex">
-			<NuqsAdapter>
-				<Provider>
-					<Toaster />
-					<AppSidebar login={login} />
-					<SidebarRightProvider initialExpanded={sidebarExpanded}>
-						{children}
-					</SidebarRightProvider>
-				</Provider>
-			</NuqsAdapter>
-		</main>
-	);
+  return (
+    <main className="flex flex-1">
+      <NuqsAdapter>
+        <Provider>
+          <Toaster />
+          <AppSidebar login={login} />
+          <SidebarRightProvider initialExpanded={sidebarExpanded}>
+            {children}
+          </SidebarRightProvider>
+        </Provider>
+      </NuqsAdapter>
+    </main>
+  );
 }

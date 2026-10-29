@@ -14,7 +14,7 @@ pre-commit:
       stage_fixed: true
 
     - name: typescript check (monorepo)
-      run: bun run tsc --build --noEmit
+      run: bun check
       glob: "*.{ts,tsx}"
       stage_fixed: true
 

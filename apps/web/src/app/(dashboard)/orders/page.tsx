@@ -1,3 +1,3 @@
 export default function OrderPage() {
-	return <div>zfegez</div>;
+  return <div>zfegez</div>;
 }

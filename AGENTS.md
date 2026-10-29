@@ -36,7 +36,7 @@ const { data, status, error } = await api.attributes.post(newAttrData);
 - MUST check for type error after diff: bun run tsc <file_path> --noEmit
 - MUST check for lint error after diff: bun run biome check <file_path>
 - MUST create test without any mock, the only exception is third party such as the image upload (utapi)
-- MUST explain any proposed adjustment with code inside de conversation, with less sentences. Code should be self-explaining.
+- MUST explain any proposed adjustment with code and <file_path>.{ts,tsx} inside de conversation, with less sentences. Code should be self-explaining.
 
 ## Running the project
 
@@ -54,8 +54,8 @@ cd apps/server && bun run prisma generate
 **Linting, formatting and typechecking**
 ```sh
 bun run format # Lint, auto-fix and format with Biome (ultracite)
-cd apps/server && bun run tsc --noEmit
-cd apps/web && bun run tsc --noEmit
+bun check -p apps/server
+bun check -p apps/web
 ```
 
 ## Task involving backend end change (apps/server)
