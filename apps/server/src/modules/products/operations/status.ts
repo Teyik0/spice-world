@@ -1,22 +1,22 @@
 import type { ProductStatus } from "@spice-world/server/prisma/client";
 
 export interface ValidationResults {
-	priceValid: boolean;
-	attributesValid: boolean;
+  attributesValid: boolean;
+  priceValid: boolean;
 }
 
 export function setFinalStatus({
-	requestedStatus,
-	validationResults,
+  requestedStatus,
+  validationResults,
 }: {
-	requestedStatus: ProductStatus;
-	validationResults: ValidationResults;
+  requestedStatus: ProductStatus;
+  validationResults: ValidationResults;
 }): ProductStatus {
-	if (
-		requestedStatus === "PUBLISHED" &&
-		!(validationResults.priceValid && validationResults.attributesValid)
-	) {
-		return "DRAFT";
-	}
-	return requestedStatus;
+  if (
+    requestedStatus === "PUBLISHED" &&
+    !(validationResults.priceValid && validationResults.attributesValid)
+  ) {
+    return "DRAFT";
+  }
+  return requestedStatus;
 }

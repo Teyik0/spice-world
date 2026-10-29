@@ -11,7 +11,9 @@ function validateVIO1(
   updateOps: ProductModel.imageOperations["update"],
   deleteIds: string[] | undefined
 ): ValidationError | null {
-  if (!updateOps?.length || !deleteIds?.length) return null;
+  if (!(updateOps?.length && deleteIds?.length)) {
+    return null;
+  }
   const deleteSet = new Set(deleteIds);
   const duplicates = updateOps
     .filter((op) => deleteSet.has(op.id))
@@ -34,7 +36,9 @@ function validateVIO2(
   currentImages: { id: string; isThumbnail: boolean }[],
   createCount: number
 ): ValidationError | null {
-  if (!currentImages?.length) return null;
+  if (!currentImages?.length) {
+    return null;
+  }
   const deleteCount = deleteIds?.length ?? 0;
   const remainingCount = currentImages.length - deleteCount + createCount;
   if (remainingCount < 1) {
@@ -48,8 +52,8 @@ function validateVIO2(
 }
 
 interface ValidateImagesInput {
-  imagesOps: ProductModel.imageOperations;
   currentImages?: { id: string; isThumbnail: boolean }[];
+  imagesOps: ProductModel.imageOperations;
 }
 /**
  * Validates image operations for POST and PATCH.
@@ -66,7 +70,9 @@ export function validateImages({
   const errors: ValidationError[] = [];
   // VIO1: Duplicate IDs between update and delete
   const vio1 = validateVIO1(imagesOps.update, imagesOps.delete);
-  if (vio1) errors.push(vio1);
+  if (vio1) {
+    errors.push(vio1);
+  }
 
   // VIO2: Cannot delete all images (only for PATCH)
   if (currentImages) {
@@ -75,7 +81,9 @@ export function validateImages({
       currentImages,
       imagesOps.create?.length ?? 0
     );
-    if (vio2) errors.push(vio2);
+    if (vio2) {
+      errors.push(vio2);
+    }
   }
 
   if (errors.length > 0) {

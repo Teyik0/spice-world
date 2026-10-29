@@ -6,36 +6,36 @@ import type * as ProductModel from "../model";
 export type { ValidationResult };
 
 export interface VariantPriceData {
-	id?: string;
-	price: number;
+  id?: string;
+  price: number;
 }
 
 export interface VariantAttributeData {
-	id?: string;
-	attributeValueIds: string[];
+  attributeValueIds: string[];
+  id?: string;
 }
 
 export interface PublishPriceValidationInput {
-	currentVariants: VariantPriceData[];
-	variantsToCreate?: { price: number }[];
-	variantsToUpdate?: { id: string; price?: number }[];
-	variantsToDelete?: string[];
+  currentVariants: VariantPriceData[];
+  variantsToCreate?: { price: number }[];
+  variantsToDelete?: string[];
+  variantsToUpdate?: { id: string; price?: number }[];
 }
 
 export interface PublishAttributeValidationInput {
-	categoryHasAttributes: boolean;
-	currentVariants: VariantAttributeData[];
-	variantsToCreate?: { attributeValueIds: string[] }[];
-	variantsToUpdate?: { id: string; attributeValueIds?: string[] }[];
-	variantsToDelete?: string[];
+  categoryHasAttributes: boolean;
+  currentVariants: VariantAttributeData[];
+  variantsToCreate?: { attributeValueIds: string[] }[];
+  variantsToDelete?: string[];
+  variantsToUpdate?: { id: string; attributeValueIds?: string[] }[];
 }
 
 export interface CategoryChangeAutoDraftInput {
-	currentStatus: ProductStatus;
-	requestedStatus?: ProductStatus;
-	newCategoryHasAttributes: boolean;
-	finalVariantCount: number;
-	variantsWithAttributeValues: number;
+  currentStatus: ProductStatus;
+  finalVariantCount: number;
+  newCategoryHasAttributes: boolean;
+  requestedStatus?: ProductStatus;
+  variantsWithAttributeValues: number;
 }
 
 /**
@@ -43,41 +43,41 @@ export interface CategoryChangeAutoDraftInput {
  * Pure function for unit testing.
  */
 export function validatePublishHasPositivePrice(
-	input: PublishPriceValidationInput,
+  input: PublishPriceValidationInput
 ): ValidationResult<void> {
-	const deletedIds = new Set(input.variantsToDelete ?? []);
+  const deletedIds = new Set(input.variantsToDelete ?? []);
 
-	const remainingVariants = input.currentVariants.filter(
-		(v) => v.id && !deletedIds.has(v.id),
-	);
+  const remainingVariants = input.currentVariants.filter(
+    (v) => v.id && !deletedIds.has(v.id)
+  );
 
-	const updateMap = new Map(
-		(input.variantsToUpdate ?? []).map((u) => [u.id, u]),
-	);
+  const updateMap = new Map(
+    (input.variantsToUpdate ?? []).map((u) => [u.id, u])
+  );
 
-	const finalExistingPrices = remainingVariants.map((v) => {
-		const update = v.id ? updateMap.get(v.id) : undefined;
-		return update?.price !== undefined ? update.price : v.price;
-	});
+  const finalExistingPrices = remainingVariants.map((v) => {
+    const update = v.id ? updateMap.get(v.id) : undefined;
+    return update?.price === undefined ? v.price : update.price;
+  });
 
-	const newPrices = (input.variantsToCreate ?? []).map((v) => v.price);
+  const newPrices = (input.variantsToCreate ?? []).map((v) => v.price);
 
-	const allPrices = [...finalExistingPrices, ...newPrices];
+  const allPrices = [...finalExistingPrices, ...newPrices];
 
-	const hasPositivePrice = allPrices.some((price) => price > 0);
+  const hasPositivePrice = allPrices.some((price) => price > 0);
 
-	if (!hasPositivePrice) {
-		return {
-			success: false,
-			error: {
-				code: "PUB1",
-				message:
-					"Cannot publish: at least one variant must have a price greater than 0",
-			},
-		};
-	}
+  if (!hasPositivePrice) {
+    return {
+      success: false,
+      error: {
+        code: "PUB1",
+        message:
+          "Cannot publish: at least one variant must have a price greater than 0",
+      },
+    };
+  }
 
-	return { success: true, data: undefined };
+  return { success: true, data: undefined };
 }
 
 /**
@@ -86,62 +86,62 @@ export function validatePublishHasPositivePrice(
  * - If category has attributes AND >1 variant: each variant must have attributeValues
  */
 export function validatePublishAttributeRequirements(
-	input: PublishAttributeValidationInput,
+  input: PublishAttributeValidationInput
 ): ValidationResult<void> {
-	const deletedIds = new Set(input.variantsToDelete ?? []);
+  const deletedIds = new Set(input.variantsToDelete ?? []);
 
-	const remainingVariants = input.currentVariants.filter(
-		(v) => v.id && !deletedIds.has(v.id),
-	);
+  const remainingVariants = input.currentVariants.filter(
+    (v) => v.id && !deletedIds.has(v.id)
+  );
 
-	const updateMap = new Map(
-		(input.variantsToUpdate ?? []).map((u) => [u.id, u]),
-	);
+  const updateMap = new Map(
+    (input.variantsToUpdate ?? []).map((u) => [u.id, u])
+  );
 
-	const finalExistingVariants = remainingVariants.map((v) => {
-		const update = v.id ? updateMap.get(v.id) : undefined;
-		return {
-			attributeValueIds: update?.attributeValueIds ?? v.attributeValueIds,
-		};
-	});
+  const finalExistingVariants = remainingVariants.map((v) => {
+    const update = v.id ? updateMap.get(v.id) : undefined;
+    return {
+      attributeValueIds: update?.attributeValueIds ?? v.attributeValueIds,
+    };
+  });
 
-	const newVariants = (input.variantsToCreate ?? []).map((v) => ({
-		attributeValueIds: v.attributeValueIds,
-	}));
+  const newVariants = (input.variantsToCreate ?? []).map((v) => ({
+    attributeValueIds: v.attributeValueIds,
+  }));
 
-	const allFinalVariants = [...finalExistingVariants, ...newVariants];
-	const variantCount = allFinalVariants.length;
+  const allFinalVariants = [...finalExistingVariants, ...newVariants];
+  const variantCount = allFinalVariants.length;
 
-	if (!input.categoryHasAttributes) {
-		if (variantCount > 1) {
-			return {
-				success: false,
-				error: {
-					code: "PUB2",
-					message: `Cannot publish: category has no attributes, so product can only have 1 variant (found ${variantCount}). Multiple variants require attribute values to distinguish them.`,
-				},
-			};
-		}
-		return { success: true, data: undefined };
-	}
+  if (!input.categoryHasAttributes) {
+    if (variantCount > 1) {
+      return {
+        success: false,
+        error: {
+          code: "PUB2",
+          message: `Cannot publish: category has no attributes, so product can only have 1 variant (found ${variantCount}). Multiple variants require attribute values to distinguish them.`,
+        },
+      };
+    }
+    return { success: true, data: undefined };
+  }
 
-	if (variantCount > 1) {
-		const variantsWithoutAttributes = allFinalVariants.filter(
-			(v) => v.attributeValueIds.length === 0,
-		);
+  if (variantCount > 1) {
+    const variantsWithoutAttributes = allFinalVariants.filter(
+      (v) => v.attributeValueIds.length === 0
+    );
 
-		if (variantsWithoutAttributes.length > 0) {
-			return {
-				success: false,
-				error: {
-					code: "PUB2",
-					message: `Cannot publish: ${variantsWithoutAttributes.length} variant(s) have no attribute values. Each variant must be distinguishable when product has multiple variants.`,
-				},
-			};
-		}
-	}
+    if (variantsWithoutAttributes.length > 0) {
+      return {
+        success: false,
+        error: {
+          code: "PUB2",
+          message: `Cannot publish: ${variantsWithoutAttributes.length} variant(s) have no attribute values. Each variant must be distinguishable when product has multiple variants.`,
+        },
+      };
+    }
+  }
 
-	return { success: true, data: undefined };
+  return { success: true, data: undefined };
 }
 
 /**
@@ -152,142 +152,140 @@ export function validatePublishAttributeRequirements(
  * Exception: If product has only 1 variant and category has NO attributes, no auto-draft needed.
  */
 export function determineStatusAfterCategoryChange(
-	input: CategoryChangeAutoDraftInput,
+  input: CategoryChangeAutoDraftInput
 ): ProductStatus {
-	if (input.newCategoryHasAttributes) {
-		if (input.variantsWithAttributeValues < input.finalVariantCount) {
-			return "DRAFT";
-		}
-	} else {
-		if (input.finalVariantCount > 1) {
-			return "DRAFT";
-		}
-	}
+  if (input.newCategoryHasAttributes) {
+    if (input.variantsWithAttributeValues < input.finalVariantCount) {
+      return "DRAFT";
+    }
+  } else if (input.finalVariantCount > 1) {
+    return "DRAFT";
+  }
 
-	return input.requestedStatus ?? input.currentStatus;
+  return input.requestedStatus ?? input.currentStatus;
 }
 
 /**
  * Computes the final variant count after all operations.
  */
 export function computeFinalVariantCount(
-	currentCount: number,
-	variantsToCreate?: unknown[],
-	variantsToDelete?: string[],
+  currentCount: number,
+  variantsToCreate?: unknown[],
+  variantsToDelete?: string[]
 ): number {
-	const createCount = variantsToCreate?.length ?? 0;
-	const deleteCount = variantsToDelete?.length ?? 0;
-	return currentCount - deleteCount + createCount;
+  const createCount = variantsToCreate?.length ?? 0;
+  const deleteCount = variantsToDelete?.length ?? 0;
+  return currentCount - deleteCount + createCount;
 }
 
 interface DeterminePublishStatusInput {
-	requestedStatus?: ProductStatus;
-	currentStatus: ProductStatus;
-	currentVariants: Array<{
-		id: string;
-		price: number;
-		attributeValues: Array<{ id: string }>;
-	}>;
-	variants?: ProductModel.variantOperations;
-	categoryHasAttributes: boolean;
+  categoryHasAttributes: boolean;
+  currentStatus: ProductStatus;
+  currentVariants: Array<{
+    id: string;
+    price: number;
+    attributeValues: Array<{ id: string }>;
+  }>;
+  requestedStatus?: ProductStatus;
+  variants?: ProductModel.variantOperations;
 }
 
 interface DeterminePublishStatusResult {
-	finalStatus: ProductStatus;
-	warnings?: Array<{ code: string; message: string }>;
+  finalStatus: ProductStatus;
+  warnings?: Array<{ code: string; message: string }>;
 }
 
 export function determinePublishStatus({
-	requestedStatus,
-	currentStatus,
-	currentVariants,
-	variants,
-	categoryHasAttributes,
+  requestedStatus,
+  currentStatus,
+  currentVariants,
+  variants,
+  categoryHasAttributes,
 }: DeterminePublishStatusInput): DeterminePublishStatusResult {
-	const warnings: Array<{ code: string; message: string }> = [];
-	const isRequestingPublish = requestedStatus === "PUBLISHED";
-	const isCurrentlyPublished = currentStatus === "PUBLISHED";
+  const warnings: Array<{ code: string; message: string }> = [];
+  const isRequestingPublish = requestedStatus === "PUBLISHED";
+  const isCurrentlyPublished = currentStatus === "PUBLISHED";
 
-	// Case 1: No publish-related work
-	if (!isRequestingPublish && !isCurrentlyPublished) {
-		return { finalStatus: requestedStatus ?? currentStatus };
-	}
+  // Case 1: No publish-related work
+  if (!(isRequestingPublish || isCurrentlyPublished)) {
+    return { finalStatus: requestedStatus ?? currentStatus };
+  }
 
-	const currentVariantsData = currentVariants.map((v) => ({
-		id: v.id,
-		price: v.price,
-		attributeValueIds: v.attributeValues.map((av) => av.id),
-	}));
+  const currentVariantsData = currentVariants.map((v) => ({
+    id: v.id,
+    price: v.price,
+    attributeValueIds: v.attributeValues.map((av) => av.id),
+  }));
 
-	// PUB1: Price validation requires price-only objects
-	const pub1VariantsToCreate =
-		variants?.create?.map((v) => ({
-			price: v.price,
-		})) ?? [];
+  // PUB1: Price validation requires price-only objects
+  const pub1VariantsToCreate =
+    variants?.create?.map((v) => ({
+      price: v.price,
+    })) ?? [];
 
-	const pub1VariantsToUpdate =
-		variants?.update?.map((v) => ({
-			id: v.id,
-			price: v.price,
-		})) ?? [];
+  const pub1VariantsToUpdate =
+    variants?.update?.map((v) => ({
+      id: v.id,
+      price: v.price,
+    })) ?? [];
 
-	const variantsToDelete = variants?.delete ?? [];
+  const variantsToDelete = variants?.delete ?? [];
 
-	// PUB2: Attribute validation requires attribute-value objects
-	const pub2VariantsToCreate =
-		variants?.create?.map((v) => ({
-			attributeValueIds: v.attributeValueIds,
-		})) ?? [];
+  // PUB2: Attribute validation requires attribute-value objects
+  const pub2VariantsToCreate =
+    variants?.create?.map((v) => ({
+      attributeValueIds: v.attributeValueIds,
+    })) ?? [];
 
-	const pub2VariantsToUpdate =
-		variants?.update?.map((v) => ({
-			id: v.id,
-			attributeValueIds: v.attributeValueIds,
-		})) ?? [];
+  const pub2VariantsToUpdate =
+    variants?.update?.map((v) => ({
+      id: v.id,
+      attributeValueIds: v.attributeValueIds,
+    })) ?? [];
 
-	// Validate PUB1: At least one variant must have positive price
-	const pub1Result = validatePublishHasPositivePrice({
-		currentVariants: currentVariantsData,
-		variantsToCreate: pub1VariantsToCreate,
-		variantsToUpdate: pub1VariantsToUpdate,
-		variantsToDelete,
-	});
+  // Validate PUB1: At least one variant must have positive price
+  const pub1Result = validatePublishHasPositivePrice({
+    currentVariants: currentVariantsData,
+    variantsToCreate: pub1VariantsToCreate,
+    variantsToUpdate: pub1VariantsToUpdate,
+    variantsToDelete,
+  });
 
-	// Validate PUB2: Attribute requirements
-	const pub2Result = validatePublishAttributeRequirements({
-		categoryHasAttributes,
-		currentVariants: currentVariantsData,
-		variantsToCreate: pub2VariantsToCreate,
-		variantsToUpdate: pub2VariantsToUpdate,
-		variantsToDelete,
-	});
+  // Validate PUB2: Attribute requirements
+  const pub2Result = validatePublishAttributeRequirements({
+    categoryHasAttributes,
+    currentVariants: currentVariantsData,
+    variantsToCreate: pub2VariantsToCreate,
+    variantsToUpdate: pub2VariantsToUpdate,
+    variantsToDelete,
+  });
 
-	// Determine final status
-	let finalStatus: ProductStatus;
+  // Determine final status
+  let finalStatus: ProductStatus;
 
-	if (isRequestingPublish) {
-		if (pub1Result.success && pub2Result.success) {
-			finalStatus = "PUBLISHED";
-		} else {
-			finalStatus = "DRAFT";
-			if (!pub1Result.success) {
-				warnings.push({
-					code: "PUB1",
-					message: pub1Result.error?.message ?? "PUB1 validation failed",
-				});
-			}
-			if (!pub2Result.success) {
-				warnings.push({
-					code: "PUB2",
-					message: pub2Result.error?.message ?? "PUB2 validation failed",
-				});
-			}
-		}
-	} else {
-		// Currently published, not requesting publish
-		// Keep current status if not changing, otherwise use requested
-		finalStatus = requestedStatus ?? currentStatus;
-	}
+  if (isRequestingPublish) {
+    if (pub1Result.success && pub2Result.success) {
+      finalStatus = "PUBLISHED";
+    } else {
+      finalStatus = "DRAFT";
+      if (!pub1Result.success) {
+        warnings.push({
+          code: "PUB1",
+          message: pub1Result.error?.message ?? "PUB1 validation failed",
+        });
+      }
+      if (!pub2Result.success) {
+        warnings.push({
+          code: "PUB2",
+          message: pub2Result.error?.message ?? "PUB2 validation failed",
+        });
+      }
+    }
+  } else {
+    // Currently published, not requesting publish
+    // Keep current status if not changing, otherwise use requested
+    finalStatus = requestedStatus ?? currentStatus;
+  }
 
-	return { finalStatus, warnings: warnings.length > 0 ? warnings : undefined };
+  return { finalStatus, warnings: warnings.length > 0 ? warnings : undefined };
 }
