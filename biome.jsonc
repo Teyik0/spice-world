@@ -6,6 +6,9 @@
     "ultracite/biome/react",
     "ultracite/biome/next"
   ],
+  "javascript": {
+    "globals": ["Bun"]
+  },
   "css": {
     "parser": {
       "tailwindDirectives": true
@@ -24,6 +27,14 @@
       },
       "a11y": {
         "useSemanticElements": "off"
+      }
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "useSortedPackageJson": "off",
+        "useSortedKeys": "off"
       }
     }
   }
