@@ -1,0 +1,14 @@
+apps/web/next-env.d.ts
+  h_a2cbd1b0e3ae6e 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a280480e95f6b96ed7a3bf82558f107f2481efe",
+  "prompts": {},
+  "humans": {
+    "h_a2cbd1b0e3ae6e": {
+      "author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
