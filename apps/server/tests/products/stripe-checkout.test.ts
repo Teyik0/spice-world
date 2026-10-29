@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
-import { treaty } from "@elysiajs/eden";
+import { treaty } from "@elysia/eden";
 import type { ordersRouter } from "@spice-world/server/modules/orders";
 import type { productsRouter } from "@spice-world/server/modules/products";
 import * as stripeCheckoutModule from "@spice-world/server/modules/stripe-checkout";
-import { file } from "bun";
+import { file } from "../utils/helper";
 import { createTestDatabase } from "../utils/db-manager";
 import { createSetupProduct, expectDefined, mockUtapi } from "../utils/helper";
 

@@ -1,6 +1,6 @@
 import type { ProductStatus } from "@spice-world/server/prisma/client";
 import type { ValidationResult } from "../../shared";
-import type { ProductModel } from "../model";
+import type * as ProductModel from "../model";
 
 // Re-export for backwards compatibility with index.ts
 export type { ValidationResult };

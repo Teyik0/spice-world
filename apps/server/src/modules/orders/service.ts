@@ -215,26 +215,25 @@ export const orderService = {
 		if (trackingNumber) {
 			data.trackingNumber = trackingNumber;
 			data.shippingStatus = "SHIPPED";
-
-			const order = await prisma.order.findUnique({
-				where: { id: orderId },
-				include: { user: true },
-			});
-
-			if (order && resend) {
-				await resend.emails.send({
-					from: "Spice World <orders@spiceworld.com>",
-					to: order.user.email as string,
-					subject: `Votre commande #${orderId.slice(0, 8)} a été expédiée`,
-					html: `<p>Bonne nouvelle ! Votre commande a été expédiée.</p><p>Numéro de suivi : ${trackingNumber}</p>`,
-				});
-			}
 		}
 
-		return await prisma.order.update({
+		// Update order first in a transaction
+		const order = await prisma.order.update({
 			where: { id: orderId },
 			data,
 			include: { items: true, user: true },
 		});
+
+		// Send email as post-commit side effect (after DB update succeeds)
+		if (trackingNumber && resend) {
+			await resend.emails.send({
+				from: "Spice World <orders@spiceworld.com>",
+				to: order.user.email as string,
+				subject: `Votre commande #${orderId.slice(0, 8)} a été expédiée`,
+				html: `<p>Bonne nouvelle ! Votre commande a été expédiée.</p><p>Numéro de suivi : ${trackingNumber}</p>`,
+			});
+		}
+
+		return order;
 	},
 };

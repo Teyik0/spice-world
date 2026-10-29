@@ -21,10 +21,13 @@ model Account {
   scope                 String?
   idToken               String?
   password              String?
+  // better-auth >= 1.7: identity namespace ("local:credential", "local:oauth:<providerId>" or the OIDC issuer)
+  issuer                String?
   createdAt             DateTime
   updatedAt             DateTime
 
   @@index([userId])
+  @@unique([issuer, accountId])
   @@map("account")
 }
 

@@ -1,76 +1,81 @@
-import { status, t } from "elysia";
+import { status, t, type UnwrapSchema } from "elysia";
 import type { UploadFileResult } from "uploadthing/types";
 
 type HttpStatus =
-	| "Bad Request"
-	| "Not Found"
-	| "Conflict"
-	| "Unauthorized"
-	| "Forbidden"
-	| "Internal Server Error";
+  | "Bad Request"
+  | "Not Found"
+  | "Conflict"
+  | "Unprocessable Content"
+  | "Unauthorized"
+  | "Forbidden"
+  | "Internal Server Error";
 
 export interface ValidationError {
-	code: string;
-	message: string;
-	httpStatus?: HttpStatus;
-	field?: string;
-	details?: {
-		// Invalid input value
-		invalidValue?: unknown;
-		// For capacity/limit violations
-		constraints?: {
-			current: number;
-			maximum?: number;
-			minimum?: number;
-		};
-		// For conflicts/duplicates
-		conflicts?: {
-			attributeId?: string;
-			duplicates?: string[];
-			overlapping?: number[];
-		};
-		// For operations affecting multiple items
-		operation?: {
-			type: "create" | "update" | "delete";
-			count: number;
-			affectedIds?: string[];
-		};
-		// For nested validation errors
-		subErrors?: ValidationError[];
-		// Generic additional data
-		metadata?: Record<string, unknown>;
-	};
+  code: string;
+  details?: {
+    // Invalid input value
+    invalidValue?: unknown;
+    // For capacity/limit violations
+    constraints?: {
+      current: number;
+      maximum?: number;
+      minimum?: number;
+    };
+    // For conflicts/duplicates
+    conflicts?: {
+      attributeId?: string;
+      duplicates?: string[];
+      overlapping?: number[];
+    };
+    // For operations affecting multiple items
+    operation?: {
+      type: "create" | "update" | "delete";
+      count: number;
+      affectedIds?: string[];
+    };
+    // For nested validation errors
+    subErrors?: ValidationError[];
+    // Generic additional data
+    metadata?: Record<string, unknown>;
+  };
+  field?: string;
+  httpStatus?: HttpStatus;
+  message: string;
 }
 
 export class ProductValidationError extends Error {
-	public readonly code: string;
-	public readonly httpStatus: HttpStatus;
-	public readonly field?: string;
-	public readonly details?: ValidationError["details"];
+  readonly code: string;
+  readonly httpStatus: HttpStatus;
+  readonly field?: string;
+  readonly details?: ValidationError["details"];
 
-	constructor(data: ValidationError) {
-		super(data.message);
-		this.code = data.code;
-		this.httpStatus = data.httpStatus ?? "Bad Request";
-		this.field = data.field;
-		this.details = data.details;
-	}
+  constructor(data: ValidationError) {
+    super(data.message);
+    this.code = data.code;
+    this.httpStatus = data.httpStatus ?? "Bad Request";
+    this.field = data.field;
+    this.details = data.details;
+  }
 }
 
 export type ValidationResult<TData = void> =
-	| { success: true; data: TData }
-	| { success: false; error: ValidationError };
+  | { success: true; data: TData }
+  | { success: false; error: ValidationError };
 
 export function assertValid<T extends ValidationResult>(
-	result: T,
+  result: T
 ): asserts result is Extract<T, { success: true }> {
-	if (!result.success) throw new ProductValidationError(result.error);
+  if (!result.success) {
+    throw new ProductValidationError(result.error);
+  }
 }
 
 export function assertValidWithData<T>(
-	result: ValidationResult<T>,
+  result: ValidationResult<T>
 ): asserts result is { success: true; data: T } {
-	if (!result.success) throw new ProductValidationError(result.error);
+  if (!result.success) {
+    throw new ProductValidationError(result.error);
+  }
 }
 
 /*
@@ -80,8 +85,8 @@ Regex explanation:
 $                : end of string
 */
 export const nameLowerPattern = t.String({
-	pattern: "^[a-zà-ÿ][a-zà-ÿ ]*$",
-	minLength: 3,
+  pattern: "^[a-zà-ÿ][a-zà-ÿ ]*$",
+  minLength: 3,
 });
 
 /*
@@ -91,22 +96,22 @@ Regex explanation:
 $                : end of string
 */
 export const nameLowerPatternWithNumber = t.String({
-	pattern: "^[a-zà-ÿ0-9][a-zà-ÿ0-9 ]*$",
-	minLength: 3,
+  pattern: "^[a-zà-ÿ0-9][a-zà-ÿ0-9 ]*$",
+  minLength: 3,
 });
 
 export const uuid = t.String({ format: "uuid" });
-export type uuid = typeof uuid.static;
+export type uuid = UnwrapSchema<typeof uuid>;
 
 export const uuidGuard = t.Object({ id: uuid });
-export type uuidGuard = typeof uuidGuard.static;
+export type uuidGuard = UnwrapSchema<typeof uuidGuard>;
 
 export const uploadFileErrStatus = (
-	fileError: UploadFileResult["error"] | { message: string } | string | null,
+  fileError: UploadFileResult["error"] | { message: string } | string | null
 ) => {
-	const message =
-		typeof fileError === "string"
-			? fileError
-			: (fileError?.message ?? "Unknown error while uploading file(s)");
-	throw status("Bad Gateway", message);
+  const message =
+    typeof fileError === "string"
+      ? fileError
+      : (fileError?.message ?? "Unknown error while uploading file(s)");
+  throw status("Bad Gateway", message);
 };

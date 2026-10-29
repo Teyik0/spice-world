@@ -2,7 +2,8 @@ import { prisma } from "@spice-world/server/lib/prisma";
 import { prismaErrorPlugin } from "@spice-world/server/plugins/prisma.plugin";
 import { Elysia } from "elysia";
 import { uuidGuard } from "../shared";
-import { AttributeModel, AttributeValueModel } from "./model";
+import * as AttributeModel from "./model";
+import * as AttributeValueModel from "./value-model";
 import { attributeService, attributeValueService } from "./service";
 
 export const attributeRouter = new Elysia({
@@ -11,42 +12,50 @@ export const attributeRouter = new Elysia({
 	tags: ["Attributes"],
 })
 	.use(prismaErrorPlugin("Attribute"))
-	.get("/", async ({ query }) => await attributeService.get(query), {
-		query: AttributeModel.getQuery,
-	})
-	.post("/", async ({ body }) => await attributeService.post(body), {
-		body: AttributeModel.postBody,
-	})
+	.get(
+		"/",
+		{
+			query: AttributeModel.getQuery,
+		},
+		async ({ query }) => await attributeService.get(query),
+	)
+	.post(
+		"/",
+		{
+			body: AttributeModel.postBody,
+		},
+		async ({ body }) => await attributeService.post(body),
+	)
 	.get("/count", async () => await attributeService.count())
-	.guard({ params: uuidGuard })
+	.guard({ schema: "merge", params: uuidGuard })
 	.get("/:id", async ({ params }) => await attributeService.getById(params))
 	.patch(
 		"/:id",
-		async ({ params, body }) =>
-			await attributeService.patch({ ...params, ...body }),
 		{
 			body: AttributeModel.patchBody,
 		},
+		async ({ params, body }) =>
+			await attributeService.patch({ ...params, ...body }),
 	)
 	.delete("/:id", async ({ params }) => await attributeService.delete(params))
 	.post(
 		"/:id/values",
-		async ({ params, body }) =>
-			await attributeValueService.post({ ...params, ...body }),
 		{
 			body: AttributeValueModel.postBody,
 		},
+		async ({ params, body }) =>
+			await attributeValueService.post({ ...params, ...body }),
 	)
 	.group("/values", (app) =>
 		app
-			.guard({ params: uuidGuard })
+			.guard({ schema: "merge", params: uuidGuard })
 			.patch(
 				"/:id",
-				async ({ params, body }) =>
-					await attributeValueService.patch({ ...params, ...body }),
 				{
 					body: AttributeValueModel.patchBody,
 				},
+				async ({ params, body }) =>
+					await attributeValueService.patch({ ...params, ...body }),
 			)
 			.delete("/:id", async ({ params: { id } }) =>
 				prisma.attributeValue.delete({

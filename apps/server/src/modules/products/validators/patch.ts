@@ -2,8 +2,8 @@ import type {
 	ProductStatus,
 	ProductVariant,
 } from "@spice-world/server/prisma/client";
-import type { CategoryModel } from "../../categories/model";
-import type { ProductModel } from "../model";
+import type * as CategoryModel from "../../categories/model";
+import type * as ProductModel from "../model";
 import {
 	determinePublishStatus,
 	determineStatusAfterCategoryChange,

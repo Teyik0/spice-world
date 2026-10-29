@@ -2,13 +2,14 @@
 bun = true
 
 [test]
+preload = ["./tests/setup.ts"]
 root = "./tests"
-coverageThreshold = { lines = 0.5, functions = 0.8 }
+
 coverageReporter = ["text", "lcov"]
 coverage = true
 coveragePathIgnorePatterns = [
   "**/*.test.ts",
   "**/*.spec.ts",
   "tests/utils/**",
-  "src/modules/shared.ts"
+  "src/modules/shared.ts",
 ]

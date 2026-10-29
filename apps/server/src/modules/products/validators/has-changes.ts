@@ -1,4 +1,4 @@
-import type { ProductModel } from "../model";
+import type * as ProductModel from "../model";
 
 export function hasProductChanges({
 	newData,

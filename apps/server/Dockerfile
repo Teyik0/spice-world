@@ -20,7 +20,6 @@ RUN bun install --frozen-lockfile --ignore-scripts
 COPY ./apps/server/src ./apps/server/src
 COPY ./apps/server/prisma ./apps/server/prisma
 COPY ./packages/emails/src ./packages/emails/src
-COPY ./apps/server/build.ts ./apps/server/build.ts
 
 WORKDIR /ws/apps/server
 
@@ -33,7 +32,6 @@ FROM gcr.io/distroless/cc-debian12
 WORKDIR /app
 
 COPY --from=builder /ws/apps/server/dist/server /app/server
-COPY --from=builder /ws/apps/server/dist/*.node /app/node_modules/@napi-rs/image/
 
 ENV NODE_PATH=/app/node_modules
 ENV PORT=3001

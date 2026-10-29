@@ -1,7 +1,8 @@
 import { prisma } from "@spice-world/server/lib/prisma";
 import { status } from "elysia";
 import type { uuidGuard } from "../shared";
-import type { AttributeModel, AttributeValueModel } from "./model";
+import type * as AttributeModel from "./model";
+import type * as AttributeValueModel from "./value-model";
 
 export const attributeService = {
 	async get({ categoryId }: AttributeModel.getQuery) {

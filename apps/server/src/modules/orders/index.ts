@@ -11,7 +11,7 @@ import { orderService } from "./service";
 
 const ordersErrorPlugin = new Elysia({
 	name: "orders-error-handler",
-}).onError({ as: "scoped" }, ({ error, set }) => {
+}).onError("plugin", ({ error, set }) => {
 	// Handle validation errors for checkout
 	if (
 		error instanceof Error &&
@@ -38,6 +38,10 @@ export const ordersRouter = new Elysia({
 
 	.post(
 		"/checkout",
+		{
+			body: checkoutBody,
+			isLogin: true,
+		},
 		async ({ body, user }) => {
 			const result = await orderService.createCheckout(
 				user.id,
@@ -46,14 +50,14 @@ export const ordersRouter = new Elysia({
 			);
 			return status("Created", result);
 		},
-		{
-			body: checkoutBody,
-			isLogin: true,
-		},
 	)
 
 	.get(
 		"/",
+		{
+			query: getQuery,
+			isLogin: true,
+		},
 		async ({ query, user }) => {
 			const isAdmin = user.role === "admin";
 			return await orderService.get(user.id, isAdmin, {
@@ -62,36 +66,32 @@ export const ordersRouter = new Elysia({
 				status: query.status,
 			});
 		},
-		{
-			query: getQuery,
-			isLogin: true,
-		},
 	)
 
 	.get(
 		"/by-id/:id",
-		async ({ params, user }) => {
-			const isAdmin = user.role === "admin";
-			return await orderService.getById(params.id, user.id, isAdmin);
-		},
 		{
 			params: getByIdParams,
 			isLogin: true,
+		},
+		async ({ params, user }) => {
+			const isAdmin = user.role === "admin";
+			return await orderService.getById(params.id, user.id, isAdmin);
 		},
 	)
 
 	.patch(
 		"/by-id/:id/status",
+		{
+			params: getByIdParams,
+			body: updateStatusBody,
+			isAdmin: true,
+		},
 		async ({ params, body }) => {
 			return await orderService.updateStatus(
 				params.id,
 				body.status,
 				body.trackingNumber,
 			);
-		},
-		{
-			params: getByIdParams,
-			body: updateStatusBody,
-			isAdmin: true,
 		},
 	);

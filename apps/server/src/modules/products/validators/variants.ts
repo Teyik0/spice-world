@@ -1,6 +1,6 @@
-import type { CategoryModel } from "../../categories/model";
+import type * as CategoryModel from "../../categories/model";
 import { ProductValidationError, type ValidationError } from "../../shared";
-import type { ProductModel } from "../model";
+import type * as ProductModel from "../model";
 
 export interface AllowedAttributeValue {
 	id: string;
