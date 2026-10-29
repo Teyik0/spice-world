@@ -2,7 +2,7 @@ pre-commit:
   parallel: true
   jobs:
     - name: files format
-      run: bun run format
+      run: bun format
       glob:
         - "*.js"
         - "*.jsx"
