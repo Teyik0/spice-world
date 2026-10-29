@@ -1,0 +1,175 @@
+apps/server/src/modules/orders/index.ts
+  s_af8a6d4b76ddbd::t_ca5ade3a79244a 42,58,74,87
+apps/server/load/load.test.ts
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 43-44,56
+apps/server/src/modules/orders/service.ts
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 77-78,80,172-173,175
+  s_22c250edb0e961::t_f907e3f073d83d 56,79,174
+apps/web/src/components/ui/field.tsx
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 110,122
+  s_22c250edb0e961::t_9281c561b942b2 124-126,176,183,201,209
+packages/emails/src/password-reset.tsx
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 20
+apps/server/src/plugins/better-auth.plugin.tsx
+  s_af8a6d4b76ddbd::t_0d0c1c7d4cbf82 139-143,166-169
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 2-4
+  s_af8a6d4b76ddbd::t_ca5ade3a79244a 10,137,144-146,153-156,163,165,171,173
+  s_af8a6d4b76ddbd::t_9707454dd7f2d2 138
+  s_af8a6d4b76ddbd::t_738544daa2a8ad 158,161-162
+apps/server/tests/products/stripe-checkout.test.ts
+  s_22c250edb0e961::t_9281c561b942b2 75-77,79-80,109,159
+  s_22c250edb0e961::t_6a66dc9d187956 33,35,39,72
+apps/server/src/modules/products/validators/images.ts
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 39
+packages/emails/src/index.tsx
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 2-5
+apps/web/src/components/ui/base-ui.test.tsx
+  s_22c250edb0e961::t_5e96aa52dd0fc8 63,159-182,184-189,191-194,196-198,200-203,206-209,213-230
+  s_22c250edb0e961::t_4c40c8c4b39806 60-62,183,190,195,199,204-205,210-212
+packages/emails/src/change-email-verification.tsx
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 20
+apps/server/load/seed.data.ts
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 158,228,276,308,316-317
+  s_22c250edb0e961::t_5620dee10dbaf8 91-93,223-225
+  s_22c250edb0e961::t_5a21ca8ddeeb5e 95,134,161,216
+apps/web/src/app/(dashboard)/users/[id]/form-ban.tsx
+  s_22c250edb0e961::t_9281c561b942b2 70
+  s_22c250edb0e961::t_21cf5e62443847 48,82
+apps/server/src/modules/products/validators/variants.ts
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 99
+  s_22c250edb0e961::t_f4f4ef4f14367b 100-101,123-125,263
+packages/emails/src/reset-password.tsx
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 20
+apps/server/src/modules/products/validators/publish.ts
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 6,260,266
+  s_22c250edb0e961::t_9281c561b942b2 221,223,228,230
+apps/server/src/lib/prisma.ts
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 22
+apps/web/src/app/(dashboard)/users/sidebar-right.tsx
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 30,48-49
+  s_22c250edb0e961::t_eaca1182427d22 11
+sst.config.ts
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 1
+packages/emails/src/spiceworld-welcome.tsx
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 20
+apps/web/src/app/(dashboard)/products/@main/[slug]/form-images.tsx
+  s_22c250edb0e961::t_9281c561b942b2 92-101,119,134-135
+  s_22c250edb0e961::t_29c3ebf4e6c20b 153,155
+apps/server/src/index.ts
+  s_af8a6d4b76ddbd::t_ca5ade3a79244a 63
+apps/web/src/hooks/use-file-upload.ts
+  s_22c250edb0e961::t_9281c561b942b2 104,111,132,140,148,179,352
+  s_22c250edb0e961::t_fbe36049adca3d 90,96-97,415
+AGENTS.md
+  s_af8a6d4b76ddbd::t_b00534773dffc8 39-48
+apps/web/src/app/(dashboard)/users/[id]/form.tsx
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 95
+  s_22c250edb0e961::t_134242b96a3f3d 81,84,113,226,325,374,388
+apps/web/src/components/ui/multi-select.tsx
+  s_22c250edb0e961::t_9281c561b942b2 58-60,68,89-92,94,109-111,140,191-199,201-206,208-214
+  s_22c250edb0e961::t_193d18d5220419 20-26,50,215-223
+apps/web/src/app/(dashboard)/sidebar-provider.tsx
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 47
+  s_22c250edb0e961::t_574079582bb7be 50-53
+apps/server/src/modules/stripe-checkout.ts
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 14-15,74
+apps/web/src/app/(dashboard)/products/@main/[slug]/form.tsx
+  s_22c250edb0e961::t_9281c561b942b2 133,135,137,140,180,184,236-237,293,328,330
+  s_22c250edb0e961::t_be8bef6cc9a8ac 4-9,51,372
+apps/server/tests/auth.test.ts
+  s_af8a6d4b76ddbd::t_ca5ade3a79244a 154-156
+  s_af8a6d4b76ddbd::t_1b256c30ec2085 218,220,238,248,252,254
+  s_af8a6d4b76ddbd::t_fd31987aae5313 187-193,205,217,224,237,251,354,532
+  s_af8a6d4b76ddbd::t_9707454dd7f2d2 244-247
+apps/web/src/app/(dashboard)/products/@sidebar/use-products-infinite.ts
+  s_22c250edb0e961::t_9281c561b942b2 59
+  s_22c250edb0e961::t_427f30fb190858 66
+apps/web/src/app/(dashboard)/products/@main/[slug]/form-variants.tsx
+  s_22c250edb0e961::t_f1ca6b8b6e0f4a 238
+  s_22c250edb0e961::t_5620dee10dbaf8 246,248-274
+  s_22c250edb0e961::t_86c24edab0c6a7 247
+  s_0af0df2717b730::t_1a02615883aa12 306
+  s_22c250edb0e961::t_2dbcc1e83c8d0e 50-63,232,242-245,275-276,302,440-444
+apps/server/src/modules/attributes/service.ts
+  s_22c250edb0e961::t_9aa4db6696cca7 46,78
+apps/server/src/modules/categories/service.ts
+  s_22c250edb0e961::t_f092e5f8ffaf91 113
+apps/server/src/modules/products/service.ts
+  s_22c250edb0e961::t_4c7f518ee9cd1f 398,514,632
+apps/server/tests/utils/dummy-products.ts
+  s_22c250edb0e961::t_d09c72727b46f0 258,263
+apps/web/biome.json
+  s_22c250edb0e961::t_b65ffe6df9e312 10-17
+apps/web/src/app/(dashboard)/products/@main/[slug]/action.ts
+  s_22c250edb0e961::t_2a6980b7546832 5
+apps/web/src/app/(dashboard)/products/@main/[slug]/category-dialog.tsx
+  s_22c250edb0e961::t_3c806074ffee57 1-6,27,48,114,120-122,165-166,181,186,202,214,319,337,349,374,421-425,449,513,521-525
+apps/web/src/app/(dashboard)/products/@main/[slug]/form-classification.tsx
+  s_22c250edb0e961::t_1dbb3238872532 101,111,140
+apps/web/src/app/(dashboard)/products/@main/[slug]/form-details.tsx
+  s_22c250edb0e961::t_4b6ae68fb4493c 46,71
+apps/web/src/app/(dashboard)/products/@sidebar/bulk-menu.tsx
+  s_22c250edb0e961::t_972ef6de488bb4 129,196,215,242,248-249,253,266,268
+apps/web/src/app/(dashboard)/products/@sidebar/product-item.tsx
+  s_22c250edb0e961::t_d5448fe2bdd01e 90,100
+apps/web/src/app/(dashboard)/products/@sidebar/products-sidebar.tsx
+  s_22c250edb0e961::t_b89683a9b3371b 74,76
+apps/web/src/app/(dashboard)/products/@sidebar/search-bar.tsx
+  s_22c250edb0e961::t_8a0dd319cef2c9 120,122,138,142,241,249
+apps/web/src/app/(dashboard)/users/actions.ts
+  s_22c250edb0e961::t_9f3b8a5a11a62a 5
+apps/web/src/app/(login)/forgot-password/page.tsx
+  s_22c250edb0e961::t_ae2aca4b1fbbc9 73,81-82,93
+apps/web/src/app/(login)/reset-password/reset-password-form.tsx
+  s_22c250edb0e961::t_9d654fbc5ee269 129,137-138,162
+apps/web/src/app/(login)/signin/email-signin.tsx
+  s_22c250edb0e961::t_9b1b8e221a3ff9 81,89-90,101
+apps/web/src/app/(login)/signup/signup.tsx
+  s_22c250edb0e961::t_5a66e04d650f7e 67,82,111,121,132,145,196-198,255
+apps/web/src/components/ui/attribute-select.tsx
+  s_22c250edb0e961::t_008b18f0f4381d 19-26,38,54,73-76,79,90,100,171,319,342
+apps/web/src/components/ui/carousel.tsx
+  s_22c250edb0e961::t_a1b30a1031284b 9-17,40,43,60,68-69,71-72,75-76,79,83,87-88,100,107,148,169,192,222
+apps/web/src/components/ui/sidebar.tsx
+  s_22c250edb0e961::t_61d3f22bd580fd 26-35,54,57,73,79,83,85,101,103-105,110,129,156,174,208,273,295,320,334,345,356,370,381,395,410,435,458,469,480,522,524,573,603,626,630,639,644,651,658,673,691
+apps/web/src/components/ui/toggle-group.tsx
+  s_22c250edb0e961::t_8a7842018f8ea2 8-13,15,32,46,62,64
+apps/web/src/hooks/use-mobile.ts
+  s_22c250edb0e961::t_9504c0c4c7660d 1,6,8
+apps/web/src/lib/dal.ts
+  s_22c250edb0e961::t_db89f70cc647d7 28
+apps/web/src/lib/utils.ts
+  s_22c250edb0e961::t_0ba3b3c570690d 74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eee9a278f2ce6365bad42cfc4fd5dc44d2000e64",
+  "prompts": {},
+  "sessions": {
+    "s_0af0df2717b730": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1884b-7cd1-7ca0-a194-0e9a193cfa2b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_22c250edb0e961": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18832-6718-7c13-8f94-51fd04f0a6c3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_af8a6d4b76ddbd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18825-9426-7882-9bb4-8233aa31af3a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
