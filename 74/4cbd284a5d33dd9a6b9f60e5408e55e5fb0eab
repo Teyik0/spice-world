@@ -1,0 +1,46 @@
+package.json
+  s_0ba0eb0250e083::t_efb68ac62ceee3 26
+  s_0ba0eb0250e083::t_5a96b5461ba5a4 40
+  s_25bcda51f05d2f::t_1fe05d998f9551 23-25
+  s_0ba0eb0250e083::t_7243ca9fd4d1fa 21-22,29-36,43-44
+patches/@elysia%2Feden@2.0.0-rc.1.patch
+  s_0ba0eb0250e083::t_4bb7cede69b4b1 2,15-19,21-23,26-28,30,33,46-50,52-54,57-59,61,64,77-81,83-85,88-90,92,95,108-112,114-116,119-121,123,126,139-143,145-147,150-152,154
+  s_0ba0eb0250e083::t_5a96b5461ba5a4 1,3-14,20,24-25,29,31-32,34-45,51,55-56,60,62-63,65-76,82,86-87,91,93-94,96-107,113,117-118,122,124-125,127-138,144,148-149,153,155
+AGENTS.md
+  s_6565eca5586744::t_da0b83743381f3 65
+  s_6565eca5586744::t_5459e28903d5ed 62-64
+  s_6565eca5586744::t_d97dce16c8d10f 66-68
+  s_6565eca5586744::t_53ec2c4eebda70 1-61,69-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "744cbd284a5d33dd9a6b9f60e5408e55e5fb0eab",
+  "prompts": {},
+  "sessions": {
+    "s_0ba0eb0250e083": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18777-7735-7043-9510-770e84a376d2",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_25bcda51f05d2f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1870b-4ead-7a51-84a2-c414e3fae15c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_6565eca5586744": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1878f-a513-70f3-80b6-bafd34a6819a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
