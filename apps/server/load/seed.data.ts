@@ -83,7 +83,7 @@ async function getOrCreateCategoryWithAttributes(categoryName: string) {
   } else {
     const selectedAttrNames = faker.helpers.arrayElements(
       ATTRIBUTE_NAMES,
-      faker.number.int({ min: 2, max: 3 })
+      faker.number.int({ min: 500, max: 10_000 })
     );
 
     for (const attrName of selectedAttrNames) {
@@ -232,7 +232,7 @@ async function createProductBatch(batchSize: number): Promise<void> {
 
       variantsData.push({
         productId: product.id,
-        price: Number.parseFloat(faker.commerce.price({ min: 5, max: 100 })),
+        price: faker.number.int({ min: 500, max: 10_000 }),
         stock: faker.number.int({ min: 0, max: 500 }),
         attributeValueIds,
       });

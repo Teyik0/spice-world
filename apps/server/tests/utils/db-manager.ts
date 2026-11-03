@@ -35,6 +35,9 @@ export async function createTestDatabase(
     throw new Error("DATABASE_URL environment variable is not defined");
   }
 
+  const adminUrl = new URL(BASE_DB_URL);
+  adminUrl.pathname = "/postgres";
+
   // Generate unique database name from test file name + UUID
   // Input: testFileName = "product.test.ts"
   // Output: databaseName = "test_product_<uuid>"
@@ -46,7 +49,7 @@ export async function createTestDatabase(
   const databaseName = `test_${sanitizedFileName}_${uniqueId}`;
 
   const adminAdapter = new PrismaPg({
-    connectionString: BASE_DB_URL,
+    connectionString: adminUrl.toString(),
   });
   const adminClient = new PrismaClient({ adapter: adminAdapter });
 

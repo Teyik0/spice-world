@@ -14,35 +14,31 @@
     "db:reset": "bunx prisma migrate reset"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.1.0",
+    "@better-auth/stripe": "^1.7.2",
+    "@elysia/cors": "rc",
+    "@elysia/opentelemetry": "rc",
     "@opentelemetry/exporter-trace-otlp-proto": "^0.221.0",
     "@opentelemetry/sdk-trace-node": "^2.10.0",
-    "@better-auth/stripe": "^1.7.2",
-    "stripe": "^20.4.1",
     "@prisma/adapter-neon": "^7.10.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
-    "@react-email/components": "^1.0.12",
+    "@spice-world/emails": "workspace:*",
     "better-auth": "^1.7.2",
+    "drizzle-orm": "^1.0.0-rc.5",
     "elysia": "catalog:",
-    "typebox": "^1.4.3",
     "file-type": "^22.3.0",
     "lru-cache": "^11.5.2",
-    "p-limit": "^7.3.1",
     "react": "catalog:",
-    "resend": "^6.25.0",
-    "uploadthing": "^7.7.4",
-    "ws": "^8.21.3",
-    "@elysia/cors": "rc",
-    "@elysia/eden": "catalog:",
-    "@elysia/openapi": "rc",
-    "@elysia/opentelemetry": "rc"
+    "resend": "^6.37.0",
+    "stripe": "^20.4.1",
+    "typebox": "^1.4.3",
+    "uploadthing": "^7.7.4"
   },
   "devDependencies": {
+    "@elysia/eden": "catalog:",
     "@faker-js/faker": "^10.6.0",
-    "@spice-world/emails": "workspace:*",
     "@types/react": "catalog:",
-    "@types/ws": "^8.18.1",
+    "drizzle-kit": "^1.0.0-rc.5",
     "prisma": "^7.10.1"
   }
 }

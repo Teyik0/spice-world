@@ -1,4 +1,5 @@
 import { prisma } from "@spice-world/server/lib/prisma";
+import { drizzleErrorPlugin } from "@spice-world/server/plugins/drizzle.plugin";
 import { prismaErrorPlugin } from "@spice-world/server/plugins/prisma.plugin";
 import { Elysia } from "elysia";
 import { uuidGuard } from "../shared";
@@ -12,6 +13,7 @@ export const attributeRouter = new Elysia({
   tags: ["Attributes"],
 })
   .use(prismaErrorPlugin("Attribute"))
+  .use(drizzleErrorPlugin)
   .get(
     "/",
     {

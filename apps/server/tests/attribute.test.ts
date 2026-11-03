@@ -228,13 +228,39 @@ describe.concurrent("Attribute routes test", () => {
 
       const { error, status } = await api.attributes.post(newAttrData);
 
-      expect(status).toBe(400); // Foreign key constraint violation prisma P2003
+      expect(status).toBe(400);
       expect(error).not.toBeNull();
       expect(error).not.toBeUndefined();
     });
   });
 
   describe("PATCH /attributes/:id", () => {
+    test("should preserve category and values when renaming an attribute", async () => {
+      const attribute = await testDb.client.attribute.create({
+        data: {
+          name: "aroma",
+          categoryId: testCategory.id,
+          values: { create: [{ value: "smoky" }] },
+        },
+        include: { values: true, category: true },
+      });
+
+      const { data, status } = await api
+        .attributes({ id: attribute.id })
+        .patch({
+          name: "fragrance",
+        });
+
+      expect(status).toBe(200);
+      expect(data).toMatchObject({ ...attribute, name: "fragrance" });
+      expect(
+        await testDb.client.attribute.findUnique({
+          where: { id: attribute.id },
+          include: { values: true, category: true },
+        })
+      ).toEqual(data);
+    });
+
     test("should update an attribute name", async () => {
       const testAttr = await testDb.client.attribute.create({
         data: {
@@ -369,16 +395,21 @@ describe.concurrent("Attribute routes test", () => {
       expect(error).not.toBeUndefined();
     });
 
-    test("should return 409 for non-existent attribute", async () => {
+    test("should return 400 for non-existent attribute", async () => {
       const { error, status } = await api
         .attributes({ id: "00000000-0000-0000-0000-000000000000" })
         .values.post({
           name: "france",
         });
 
-      expect(status).toBe(400); // Foreign key constraint violation prisma P2003
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(status).toBe(400);
+      expect(error).toMatchObject({
+        status: 400,
+        value: {
+          code: "ATTRIBUTE_VALUE_ATTRIBUTE_NOT_FOUND",
+          message: "The selected attribute does not exist",
+        },
+      });
     });
   });
 
