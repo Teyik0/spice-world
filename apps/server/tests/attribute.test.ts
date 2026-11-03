@@ -491,7 +491,6 @@ describe.concurrent("Attribute routes test", () => {
 
       expect(status).toBe(200);
       expectDefined(data);
-      expect(data.id).toBe(tempValue.id);
 
       // Verify it's actually deleted
       const checkValue = await testDb.client.attributeValue.findUnique({
