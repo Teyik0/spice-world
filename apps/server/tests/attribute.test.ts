@@ -1,74 +1,74 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { treaty } from "@elysia/eden";
+import type { db as database } from "@spice-world/server/lib/db";
 import type { attributeRouter } from "@spice-world/server/modules/attributes";
-import type {
-  Attribute,
-  AttributeValue,
-  Category,
-} from "@spice-world/server/prisma/client";
+import { eq } from "drizzle-orm";
+import {
+  attributeTable,
+  attributeValueTable,
+  type categoryTable,
+} from "../drizzle/schema";
 import { createTestDatabase } from "./utils/db-manager";
 import { createTestCategory, expectDefined } from "./utils/helper";
 
 describe.concurrent("Attribute routes test", () => {
-  let testCategory: Category;
-  let testAttributes: Attribute[] & { values: AttributeValue[] }[] = [];
-  let testAttributeValues: AttributeValue[] = [];
+  let testCategory: typeof categoryTable.$inferSelect;
+  let testAttributes: Awaited<ReturnType<typeof createAttribute>>[] = [];
+  let testAttributeValues: (typeof attributeValueTable.$inferSelect)[] = [];
   let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
   let api: ReturnType<typeof treaty<typeof attributeRouter>>;
+
+  let db: typeof database;
+
+  const createAttribute = (name: string, values: string[]) =>
+    db.transaction(async (tx) => {
+      const id = Bun.randomUUIDv7();
+      await tx
+        .insert(attributeTable)
+        .values({ id, name, categoryId: testCategory.id });
+      await tx.insert(attributeValueTable).values(
+        values.map((value) => ({
+          id: Bun.randomUUIDv7(),
+          attributeId: id,
+          value,
+        }))
+      );
+      const attribute = await tx.query.attribute.findFirst({
+        where: { id },
+        columns: { categoryId: false },
+        with: { values: true, category: true },
+      });
+      expectDefined(attribute);
+      return attribute;
+    });
 
   // Setup - create test data
   beforeAll(async () => {
     testDb = await createTestDatabase("attribute.test.ts");
+    ({ db } = await import("@spice-world/server/lib/db"));
     const { attributeRouter: router } = await import(
       "@spice-world/server/modules/attributes"
     );
     api = treaty(router);
 
-    testCategory = await testDb.client.category.create({
-      data: {
-        name: "spice",
-        image: {
-          create: {
-            keyThumb: "test-key",
-            urlThumb: "https://test-url.com/image.webp",
-            keyMedium: "test-key",
-            urlMedium: "https://test-url.com/image.webp",
-            keyLarge: "test-key",
-            urlLarge: "https://test-url.com/image.webp",
-            altText: "Spice",
-            isThumbnail: true,
-          },
-        },
-      },
-    });
-
-    const attribute1 = await testDb.client.attribute.create({
-      data: {
-        name: "heat level",
-        categoryId: testCategory.id,
-        values: {
-          create: [{ value: "mild" }, { value: "medium" }, { value: "hot" }],
-        },
-      },
-      include: { values: true },
-    });
-
-    const attribute2 = await testDb.client.attribute.create({
-      data: {
-        name: "origin",
-        categoryId: testCategory.id,
-        values: {
-          create: [{ value: "india" }, { value: "mexico" }, { value: "italy" }],
-        },
-      },
-      include: { values: true },
-    });
+    testCategory = await createTestCategory({ testDb, name: "spice" });
+    const attribute1 = await createAttribute("heat level", [
+      "mild",
+      "medium",
+      "hot",
+    ]);
+    const attribute2 = await createAttribute("origin", [
+      "india",
+      "mexico",
+      "italy",
+    ]);
 
     testAttributes = [attribute1, attribute2];
     testAttributeValues = attribute1.values.concat(attribute2.values);
   });
 
   afterAll(async () => {
+    await db.$client.close();
     await testDb.destroy();
   });
 
@@ -135,8 +135,7 @@ describe.concurrent("Attribute routes test", () => {
         .get();
 
       expect(status).toBe(404);
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(error).toMatchObject({ status });
     });
 
     test("should validate uuid format", async () => {
@@ -147,8 +146,7 @@ describe.concurrent("Attribute routes test", () => {
         .get();
 
       expect(status).toBe(422);
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(error).toMatchObject({ status });
     });
   });
 
@@ -187,8 +185,7 @@ describe.concurrent("Attribute routes test", () => {
       const { error, status } = await api.attributes.post(newAttrData);
 
       expect(status).toBe(422);
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(error).toMatchObject({ status });
     });
 
     test("should reject empty values array", async () => {
@@ -201,8 +198,7 @@ describe.concurrent("Attribute routes test", () => {
       const { error, status } = await api.attributes.post(newAttrData);
 
       expect(status).toBe(422);
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(error).toMatchObject({ status });
     });
 
     test("should reject invalid value names", async () => {
@@ -215,8 +211,7 @@ describe.concurrent("Attribute routes test", () => {
       const { error, status } = await api.attributes.post(newAttrData);
 
       expect(status).toBe(422);
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(error).toMatchObject({ status });
     });
 
     test("should reject non-existent category ID", async () => {
@@ -229,22 +224,13 @@ describe.concurrent("Attribute routes test", () => {
       const { error, status } = await api.attributes.post(newAttrData);
 
       expect(status).toBe(400);
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(error).toMatchObject({ status });
     });
   });
 
   describe("PATCH /attributes/:id", () => {
     test("should preserve category and values when renaming an attribute", async () => {
-      const attribute = await testDb.client.attribute.create({
-        data: {
-          name: "aroma",
-          categoryId: testCategory.id,
-          values: { create: [{ value: "smoky" }] },
-        },
-        omit: { categoryId: true },
-        include: { values: true, category: true },
-      });
+      const attribute = await createAttribute("aroma", ["smoky"]);
 
       const { data, status } = await api
         .attributes({ id: attribute.id })
@@ -253,27 +239,19 @@ describe.concurrent("Attribute routes test", () => {
         });
 
       expect(status).toBe(200);
+      expectDefined(data);
       expect(data).toMatchObject({ ...attribute, name: "fragrance" });
       expect(
-        await testDb.client.attribute.findUnique({
+        await db.query.attribute.findFirst({
           where: { id: attribute.id },
-          omit: { categoryId: true },
-          include: { values: true, category: true },
+          columns: { categoryId: false },
+          with: { values: true, category: true },
         })
       ).toEqual(data);
     });
 
     test("should update an attribute name", async () => {
-      const testAttr = await testDb.client.attribute.create({
-        data: {
-          name: "color",
-          categoryId: testCategory.id,
-          values: {
-            create: [{ value: "red" }, { value: "yellow" }],
-          },
-        },
-        include: { values: true },
-      });
+      const testAttr = await createAttribute("color", ["red", "yellow"]);
       const newName = "texture";
 
       const { data, status } = await api.attributes({ id: testAttr.id }).patch({
@@ -298,8 +276,7 @@ describe.concurrent("Attribute routes test", () => {
         });
 
       expect(status).toBe(422);
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(error).toMatchObject({ status });
     });
 
     test("should return 404 for non-existent attribute", async () => {
@@ -312,22 +289,13 @@ describe.concurrent("Attribute routes test", () => {
         });
 
       expect(status).toBe(404);
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(error).toMatchObject({ status });
     });
   });
 
   describe("DELETE /attributes/:id", () => {
     test("should delete an attribute", async () => {
-      const tempAttr = await testDb.client.attribute.create({
-        data: {
-          name: "temporary",
-          categoryId: testCategory.id,
-          values: {
-            create: [{ value: "value1" }],
-          },
-        },
-      });
+      const tempAttr = await createAttribute("temporary", ["value1"]);
       expectDefined(tempAttr);
 
       const { data, status } = await api
@@ -339,13 +307,13 @@ describe.concurrent("Attribute routes test", () => {
       expect(data).toBe("OK");
 
       // Verify it's actually deleted
-      const checkAttr = await testDb.client.attribute.findUnique({
+      const checkAttr = await db.query.attribute.findFirst({
         where: { id: tempAttr.id },
       });
-      expect(checkAttr).toBeNull();
+      expect(checkAttr).toBeUndefined();
 
-      // Verify the values are also deleted (thanks to Prisma's cascading delete)
-      const checkValues = await testDb.client.attributeValue.findMany({
+      // Verify the values are also deleted (database cascading delete)
+      const checkValues = await db.query.attributeValue.findMany({
         where: { attributeId: tempAttr.id },
       });
       expect(checkValues.length).toBe(0);
@@ -359,8 +327,7 @@ describe.concurrent("Attribute routes test", () => {
         .delete();
 
       expect(status).toBe(404);
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(error).toMatchObject({ status });
     });
   });
 
@@ -393,8 +360,7 @@ describe.concurrent("Attribute routes test", () => {
         });
 
       expect(status).toBe(422);
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(error).toMatchObject({ status });
     });
 
     test("should return 400 for non-existent attribute", async () => {
@@ -417,16 +383,7 @@ describe.concurrent("Attribute routes test", () => {
 
   describe("PATCH /attributes/values/:id", () => {
     test("should update an attribute value", async () => {
-      const testAttr = await testDb.client.attribute.create({
-        data: {
-          name: "example",
-          categoryId: testCategory.id,
-          values: {
-            create: [{ value: "sample" }],
-          },
-        },
-        include: { values: true },
-      });
+      const testAttr = await createAttribute("example", ["sample"]);
       expectDefined(testAttr);
 
       const [testValue] = testAttr.values;
@@ -456,8 +413,7 @@ describe.concurrent("Attribute routes test", () => {
         });
 
       expect(status).toBe(422);
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(error).toMatchObject({ status });
     });
 
     test("should return 404 for non-existent value", async () => {
@@ -470,8 +426,7 @@ describe.concurrent("Attribute routes test", () => {
         });
 
       expect(status).toBe(404);
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(error).toMatchObject({ status });
     });
   });
 
@@ -493,9 +448,10 @@ describe.concurrent("Attribute routes test", () => {
         value: { code: "ATTRIBUTE_VALUE_LAST_VALUE" },
       });
       expect(
-        await testDb.client.attributeValue.count({
-          where: { attributeId: attribute.id },
-        })
+        await db.$count(
+          attributeValueTable,
+          eq(attributeValueTable.attributeId, attribute.id)
+        )
       ).toBe(1);
     });
 
@@ -513,9 +469,10 @@ describe.concurrent("Attribute routes test", () => {
       );
       expect(results.map((result) => result.status).sort()).toEqual([200, 400]);
       expect(
-        await testDb.client.attributeValue.count({
-          where: { attributeId: attribute.id },
-        })
+        await db.$count(
+          attributeValueTable,
+          eq(attributeValueTable.attributeId, attribute.id)
+        )
       ).toBe(1);
     });
 
@@ -536,9 +493,10 @@ describe.concurrent("Attribute routes test", () => {
       ]);
       expect(results.map((result) => result.status).sort()).toEqual([200, 404]);
       expect(
-        await testDb.client.attributeValue.count({
-          where: { attributeId: attribute.id },
-        })
+        await db.$count(
+          attributeValueTable,
+          eq(attributeValueTable.attributeId, attribute.id)
+        )
       ).toBe(1);
     });
 
@@ -569,21 +527,24 @@ describe.concurrent("Attribute routes test", () => {
       ]);
       expect(results.map((result) => result.status).sort()).toEqual([200, 400]);
       expect(
-        await testDb.client.attributeValue.count({
-          where: { attributeId: attribute.id },
-        })
+        await db.$count(
+          attributeValueTable,
+          eq(attributeValueTable.attributeId, attribute.id)
+        )
       ).toBe(1);
     });
 
     test("should delete an attribute value", async () => {
       const [testAttr] = testAttributes;
       expectDefined(testAttr);
-      const tempValue = await testDb.client.attributeValue.create({
-        data: {
+      const [tempValue] = await db
+        .insert(attributeValueTable)
+        .values({
+          id: Bun.randomUUIDv7(),
           value: "temporary",
           attributeId: testAttr.id,
-        },
-      });
+        })
+        .returning();
       expectDefined(tempValue);
 
       const { data, status } = await api.attributes
@@ -594,10 +555,10 @@ describe.concurrent("Attribute routes test", () => {
       expectDefined(data);
 
       // Verify it's actually deleted
-      const checkValue = await testDb.client.attributeValue.findUnique({
+      const checkValue = await db.query.attributeValue.findFirst({
         where: { id: tempValue.id },
       });
-      expect(checkValue).toBeNull();
+      expect(checkValue).toBeUndefined();
     });
 
     test("should return 404 for non-existent value", async () => {
@@ -608,8 +569,7 @@ describe.concurrent("Attribute routes test", () => {
         .delete();
 
       expect(status).toBe(404);
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(error).toMatchObject({ status });
     });
   });
 });
