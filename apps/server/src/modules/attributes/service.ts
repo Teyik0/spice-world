@@ -19,6 +19,7 @@ export const attributeService = {
   async get({ categoryId }: AttributeModel.getQuery) {
     return await db.query.attribute.findMany({
       where: categoryId ? { categoryId } : EmptyFilter,
+      columns: { categoryId: false },
       with: { values: true, category: true },
     });
   },

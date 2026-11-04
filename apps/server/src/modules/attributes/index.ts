@@ -1,5 +1,5 @@
 import { drizzleErrorPlugin } from "@spice-world/server/plugins/drizzle.plugin";
-import { Elysia } from "elysia";
+import { Elysia, t } from "elysia";
 import { uuidGuard } from "../shared";
 import * as AttributeModel from "./model";
 import { attributeService, attributeValueService } from "./service";
@@ -15,6 +15,9 @@ export const attributeRouter = new Elysia({
     "/",
     {
       query: AttributeModel.getQuery,
+      response: {
+        200: t.Array(AttributeModel.attributeResult),
+      },
     },
     async ({ query }) => await attributeService.get(query)
   )
