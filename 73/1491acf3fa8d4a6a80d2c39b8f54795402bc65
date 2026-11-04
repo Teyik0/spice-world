@@ -1,0 +1,16 @@
+apps/server/src/modules/attributes/index.ts
+  h_a2cbd1b0e3ae6e 2,18-20
+apps/server/src/modules/attributes/service.ts
+  h_a2cbd1b0e3ae6e 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "731491acf3fa8d4a6a80d2c39b8f54795402bc65",
+  "prompts": {},
+  "humans": {
+    "h_a2cbd1b0e3ae6e": {
+      "author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
