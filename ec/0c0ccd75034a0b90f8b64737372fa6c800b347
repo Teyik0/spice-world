@@ -1,0 +1,14 @@
+apps/server/tests/attribute.test.ts
+  h_a2cbd1b0e3ae6e 259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ec0c0ccd75034a0b90f8b64737372fa6c800b347",
+  "prompts": {},
+  "humans": {
+    "h_a2cbd1b0e3ae6e": {
+      "author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
