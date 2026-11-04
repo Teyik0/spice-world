@@ -55,7 +55,6 @@ export const attributeService = {
       .select({
         id: createdAttribute.id,
         name: createdAttribute.name,
-        categoryId: createdAttribute.categoryId,
         category: {
           id: categoryTable.id,
           name: categoryTable.name,

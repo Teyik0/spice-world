@@ -78,6 +78,7 @@ export const relations = defineRelations(tables, (r) => ({
     image: r.one.image({
       from: r.category.imageId,
       to: r.image.id,
+      optional: false,
     }),
     products: r.many.product(),
   },

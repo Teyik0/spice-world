@@ -34,20 +34,44 @@ describe.concurrent("Category routes test", () => {
     await testDb.destroy();
   });
 
-  const postCategory = async (name: string, bunfile: File) => {
-    const data = await api.categories.post({
-      name,
-      file: bunfile,
-    });
-    return data;
-  };
-
   describe("Create new category - POST/", () => {
+    test("should return nested values with only id and value", async () => {
+      const attributes = [
+        { name: "couleur", values: ["rouge", "jaune"] },
+        { name: "format", values: ["poudre"] },
+      ];
+      const { data, status } = await api.categories.post({
+        name: "nested values output",
+        file: file(filePath1),
+        attributes: { create: attributes },
+      });
+
+      expect(status).toBe(201);
+      expectDefined(data);
+      expect(data.attributes).toHaveLength(attributes.length);
+
+      expect(data.attributes).toEqual(
+        expect.arrayContaining(
+          attributes.map((input) => ({
+            id: expect.any(String),
+            name: input.name,
+            categoryId: data.id,
+            values: expect.arrayContaining(
+              input.values.map((value) => ({ id: expect.any(String), value }))
+            ),
+          }))
+        )
+      );
+    });
+
     test("should create a new category without attributes", async () => {
       const filePath = `${import.meta.dir}/public/cumin.webp`;
       const bunfile = file(filePath);
       const name = "test category";
-      const { data, status } = await postCategory(name, bunfile);
+      const { data, status } = await api.categories.post({
+        name,
+        file: bunfile,
+      });
 
       expect(status).toBe(201);
       expectDefined(data);
@@ -70,7 +94,10 @@ describe.concurrent("Category routes test", () => {
       const filePath = `${import.meta.dir}/public/cumin.webp`;
       const bunfile = file(filePath);
       const name = "épices";
-      const { data, status } = await postCategory(name, bunfile);
+      const { data, status } = await api.categories.post({
+        name,
+        file: bunfile,
+      });
 
       expect(status).toBe(201);
       expectDefined(data);
@@ -91,11 +118,17 @@ describe.concurrent("Category routes test", () => {
     test("should error if name is already taken", async () => {
       const filePath = `${import.meta.dir}/public/cumin.webp`;
       const bunfile = file(filePath);
-      const category = await postCategory("other category", bunfile);
+      const category = await api.categories.post({
+        name: "other category",
+        file: bunfile,
+      });
       expectDefined(category.data);
       expect(category.status).toBe(201);
 
-      const { error, status } = await postCategory("other category", bunfile);
+      const { error, status } = await api.categories.post({
+        name: "other category",
+        file: bunfile,
+      });
 
       expect(status).toBe(409);
       expectDefined(error);
@@ -306,23 +339,23 @@ describe.concurrent("Category routes test", () => {
 
   describe("Get existing categories - GET/ & GET/:id", () => {
     test("should return one category", async () => {
-      // First, create a category using postCategory
-      const filePath = `${import.meta.dir}/public/cumin.webp`;
-      const bunfile = file(filePath);
       const name = "test category for get";
-      const { data: createdCategory, status: postStatus } = await postCategory(
-        name,
-        bunfile
-      );
+
+      const { data: createdCategory, status: postStatus } =
+        await api.categories.post({
+          name,
+          file: file(`${import.meta.dir}/public/cumin.webp`),
+        });
 
       expect(postStatus).toBe(201);
       expectDefined(createdCategory);
 
       // Now, get the category by its id
-      const { data, status } = await api
+      const { data, status, error } = await api
         .categories({ id: createdCategory.id })
         .get();
 
+      console.log("test", error);
       expect(status).toBe(200);
       expectDefined(data);
       expect(data).toHaveProperty("id", createdCategory.id);
@@ -364,7 +397,10 @@ describe.concurrent("Category routes test", () => {
 
   describe("Update category - PATCH/:id", () => {
     test("should update category with new name only", async () => {
-      const category = await postCategory("initial category", file(filePath1));
+      const category = await api.categories.post({
+        name: "initial category",
+        file: file(filePath1),
+      });
       expectDefined(category.data);
 
       const { data, status } = await api
@@ -380,7 +416,10 @@ describe.concurrent("Category routes test", () => {
     });
 
     test("should update category with new file only", async () => {
-      const category = await postCategory("categoryuno", file(filePath1));
+      const category = await api.categories.post({
+        name: "categoryuno",
+        file: file(filePath1),
+      });
       expectDefined(category.data);
 
       const { data, status } = await api
@@ -398,10 +437,10 @@ describe.concurrent("Category routes test", () => {
     });
 
     test("should update category with new file and new name", async () => {
-      const category = await postCategory(
-        "categorydos",
-        file(`${import.meta.dir}/public/cumin.webp`)
-      );
+      const category = await api.categories.post({
+        name: "categorydos",
+        file: file(`${import.meta.dir}/public/cumin.webp`),
+      });
       expectDefined(category.data);
 
       const { data, status } = await api
@@ -419,10 +458,10 @@ describe.concurrent("Category routes test", () => {
     });
 
     test("should update category with new attribute", async () => {
-      const category = await postCategory(
-        "category for attribute",
-        file(`${import.meta.dir}/public/cumin.webp`)
-      );
+      const category = await api.categories.post({
+        name: "category for attribute",
+        file: file(`${import.meta.dir}/public/cumin.webp`),
+      });
       expectDefined(category.data);
       expect(category.data.attributes).toEqual([]);
 

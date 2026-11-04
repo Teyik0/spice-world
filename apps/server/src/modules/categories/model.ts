@@ -1,5 +1,11 @@
 import { type ElysiaStatus, t, type UnwrapSchema } from "elysia";
-import { nameLowerPattern, nameLowerPatternWithNumber } from "../shared";
+import {
+  imageKey,
+  imageUrl,
+  nameLowerPattern,
+  nameLowerPatternWithNumber,
+  uuid,
+} from "../shared";
 import type { categoryService } from "./service";
 
 export const getQuery = t.Object({
@@ -33,7 +39,34 @@ export const postBody = t.Object({
   attributes: t.Optional(t.Object({ create: t.Optional(postAttributes) })),
 });
 export type postBody = UnwrapSchema<typeof postBody>;
-export type postResult = typeof categoryService.post;
+export const postResult = t.Object({
+  id: uuid,
+  name: nameLowerPattern,
+  image: t.Object({
+    id: uuid,
+    altText: t.Nullable(t.String()),
+    isThumbnail: t.Boolean(),
+    keyThumb: imageKey,
+    keyMedium: imageKey,
+    keyLarge: imageKey,
+    urlThumb: imageUrl,
+    urlMedium: imageUrl,
+    urlLarge: imageUrl,
+  }),
+  attributes: t.Array(
+    t.Object({
+      id: uuid,
+      name: nameLowerPattern,
+      values: t.Array(
+        t.Object({
+          id: uuid,
+          value: nameLowerPatternWithNumber,
+        })
+      ),
+    })
+  ),
+});
+export type postResult = UnwrapSchema<typeof postResult>;
 
 export const attributeValueOperations = t.Object({
   create: t.Optional(t.Array(nameLowerPatternWithNumber, { minItems: 1 })),

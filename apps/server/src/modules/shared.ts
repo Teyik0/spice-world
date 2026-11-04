@@ -105,6 +105,11 @@ export type uuid = UnwrapSchema<typeof uuid>;
 
 export const uuidGuard = t.Object({ id: uuid });
 export type uuidGuard = UnwrapSchema<typeof uuidGuard>;
+export const imageKey = t.String({ minLength: 1 });
+export const imageUrl = t.String({
+  format: "url",
+  pattern: "^https://",
+});
 
 export const uploadFileErrStatus = (
   fileError: UploadFileResult["error"] | { message: string } | string | null

@@ -22,6 +22,7 @@ export const categoryRouter = new Elysia({
     "/",
     {
       body: CategoryModel.postBody,
+      response: { 201: CategoryModel.postResult },
     },
     async ({ body }) => await categoryService.post(body)
   )

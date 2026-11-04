@@ -1,5 +1,5 @@
 import { t, type UnwrapSchema } from "elysia";
-import { nameLowerPattern, nameLowerPatternWithNumber } from "../shared";
+import { nameLowerPattern, nameLowerPatternWithNumber, uuid } from "../shared";
 import type { attributeService } from "./service";
 
 export const getQuery = t.Object({
@@ -18,7 +18,24 @@ export const postBody = t.Object({
   }),
 });
 export type postBody = UnwrapSchema<typeof postBody>;
-export type postResult = typeof attributeService.post;
+export const postResult = t.Object({
+  id: uuid,
+  name: nameLowerPattern,
+  category: t.Object({
+    id: uuid,
+    name: nameLowerPattern,
+    imageId: uuid,
+  }),
+  values: t.Array(
+    t.Object({
+      id: uuid,
+      attributeId: uuid,
+      value: nameLowerPatternWithNumber,
+    }),
+    { minItems: 1 }
+  ),
+});
+export type postResult = UnwrapSchema<typeof postResult>;
 
 export const patchBody = t.Object({
   name: nameLowerPattern,

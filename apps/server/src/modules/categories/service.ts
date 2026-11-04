@@ -1,44 +1,59 @@
+import { db } from "@spice-world/server/lib/db";
 import {
   deleteUploads,
   type MultiSizeUploadData,
   uploadFiles,
 } from "@spice-world/server/lib/images";
 import { prisma } from "@spice-world/server/lib/prisma";
-import { status } from "elysia";
+import { EmptyFilter, eq, getColumns, sql } from "drizzle-orm";
+import { problem, status } from "elysia";
+import {
+  attributeTable,
+  attributeValueTable,
+  categoryTable,
+  imageTable,
+} from "../../../drizzle/schema";
 import { uploadFileErrStatus, type uuidGuard } from "../shared";
 import type * as CategoryModel from "./model";
 
 export const categoryService = {
   async get({ skip, take, name }: CategoryModel.getQuery) {
-    const categories = await prisma.category.findMany({
-      skip,
-      take,
-      where: {
-        name: {
-          contains: name,
-        },
-      },
-      include: {
+    const categories = await db.query.category.findMany({
+      offset: skip,
+      limit: take,
+      where: name ? { name: { ilike: `%${name}%` } } : EmptyFilter,
+      with: {
         image: {
-          select: {
+          columns: {
             urlThumb: true,
           },
         },
       },
     });
+
     return categories;
   },
 
   async getById({ id }: uuidGuard) {
-    return await prisma.category.findUniqueOrThrow({
+    const category = await db.query.category.findFirst({
       where: { id },
-      include: {
+      with: {
         image: true,
         attributes: {
-          include: { values: true },
+          with: {
+            values: true,
+          },
         },
       },
     });
+
+    return (
+      category ??
+      problem("Not Found", {
+        code: "CATEGORY_NOT_FOUND",
+        message: "Category not found",
+      })
+    );
   },
 
   async post({ name, file, attributes }: CategoryModel.postBody) {
@@ -48,45 +63,134 @@ export const categoryService = {
     }
 
     try {
-      const category = await prisma.category.create({
-        data: {
-          name,
-          image: {
-            create: {
-              keyThumb: images[0]?.thumb.key as string,
-              urlThumb: images[0]?.thumb.ufsUrl as string,
-              keyMedium: images[0]?.medium.key as string,
-              urlMedium: images[0]?.medium.ufsUrl as string,
-              keyLarge: images[0]?.large.key as string,
-              urlLarge: images[0]?.large.ufsUrl as string,
-              altText: name,
-              isThumbnail: true,
-            },
-          },
-          ...(attributes?.create &&
-            attributes.create.length > 0 && {
-              attributes: {
-                create: attributes.create.map((attr) => ({
-                  name: attr.name,
-                  values: {
-                    createMany: {
-                      data: attr.values.map((value) => ({ value })),
-                    },
-                  },
-                })),
-              },
-            }),
-        },
-        include: {
-          image: true,
-          attributes: {
-            include: {
-              values: true,
-            },
-          },
-        },
-      });
-      return status("Created", category);
+      const createdImageId = Bun.randomUUIDv7();
+      const createdImage = db.$with("created_image").as(
+        db
+          .insert(imageTable)
+          .values({
+            id: Bun.randomUUIDv7(),
+            keyThumb: images[0]?.thumb.key as string,
+            urlThumb: images[0]?.thumb.ufsUrl as string,
+            keyMedium: images[0]?.medium.key as string,
+            urlMedium: images[0]?.medium.ufsUrl as string,
+            keyLarge: images[0]?.large.key as string,
+            urlLarge: images[0]?.large.ufsUrl as string,
+            altText: name,
+            isThumbnail: true,
+          })
+          .returning()
+      );
+      const createdCategoryId = Bun.randomUUIDv7();
+      const createdCategory = db.$with("created_category").as(
+        db
+          .insert(categoryTable)
+          .values({
+            id: Bun.randomUUIDv7(),
+            name,
+            imageId: createdImageId,
+          })
+          .returning()
+      );
+
+      const newAttributes = (attributes?.create ?? []).map((attribute) => ({
+        id: Bun.randomUUIDv7(),
+        ...attribute,
+      }));
+
+      type AttributeWithValues = typeof attributeTable.$inferSelect & {
+        values: Pick<typeof attributeValueTable.$inferSelect, "id" | "value">[];
+      };
+
+      if (!newAttributes.length) {
+        const { productId, ...categoryImageColumns } = getColumns(createdImage);
+        const [category] = await db
+          .with(createdImage, createdCategory)
+          .select({
+            id: createdCategory.id,
+            name: createdCategory.name,
+            image: categoryImageColumns,
+          })
+          .from(createdCategory)
+          .innerJoin(
+            createdImage,
+            eq(createdImage.id, createdCategory.imageId)
+          );
+
+        return status("Created", {
+          ...(category as NonNullable<typeof category>),
+          attributes: [] as AttributeWithValues[],
+        });
+      }
+
+      const createdAttributes = db.$with("created_attributes").as(
+        db
+          .insert(attributeTable)
+          .values(
+            newAttributes.map(({ id, name: attributeName }) => ({
+              id,
+              name: attributeName,
+              categoryId: createdCategoryId,
+            }))
+          )
+          .returning()
+      );
+      const createdAttributesValues = db.$with("created_values").as(
+        db
+          .insert(attributeValueTable)
+          .values(
+            newAttributes.flatMap((attribute) =>
+              attribute.values.map((value) => ({
+                id: Bun.randomUUIDv7(),
+                value,
+                attributeId: attribute.id,
+              }))
+            )
+          )
+          .returning()
+      );
+
+      const [category] = await db
+        .with(
+          createdImage,
+          createdCategory,
+          createdAttributes,
+          createdAttributesValues
+        )
+        .select({
+          id: createdCategory.id,
+          name: createdCategory.name,
+          image: getColumns(createdImage),
+          attributes: sql<AttributeWithValues[]>`
+            coalesce(
+              (
+                select jsonb_agg(
+                  jsonb_build_object(
+                    'id', a.id,
+                    'name', a.name,
+                    'values',
+                    coalesce(
+                      (
+                        select jsonb_agg(
+                          jsonb_build_object('id', v.id, 'value', v.value)
+                        )
+                        from ${createdAttributesValues} as v
+                        where v."attributeId" = a.id
+                      ),
+                      '[]'::jsonb
+                    )
+                  )
+                )
+                from ${createdAttributes} as a
+                where a."categoryId" = ${createdCategory.id}
+              ),
+              '[]'::jsonb
+            )
+          `.as("attributes"),
+        })
+        .from(createdCategory)
+        .innerJoin(createdImage, eq(createdImage.id, createdCategory.imageId));
+
+      return status("Created", category as NonNullable<typeof category>);
     } catch (err: unknown) {
       await deleteUploads(images);
       throw err;
@@ -297,7 +401,6 @@ export const categoryService = {
   },
 
   async count() {
-    const count = await prisma.category.count();
-    return count;
+    return await db.$count(categoryTable);
   },
 };
