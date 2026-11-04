@@ -18,7 +18,16 @@ export const postBody = t.Object({
   }),
 });
 export type postBody = UnwrapSchema<typeof postBody>;
-export const postResult = t.Object({
+
+export const patchBody = t.Object({
+  name: nameLowerPattern,
+});
+export type patchBody = UnwrapSchema<typeof patchBody>;
+export type patchResult = typeof attributeService.patch;
+
+export type deleteResult = typeof attributeService.delete;
+
+export const attributeResult = t.Object({
   id: uuid,
   name: nameLowerPattern,
   category: t.Object({
@@ -35,12 +44,8 @@ export const postResult = t.Object({
     { minItems: 1 }
   ),
 });
-export type postResult = UnwrapSchema<typeof postResult>;
-
-export const patchBody = t.Object({
-  name: nameLowerPattern,
+export type attributeResult = UnwrapSchema<typeof attributeResult>;
+export const attributeNotFound = t.Object({
+  code: t.Literal("ATTRIBUTE_NOT_FOUND"),
+  message: t.Literal("Attribute not found"),
 });
-export type patchBody = UnwrapSchema<typeof patchBody>;
-export type patchResult = typeof attributeService.patch;
-
-export type deleteResult = typeof attributeService.delete;

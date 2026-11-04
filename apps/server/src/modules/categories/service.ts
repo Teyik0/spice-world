@@ -214,167 +214,209 @@ export const categoryService = {
     }
 
     try {
-      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Keep dependent validation and writes together in this atomic product/category operation.
-      const patchedProduct = await prisma.$transaction(async (tx) => {
-        const category = await tx.category.findUniqueOrThrow({
-          where: { id },
-          include: {
-            image: {
-              select: { keyThumb: true, keyMedium: true, keyLarge: true },
-            },
-            attributes: { include: { values: true } },
-          },
-        });
-
-        if (attributes) {
-          if (attributes.create) {
-            const existingNames = category.attributes.map((a) => a.name);
-            const newNames = attributes.create.map((a) => a.name);
-            const duplicates = newNames.filter((n) =>
-              existingNames.includes(n)
-            );
-            if (duplicates.length > 0) {
-              throw status(
-                "Conflict",
-                `Attribute names already exist: ${duplicates.join(", ")}`
-              );
-            }
+      const patchedProduct = await prisma.$transaction(
+        // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Keep dependent validation and writes together in this atomic product/category operation.
+        async (tx) => {
+          if (
+            attributes?.update?.some(
+              (attribute) => attribute.values?.delete?.length
+            )
+          ) {
+            await tx.$queryRaw`
+            SELECT "id" FROM "Attribute"
+            WHERE "categoryId" = ${id}
+            ORDER BY "id"
+            FOR UPDATE
+          `;
           }
+          const category = await tx.category.findUniqueOrThrow({
+            where: { id },
+            include: {
+              image: {
+                select: { keyThumb: true, keyMedium: true, keyLarge: true },
+              },
+              attributes: { include: { values: true } },
+            },
+          });
 
-          if (attributes.update) {
-            const updateIds = attributes.update.map((u) => u.id);
-            const updateNames = attributes.update
-              .filter((u) => u.name !== undefined)
-              .map((u) => u.name as string);
-            const otherAttributes = category.attributes
-              .filter((a) => !updateIds.includes(a.id))
-              .map((a) => a.name);
-            const conflicts = updateNames.filter((n) =>
-              otherAttributes.includes(n)
-            );
-            if (conflicts.length > 0) {
-              throw status(
-                "Conflict",
-                `Attribute name conflicts: ${conflicts.join(", ")}`
+          if (attributes) {
+            if (attributes.create) {
+              const existingNames = category.attributes.map((a) => a.name);
+              const newNames = attributes.create.map((a) => a.name);
+              const duplicates = newNames.filter((n) =>
+                existingNames.includes(n)
               );
+              if (duplicates.length > 0) {
+                throw status(
+                  "Conflict",
+                  `Attribute names already exist: ${duplicates.join(", ")}`
+                );
+              }
             }
 
-            // Validation for values operations
-            for (const attrUpdate of attributes.update) {
-              const existingAttr = category.attributes.find(
-                (a) => a.id === attrUpdate.id
+            if (attributes.update) {
+              const updateIds = attributes.update.map((u) => u.id);
+              const updateNames = attributes.update
+                .filter((u) => u.name !== undefined)
+                .map((u) => u.name as string);
+              const otherAttributes = category.attributes
+                .filter((a) => !updateIds.includes(a.id))
+                .map((a) => a.name);
+              const conflicts = updateNames.filter((n) =>
+                otherAttributes.includes(n)
               );
-              if (!existingAttr) {
+              if (conflicts.length > 0) {
                 throw status(
-                  "Not Found",
-                  `Attribute ${attrUpdate.id} not found`
+                  "Conflict",
+                  `Attribute name conflicts: ${conflicts.join(", ")}`
                 );
               }
 
-              if (attrUpdate.values?.create) {
-                // Check for duplicates with existing values
-                const existingValues = existingAttr.values.map((v) => v.value);
-                const newValues = attrUpdate.values.create;
-                const duplicates = newValues.filter((v) =>
-                  existingValues.includes(v)
+              // Validation for values operations
+              for (const attrUpdate of attributes.update) {
+                const existingAttr = category.attributes.find(
+                  (a) => a.id === attrUpdate.id
                 );
-
-                if (duplicates.length > 0) {
-                  throw status(
-                    "Conflict",
-                    `Attribute ${existingAttr.name} already has values: ${duplicates.join(", ")}`
-                  );
-                }
-              }
-
-              if (attrUpdate.values?.delete) {
-                // Verify all value IDs exist
-                const valueIds = existingAttr.values.map((v) => v.id);
-                const invalidIds = attrUpdate.values.delete.filter(
-                  (valueId) => !valueIds.includes(valueId)
-                );
-
-                if (invalidIds.length > 0) {
+                if (!existingAttr) {
                   throw status(
                     "Not Found",
-                    `Value IDs not found: ${invalidIds.join(", ")}`
+                    `Attribute ${attrUpdate.id} not found`
                   );
+                }
+
+                if (attrUpdate.values?.create) {
+                  // Check for duplicates with existing values
+                  const existingValues = existingAttr.values.map(
+                    (v) => v.value
+                  );
+                  const newValues = attrUpdate.values.create;
+                  const duplicates = newValues.filter((v) =>
+                    existingValues.includes(v)
+                  );
+
+                  if (duplicates.length > 0) {
+                    throw status(
+                      "Conflict",
+                      `Attribute ${existingAttr.name} already has values: ${duplicates.join(", ")}`
+                    );
+                  }
+                }
+
+                if (attrUpdate.values?.delete) {
+                  // Verify all value IDs exist
+                  const valueIds = existingAttr.values.map((v) => v.id);
+                  const invalidIds = attrUpdate.values.delete.filter(
+                    (valueId) => !valueIds.includes(valueId)
+                  );
+
+                  if (invalidIds.length > 0) {
+                    throw status(
+                      "Not Found",
+                      `Value IDs not found: ${invalidIds.join(", ")}`
+                    );
+                  }
+
+                  const updates = attributes.update.filter(
+                    (update) => update.id === attrUpdate.id
+                  );
+                  const deletedIds = new Set(
+                    updates.flatMap((update) => update.values?.delete ?? [])
+                  );
+                  const createdCount = updates.reduce(
+                    (total, update) =>
+                      total + (update.values?.create?.length ?? 0),
+                    0
+                  );
+                  if (
+                    existingAttr.values.length -
+                      deletedIds.size +
+                      createdCount <
+                    1
+                  ) {
+                    throw status("Bad Request", {
+                      code: "ATTRIBUTE_VALUE_LAST_VALUE",
+                      message: "Attribute value to delete is the last value",
+                    });
+                  }
                 }
               }
             }
           }
-        }
 
-        const updatedCategory = await tx.category.update({
-          where: { id },
-          data: {
-            name,
-            ...(newFile && {
-              image: {
-                update: {
-                  keyThumb: newFile.thumb.key,
-                  urlThumb: newFile.thumb.ufsUrl,
-                  keyMedium: newFile.medium.key,
-                  urlMedium: newFile.medium.ufsUrl,
-                  keyLarge: newFile.large.key,
-                  urlLarge: newFile.large.ufsUrl,
+          const updatedCategory = await tx.category.update({
+            where: { id },
+            data: {
+              name,
+              ...(newFile && {
+                image: {
+                  update: {
+                    keyThumb: newFile.thumb.key,
+                    urlThumb: newFile.thumb.ufsUrl,
+                    keyMedium: newFile.medium.key,
+                    urlMedium: newFile.medium.ufsUrl,
+                    keyLarge: newFile.large.key,
+                    urlLarge: newFile.large.ufsUrl,
+                  },
+                },
+              }),
+              ...(attributes && {
+                attributes: {
+                  ...(attributes.create &&
+                    attributes.create.length > 0 && {
+                      create: attributes.create.map((attr) => ({
+                        name: attr.name,
+                        values: {
+                          createMany: {
+                            data: attr.values.map((value) => ({ value })),
+                          },
+                        },
+                      })),
+                    }),
+                  ...(attributes.update &&
+                    attributes.update.length > 0 && {
+                      update: attributes.update.map((attr) => ({
+                        where: { id: attr.id },
+                        data: {
+                          ...(attr.name && { name: attr.name }),
+                          ...(attr.values && {
+                            values: {
+                              ...(attr.values.create && {
+                                create: attr.values.create.map((value) => ({
+                                  value,
+                                })),
+                              }),
+                              ...(attr.values.delete && {
+                                deleteMany: {
+                                  id: { in: attr.values.delete },
+                                },
+                              }),
+                            },
+                          }),
+                        },
+                      })),
+                    }),
+                  ...(attributes.delete &&
+                    attributes.delete.length > 0 && {
+                      delete: attributes.delete.map((attrId) => ({
+                        id: attrId,
+                      })),
+                    }),
+                },
+              }),
+            },
+            include: {
+              image: true,
+              attributes: {
+                include: {
+                  values: true,
                 },
               },
-            }),
-            ...(attributes && {
-              attributes: {
-                ...(attributes.create &&
-                  attributes.create.length > 0 && {
-                    create: attributes.create.map((attr) => ({
-                      name: attr.name,
-                      values: {
-                        createMany: {
-                          data: attr.values.map((value) => ({ value })),
-                        },
-                      },
-                    })),
-                  }),
-                ...(attributes.update &&
-                  attributes.update.length > 0 && {
-                    update: attributes.update.map((attr) => ({
-                      where: { id: attr.id },
-                      data: {
-                        ...(attr.name && { name: attr.name }),
-                        ...(attr.values && {
-                          values: {
-                            ...(attr.values.create && {
-                              create: attr.values.create.map((value) => ({
-                                value,
-                              })),
-                            }),
-                            ...(attr.values.delete && {
-                              deleteMany: {
-                                id: { in: attr.values.delete },
-                              },
-                            }),
-                          },
-                        }),
-                      },
-                    })),
-                  }),
-                ...(attributes.delete &&
-                  attributes.delete.length > 0 && {
-                    delete: attributes.delete.map((attrId) => ({ id: attrId })),
-                  }),
-              },
-            }),
-          },
-          include: {
-            image: true,
-            attributes: {
-              include: {
-                values: true,
-              },
             },
-          },
-        });
-        return { updatedCategory, oldImage: category.image };
-      });
+          });
+          return { updatedCategory, oldImage: category.image };
+        },
+        { isolationLevel: "ReadCommitted" }
+      );
 
       return { data: patchedProduct, error: null };
     } catch (err: unknown) {

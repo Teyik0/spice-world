@@ -7,7 +7,7 @@ import type {
   Category,
 } from "@spice-world/server/prisma/client";
 import { createTestDatabase } from "./utils/db-manager";
-import { expectDefined } from "./utils/helper";
+import { createTestCategory, expectDefined } from "./utils/helper";
 
 describe.concurrent("Attribute routes test", () => {
   let testCategory: Category;
@@ -117,7 +117,7 @@ describe.concurrent("Attribute routes test", () => {
       expectDefined(data);
       expect(data.id).toBe(testAttr.id);
       expect(data.name).toBe(testAttr.name);
-      expect(data.categoryId).toBe(testCategory.id);
+      expect(data.category.id).toBe(testCategory.id);
 
       // Verify it includes the values and category
       expect(data.values).toBeDefined();
@@ -165,7 +165,7 @@ describe.concurrent("Attribute routes test", () => {
       expect(status).toBe(201);
       expectDefined(data);
       expect(data.name).toBe(newAttrData.name);
-      expect(data.categoryId).toBe(newAttrData.categoryId);
+      expect(data.category.id).toBe(newAttrData.categoryId);
 
       // Verify values were created correctly
       expect(data.values).toBeDefined();
@@ -474,6 +474,105 @@ describe.concurrent("Attribute routes test", () => {
   });
 
   describe("DELETE /attributes/values/:id", () => {
+    test("should reject deleting the last value", async () => {
+      const category = await createTestCategory({
+        testDb,
+        attributeCount: 1,
+        attributeValueCount: 1,
+      });
+      const [attribute] = category.attributes;
+      expectDefined(attribute);
+      const [value] = attribute.values;
+      expectDefined(value);
+
+      const result = await api.attributes.values({ id: value.id }).delete();
+      expect(result.error).toMatchObject({
+        status: 400,
+        value: { code: "ATTRIBUTE_VALUE_LAST_VALUE" },
+      });
+      expect(
+        await testDb.client.attributeValue.count({
+          where: { attributeId: attribute.id },
+        })
+      ).toBe(1);
+    });
+
+    test("should keep one value when two values are deleted concurrently", async () => {
+      const category = await createTestCategory({
+        testDb,
+        attributeCount: 1,
+        attributeValueCount: 2,
+      });
+      const [attribute] = category.attributes;
+      expectDefined(attribute);
+
+      const results = await Promise.all(
+        attribute.values.map(({ id }) => api.attributes.values({ id }).delete())
+      );
+      expect(results.map((result) => result.status).sort()).toEqual([200, 400]);
+      expect(
+        await testDb.client.attributeValue.count({
+          where: { attributeId: attribute.id },
+        })
+      ).toBe(1);
+    });
+
+    test("should return not found for the second concurrent deletion of the same value", async () => {
+      const category = await createTestCategory({
+        testDb,
+        attributeCount: 1,
+        attributeValueCount: 2,
+      });
+      const [attribute] = category.attributes;
+      expectDefined(attribute);
+      const [value] = attribute.values;
+      expectDefined(value);
+
+      const results = await Promise.all([
+        api.attributes.values({ id: value.id }).delete(),
+        api.attributes.values({ id: value.id }).delete(),
+      ]);
+      expect(results.map((result) => result.status).sort()).toEqual([200, 404]);
+      expect(
+        await testDb.client.attributeValue.count({
+          where: { attributeId: attribute.id },
+        })
+      ).toBe(1);
+    });
+
+    test("should serialize category and value deletions on the same attribute", async () => {
+      const category = await createTestCategory({
+        testDb,
+        attributeCount: 1,
+        attributeValueCount: 2,
+      });
+      const [attribute] = category.attributes;
+      expectDefined(attribute);
+      const [first, second] = attribute.values;
+      expectDefined(first);
+      expectDefined(second);
+      const { categoryRouter } = await import(
+        "@spice-world/server/modules/categories"
+      );
+      const categoriesApi = treaty(categoryRouter);
+
+      const results = await Promise.all([
+        api.attributes.values({ id: first.id }).delete(),
+        categoriesApi.categories({ id: category.id }).patch({
+          name: category.name,
+          attributes: {
+            update: [{ id: attribute.id, values: { delete: [second.id] } }],
+          },
+        }),
+      ]);
+      expect(results.map((result) => result.status).sort()).toEqual([200, 400]);
+      expect(
+        await testDb.client.attributeValue.count({
+          where: { attributeId: attribute.id },
+        })
+      ).toBe(1);
+    });
+
     test("should delete an attribute value", async () => {
       const [testAttr] = testAttributes;
       expectDefined(testAttr);

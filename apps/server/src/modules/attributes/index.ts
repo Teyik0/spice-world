@@ -22,16 +22,30 @@ export const attributeRouter = new Elysia({
     "/",
     {
       body: AttributeModel.postBody,
+      response: { 201: AttributeModel.attributeResult },
     },
     async ({ body }) => await attributeService.post(body)
   )
   .get("/count", async () => await attributeService.count())
   .guard({ schema: "merge", params: uuidGuard })
-  .get("/:id", async ({ params }) => await attributeService.getById(params))
+  .get(
+    "/:id",
+    {
+      response: {
+        200: AttributeModel.attributeResult,
+        404: AttributeModel.attributeNotFound,
+      },
+    },
+    async ({ params }) => await attributeService.getById(params)
+  )
   .patch(
     "/:id",
     {
       body: AttributeModel.patchBody,
+      response: {
+        200: AttributeModel.attributeResult,
+        404: AttributeModel.attributeNotFound,
+      },
     },
     async ({ params, body }) =>
       await attributeService.patch({ ...params, ...body })
@@ -41,6 +55,7 @@ export const attributeRouter = new Elysia({
     "/:id/values",
     {
       body: AttributeValueModel.postBody,
+      response: { 201: AttributeValueModel.attributeValueResult },
     },
     async ({ params, body }) =>
       await attributeValueService.post({ ...params, ...body })
@@ -52,6 +67,10 @@ export const attributeRouter = new Elysia({
         "/:id",
         {
           body: AttributeValueModel.patchBody,
+          response: {
+            200: AttributeValueModel.attributeValueResult,
+            404: AttributeValueModel.attributeValueNotFound,
+          },
         },
         async ({ params, body }) =>
           await attributeValueService.patch({ ...params, ...body })

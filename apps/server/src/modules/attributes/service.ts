@@ -11,6 +11,11 @@ import type * as AttributeModel from "./model";
 import type * as AttributeValueModel from "./value-model";
 
 export const attributeService = {
+  attributeNotFound: problem("Not Found", {
+    code: "ATTRIBUTE_NOT_FOUND",
+    message: "Attribute not found",
+  }),
+
   async get({ categoryId }: AttributeModel.getQuery) {
     return await db.query.attribute.findMany({
       where: categoryId ? { categoryId } : EmptyFilter,
@@ -21,10 +26,11 @@ export const attributeService = {
   async getById({ id }: uuidGuard) {
     const attribute = await db.query.attribute.findFirst({
       where: { id },
+      columns: { categoryId: false },
       with: { values: true, category: true },
     });
 
-    return attribute ?? status("Not Found", "Attribute not found");
+    return attribute ?? this.attributeNotFound;
   },
 
   async post({ name, categoryId, values }: AttributeModel.postBody) {
@@ -92,7 +98,6 @@ export const attributeService = {
       .returning({
         id: attributeTable.id,
         name: attributeTable.name,
-        categoryId: attributeTable.categoryId,
         category: {
           id: categoryTable.id,
           name: categoryTable.name,
@@ -108,13 +113,7 @@ export const attributeService = {
           )`,
       });
 
-    return (
-      attribute ??
-      problem("Not Found", {
-        code: "ATTRIBUTE_NOT_FOUND",
-        message: "Attribute not found",
-      })
-    );
+    return attribute ?? this.attributeNotFound;
   },
 
   async delete({ id }: uuidGuard) {
@@ -123,16 +122,16 @@ export const attributeService = {
       .where(eq(attributeTable.id, id))
       .returning({ id: attributeTable.id });
 
-    return deletedAttribute
-      ? status(200)
-      : problem("Not Found", {
-          code: "ATTRIBUTE_NOT_FOUND",
-          message: "Attribute not found",
-        });
+    return deletedAttribute ? status(200) : this.attributeNotFound;
   },
 };
 
 export const attributeValueService = {
+  attributeValueNotFound: problem("Not Found", {
+    code: "ATTRIBUTE_VALUE_NOT_FOUND",
+    message: "Attribute value not found",
+  }),
+
   async post({ id, name }: AttributeValueModel.postBody & uuidGuard) {
     const [attributeValue] = await db
       .insert(attributeValueTable)
@@ -158,26 +157,47 @@ export const attributeValueService = {
       .where(eq(attributeValueTable.id, id))
       .returning();
 
-    return (
-      attributeValue ??
-      problem("Not Found", {
-        code: "ATTRIBUTE_VALUE_NOT_FOUND",
-        message: "Attribute value not found",
-      })
-    );
+    return attributeValue ?? this.attributeValueNotFound;
   },
 
   async delete({ id }: uuidGuard) {
-    const [deletedAttributeValue] = await db
-      .delete(attributeValueTable)
-      .where(eq(attributeValueTable.id, id))
-      .returning({ id: attributeValueTable.id });
+    return await db.transaction(
+      async (tx) => {
+        const [attribute] = await tx
+          .select({ id: attributeTable.id })
+          .from(attributeTable)
+          .innerJoin(
+            attributeValueTable,
+            eq(attributeValueTable.attributeId, attributeTable.id)
+          )
+          .where(eq(attributeValueTable.id, id))
+          .for("update", { of: attributeTable });
 
-    return deletedAttributeValue
-      ? status(200)
-      : problem("Not Found", {
-          code: "ATTRIBUTE_VALUE_NOT_FOUND",
-          message: "Attribute value not found",
+        if (!attribute) {
+          return this.attributeValueNotFound;
+        }
+
+        const values = await tx.query.attributeValue.findMany({
+          where: { attributeId: attribute.id },
+          columns: { id: true },
         });
+
+        if (!values.some((value) => value.id === id)) {
+          return this.attributeValueNotFound;
+        }
+        if (values.length <= 1) {
+          return problem("Bad Request", {
+            code: "ATTRIBUTE_VALUE_LAST_VALUE",
+            message: "Attribute value to delete is the last value",
+          });
+        }
+
+        await tx
+          .delete(attributeValueTable)
+          .where(eq(attributeValueTable.id, id));
+        return status(200);
+      },
+      { isolationLevel: "read committed" }
+    );
   },
 };

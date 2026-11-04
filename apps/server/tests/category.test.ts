@@ -3,7 +3,12 @@ import { treaty } from "@elysia/eden";
 import { prisma } from "@spice-world/server/lib/prisma";
 import type { categoryRouter } from "@spice-world/server/modules/categories";
 import { createTestDatabase } from "./utils/db-manager";
-import { expectDefined, file, mockUtapi } from "./utils/helper";
+import {
+  createTestCategory,
+  expectDefined,
+  file,
+  mockUtapi,
+} from "./utils/helper";
 
 describe.concurrent("Category routes test", () => {
   let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
@@ -32,6 +37,65 @@ describe.concurrent("Category routes test", () => {
 
   afterAll(async () => {
     await testDb.destroy();
+  });
+
+  test("should reject deleting all values across repeated attribute updates", async () => {
+    const category = await createTestCategory({
+      testDb,
+      attributeCount: 1,
+      attributeValueCount: 2,
+    });
+    const [attribute] = category.attributes;
+    expectDefined(attribute);
+    const result = await api.categories({ id: category.id }).patch({
+      name: category.name,
+      attributes: {
+        update: attribute.values.map((value) => ({
+          id: attribute.id,
+          values: { delete: [value.id] },
+        })),
+      },
+    });
+    expect(result.error).toMatchObject({
+      status: 400,
+      value: { code: "ATTRIBUTE_VALUE_LAST_VALUE" },
+    });
+    expect(
+      await testDb.client.attributeValue.count({
+        where: { attributeId: attribute.id },
+      })
+    ).toBe(2);
+  });
+
+  test("should allow replacing the last value atomically", async () => {
+    const category = await createTestCategory({
+      testDb,
+      attributeCount: 1,
+      attributeValueCount: 1,
+    });
+    const [attribute] = category.attributes;
+    expectDefined(attribute);
+    const result = await api.categories({ id: category.id }).patch({
+      name: category.name,
+      attributes: {
+        update: [
+          {
+            id: attribute.id,
+            values: {
+              delete: attribute.values.map((value) => value.id),
+              create: ["replacement"],
+            },
+          },
+        ],
+      },
+    });
+    expect(result.status).toBe(200);
+    expect(
+      await testDb.client.attributeValue.findMany({
+        where: { attributeId: attribute.id },
+        select: { value: true },
+      })
+    ).toEqual([{ value: "replacement" }]);
   });
 
   describe("Create new category - POST/", () => {
