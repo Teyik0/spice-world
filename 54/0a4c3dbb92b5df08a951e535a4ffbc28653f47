@@ -1,0 +1,20 @@
+apps/server/tests/attribute.test.ts
+  s_2e781493e8ddad::t_4552da71ac3f76 3,5-10,15-17,21-44,48,54-64,71,138,149,188,201,214,227,233,245,247-248,254,279,292,298,310,313,315-316,330,363,386,416,429,451-454,472-475,496-499,530-533,540-543,546-547,558,561,572
+  s_2e781493e8ddad::t_f198d5afa3607e 242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "540a4c3dbb92b5df08a951e535a4ffbc28653f47",
+  "prompts": {},
+  "sessions": {
+    "s_2e781493e8ddad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a678-d863-7a43-8417-7dfb71e4df4a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
