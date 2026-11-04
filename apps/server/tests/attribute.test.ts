@@ -26,7 +26,7 @@ describe.concurrent("Attribute routes test", () => {
 
     testCategory = await testDb.client.category.create({
       data: {
-        name: "Spice",
+        name: "spice",
         image: {
           create: {
             keyThumb: "test-key",
@@ -102,7 +102,7 @@ describe.concurrent("Attribute routes test", () => {
       expect(attributes.length).toBeGreaterThanOrEqual(2); // We created 2 attributes for this category, but other tests may have added more
 
       for (const attr of attributes) {
-        expect(attr.categoryId).toBe(testCategory.id);
+        expect(attr.category.id).toBe(testCategory.id);
       }
     });
   });
@@ -242,6 +242,7 @@ describe.concurrent("Attribute routes test", () => {
           categoryId: testCategory.id,
           values: { create: [{ value: "smoky" }] },
         },
+        omit: { categoryId: true },
         include: { values: true, category: true },
       });
 

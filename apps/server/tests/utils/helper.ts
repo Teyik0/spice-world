@@ -57,12 +57,12 @@ export function randomLowerString(length = 10): string {
 }
 
 const ATTRIBUTE_VALUES = {
-  Size: ["Small", "Medium", "Large", "XL", "XXL"],
-  Color: ["Black", "White", "Red", "Blue", "Green"],
-  Weight: ["50g", "100g", "250g", "500g", "1kg"],
-  Material: ["Cotton", "Polyester", "Leather", "Metal", "Wood"],
-  Style: ["Classic", "Modern", "Vintage", "Minimalist", "Rustic"],
-  Origin: ["France", "Italy", "Japan", "USA", "Spain"],
+  size: ["small", "medium", "large", "extra large", "xxl"],
+  color: ["black", "white", "red", "blue", "green"],
+  weight: ["50g", "100g", "250g", "500g", "1kg"],
+  material: ["cotton", "polyester", "leather", "metal", "wood"],
+  style: ["classic", "modern", "vintage", "minimalist", "rustic"],
+  origin: ["france", "italy", "japan", "usa", "spain"],
 } as const satisfies Record<string, readonly string[]>;
 
 export const ATTRIBUTE_NAMES = Object.keys(ATTRIBUTE_VALUES) as Array<
