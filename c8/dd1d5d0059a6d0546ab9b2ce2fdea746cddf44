@@ -1,0 +1,56 @@
+apps/server/src/modules/categories/service.ts
+  s_3cdbffcbd2752a::t_59b2ca944b9a0e 218
+  s_3cdbffcbd2752a::t_4de21dec004684 226-230,303,318
+  s_3cdbffcbd2752a::t_063dcc9a1cb101 217,219-225,232-240,242-247,249-254,257-266,268,270-271,275-278,280,282-283,287-295,297-302,304-309,311-317,319-340,346-359,361-370,372-412,415-419
+apps/server/tests/category.test.ts
+  s_3cdbffcbd2752a::t_969841f878ea3f 42,49-57,62,68-70,77-80,90-92,99
+  s_3cdbffcbd2752a::t_7ecbf9e9bf4b0b 6-11,43-48,58-61,63-67,71-76,81-89,93-98
+  s_3cdbffcbd2752a::t_39e27dc2ae7d83 100
+apps/server/src/modules/attributes/service.ts
+  s_3cdbffcbd2752a::t_eb7c2bcdac0397 164-174,177-181,186-201
+  s_10c312a5342571::t_2c566e4a5c1339 14-18,29,33,116,125,130-134,160,175-176,182,184-185
+apps/server/tests/attribute.test.ts
+  s_3cdbffcbd2752a::t_f62c6486862dde 10,120,168,477,484,486-488,498-500,507-508,512,518-520,527,529-535,541-543,550-553,557-562,566-568,574-575
+  s_3cdbffcbd2752a::t_063dcc9a1cb101 478-482,489-497,501-505,509-511,513-517,521-525,536-540,544-548,554-556,563-565,569-573
+  s_3cdbffcbd2752a::t_7ecbf9e9bf4b0b 506,526,528,549
+  s_3cdbffcbd2752a::t_4986a56e468fe8 483,485
+apps/server/src/modules/attributes/value-model.ts
+  s_3cdbffcbd2752a::t_6b8f8f12049a6e 2,15-20,25
+  s_9c40821d8dd3fe::t_fa2667c01185d2 21-24
+apps/server/src/modules/attributes/index.ts
+  s_9c40821d8dd3fe::t_5fd50cd9a4dd28 25,31-40,45-48,58,70-73
+apps/server/src/modules/attributes/model.ts
+  s_10c312a5342571::t_50c27fa619c64a 21-30,47-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c8dd1d5d0059a6d0546ab9b2ce2fdea746cddf44",
+  "prompts": {},
+  "sessions": {
+    "s_10c312a5342571": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18e06-dbb6-7a00-b753-ef9b0f94e448",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_3cdbffcbd2752a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a3a9-4a36-7d83-89c1-6a15b013b16d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_9c40821d8dd3fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a350-ea9d-7c32-97c1-1613f876fb52",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
