@@ -1,0 +1,41 @@
+apps/server/src/plugins/drizzle.plugin.ts
+  s_2e781493e8ddad::t_af8950587e2f83 6,10
+apps/server/src/modules/categories/errors.ts
+  s_2e781493e8ddad::t_af8950587e2f83 1-12
+apps/server/src/modules/categories/service.ts
+  s_2e781493e8ddad::t_af8950587e2f83 78,95,107-109,168
+  s_2e781493e8ddad::t_d04969b71a3c99 20-45,51,60,63
+apps/server/tests/category.test.ts
+  s_2e781493e8ddad::t_af8950587e2f83 133-137,141-150,152-154,178,504,509-510
+  s_2e781493e8ddad::t_b3cdff839d36f3 4-5,66-69,97,99,155-177,246,259,272,285,398,419,450-486,538,541,826,868,1083-1087,1125-1129
+  s_2e781493e8ddad::t_aacacd8653532e 15,30-31,40,138-140,151,311
+apps/server/src/modules/categories/index.ts
+  s_2e781493e8ddad::t_af8950587e2f83 2,4,15
+  s_2e781493e8ddad::t_77b76876a9a03c 20,28,34-43
+apps/server/src/modules/categories/model.ts
+  s_67186a039ba057::t_4a708ac5fcf535 76-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bcfa9b48bde391580a5c38dab9487b306ec7cb0b",
+  "prompts": {},
+  "sessions": {
+    "s_2e781493e8ddad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a678-d863-7a43-8417-7dfb71e4df4a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_67186a039ba057": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a333-ef7f-7e62-8d2d-9a0dbc0b9e2a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
