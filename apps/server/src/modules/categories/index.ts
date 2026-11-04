@@ -1,6 +1,7 @@
 import { utapi } from "@spice-world/server/lib/images";
+import { drizzleErrorPlugin } from "@spice-world/server/plugins/drizzle.plugin";
 import { prismaErrorPlugin } from "@spice-world/server/plugins/prisma.plugin";
-import { Elysia, status } from "elysia";
+import { Elysia, status, t } from "elysia";
 import { uuidGuard } from "../shared";
 import * as CategoryModel from "./model";
 import { categoryService } from "./service";
@@ -11,10 +12,12 @@ export const categoryRouter = new Elysia({
   tags: ["Categories"],
 })
   .use(prismaErrorPlugin("Category"))
+  .use(drizzleErrorPlugin)
   .get(
     "/",
     {
       query: CategoryModel.getQuery,
+      response: { 200: t.Array(CategoryModel.categoryResult) },
     },
     async ({ query }) => await categoryService.get(query)
   )
@@ -22,13 +25,22 @@ export const categoryRouter = new Elysia({
     "/",
     {
       body: CategoryModel.postBody,
-      response: { 201: CategoryModel.postResult },
+      response: { 201: CategoryModel.categoryResult },
     },
     async ({ body }) => await categoryService.post(body)
   )
   .get("/count", async () => await categoryService.count())
   .guard({ schema: "merge", params: uuidGuard })
-  .get("/:id", async ({ params }) => await categoryService.getById(params))
+  .get(
+    "/:id",
+    {
+      response: {
+        200: CategoryModel.categoryResult,
+        404: CategoryModel.categoryNotFound,
+      },
+    },
+    async ({ params }) => await categoryService.getById(params)
+  )
   .state("imageKeys", null as null | string[])
   .onAfterResponse(async ({ store }) => {
     // cleanup patch and delete

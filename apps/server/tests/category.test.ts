@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { treaty } from "@elysia/eden";
-import { prisma } from "@spice-world/server/lib/prisma";
 import type { categoryRouter } from "@spice-world/server/modules/categories";
+import { eq } from "drizzle-orm";
+import { attributeValueTable } from "../drizzle/schema";
 import { createTestDatabase } from "./utils/db-manager";
 import {
   createTestCategory,
@@ -11,6 +12,7 @@ import {
 } from "./utils/helper";
 
 describe.concurrent("Category routes test", () => {
+  let db: typeof import("@spice-world/server/lib/db").db;
   let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
   let api: ReturnType<typeof treaty<typeof categoryRouter>>;
   const filePath1 = `${import.meta.dir}/public/cumin.webp`;
@@ -24,10 +26,9 @@ describe.concurrent("Category routes test", () => {
       throw new Error("DATABASE_URL should be set");
     }
 
-    // Mock uploadthing BEFORE importing the router
-    await mockUtapi();
-
     testDb = await createTestDatabase("category.test.ts");
+    ({ db } = await import("@spice-world/server/lib/db"));
+    await mockUtapi();
 
     const { categoryRouter: router } = await import(
       "@spice-world/server/modules/categories"
@@ -36,6 +37,7 @@ describe.concurrent("Category routes test", () => {
   });
 
   afterAll(async () => {
+    await db.$client.close();
     await testDb.destroy();
   });
 
@@ -61,9 +63,10 @@ describe.concurrent("Category routes test", () => {
       value: { code: "ATTRIBUTE_VALUE_LAST_VALUE" },
     });
     expect(
-      await testDb.client.attributeValue.count({
-        where: { attributeId: attribute.id },
-      })
+      await db.$count(
+        attributeValueTable,
+        eq(attributeValueTable.attributeId, attribute.id)
+      )
     ).toBe(2);
   });
 
@@ -91,9 +94,9 @@ describe.concurrent("Category routes test", () => {
     });
     expect(result.status).toBe(200);
     expect(
-      await testDb.client.attributeValue.findMany({
+      await db.query.attributeValue.findMany({
         where: { attributeId: attribute.id },
-        select: { value: true },
+        columns: { value: true },
       })
     ).toEqual([{ value: "replacement" }]);
   });
@@ -119,7 +122,6 @@ describe.concurrent("Category routes test", () => {
           attributes.map((input) => ({
             id: expect.any(String),
             name: input.name,
-            categoryId: data.id,
             values: expect.arrayContaining(
               input.values.map((value) => ({ id: expect.any(String), value }))
             ),
@@ -127,6 +129,52 @@ describe.concurrent("Category routes test", () => {
         )
       );
     });
+
+    test("should roll back all inserts when attribute values conflict", async () => {
+      const name = "category rollback";
+      const result = await api.categories.post({
+        name,
+        file: file(filePath1),
+        attributes: {
+          create: [{ name: "rollback color", values: ["red", "red"] }],
+        },
+      });
+
+      expect(result.error).toMatchObject({ status: 409 });
+      expect(
+        await db.query.category.findFirst({ where: { name } })
+      ).toBeUndefined();
+      expect(
+        await db.query.image.findMany({ where: { altText: name } })
+      ).toEqual([]);
+      expect(
+        await db.query.attribute.findMany({ where: { name: "rollback color" } })
+      ).toEqual([]);
+    });
+
+    for (const withAttributes of [false, true]) {
+      test(`should return the same category from POST and GET with attributes: ${withAttributes}`, async () => {
+        const { categoryService } = await import(
+          "@spice-world/server/modules/categories/service"
+        );
+        const created = await categoryService.post({
+          name: withAttributes
+            ? "category response with attributes"
+            : "category response without attributes",
+          file: file(filePath1),
+          ...(withAttributes && {
+            attributes: { create: [{ name: "origin", values: ["france"] }] },
+          }),
+        });
+        expect(created.status).toBe(201);
+        if (created.status !== 201) {
+          throw new Error("Category creation failed");
+        }
+        expect(
+          await categoryService.getById({ id: created.response.id })
+        ).toEqual(created.response);
+      });
+    }
 
     test("should create a new category without attributes", async () => {
       const filePath = `${import.meta.dir}/public/cumin.webp`;
@@ -195,7 +243,7 @@ describe.concurrent("Category routes test", () => {
       });
 
       expect(status).toBe(409);
-      expectDefined(error);
+      expect(error).toMatchObject({ status });
     });
 
     test("should error if name start with a uppercase letter", async () => {
@@ -208,8 +256,7 @@ describe.concurrent("Category routes test", () => {
       });
 
       expect(status).toBe(422);
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(error).toMatchObject({ status });
     });
 
     test("should error if name don't contain only letters and spaces - (1)", async () => {
@@ -222,8 +269,7 @@ describe.concurrent("Category routes test", () => {
       });
 
       expect(status).toBe(422);
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(error).toMatchObject({ status });
     });
 
     test("should error if name don't contain only letters and spaces - (2)", async () => {
@@ -236,8 +282,7 @@ describe.concurrent("Category routes test", () => {
       });
 
       expect(status).toBe(422);
-      expect(error).not.toBeNull();
-      expect(error).not.toBeUndefined();
+      expect(error).toMatchObject({ status });
     });
 
     test("should create a new category with single attribute", async () => {
@@ -263,7 +308,7 @@ describe.concurrent("Category routes test", () => {
       expect(data.attributes).toHaveLength(1);
       expect(data.attributes[0]).toHaveProperty("id");
       expect(data.attributes[0]).toHaveProperty("name", "taille");
-      expect(data.attributes[0]).toHaveProperty("categoryId", data.id);
+      expect(data.attributes[0]).not.toHaveProperty("categoryId");
       expect(data.attributes[0]?.values).toHaveLength(3);
       expect(data.attributes[0]?.values[0]).toHaveProperty("value", "small");
       expect(data.attributes[0]?.values[1]).toHaveProperty("value", "medium");
@@ -350,7 +395,7 @@ describe.concurrent("Category routes test", () => {
       });
 
       expect(status).toBe(422);
-      expectDefined(error);
+      expect(error).toMatchObject({ status });
     });
 
     test("should error if attribute has no values", async () => {
@@ -371,7 +416,7 @@ describe.concurrent("Category routes test", () => {
       });
 
       expect(status).toBe(422);
-      expectDefined(error);
+      expect(error).toMatchObject({ status });
     });
 
     test("should accept attribute values with numbers", async () => {
@@ -402,6 +447,43 @@ describe.concurrent("Category routes test", () => {
   });
 
   describe("Get existing categories - GET/ & GET/:id", () => {
+    test("should filter and paginate categories", async () => {
+      const name = "filtered category";
+      const category = await createTestCategory({
+        testDb,
+        name,
+        attributeCount: 1,
+        attributeValueCount: 1,
+      });
+      const { data, status } = await api.categories.get({
+        query: { name: "FILTERED CATEGORY", take: 1, skip: 0 },
+      });
+      expect(status).toBe(200);
+      expectDefined(data);
+      expect(data).toHaveLength(1);
+      expect(data[0]).toMatchObject({
+        id: category.id,
+        name,
+        attributes: [{ id: category.attributes[0]?.id }],
+      });
+      expect(data[0]).not.toHaveProperty("imageId");
+      const next = await api.categories.get({
+        query: { name, take: 1, skip: 1 },
+      });
+      expect(next.status).toBe(200);
+      expect(next.data).toEqual([]);
+    });
+
+    test("should return 404 for a non-existent category", async () => {
+      const result = await api
+        .categories({ id: "00000000-0000-0000-0000-000000000000" })
+        .get();
+      expect(result.error).toMatchObject({
+        status: 404,
+        value: { code: "CATEGORY_NOT_FOUND", message: "Category not found" },
+      });
+    });
+
     test("should return one category", async () => {
       const name = "test category for get";
 
@@ -419,12 +501,13 @@ describe.concurrent("Category routes test", () => {
         .categories({ id: createdCategory.id })
         .get();
 
-      console.log("test", error);
+      expect(error).toBeNull();
       expect(status).toBe(200);
       expectDefined(data);
       expect(data).toHaveProperty("id", createdCategory.id);
       expect(data).toHaveProperty("name", createdCategory.name);
-      expect(data).toHaveProperty("imageId");
+      expect(data).not.toHaveProperty("imageId");
+      expect(data.image.id).toBe(createdCategory.image.id);
     });
   });
 
@@ -452,10 +535,10 @@ describe.concurrent("Category routes test", () => {
       expect(data).toBe("OK");
 
       // Check image is well deleted
-      const image = await prisma.image.findUnique({
+      const image = await db.query.image.findFirst({
         where: { id: oldCategory.image?.id },
       });
-      expect(image).toBe(null);
+      expect(image).toBeUndefined();
     });
   });
 
@@ -740,7 +823,7 @@ describe.concurrent("Category routes test", () => {
         });
 
       expect(status).toBe(409);
-      expectDefined(error);
+      expect(error).toMatchObject({ status });
     });
 
     test("should error if updating attribute to duplicate name", async () => {
@@ -782,7 +865,7 @@ describe.concurrent("Category routes test", () => {
         });
 
       expect(status).toBe(409);
-      expectDefined(error);
+      expect(error).toMatchObject({ status });
     });
 
     test("should update category name and attributes together", async () => {
@@ -997,10 +1080,11 @@ describe.concurrent("Category routes test", () => {
         });
 
       expect(status).toBe(409);
-      expectDefined(error);
-      expect(error.value).toEqual(
-        expect.stringContaining("already has values")
-      );
+      expect(error).toMatchObject({ status });
+      expect(error).toMatchObject({
+        status: 409,
+        value: expect.stringContaining("already has values"),
+      });
     });
 
     test("should fail when deleting non-existent value ID", async () => {
@@ -1038,10 +1122,11 @@ describe.concurrent("Category routes test", () => {
         });
 
       expect(status).toBe(404);
-      expectDefined(error);
-      expect(error.value).toEqual(
-        expect.stringContaining("Value IDs not found")
-      );
+      expect(error).toMatchObject({ status });
+      expect(error).toMatchObject({
+        status: 404,
+        value: expect.stringContaining("Value IDs not found"),
+      });
     });
 
     test("should update attribute name and values together", async () => {

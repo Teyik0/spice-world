@@ -17,18 +17,38 @@ import { uploadFileErrStatus, type uuidGuard } from "../shared";
 import type * as CategoryModel from "./model";
 
 export const categoryService = {
+  categoryNotFound: problem("Not Found", {
+    code: "CATEGORY_NOT_FOUND",
+    message: "Category not found",
+  }),
+
+  findOptions: {
+    columns: {
+      imageId: false as const,
+    },
+    with: {
+      image: {
+        columns: {
+          productId: false as const,
+        },
+      },
+      attributes: {
+        columns: { categoryId: false as const },
+        with: {
+          values: {
+            columns: { attributeId: false as const },
+          },
+        },
+      },
+    },
+  },
+
   async get({ skip, take, name }: CategoryModel.getQuery) {
     const categories = await db.query.category.findMany({
       offset: skip,
       limit: take,
       where: name ? { name: { ilike: `%${name}%` } } : EmptyFilter,
-      with: {
-        image: {
-          columns: {
-            urlThumb: true,
-          },
-        },
-      },
+      ...this.findOptions,
     });
 
     return categories;
@@ -37,23 +57,10 @@ export const categoryService = {
   async getById({ id }: uuidGuard) {
     const category = await db.query.category.findFirst({
       where: { id },
-      with: {
-        image: true,
-        attributes: {
-          with: {
-            values: true,
-          },
-        },
-      },
+      ...this.findOptions,
     });
 
-    return (
-      category ??
-      problem("Not Found", {
-        code: "CATEGORY_NOT_FOUND",
-        message: "Category not found",
-      })
-    );
+    return category ?? this.categoryNotFound;
   },
 
   async post({ name, file, attributes }: CategoryModel.postBody) {
@@ -68,7 +75,7 @@ export const categoryService = {
         db
           .insert(imageTable)
           .values({
-            id: Bun.randomUUIDv7(),
+            id: createdImageId,
             keyThumb: images[0]?.thumb.key as string,
             urlThumb: images[0]?.thumb.ufsUrl as string,
             keyMedium: images[0]?.medium.key as string,
@@ -85,7 +92,7 @@ export const categoryService = {
         db
           .insert(categoryTable)
           .values({
-            id: Bun.randomUUIDv7(),
+            id: createdCategoryId,
             name,
             imageId: createdImageId,
           })
@@ -97,12 +104,11 @@ export const categoryService = {
         ...attribute,
       }));
 
-      type AttributeWithValues = typeof attributeTable.$inferSelect & {
-        values: Pick<typeof attributeValueTable.$inferSelect, "id" | "value">[];
-      };
+      type AttributeWithValues =
+        CategoryModel.categoryResult["attributes"][number];
+      const { productId, ...categoryImageColumns } = getColumns(createdImage);
 
       if (!newAttributes.length) {
-        const { productId, ...categoryImageColumns } = getColumns(createdImage);
         const [category] = await db
           .with(createdImage, createdCategory)
           .select({
@@ -159,7 +165,7 @@ export const categoryService = {
         .select({
           id: createdCategory.id,
           name: createdCategory.name,
-          image: getColumns(createdImage),
+          image: categoryImageColumns,
           attributes: sql<AttributeWithValues[]>`
             coalesce(
               (

@@ -3,9 +3,11 @@ import { DrizzleQueryError } from "drizzle-orm";
 import { Elysia } from "elysia";
 import type { ConstraintFailure } from "../lib/db";
 import { attributeConstraintFailures } from "../modules/attributes/errors";
+import { categoryConstraintFailures } from "../modules/categories/errors";
 
 const constraintFailures = new Map<string, ConstraintFailure>([
   ...attributeConstraintFailures,
+  ...categoryConstraintFailures,
 ]);
 
 function getPostgresError(error: unknown) {

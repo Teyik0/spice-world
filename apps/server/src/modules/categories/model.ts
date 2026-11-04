@@ -39,34 +39,6 @@ export const postBody = t.Object({
   attributes: t.Optional(t.Object({ create: t.Optional(postAttributes) })),
 });
 export type postBody = UnwrapSchema<typeof postBody>;
-export const postResult = t.Object({
-  id: uuid,
-  name: nameLowerPattern,
-  image: t.Object({
-    id: uuid,
-    altText: t.Nullable(t.String()),
-    isThumbnail: t.Boolean(),
-    keyThumb: imageKey,
-    keyMedium: imageKey,
-    keyLarge: imageKey,
-    urlThumb: imageUrl,
-    urlMedium: imageUrl,
-    urlLarge: imageUrl,
-  }),
-  attributes: t.Array(
-    t.Object({
-      id: uuid,
-      name: nameLowerPattern,
-      values: t.Array(
-        t.Object({
-          id: uuid,
-          value: nameLowerPatternWithNumber,
-        })
-      ),
-    })
-  ),
-});
-export type postResult = UnwrapSchema<typeof postResult>;
 
 export const attributeValueOperations = t.Object({
   create: t.Optional(t.Array(nameLowerPatternWithNumber, { minItems: 1 })),
@@ -101,3 +73,36 @@ export type patchBody = UnwrapSchema<typeof patchBody>;
 export type patchResult = typeof categoryService.patch;
 
 export type deleteResult = typeof categoryService.delete;
+
+export const categoryResult = t.Object({
+  id: uuid,
+  name: nameLowerPattern,
+  image: t.Object({
+    id: uuid,
+    altText: t.Nullable(t.String()),
+    isThumbnail: t.Boolean(),
+    keyThumb: imageKey,
+    keyMedium: imageKey,
+    keyLarge: imageKey,
+    urlThumb: imageUrl,
+    urlMedium: imageUrl,
+    urlLarge: imageUrl,
+  }),
+  attributes: t.Array(
+    t.Object({
+      id: uuid,
+      name: nameLowerPattern,
+      values: t.Array(
+        t.Object({
+          id: uuid,
+          value: nameLowerPatternWithNumber,
+        })
+      ),
+    })
+  ),
+});
+export type categoryResult = UnwrapSchema<typeof categoryResult>;
+export const categoryNotFound = t.Object({
+  code: t.Literal("CATEGORY_NOT_FOUND"),
+  message: t.Literal("Category not found"),
+});
