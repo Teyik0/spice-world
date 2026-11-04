@@ -256,6 +256,7 @@ describe.concurrent("Attribute routes test", () => {
       expect(
         await testDb.client.attribute.findUnique({
           where: { id: attribute.id },
+          omit: { categoryId: true },
           include: { values: true, category: true },
         })
       ).toEqual(data);
