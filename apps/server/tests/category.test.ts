@@ -3,6 +3,7 @@ import { treaty } from "@elysia/eden";
 import type { categoryRouter } from "@spice-world/server/modules/categories";
 import { eq } from "drizzle-orm";
 import { attributeValueTable } from "../drizzle/schema";
+import type * as CategoryModel from "../src/modules/categories/model";
 import { createTestDatabase } from "./utils/db-manager";
 import {
   createTestCategory,
@@ -41,6 +42,467 @@ describe.concurrent("Category routes test", () => {
     await testDb.destroy();
   });
 
+  test.each([
+    { existing: 1, deleted: 1, created: [], valid: false },
+    { existing: 1, deleted: 1, created: ["replacement"], valid: true },
+    { existing: 2, deleted: 1, created: [], valid: true },
+    { existing: 2, deleted: 2, created: [], valid: false },
+    { existing: 1, deleted: 0, created: [], valid: true },
+  ])("should validate remaining values: %j", async (scenario) => {
+    const category = await createTestCategory({
+      testDb,
+      attributeCount: 1,
+      attributeValueCount: scenario.existing,
+    });
+    const [attribute] = category.attributes;
+    expectDefined(attribute);
+    const { categoryService } = await import(
+      "@spice-world/server/modules/categories/service"
+    );
+    const name = `${category.name} renamed`;
+    const runPatch = () =>
+      categoryService.patch({
+        id: category.id,
+        name,
+        attributes: {
+          update: [
+            {
+              id: attribute.id,
+              values: {
+                ...(scenario.deleted > 0 && {
+                  delete: attribute.values
+                    .slice(0, scenario.deleted)
+                    .map(({ id }) => id),
+                }),
+                ...(scenario.created.length > 0 && {
+                  create: [...scenario.created],
+                }),
+              },
+            },
+          ],
+        },
+      });
+    const operation = runPatch();
+    if (scenario.valid) {
+      expect(await operation).toMatchObject({
+        category: { id: category.id, name },
+      });
+    } else {
+      expect(await operation).toMatchObject({
+        status: 400,
+        response: { code: "ATTRIBUTE_VALUE_LAST_VALUE" },
+      });
+    }
+    expect(
+      await db.query.category.findFirst({
+        where: { id: category.id },
+      })
+    ).toMatchObject({
+      name: scenario.valid ? name : category.name,
+    });
+  });
+
+  test("should gate attribute deletion and cascade values", async () => {
+    const category = await createTestCategory({ testDb, attributeCount: 1 });
+    const otherCategory = await createTestCategory({
+      testDb,
+      attributeCount: 1,
+    });
+    const [attribute] = category.attributes;
+    const [otherAttribute] = otherCategory.attributes;
+    expectDefined(attribute);
+    expectDefined(otherAttribute);
+    const { categoryService } = await import(
+      "@spice-world/server/modules/categories/service"
+    );
+
+    const rejected = await categoryService.patch({
+      id: category.id,
+      name: `${category.name} renamed`,
+      attributes: { delete: [attribute.id, otherAttribute.id] },
+    });
+    expect(rejected).toMatchObject({
+      status: 404,
+      response: { code: "CATEGORY_ATTRIBUTE_NOT_FOUND" },
+    });
+    expect(
+      await db.query.category.findFirst({ where: { id: category.id } })
+    ).toMatchObject({ name: category.name });
+    expect(
+      await db.query.attribute.findFirst({ where: { id: attribute.id } })
+    ).toBeDefined();
+    expect(
+      await db.query.attribute.findFirst({ where: { id: otherAttribute.id } })
+    ).toBeDefined();
+
+    const result = await categoryService.patch({
+      id: category.id,
+      name: category.name,
+      attributes: { delete: [attribute.id] },
+    });
+    expect(result).toMatchObject({ category: { id: category.id } });
+    expect(
+      await db.query.attribute.findFirst({ where: { id: attribute.id } })
+    ).toBeUndefined();
+    expect(
+      await db.$count(
+        attributeValueTable,
+        eq(attributeValueTable.attributeId, attribute.id)
+      )
+    ).toBe(0);
+    expect(
+      await db.query.attribute.findFirst({ where: { id: otherAttribute.id } })
+    ).toBeDefined();
+  });
+
+  test("should rename attributes atomically and preserve omitted names", async () => {
+    const category = await createTestCategory({ testDb, attributeCount: 3 });
+    const [first, second, untouched] = category.attributes;
+    expectDefined(first);
+    expectDefined(second);
+    expectDefined(untouched);
+    const { categoryService } = await import(
+      "@spice-world/server/modules/categories/service"
+    );
+    const categoryName = `${category.name} renamed`;
+    await categoryService.patch({
+      id: category.id,
+      name: categoryName,
+      attributes: {
+        update: [
+          { id: first.id, name: "renamed first" },
+          { id: second.id, name: "renamed second" },
+          { id: untouched.id },
+        ],
+      },
+    });
+    expect(
+      await db.query.attribute.findFirst({
+        where: { id: first.id },
+        with: { values: true },
+      })
+    ).toEqual({ ...first, name: "renamed first" });
+    expect(
+      await db.query.attribute.findFirst({ where: { id: second.id } })
+    ).toMatchObject({ name: "renamed second" });
+    expect(
+      await db.query.attribute.findFirst({ where: { id: untouched.id } })
+    ).toMatchObject({ name: untouched.name });
+
+    await expect(
+      categoryService.patch({
+        id: category.id,
+        name: `${category.name} conflict`,
+        attributes: {
+          update: [
+            { id: first.id, name: "rollback name" },
+            { id: second.id, name: untouched.name },
+          ],
+        },
+      })
+    ).rejects.toBeDefined();
+    expect(
+      await db.query.category.findFirst({ where: { id: category.id } })
+    ).toMatchObject({ name: categoryName });
+    expect(
+      await db.query.attribute.findFirst({ where: { id: first.id } })
+    ).toMatchObject({ name: "renamed first" });
+    expect(
+      await db.query.attribute.findFirst({ where: { id: second.id } })
+    ).toMatchObject({ name: "renamed second" });
+  });
+
+  test("should create attributes and values atomically behind validation", async () => {
+    const category = await createTestCategory({ testDb });
+    const { categoryService } = await import(
+      "@spice-world/server/modules/categories/service"
+    );
+    const name = `${category.name} updated`;
+    const input = [
+      { name: "origin", values: ["france", "italy"] },
+      { name: "form", values: ["powder"] },
+    ];
+    const result = await categoryService.patch({
+      id: category.id,
+      name,
+      attributes: { create: input },
+    });
+    expect(result).toMatchObject({ category: { id: category.id, name } });
+    const stored = await db.query.attribute.findMany({
+      where: { categoryId: category.id },
+      with: { values: true },
+    });
+    expect(stored).toHaveLength(input.length);
+    for (const expected of input) {
+      const attribute = stored.find((item) => item.name === expected.name);
+      expectDefined(attribute);
+      expect(attribute.values.map(({ value }) => value).sort()).toEqual(
+        [...expected.values].sort()
+      );
+      for (const value of attribute.values) {
+        expect(value.attributeId).toBe(attribute.id);
+      }
+    }
+
+    const rejected = await categoryService.patch({
+      id: category.id,
+      name: `${category.name} rejected`,
+      attributes: {
+        create: [{ name: "blocked", values: ["sample"] }],
+        delete: [Bun.randomUUIDv7()],
+      },
+    });
+    expect(rejected).toMatchObject({
+      status: 404,
+      response: { code: "CATEGORY_ATTRIBUTE_NOT_FOUND" },
+    });
+    expect(
+      await db.query.attribute.findMany({ where: { categoryId: category.id } })
+    ).toHaveLength(input.length);
+
+    await expect(
+      categoryService.patch({
+        id: category.id,
+        name: `${category.name} conflict`,
+        attributes: {
+          create: [{ name: "rollback", values: ["duplicate", "duplicate"] }],
+        },
+      })
+    ).rejects.toBeDefined();
+    expect(
+      await db.query.attribute.findMany({ where: { categoryId: category.id } })
+    ).toHaveLength(input.length);
+    expect(
+      await db.query.category.findFirst({ where: { id: category.id } })
+    ).toMatchObject({ name });
+  });
+
+  test("should mutate existing attribute values atomically", async () => {
+    const category = await createTestCategory({
+      testDb,
+      attributeCount: 1,
+      attributeValueCount: 3,
+    });
+    const [attribute] = category.attributes;
+    expectDefined(attribute);
+    const [renamed, deleted, retained] = attribute.values;
+    expectDefined(renamed);
+    expectDefined(deleted);
+    expectDefined(retained);
+    const { categoryService } = await import(
+      "@spice-world/server/modules/categories/service"
+    );
+    const name = `${category.name} updated`;
+    const result = await categoryService.patch({
+      id: category.id,
+      name,
+      attributes: {
+        update: [
+          {
+            id: attribute.id,
+            values: {
+              create: ["added"],
+              update: [{ id: renamed.id, value: "renamed" }],
+              delete: [deleted.id],
+            },
+          },
+        ],
+      },
+    });
+    expect(result).toMatchObject({ category: { id: category.id, name } });
+    const stored = await db.query.attributeValue.findMany({
+      where: { attributeId: attribute.id },
+    });
+    expect(stored).toHaveLength(3);
+    expect(stored).toEqual(
+      expect.arrayContaining([
+        { ...renamed, value: "renamed" },
+        retained,
+        { id: expect.any(String), attributeId: attribute.id, value: "added" },
+      ])
+    );
+    await expect(
+      categoryService.patch({
+        id: category.id,
+        name: `${category.name} conflict`,
+        attributes: {
+          update: [
+            {
+              id: attribute.id,
+              values: {
+                create: ["rollback"],
+                update: [{ id: renamed.id, value: retained.value }],
+              },
+            },
+          ],
+        },
+      })
+    ).rejects.toBeDefined();
+    expect(
+      await db.query.attributeValue.findMany({
+        where: { attributeId: attribute.id },
+        orderBy: { id: "asc" },
+      })
+    ).toEqual([...stored].sort((a, b) => a.id.localeCompare(b.id)));
+    expect(
+      await db.query.category.findFirst({ where: { id: category.id } })
+    ).toMatchObject({ name });
+  });
+
+  test("should replace category image atomically and return old keys only on replacement", async () => {
+    const category = await createTestCategory({ testDb });
+    const before = await db.query.image.findFirst({
+      where: { id: category.imageId },
+    });
+    expectDefined(before);
+    const { categoryService } = await import(
+      "@spice-world/server/modules/categories/service"
+    );
+    const unchanged = await categoryService.patch({
+      id: category.id,
+      name: category.name,
+    });
+    expect(unchanged).toMatchObject({ oldImage: null });
+    expect(
+      await db.query.image.findFirst({ where: { id: before.id } })
+    ).toEqual(before);
+
+    const replaced = await categoryService.patch({
+      id: category.id,
+      name: category.name,
+      file: file(filePath2),
+    });
+    expect(replaced).toMatchObject({
+      category: { id: category.id, image: { id: before.id } },
+      oldImage: {
+        keyThumb: before.keyThumb,
+        keyMedium: before.keyMedium,
+        keyLarge: before.keyLarge,
+      },
+    });
+    const after = await db.query.image.findFirst({ where: { id: before.id } });
+    expectDefined(after);
+    for (const field of [
+      "keyThumb",
+      "keyMedium",
+      "keyLarge",
+      "urlThumb",
+      "urlMedium",
+      "urlLarge",
+    ] as const) {
+      expect(after[field]).not.toBe(before[field]);
+    }
+    const rejected = await categoryService.patch({
+      id: category.id,
+      name: category.name,
+      file: file(filePath1),
+      attributes: { delete: [Bun.randomUUIDv7()] },
+    });
+    expect(rejected).toMatchObject({ status: 404 });
+    expect(
+      await db.query.image.findFirst({ where: { id: before.id } })
+    ).toEqual(after);
+  });
+
+  test("should reconstruct complete category from CTE outputs", async () => {
+    const category = await createTestCategory({
+      testDb,
+      attributeCount: 3,
+      attributeValueCount: 3,
+    });
+    const [changed, deleted] = category.attributes;
+    expectDefined(changed);
+    expectDefined(deleted);
+    const [renamedValue, deletedValue] = changed.values;
+    expectDefined(renamedValue);
+    expectDefined(deletedValue);
+    const { categoryService } = await import(
+      "@spice-world/server/modules/categories/service"
+    );
+    const result = await categoryService.patch({
+      id: category.id,
+      name: `${category.name} updated`,
+      attributes: {
+        create: [{ name: "new attribute", values: ["new value"] }],
+        update: [
+          {
+            id: changed.id,
+            name: "updated attribute",
+            values: {
+              create: ["added value"],
+              update: [{ id: renamedValue.id, value: "renamed value" }],
+              delete: [deletedValue.id],
+            },
+          },
+        ],
+        delete: [deleted.id],
+      },
+    });
+    expect(result).not.toHaveProperty("status");
+    if ("status" in result) {
+      throw new Error("Category update failed");
+    }
+    const stored = await categoryService.getById({ id: category.id });
+    if ("status" in stored) {
+      throw new Error("Category read failed");
+    }
+    const normalize = (value: CategoryModel.categoryResult) => ({
+      ...value,
+      attributes: value.attributes
+        .map((attribute) => ({
+          ...attribute,
+          values: [...attribute.values].sort((a, b) =>
+            a.id.localeCompare(b.id)
+          ),
+        }))
+        .sort((a, b) => a.id.localeCompare(b.id)),
+    });
+    expect(normalize(result.category)).toEqual(normalize(stored));
+    expect(result.category.attributes).toHaveLength(3);
+    expect(result.oldImage).toBeNull();
+
+    const empty = await categoryService.patch({
+      id: category.id,
+      name: result.category.name,
+      attributes: { delete: result.category.attributes.map(({ id }) => id) },
+    });
+    expect(empty).toMatchObject({
+      category: { id: category.id, attributes: [] },
+      oldImage: null,
+    });
+  });
+
+  test("should serialize concurrent patches deleting different values", async () => {
+    const category = await createTestCategory({
+      testDb,
+      attributeCount: 1,
+      attributeValueCount: 2,
+    });
+    const [attribute] = category.attributes;
+    expectDefined(attribute);
+    const results = await Promise.all(
+      attribute.values.map(({ id }) =>
+        api.categories({ id: category.id }).patch({
+          name: category.name,
+          attributes: {
+            update: [{ id: attribute.id, values: { delete: [id] } }],
+          },
+        })
+      )
+    );
+    expect(results.map(({ status }) => status).sort()).toEqual([200, 400]);
+    expect(results.find(({ status }) => status === 400)?.error).toMatchObject({
+      status: 400,
+      value: { code: "ATTRIBUTE_VALUE_LAST_VALUE" },
+    });
+    expect(
+      await db.$count(
+        attributeValueTable,
+        eq(attributeValueTable.attributeId, attribute.id)
+      )
+    ).toBe(1);
+  });
+
   test("should reject deleting all values across repeated attribute updates", async () => {
     const category = await createTestCategory({
       testDb,
@@ -59,8 +521,7 @@ describe.concurrent("Category routes test", () => {
       },
     });
     expect(result.error).toMatchObject({
-      status: 400,
-      value: { code: "ATTRIBUTE_VALUE_LAST_VALUE" },
+      status: 422,
     });
     expect(
       await db.$count(
@@ -110,7 +571,7 @@ describe.concurrent("Category routes test", () => {
       const { data, status } = await api.categories.post({
         name: "nested values output",
         file: file(filePath1),
-        attributes: { create: attributes },
+        attributes,
       });
 
       expect(status).toBe(201);
@@ -130,27 +591,41 @@ describe.concurrent("Category routes test", () => {
       );
     });
 
-    test("should roll back all inserts when attribute values conflict", async () => {
-      const name = "category rollback";
-      const result = await api.categories.post({
-        name,
-        file: file(filePath1),
-        attributes: {
-          create: [{ name: "rollback color", values: ["red", "red"] }],
-        },
-      });
+    test.each([
+      {
+        name: "category duplicate values",
+        attributes: [{ name: "rollback color", values: ["red", "red"] }],
+      },
+      {
+        name: "category duplicate names",
+        attributes: [
+          { name: "rollback color", values: ["red"] },
+          { name: "rollback color", values: ["blue"] },
+        ],
+      },
+    ] satisfies { name: string; attributes: CategoryModel.postAttribute }[])(
+      "should reject duplicate attributes or values before inserting: $name",
+      async ({ name, attributes }) => {
+        const result = await api.categories.post({
+          name,
+          file: file(filePath1),
+          attributes,
+        });
 
-      expect(result.error).toMatchObject({ status: 409 });
-      expect(
-        await db.query.category.findFirst({ where: { name } })
-      ).toBeUndefined();
-      expect(
-        await db.query.image.findMany({ where: { altText: name } })
-      ).toEqual([]);
-      expect(
-        await db.query.attribute.findMany({ where: { name: "rollback color" } })
-      ).toEqual([]);
-    });
+        expect(result.error).toMatchObject({ status: 422 });
+        expect(
+          await db.query.category.findFirst({ where: { name } })
+        ).toBeUndefined();
+        expect(
+          await db.query.image.findMany({ where: { altText: name } })
+        ).toEqual([]);
+        expect(
+          await db.query.attribute.findMany({
+            where: { name: "rollback color" },
+          })
+        ).toEqual([]);
+      }
+    );
 
     for (const withAttributes of [false, true]) {
       test(`should return the same category from POST and GET with attributes: ${withAttributes}`, async () => {
@@ -163,7 +638,7 @@ describe.concurrent("Category routes test", () => {
             : "category response without attributes",
           file: file(filePath1),
           ...(withAttributes && {
-            attributes: { create: [{ name: "origin", values: ["france"] }] },
+            attributes: [{ name: "origin", values: ["france"] }],
           }),
         });
         expect(created.status).toBe(201);
@@ -292,14 +767,12 @@ describe.concurrent("Category routes test", () => {
       const { data, status } = await api.categories.post({
         name,
         file: bunfile,
-        attributes: {
-          create: [
-            {
-              name: "taille",
-              values: ["small", "medium", "large"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "taille",
+            values: ["small", "medium", "large"],
+          },
+        ],
       });
 
       expect(status).toBe(201);
@@ -322,26 +795,24 @@ describe.concurrent("Category routes test", () => {
       const { data, status } = await api.categories.post({
         name,
         file: bunfile,
-        attributes: {
-          create: [
-            {
-              name: "couleur",
-              values: ["noir", "blanc", "rouge"],
-            },
-            {
-              name: "poids",
-              values: [
-                "cent grammes",
-                "deux cent cinquante grammes",
-                "cinq cents grammes",
-              ],
-            },
-            {
-              name: "origine",
-              values: ["france", "inde", "maroc"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "couleur",
+            values: ["noir", "blanc", "rouge"],
+          },
+          {
+            name: "poids",
+            values: [
+              "cent grammes",
+              "deux cent cinquante grammes",
+              "cinq cents grammes",
+            ],
+          },
+          {
+            name: "origine",
+            values: ["france", "inde", "maroc"],
+          },
+        ],
       });
 
       expect(status).toBe(201);
@@ -384,14 +855,12 @@ describe.concurrent("Category routes test", () => {
       const { error, status } = await api.categories.post({
         name: "invalid attr category",
         file: bunfile,
-        attributes: {
-          create: [
-            {
-              name: "Couleur", // invalid uppercase letter
-              values: ["noir"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "Couleur", // invalid uppercase letter
+            values: ["noir"],
+          },
+        ],
       });
 
       expect(status).toBe(422);
@@ -405,14 +874,12 @@ describe.concurrent("Category routes test", () => {
       const { error, status } = await api.categories.post({
         name: "empty values category",
         file: bunfile,
-        attributes: {
-          create: [
-            {
-              name: "couleur",
-              values: [],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "couleur",
+            values: [],
+          },
+        ],
       });
 
       expect(status).toBe(422);
@@ -426,14 +893,12 @@ describe.concurrent("Category routes test", () => {
       const { data, status } = await api.categories.post({
         name: "value with numbers category",
         file: bunfile,
-        attributes: {
-          create: [
-            {
-              name: "modèle",
-              values: ["iphone 15", "galaxy s24", "pixel 8"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "modèle",
+            values: ["iphone 15", "galaxy s24", "pixel 8"],
+          },
+        ],
       });
 
       expect(status).toBe(201);
@@ -639,22 +1104,20 @@ describe.concurrent("Category routes test", () => {
       const category = await api.categories.post({
         name: "multi ops category",
         file: file(`${import.meta.dir}/public/cumin.webp`),
-        attributes: {
-          create: [
-            {
-              name: "couleur",
-              values: ["noir"],
-            },
-            {
-              name: "taille",
-              values: ["small"],
-            },
-            {
-              name: "poids",
-              values: ["cent grammes"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "couleur",
+            values: ["noir"],
+          },
+          {
+            name: "taille",
+            values: ["small"],
+          },
+          {
+            name: "poids",
+            values: ["cent grammes"],
+          },
+        ],
       });
 
       expectDefined(category.data);
@@ -715,14 +1178,12 @@ describe.concurrent("Category routes test", () => {
       const category = await api.categories.post({
         name: "update name category",
         file: file(`${import.meta.dir}/public/cumin.webp`),
-        attributes: {
-          create: [
-            {
-              name: "couleur",
-              values: ["noir", "blanc", "rouge"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "couleur",
+            values: ["noir", "blanc", "rouge"],
+          },
+        ],
       });
 
       expectDefined(category.data);
@@ -754,18 +1215,16 @@ describe.concurrent("Category routes test", () => {
       const category = await api.categories.post({
         name: "delete attr category",
         file: file(`${import.meta.dir}/public/cumin.webp`),
-        attributes: {
-          create: [
-            {
-              name: "couleur",
-              values: ["noir", "blanc"],
-            },
-            {
-              name: "taille",
-              values: ["small", "medium"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "couleur",
+            values: ["noir", "blanc"],
+          },
+          {
+            name: "taille",
+            values: ["small", "medium"],
+          },
+        ],
       });
 
       expectDefined(category.data);
@@ -796,14 +1255,12 @@ describe.concurrent("Category routes test", () => {
       const category = await api.categories.post({
         name: "duplicate create category",
         file: file(`${import.meta.dir}/public/cumin.webp`),
-        attributes: {
-          create: [
-            {
-              name: "couleur",
-              values: ["noir"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "couleur",
+            values: ["noir"],
+          },
+        ],
       });
 
       expectDefined(category.data);
@@ -830,18 +1287,16 @@ describe.concurrent("Category routes test", () => {
       const category = await api.categories.post({
         name: "duplicate update category",
         file: file(`${import.meta.dir}/public/cumin.webp`),
-        attributes: {
-          create: [
-            {
-              name: "couleur",
-              values: ["noir"],
-            },
-            {
-              name: "taille",
-              values: ["small"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "couleur",
+            values: ["noir"],
+          },
+          {
+            name: "taille",
+            values: ["small"],
+          },
+        ],
       });
 
       expectDefined(category.data);
@@ -872,14 +1327,12 @@ describe.concurrent("Category routes test", () => {
       const category = await api.categories.post({
         name: "combined update category",
         file: file(`${import.meta.dir}/public/cumin.webp`),
-        attributes: {
-          create: [
-            {
-              name: "couleur",
-              values: ["noir"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "couleur",
+            values: ["noir"],
+          },
+        ],
       });
 
       expectDefined(category.data);
@@ -910,14 +1363,12 @@ describe.concurrent("Category routes test", () => {
       const category = await api.categories.post({
         name: "category with values",
         file: file(`${import.meta.dir}/public/cumin.webp`),
-        attributes: {
-          create: [
-            {
-              name: "couleur",
-              values: ["noir", "blanc"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "couleur",
+            values: ["noir", "blanc"],
+          },
+        ],
       });
 
       expectDefined(category.data);
@@ -956,14 +1407,12 @@ describe.concurrent("Category routes test", () => {
       const category = await api.categories.post({
         name: "category for deletion",
         file: file(`${import.meta.dir}/public/cumin.webp`),
-        attributes: {
-          create: [
-            {
-              name: "taille",
-              values: ["small", "medium", "large"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "taille",
+            values: ["small", "medium", "large"],
+          },
+        ],
       });
 
       expectDefined(category.data);
@@ -1001,14 +1450,12 @@ describe.concurrent("Category routes test", () => {
       const category = await api.categories.post({
         name: "category for combined ops",
         file: file(`${import.meta.dir}/public/cumin.webp`),
-        attributes: {
-          create: [
-            {
-              name: "couleur",
-              values: ["noir", "blanc", "gris"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "couleur",
+            values: ["noir", "blanc", "gris"],
+          },
+        ],
       });
 
       expectDefined(category.data);
@@ -1049,14 +1496,12 @@ describe.concurrent("Category routes test", () => {
       const category = await api.categories.post({
         name: "category duplicate test",
         file: file(`${import.meta.dir}/public/cumin.webp`),
-        attributes: {
-          create: [
-            {
-              name: "couleur",
-              values: ["noir", "blanc"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "couleur",
+            values: ["noir", "blanc"],
+          },
+        ],
       });
 
       expectDefined(category.data);
@@ -1083,7 +1528,7 @@ describe.concurrent("Category routes test", () => {
       expect(error).toMatchObject({ status });
       expect(error).toMatchObject({
         status: 409,
-        value: expect.stringContaining("already has values"),
+        value: { code: "ATTRIBUTE_VALUE_ALREADY_EXISTS" },
       });
     });
 
@@ -1091,14 +1536,12 @@ describe.concurrent("Category routes test", () => {
       const category = await api.categories.post({
         name: "category invalid id test",
         file: file(`${import.meta.dir}/public/cumin.webp`),
-        attributes: {
-          create: [
-            {
-              name: "couleur",
-              values: ["noir"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "couleur",
+            values: ["noir"],
+          },
+        ],
       });
 
       expectDefined(category.data);
@@ -1125,7 +1568,7 @@ describe.concurrent("Category routes test", () => {
       expect(error).toMatchObject({ status });
       expect(error).toMatchObject({
         status: 404,
-        value: expect.stringContaining("Value IDs not found"),
+        value: { code: "CATEGORY_ATTRIBUTE_VALUE_NOT_FOUND" },
       });
     });
 
@@ -1133,14 +1576,12 @@ describe.concurrent("Category routes test", () => {
       const category = await api.categories.post({
         name: "category combined update",
         file: file(`${import.meta.dir}/public/cumin.webp`),
-        attributes: {
-          create: [
-            {
-              name: "couleur",
-              values: ["noir", "blanc"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "couleur",
+            values: ["noir", "blanc"],
+          },
+        ],
       });
 
       expectDefined(category.data);
@@ -1179,14 +1620,12 @@ describe.concurrent("Category routes test", () => {
       const category = await api.categories.post({
         name: "category values only",
         file: file(`${import.meta.dir}/public/cumin.webp`),
-        attributes: {
-          create: [
-            {
-              name: "taille",
-              values: ["small"],
-            },
-          ],
-        },
+        attributes: [
+          {
+            name: "taille",
+            values: ["small"],
+          },
+        ],
       });
 
       expectDefined(category.data);

@@ -8,7 +8,7 @@ export interface AllowedAttributeValue {
 }
 
 interface ValidateVariants {
-  category: CategoryModel.getByIdResult;
+  category: Pick<CategoryModel.categoryResult, "attributes">;
   currVariants?: {
     id: string;
     attributeValueIds: string[];
@@ -207,7 +207,7 @@ function validateVA3({
   category,
 }: {
   variantCount: number;
-  category: CategoryModel.getByIdResult;
+  category: Pick<CategoryModel.categoryResult, "attributes">;
 }): ValidationError | null {
   if (variantCount < 1) {
     return {

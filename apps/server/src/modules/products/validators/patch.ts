@@ -108,13 +108,13 @@ export function determineStatus(
     variants: ProductModel.variantOperations | undefined;
   },
   currentProduct: {
-    category: CategoryModel.getByIdResult;
+    category: Pick<CategoryModel.categoryResult, "attributes">;
     variants: Array<
       ProductVariant & { attributeValues: Array<{ id: string }> }
     >;
     status: ProductStatus;
   },
-  requestedCategory: CategoryModel.getByIdResult | null,
+  requestedCategory: CategoryModel.categoryResult | null,
   analysis: VariantAnalysis
 ): {
   finalStatus: ProductStatus;

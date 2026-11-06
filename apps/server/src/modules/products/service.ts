@@ -9,7 +9,6 @@ import type { Product } from "@spice-world/server/prisma/client";
 import { type SQL, sql } from "bun";
 import { status } from "elysia";
 import { LRUCache } from "lru-cache";
-import type * as CategoryModel from "../categories/model";
 import { categoryService } from "../categories/service";
 import { uploadFileErrStatus, type uuidGuard } from "../shared";
 import type * as ProductModel from "./model";
@@ -285,6 +284,9 @@ export const productService = {
     images: iOps,
   }: ProductModel.postBody) {
     const category = await categoryService.getById({ id: categoryId });
+    if ("status" in category) {
+      return category;
+    }
     validateVariants({ vOps, category });
     validateSingleThumbnail({ imagesOps: iOps });
 
@@ -436,12 +438,13 @@ export const productService = {
     const categoryChange = hasCategoryChanged
       ? await categoryService.getById({ id: categoryId })
       : null;
+    if (categoryChange && "status" in categoryChange) {
+      return categoryChange;
+    }
 
     if (hasCategoryChanged || vOps) {
       validateVariants({
-        category:
-          categoryChange ??
-          (currentProduct.category as CategoryModel.getByIdResult),
+        category: categoryChange ?? currentProduct.category,
         vOps,
         currVariants: currentProduct.variants.map((v) => ({
           id: v.id,
@@ -465,7 +468,7 @@ export const productService = {
     const { finalStatus } = determineStatus(
       { status: requestedStatus, variants: vOps },
       {
-        category: currentProduct.category as CategoryModel.getByIdResult,
+        category: currentProduct.category,
         variants: currentProduct.variants,
         status: currentProduct.status,
       },

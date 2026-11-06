@@ -68,20 +68,29 @@ export const categoryRouter = new Elysia({
     "/:id",
     {
       body: CategoryModel.patchBody,
+      response: {
+        200: CategoryModel.categoryResult,
+        400: CategoryModel.patchValueError,
+        404: CategoryModel.patchNotFound,
+        500: CategoryModel.patchFailure,
+      },
     },
     async ({ body, params, store }) => {
-      const { data } = await categoryService.patch({
+      const result = await categoryService.patch({
         ...params,
         ...body,
       });
 
-      if (data.oldImage) {
-        store.imageKeys = [
-          data.oldImage.keyThumb,
-          data.oldImage.keyMedium,
-          data.oldImage.keyLarge,
-        ];
+      if ("status" in result) {
+        return result;
       }
-      return data.updatedCategory;
+      store.imageKeys = result.oldImage
+        ? [
+            result.oldImage.keyThumb,
+            result.oldImage.keyMedium,
+            result.oldImage.keyLarge,
+          ]
+        : null;
+      return result.category;
     }
   );

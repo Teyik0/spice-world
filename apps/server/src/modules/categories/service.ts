@@ -5,7 +5,7 @@ import {
   uploadFiles,
 } from "@spice-world/server/lib/images";
 import { prisma } from "@spice-world/server/lib/prisma";
-import { EmptyFilter, eq, getColumns, sql } from "drizzle-orm";
+import { EmptyFilter, eq, getColumns, inArray, sql } from "drizzle-orm";
 import { problem, status } from "elysia";
 import {
   attributeTable,
@@ -99,7 +99,7 @@ export const categoryService = {
           .returning()
       );
 
-      const newAttributes = (attributes?.create ?? []).map((attribute) => ({
+      const newAttributes = (attributes ?? []).map((attribute) => ({
         id: Bun.randomUUIDv7(),
         ...attribute,
       }));
@@ -219,212 +219,315 @@ export const categoryService = {
       newFile = images[0] as MultiSizeUploadData;
     }
 
+    const imageUpdate = newFile
+      ? {
+          keyThumb: newFile.thumb.key,
+          urlThumb: newFile.thumb.ufsUrl,
+          keyMedium: newFile.medium.key,
+          urlMedium: newFile.medium.ufsUrl,
+          keyLarge: newFile.large.key,
+          urlLarge: newFile.large.ufsUrl,
+        }
+      : null;
+
     try {
-      const patchedProduct = await prisma.$transaction(
-        // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Keep dependent validation and writes together in this atomic product/category operation.
-        async (tx) => {
-          if (
-            attributes?.update?.some(
-              (attribute) => attribute.values?.delete?.length
-            )
-          ) {
-            await tx.$queryRaw`
-            SELECT "id" FROM "Attribute"
-            WHERE "categoryId" = ${id}
-            ORDER BY "id"
-            FOR UPDATE
-          `;
-          }
-          const category = await tx.category.findUniqueOrThrow({
-            where: { id },
-            include: {
-              image: {
-                select: { keyThumb: true, keyMedium: true, keyLarge: true },
-              },
-              attributes: { include: { values: true } },
-            },
-          });
-
-          if (attributes) {
-            if (attributes.create) {
-              const existingNames = category.attributes.map((a) => a.name);
-              const newNames = attributes.create.map((a) => a.name);
-              const duplicates = newNames.filter((n) =>
-                existingNames.includes(n)
-              );
-              if (duplicates.length > 0) {
-                throw status(
-                  "Conflict",
-                  `Attribute names already exist: ${duplicates.join(", ")}`
-                );
-              }
-            }
-
-            if (attributes.update) {
-              const updateIds = attributes.update.map((u) => u.id);
-              const updateNames = attributes.update
-                .filter((u) => u.name !== undefined)
-                .map((u) => u.name as string);
-              const otherAttributes = category.attributes
-                .filter((a) => !updateIds.includes(a.id))
-                .map((a) => a.name);
-              const conflicts = updateNames.filter((n) =>
-                otherAttributes.includes(n)
-              );
-              if (conflicts.length > 0) {
-                throw status(
-                  "Conflict",
-                  `Attribute name conflicts: ${conflicts.join(", ")}`
-                );
-              }
-
-              // Validation for values operations
-              for (const attrUpdate of attributes.update) {
-                const existingAttr = category.attributes.find(
-                  (a) => a.id === attrUpdate.id
-                );
-                if (!existingAttr) {
-                  throw status(
-                    "Not Found",
-                    `Attribute ${attrUpdate.id} not found`
-                  );
-                }
-
-                if (attrUpdate.values?.create) {
-                  // Check for duplicates with existing values
-                  const existingValues = existingAttr.values.map(
-                    (v) => v.value
-                  );
-                  const newValues = attrUpdate.values.create;
-                  const duplicates = newValues.filter((v) =>
-                    existingValues.includes(v)
-                  );
-
-                  if (duplicates.length > 0) {
-                    throw status(
-                      "Conflict",
-                      `Attribute ${existingAttr.name} already has values: ${duplicates.join(", ")}`
-                    );
-                  }
-                }
-
-                if (attrUpdate.values?.delete) {
-                  // Verify all value IDs exist
-                  const valueIds = existingAttr.values.map((v) => v.id);
-                  const invalidIds = attrUpdate.values.delete.filter(
-                    (valueId) => !valueIds.includes(valueId)
-                  );
-
-                  if (invalidIds.length > 0) {
-                    throw status(
-                      "Not Found",
-                      `Value IDs not found: ${invalidIds.join(", ")}`
-                    );
-                  }
-
-                  const updates = attributes.update.filter(
-                    (update) => update.id === attrUpdate.id
-                  );
-                  const deletedIds = new Set(
-                    updates.flatMap((update) => update.values?.delete ?? [])
-                  );
-                  const createdCount = updates.reduce(
-                    (total, update) =>
-                      total + (update.values?.create?.length ?? 0),
-                    0
-                  );
-                  if (
-                    existingAttr.values.length -
-                      deletedIds.size +
-                      createdCount <
-                    1
-                  ) {
-                    throw status("Bad Request", {
-                      code: "ATTRIBUTE_VALUE_LAST_VALUE",
-                      message: "Attribute value to delete is the last value",
-                    });
-                  }
-                }
-              }
-            }
-          }
-
-          const updatedCategory = await tx.category.update({
-            where: { id },
-            data: {
-              name,
-              ...(newFile && {
-                image: {
-                  update: {
-                    keyThumb: newFile.thumb.key,
-                    urlThumb: newFile.thumb.ufsUrl,
-                    keyMedium: newFile.medium.key,
-                    urlMedium: newFile.medium.ufsUrl,
-                    keyLarge: newFile.large.key,
-                    urlLarge: newFile.large.ufsUrl,
-                  },
-                },
-              }),
-              ...(attributes && {
-                attributes: {
-                  ...(attributes.create &&
-                    attributes.create.length > 0 && {
-                      create: attributes.create.map((attr) => ({
-                        name: attr.name,
-                        values: {
-                          createMany: {
-                            data: attr.values.map((value) => ({ value })),
-                          },
-                        },
-                      })),
-                    }),
-                  ...(attributes.update &&
-                    attributes.update.length > 0 && {
-                      update: attributes.update.map((attr) => ({
-                        where: { id: attr.id },
-                        data: {
-                          ...(attr.name && { name: attr.name }),
-                          ...(attr.values && {
-                            values: {
-                              ...(attr.values.create && {
-                                create: attr.values.create.map((value) => ({
-                                  value,
-                                })),
-                              }),
-                              ...(attr.values.delete && {
-                                deleteMany: {
-                                  id: { in: attr.values.delete },
-                                },
-                              }),
-                            },
-                          }),
-                        },
-                      })),
-                    }),
-                  ...(attributes.delete &&
-                    attributes.delete.length > 0 && {
-                      delete: attributes.delete.map((attrId) => ({
-                        id: attrId,
-                      })),
-                    }),
-                },
-              }),
-            },
-            include: {
-              image: true,
-              attributes: {
-                include: {
-                  values: true,
-                },
-              },
-            },
-          });
-          return { updatedCategory, oldImage: category.image };
-        },
-        { isolationLevel: "ReadCommitted" }
+      const updates = attributes?.update ?? [];
+      const deleteIds = attributes?.delete ?? [];
+      const hasAttributeOperations = Boolean(
+        attributes?.create?.length || updates.length || deleteIds.length
       );
 
-      return { data: patchedProduct, error: null };
+      const outcome = await db.transaction(
+        // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Keep validation and ordered writes together in this atomic operation.
+        async (tx) => {
+          const [lockedCategory] = await tx
+            .select({ id: categoryTable.id })
+            .from(categoryTable)
+            .where(eq(categoryTable.id, id))
+            .for("update");
+          if (!lockedCategory) {
+            return this.categoryNotFound;
+          }
+          await tx
+            .select({ id: attributeTable.id })
+            .from(attributeTable)
+            .where(eq(attributeTable.categoryId, id))
+            .orderBy(attributeTable.id)
+            .for("update");
+
+          if (!(hasAttributeOperations || imageUpdate)) {
+            const [updated] = await tx
+              .update(categoryTable)
+              .set({ name })
+              .where(eq(categoryTable.id, id))
+              .returning({ id: categoryTable.id });
+            if (!updated) {
+              return this.categoryNotFound;
+            }
+            const category = await tx.query.category.findFirst({
+              where: { id },
+              ...this.findOptions,
+            });
+            return category
+              ? { category, oldImage: null }
+              : problem("Internal Server Error", {
+                  code: "CATEGORY_PATCH_FAILED",
+                  message: "Updated category is missing after patch",
+                });
+          }
+
+          const current = await tx.query.category.findFirst({
+            where: { id },
+            ...this.findOptions,
+          });
+          if (!current) {
+            return this.categoryNotFound;
+          }
+
+          const currentAttributes = new Map(
+            current.attributes.map((attribute) => [attribute.id, attribute])
+          );
+          for (const requestedAttributeId of [
+            ...updates.map(({ id: attributeId }) => attributeId),
+            ...deleteIds,
+          ]) {
+            if (!currentAttributes.has(requestedAttributeId)) {
+              return problem("Not Found", {
+                code: "CATEGORY_ATTRIBUTE_NOT_FOUND",
+                message: "An attribute does not belong to this category",
+              });
+            }
+          }
+
+          for (const { id: attributeId, values } of updates) {
+            const attribute = currentAttributes.get(attributeId);
+            if (!attribute) {
+              return problem("Not Found", {
+                code: "CATEGORY_ATTRIBUTE_NOT_FOUND",
+                message: "An attribute does not belong to this category",
+              });
+            }
+            const existingValueIds = new Set(
+              attribute.values.map(({ id: valueId }) => valueId)
+            );
+            const valueIds = [
+              ...(values?.update?.map(({ id: valueId }) => valueId) ?? []),
+              ...(values?.delete ?? []),
+            ];
+            if (valueIds.some((valueId) => !existingValueIds.has(valueId))) {
+              return problem("Not Found", {
+                code: "CATEGORY_ATTRIBUTE_VALUE_NOT_FOUND",
+                message: "A value does not belong to this attribute",
+              });
+            }
+            const remainingValues =
+              attribute.values.length -
+              new Set(values?.delete ?? []).size +
+              (values?.create?.length ?? 0);
+            if (values?.delete?.length && remainingValues < 1) {
+              return problem("Bad Request", {
+                code: "ATTRIBUTE_VALUE_LAST_VALUE",
+                message: "Attribute value to delete is the last value",
+              });
+            }
+          }
+
+          await tx
+            .update(categoryTable)
+            .set({ name })
+            .where(eq(categoryTable.id, id));
+
+          if (imageUpdate) {
+            await tx
+              .update(imageTable)
+              .set(imageUpdate)
+              .where(eq(imageTable.id, current.image.id));
+          }
+
+          if (!hasAttributeOperations) {
+            return {
+              category: {
+                ...current,
+                name,
+                image: { ...current.image, ...imageUpdate },
+              },
+              oldImage: current.image,
+            };
+          }
+
+          if (deleteIds.length) {
+            await tx
+              .delete(attributeTable)
+              .where(inArray(attributeTable.id, deleteIds));
+          }
+
+          const valueDeleteIds = updates.flatMap(
+            ({ values }) => values?.delete ?? []
+          );
+          if (valueDeleteIds.length) {
+            await tx
+              .delete(attributeValueTable)
+              .where(inArray(attributeValueTable.id, valueDeleteIds));
+          }
+
+          const attributeNameUpdates = updates.flatMap(
+            ({ id: attributeId, name: attributeName }) =>
+              attributeName === undefined
+                ? []
+                : [{ id: attributeId, name: attributeName }]
+          );
+          if (attributeNameUpdates.length) {
+            const cases = sql.join(
+              attributeNameUpdates.map(
+                ({ id: attributeId, name: attributeName }) =>
+                  sql`when ${attributeTable.id} = ${attributeId} then ${attributeName}`
+              ),
+              sql` `
+            );
+            await tx
+              .update(attributeTable)
+              .set({
+                name: sql`case ${cases} else ${attributeTable.name} end`,
+              })
+              .where(
+                inArray(
+                  attributeTable.id,
+                  attributeNameUpdates.map(({ id: attributeId }) => attributeId)
+                )
+              );
+          }
+
+          const valueUpdates = updates.flatMap(
+            ({ id: attributeId, values }) =>
+              values?.update?.map(({ id: valueId, value }) => ({
+                id: valueId,
+                attributeId,
+                value,
+              })) ?? []
+          );
+          if (valueUpdates.length) {
+            const cases = sql.join(
+              valueUpdates.map(
+                ({ id: valueId, attributeId, value }) =>
+                  sql`when ${attributeValueTable.id} = ${valueId} and ${attributeValueTable.attributeId} = ${attributeId} then ${value}`
+              ),
+              sql` `
+            );
+            await tx
+              .update(attributeValueTable)
+              .set({
+                value: sql`case ${cases} else ${attributeValueTable.value} end`,
+              })
+              .where(
+                inArray(
+                  attributeValueTable.id,
+                  valueUpdates.map(({ id: valueId }) => valueId)
+                )
+              );
+          }
+
+          const createdAttributes = (attributes?.create ?? []).map(
+            (attribute) => ({ ...attribute, id: Bun.randomUUIDv7() })
+          );
+          if (createdAttributes.length) {
+            await tx.insert(attributeTable).values(
+              createdAttributes.map(({ id: attributeId, name: attrName }) => ({
+                id: attributeId,
+                name: attrName,
+                categoryId: id,
+              }))
+            );
+          }
+
+          const createdValues = [
+            ...createdAttributes.flatMap((attribute) =>
+              attribute.values.map((value) => ({
+                id: Bun.randomUUIDv7(),
+                attributeId: attribute.id,
+                value,
+              }))
+            ),
+            ...updates.flatMap(({ id: attributeId, values }) =>
+              (values?.create ?? []).map((value) => ({
+                id: Bun.randomUUIDv7(),
+                attributeId,
+                value,
+              }))
+            ),
+          ];
+          if (createdValues.length) {
+            await tx.insert(attributeValueTable).values(createdValues);
+          }
+
+          const createdValuesByAttribute = new Map<
+            string,
+            { id: string; value: string }[]
+          >();
+          for (const { id: valueId, attributeId, value } of createdValues) {
+            const values = createdValuesByAttribute.get(attributeId) ?? [];
+            values.push({ id: valueId, value });
+            createdValuesByAttribute.set(attributeId, values);
+          }
+          const updatesById = new Map(
+            updates.map((update) => [update.id, update])
+          );
+          const deletedAttributeIds = new Set(deleteIds);
+          const finalAttributes = current.attributes.flatMap((attribute) => {
+            if (deletedAttributeIds.has(attribute.id)) {
+              return [];
+            }
+            const update = updatesById.get(attribute.id);
+            const deletedValueIds = new Set(update?.values?.delete ?? []);
+            const valueUpdatesById = new Map(
+              update?.values?.update?.map(({ id: valueId, value }) => [
+                valueId,
+                value,
+              ]) ?? []
+            );
+            return [
+              {
+                id: attribute.id,
+                name: update?.name ?? attribute.name,
+                values: [
+                  ...attribute.values.flatMap(({ id: valueId, value }) =>
+                    deletedValueIds.has(valueId)
+                      ? []
+                      : [
+                          {
+                            id: valueId,
+                            value: valueUpdatesById.get(valueId) ?? value,
+                          },
+                        ]
+                  ),
+                  ...(createdValuesByAttribute.get(attribute.id) ?? []),
+                ],
+              },
+            ];
+          });
+          finalAttributes.push(
+            ...createdAttributes.map((attribute) => ({
+              id: attribute.id,
+              name: attribute.name,
+              values: createdValuesByAttribute.get(attribute.id) ?? [],
+            }))
+          );
+
+          return {
+            category: {
+              ...current,
+              name,
+              image: { ...current.image, ...imageUpdate },
+              attributes: finalAttributes,
+            },
+            oldImage: imageUpdate ? current.image : null,
+          };
+        },
+        { isolationLevel: "read committed" }
+      );
+      if ("status" in outcome && newFile) {
+        await deleteUploads([newFile]);
+      }
+      return outcome;
     } catch (err: unknown) {
       if (newFile) {
         await deleteUploads([newFile]);

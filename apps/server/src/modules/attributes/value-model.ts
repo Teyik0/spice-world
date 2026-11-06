@@ -1,6 +1,5 @@
 import { t, type UnwrapSchema } from "elysia";
 import { nameLowerPatternWithNumber, uuid } from "../shared";
-import type { attributeValueService } from "./service";
 
 export const postBody = t.Object({
   name: nameLowerPatternWithNumber,
@@ -9,9 +8,6 @@ export type postBody = UnwrapSchema<typeof postBody>;
 
 export const patchBody = postBody;
 export type patchBody = UnwrapSchema<typeof postBody>;
-export type patchResult = typeof attributeValueService.patch;
-
-export type deleteResult = typeof attributeValueService.delete;
 
 export const attributeValueResult = t.Object({
   id: uuid,

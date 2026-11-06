@@ -19,10 +19,9 @@ describe.concurrent("POST /products - Integration Tests", () => {
   const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
 
   beforeAll(async () => {
+    testDb = await createTestDatabase("post-integration.test.ts");
     // Mock uploadthing BEFORE importing the router
     await mockUtapi();
-
-    testDb = await createTestDatabase("post-integration.test.ts");
     const { productsRouter: router } = await import(
       "@spice-world/server/modules/products"
     );
