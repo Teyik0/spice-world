@@ -19,10 +19,10 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
   const files = [file(filePath1), file(filePath2)];
 
   beforeAll(async () => {
+    testDb = await createTestDatabase("bulk.test.ts");
+
     // Mock uploadthing BEFORE importing the router
     await mockUtapi();
-
-    testDb = await createTestDatabase("bulk.test.ts");
 
     const { productsRouter: router } = await import(
       "@spice-world/server/modules/products"

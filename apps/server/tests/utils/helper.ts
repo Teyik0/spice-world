@@ -6,6 +6,12 @@ import type { productsRouter } from "@spice-world/server/modules/products";
 import type * as ProductModel from "@spice-world/server/modules/products/model";
 import type { UnwrapSchema } from "elysia";
 import type { UploadedFileData } from "uploadthing/types";
+import {
+  attributeTable,
+  attributeValueTable,
+  categoryTable,
+  imageTable,
+} from "../../drizzle/schema";
 import type { createTestDatabase, TestDatabase } from "./db-manager";
 
 export function expectDefined<T>(value: T): asserts value is NonNullable<T> {
@@ -165,46 +171,54 @@ export const createTestCategory = async ({
           attributeCount ?? { min: 1, max: ATTRIBUTE_NAMES.length }
         );
 
-  const category = await testDb.client.category.create({
-    data: {
-      name: categoryName,
-      image: {
-        create: {
-          keyThumb: `key-thumb-${testId}`,
-          keyMedium: `key-medium-${testId}`,
-          keyLarge: `key-large-${testId}`,
-          urlThumb: `https://test-url.com/${testId}-thumb.webp`,
-          urlMedium: `https://test-url.com/${testId}-medium.webp`,
-          urlLarge: `https://test-url.com/${testId}-large.webp`,
-          altText: categoryName,
-          isThumbnail: true,
-        },
-      },
-      attributes: {
-        create:
-          attributeCount > 0
-            ? selectedAttributes.map((attrName) => ({
-                name: attrName,
-                values: {
-                  create: faker.helpers
-                    .arrayElements(
-                      ATTRIBUTE_VALUES[attrName],
-                      attributeValueCount ??
-                        faker.number.int({
-                          min: 2,
-                          max: ATTRIBUTE_VALUES[attrName].length,
-                        })
-                    )
-                    .map((value) => ({ value })),
-                },
-              }))
-            : undefined,
-      },
-    },
-    include: { attributes: { include: { values: true } } },
+  return await testDb.db.transaction(async (tx) => {
+    const categoryId = Bun.randomUUIDv7();
+    const imageId = Bun.randomUUIDv7();
+    await tx.insert(imageTable).values({
+      id: imageId,
+      keyThumb: `key-thumb-${testId}`,
+      keyMedium: `key-medium-${testId}`,
+      keyLarge: `key-large-${testId}`,
+      urlThumb: `https://test-url.com/${testId}-thumb.webp`,
+      urlMedium: `https://test-url.com/${testId}-medium.webp`,
+      urlLarge: `https://test-url.com/${testId}-large.webp`,
+      altText: categoryName,
+      isThumbnail: true,
+    });
+    await tx
+      .insert(categoryTable)
+      .values({ id: categoryId, name: categoryName, imageId });
+    const attributes = selectedAttributes.map((attrName) => ({
+      id: Bun.randomUUIDv7(),
+      name: attrName,
+      categoryId,
+      values: faker.helpers.arrayElements(
+        ATTRIBUTE_VALUES[attrName],
+        attributeValueCount ??
+          faker.number.int({ min: 2, max: ATTRIBUTE_VALUES[attrName].length })
+      ),
+    }));
+    if (attributes.length) {
+      await tx
+        .insert(attributeTable)
+        .values(attributes.map(({ values, ...attribute }) => attribute));
+      await tx.insert(attributeValueTable).values(
+        attributes.flatMap((attribute) =>
+          attribute.values.map((value) => ({
+            id: Bun.randomUUIDv7(),
+            attributeId: attribute.id,
+            value,
+          }))
+        )
+      );
+    }
+    const category = await tx.query.category.findFirst({
+      where: { id: categoryId },
+      with: { attributes: { with: { values: true } } },
+    });
+    expectDefined(category);
+    return category;
   });
-
-  return category;
 };
 
 interface SetupProductOptions {

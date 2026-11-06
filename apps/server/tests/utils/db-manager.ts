@@ -1,10 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@spice-world/server/prisma/client";
+import { drizzle } from "drizzle-orm/bun-sql";
+import { relations } from "../../drizzle/relations";
 
 export interface TestDatabase {
   client: PrismaClient;
   databaseName: string;
+  db: ReturnType<typeof drizzle<typeof relations>>;
   destroy: () => Promise<void>;
 }
 
@@ -106,10 +109,12 @@ export async function createTestDatabase(
 
   const testAdapter = new PrismaPg({ connectionString: testConnectionString });
   const testClient = new PrismaClient({ adapter: testAdapter });
+  const testDrizzle = drizzle({ connection: testConnectionString, relations });
   globalThis.__prisma = testClient;
 
   // Cleanup function to drop the database and restore original DATABASE_URL
   const destroy = async () => {
+    await testDrizzle.$client.close();
     await testClient.$disconnect();
     Bun.env.DATABASE_URL = BASE_DB_URL;
 
@@ -132,6 +137,7 @@ export async function createTestDatabase(
 
   return {
     client: testClient,
+    db: testDrizzle,
     databaseName,
     destroy,
   };

@@ -189,7 +189,7 @@ describe.concurrent("Category routes test", () => {
       await db.query.attribute.findFirst({ where: { id: untouched.id } })
     ).toMatchObject({ name: untouched.name });
 
-    await expect(
+    expect(
       categoryService.patch({
         id: category.id,
         name: `${category.name} conflict`,
@@ -260,7 +260,7 @@ describe.concurrent("Category routes test", () => {
       await db.query.attribute.findMany({ where: { categoryId: category.id } })
     ).toHaveLength(input.length);
 
-    await expect(
+    expect(
       categoryService.patch({
         id: category.id,
         name: `${category.name} conflict`,
