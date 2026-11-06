@@ -1,0 +1,38 @@
+apps/server/tests/products/bulk.test.ts
+  s_2e781493e8ddad::t_6ae6e388b6cd85 22-23
+apps/server/tests/utils/db-manager.ts
+  s_2e781493e8ddad::t_41baee9107714b 4-5,112,117,140
+  s_2e781493e8ddad::t_532942a9176eab 10
+apps/server/tests/utils/helper.ts
+  s_2e781493e8ddad::t_3204cc7a990274 205-213
+  s_2e781493e8ddad::t_75d29e79f1a089 174-177,187,191-196,199-201,214-220
+  s_2e781493e8ddad::t_532942a9176eab 9-14,178-186,188-190,197-198,202-204
+apps/server/tests/products/delete.test.ts
+  s_2e781493e8ddad::t_6ae6e388b6cd85 21-22
+apps/server/tests/category.test.ts
+  s_67186a039ba057::t_10aa7736567e7c 192,263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "36760c779b4e29d9691332053fb2e97b5c0b0330",
+  "prompts": {},
+  "sessions": {
+    "s_2e781493e8ddad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a678-d863-7a43-8417-7dfb71e4df4a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_67186a039ba057": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a333-ef7f-7e62-8d2d-9a0dbc0b9e2a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
