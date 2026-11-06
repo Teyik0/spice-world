@@ -1,0 +1,118 @@
+apps/server/src/modules/categories/service.ts
+  s_2e781493e8ddad::t_0eb617b0e2207a 285
+  s_2e781493e8ddad::t_bb0b5c374f1be0 345
+  s_2e781493e8ddad::t_01f5d3fede73eb 305-308,318-321,328-331
+  s_437d029e4b2bdb::t_a866669c83715f 462-498,500-503,505,507-523
+  s_2e781493e8ddad::t_dec999f39ec312 243-249,251-257
+  s_437d029e4b2bdb::t_339ae372ae8fe3 8,102,222-232,234-237,259-261,263-265,267-270,274,277,279,281,283-284,287-288,291-292,295-298,302-304,309-317,322-327,335-344,346-459,461,525
+  s_2e781493e8ddad::t_71b37fe7092f27 278,460
+  s_2e781493e8ddad::t_0fffd330648133 240,527-530
+  s_2e781493e8ddad::t_f457a05de20242 262
+  s_2e781493e8ddad::t_599b8e5f769808 289,293,300
+  s_2e781493e8ddad::t_36898799c44b86 266
+  s_437d029e4b2bdb::t_983c9041695ef4 290,294
+  s_437d029e4b2bdb::t_6570662a41df2d 241,258,271-272
+  s_67186a039ba057::t_75998fc04959be 238-239,273,275-276
+apps/server/tests/products/post.test.ts
+  s_437d029e4b2bdb::t_a2e546b6a0360f 22
+apps/server/src/modules/products/validators/variants.ts
+  s_437d029e4b2bdb::t_bb628b3e9104df 11,210
+apps/server/src/modules/categories/index.ts
+  s_2e781493e8ddad::t_bd52bb2cb0b17f 71-76
+  s_2e781493e8ddad::t_ad0d6b3b5101b4 79,84-85,87-94
+apps/server/tests/category.test.ts
+  s_cfe8847d9af197::t_dfca75b20220ef 6,606
+  s_437d029e4b2bdb::t_10ad8f275fce11 85
+  s_2e781493e8ddad::t_b86a99c4a5ddad 217-219,225-229,231-234,239-244,248-261,263-277,627
+  s_2e781493e8ddad::t_8609f2317d136a 143,230,312,376
+  s_2e781493e8ddad::t_0fffd330648133 91
+  s_2e781493e8ddad::t_09d66c52582fcc 62,86,90,92-95,101
+  s_2e781493e8ddad::t_4fe5dfb05ba8db 407,413-418,422,425-426,438-441,445,449-450,459-464,467,472-474,598,605
+  s_2e781493e8ddad::t_ffcc8abdc49899 475,481-482,493-494,497,504-505
+  s_cfe8847d9af197::t_6fd89be1090140 524
+  s_2e781493e8ddad::t_624e7cd4a98ca3 87-89,408-412,419-421,423-424,427-437,442-444,446-448,451-458,465-466,468-471
+  s_2e781493e8ddad::t_8f97a2c937ac07 63-80,82-84
+  s_2e781493e8ddad::t_e69cb6f8621792 1531,1571
+  s_2e781493e8ddad::t_5896507b0e4416 45-61,102-104
+  s_2e781493e8ddad::t_dbc21f5bb3e3c6 281-285,292-294,297-310,313-315,317-349
+  s_2e781493e8ddad::t_7d17485b181ba9 352-353,357,365,369,383-384,393-395,399-401,405-406
+  s_2e781493e8ddad::t_e634d11bdd39bc 105-106,111-114,118-122,127,137-142,156-157
+  s_2e781493e8ddad::t_006b5519dbaea7 158-163,167-170,178,191,213-214
+  s_2e781493e8ddad::t_44a11a937fef82 280,286-291,295-296,311,316,350-351
+  s_2e781493e8ddad::t_4e1c2a55beff90 164-166,171-177,179-190,192-212
+  s_2e781493e8ddad::t_dda269cbb3a615 215-216,220-224,235-238,245-247,262,278-279
+  s_2e781493e8ddad::t_39b651135dded1 574,594-597,601,604,641,770-775,798-815,858-863,877-882,896-901,1107-1120,1181-1186,1218-1227,1258-1263,1290-1299,1330-1335,1366-1371,1410-1415,1453-1458,1499-1504,1539-1544,1579-1584,1623-1628
+  s_2e781493e8ddad::t_e1d9ad0dd2fa3a 107-110,115-117,123-126,128-136,144-155
+  s_2e781493e8ddad::t_f862779b523308 354-356,358-364,366-368,370-375,377-382,385-392,396-398,402-404
+  s_2e781493e8ddad::t_c31ae81a942726 81
+  s_2e781493e8ddad::t_a5ebbbb51a87ee 476-480,483-492,495-496,498-503,628
+  s_2e781493e8ddad::t_0354d975f057ca 96-100
+  s_2e781493e8ddad::t_cf993625322a47 599-600,602-603,607-613,615-626
+apps/server/src/modules/products/validators/patch.ts
+  s_437d029e4b2bdb::t_6b3cdf7a598dde 111
+  s_437d029e4b2bdb::t_5757a3122a729d 117
+apps/server/src/modules/products/service.ts
+  s_437d029e4b2bdb::t_3de64924702c59 441-443
+  s_437d029e4b2bdb::t_eb0be777980d06 447,471
+  s_437d029e4b2bdb::t_94ac36018637f0 287-289
+apps/server/src/modules/categories/model.ts
+  s_8f9b15c31fca89::t_501ead7e41d1b0 1,17-24,26-30,37
+  s_cfe8847d9af197::t_6fd89be1090140 41-52,54,58-60,65-79,85-87,90-92,94
+  s_2e781493e8ddad::t_bd52bb2cb0b17f 136-149,151-152
+  s_2e781493e8ddad::t_26db7cc64e3f6a 150
+  s_cfe8847d9af197::t_bacf2d643d9a28 53
+  s_cfe8847d9af197::t_9e9ea45de42c60 55-57
+  s_cfe8847d9af197::t_07dab1837314b2 80-84
+  s_cfe8847d9af197::t_6279041b2ac713 88-89
+  s_cfe8847d9af197::t_f6bdd9a1ad6cb5 93
+apps/server/tests/products/patch.test.ts
+  s_437d029e4b2bdb::t_4a11379ab48241 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5220a2fc1cd5880837d07fe901874eb2c3eecec8",
+  "prompts": {},
+  "sessions": {
+    "s_2e781493e8ddad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a678-d863-7a43-8417-7dfb71e4df4a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_437d029e4b2bdb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e52626077ffeyaV6GQJCmCTlOz",
+        "model": "unknown"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_67186a039ba057": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a333-ef7f-7e62-8d2d-9a0dbc0b9e2a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_8f9b15c31fca89": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e57b5339affelN641q7ZNxCfvL",
+        "model": "unknown"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_cfe8847d9af197": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a855-07d7-7b63-8b77-8a44a451c778",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
