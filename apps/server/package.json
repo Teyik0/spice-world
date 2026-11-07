@@ -31,7 +31,7 @@
     "react": "catalog:",
     "resend": "^6.37.0",
     "stripe": "^20.4.1",
-    "typebox": "^1.4.3",
+    "typebox": "^1.4.5",
     "uploadthing": "^7.7.4"
   },
   "devDependencies": {

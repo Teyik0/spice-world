@@ -19,29 +19,18 @@ const envSchema = t.Object({
     { default: "development" }
   ),
   PORT: t.String({ default: "3001" }),
-  STRIPE_SECRET_KEY: t.String(),
-  STRIPE_WEBHOOK_SECRET: t.String(),
-  STRIPE_PUBLISHABLE_KEY: t.String(),
+  STRIPE_SECRET_KEY: t.String({ minLength: 1 }),
+  STRIPE_WEBHOOK_SECRET: t.String({ minLength: 1 }),
+  STRIPE_PUBLISHABLE_KEY: t.String({ minLength: 1 }),
   STRIPE_SUCCESS_URL: t.String({ format: "uri" }),
   STRIPE_CANCEL_URL: t.String({ format: "uri" }),
   RESEND_API_KEY: t.String(),
 
-  // Feature environment variables (required in production, optional in dev)
-  GOOGLE_CLIENT_ID: t.Optional(t.String()),
-  GOOGLE_CLIENT_SECRET: t.Optional(t.String()),
-  AXIOM_TOKEN: t.Optional(t.String()),
+  GOOGLE_CLIENT_ID: t.String({ minLength: 1 }),
+  GOOGLE_CLIENT_SECRET: t.String({ minLength: 1 }),
+  AXIOM_TOKEN: t.String({ minLength: 1 }),
 });
 export type EnvSchema = UnwrapSchema<typeof envSchema>;
-
-/**
- * Feature environment variables that are required in production
- * but only warned about in development
- */
-const featureVars = [
-  "GOOGLE_CLIENT_ID",
-  "GOOGLE_CLIENT_SECRET",
-  "AXIOM_TOKEN",
-] as const satisfies (keyof EnvSchema)[];
 
 /**
  * Validate environment variables using TypeBox and Value.Parse.
@@ -69,24 +58,6 @@ function validateEnv(): EnvSchema {
       PORT: process.env.PORT,
     })
   );
-
-  // Check feature vars
-  const isProd = parsed.NODE_ENV === "production";
-
-  for (const varName of featureVars) {
-    const value = parsed[varName];
-    if (!value) {
-      if (isProd) {
-        throw new Error(
-          `Missing required environment variable in production: ${varName}\n\n` +
-            "This feature is required in production. Please check your .env file or environment configuration."
-        );
-      }
-      console.warn(
-        `⚠️  Warning: ${varName} is not set. Related functionality will not work.`
-      );
-    }
-  }
 
   return parsed;
 }

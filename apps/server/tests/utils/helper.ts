@@ -33,24 +33,30 @@ const createUploadedFileData = (uploadedFile: File): UploadedFileData => ({
 
 export const mockUtapi = async () => {
   const imagesModule = await import("@spice-world/server/lib/images");
+  const uploadedFiles: UploadedFileData[] = [];
 
   spyOn(imagesModule.utapi, "uploadFiles").mockImplementation(((
     files: File | File[]
   ) => {
-    const createResult = (uploadedFile: File) => ({
-      data: createUploadedFileData(uploadedFile),
-      error: null,
-    });
+    const createResult = (uploadedFile: File) => {
+      const data = createUploadedFileData(uploadedFile);
+      uploadedFiles.push(data);
+      return { data, error: null };
+    };
 
     return Promise.resolve(
       Array.isArray(files) ? files.map(createResult) : createResult(files)
     );
   }) as typeof imagesModule.utapi.uploadFiles);
 
-  spyOn(imagesModule.utapi, "deleteFiles").mockImplementation((async () => ({
+  const deleteFiles = spyOn(
+    imagesModule.utapi,
+    "deleteFiles"
+  ).mockImplementation((async () => ({
     success: true,
     deletedCount: 1,
   })) as typeof imagesModule.utapi.deleteFiles);
+  return { uploadedFiles, deleteFiles };
 };
 
 export function randomLowerString(length = 10): string {

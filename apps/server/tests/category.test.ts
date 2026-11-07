@@ -16,6 +16,7 @@ describe.concurrent("Category routes test", () => {
   let db: typeof import("@spice-world/server/lib/db").db;
   let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
   let api: ReturnType<typeof treaty<typeof categoryRouter>>;
+  let uploads: Awaited<ReturnType<typeof mockUtapi>>;
   const filePath1 = `${import.meta.dir}/public/cumin.webp`;
   const filePath2 = `${import.meta.dir}/public/curcuma.jpg`;
 
@@ -29,7 +30,7 @@ describe.concurrent("Category routes test", () => {
 
     testDb = await createTestDatabase("category.test.ts");
     ({ db } = await import("@spice-world/server/lib/db"));
-    await mockUtapi();
+    uploads = await mockUtapi();
 
     const { categoryRouter: router } = await import(
       "@spice-world/server/modules/categories"
@@ -40,6 +41,197 @@ describe.concurrent("Category routes test", () => {
   afterAll(async () => {
     await db.$client.close();
     await testDb.destroy();
+  });
+
+  test.each(["update", "delete"] as const)(
+    "should reject foreign value during %s without writing",
+    async (operation) => {
+      const category = await createTestCategory({
+        testDb,
+        attributeCount: 2,
+        attributeValueCount: 2,
+      });
+      const [target, other] = category.attributes;
+      expectDefined(target);
+      expectDefined(other);
+      const [foreign] = other.values;
+      expectDefined(foreign);
+      const before = await api.categories({ id: category.id }).get();
+      expectDefined(before.data);
+      const result = await api.categories({ id: category.id }).patch({
+        name: `${category.name} renamed`,
+        attributes: {
+          update: [
+            {
+              id: target.id,
+              values:
+                operation === "update"
+                  ? { update: [{ id: foreign.id, value: "changed" }] }
+                  : { delete: [foreign.id] },
+            },
+          ],
+        },
+      });
+      expect(result.error).toMatchObject({
+        status: 404,
+        value: { code: "CATEGORY_ATTRIBUTE_VALUE_NOT_FOUND" },
+      });
+      expect((await api.categories({ id: category.id }).get()).data).toEqual(
+        before.data
+      );
+    }
+  );
+
+  test.each([
+    "attribute overlap",
+    "value overlap",
+    "duplicate value id",
+    "duplicate value text",
+    "duplicate attribute name",
+  ] as const)(
+    "should reject contradictory operations: %s",
+    async (scenario) => {
+      const category = await createTestCategory({
+        testDb,
+        attributeCount: 1,
+        attributeValueCount: 2,
+      });
+      const [attribute] = category.attributes;
+      expectDefined(attribute);
+      const [value] = attribute.values;
+      expectDefined(value);
+      const operations = {
+        "attribute overlap": {
+          update: [{ id: attribute.id }],
+          delete: [attribute.id],
+        },
+        "value overlap": {
+          update: [
+            {
+              id: attribute.id,
+              values: {
+                update: [{ id: value.id, value: "changed" }],
+                delete: [value.id],
+              },
+            },
+          ],
+        },
+        "duplicate value id": {
+          update: [
+            {
+              id: attribute.id,
+              values: {
+                update: [
+                  { id: value.id, value: "first" },
+                  { id: value.id, value: "second" },
+                ],
+              },
+            },
+          ],
+        },
+        "duplicate value text": {
+          update: [
+            {
+              id: attribute.id,
+              values: {
+                create: ["changed"],
+                update: [{ id: value.id, value: "changed" }],
+              },
+            },
+          ],
+        },
+        "duplicate attribute name": {
+          create: [{ name: "changed", values: ["sample"] }],
+          update: [{ id: attribute.id, name: "changed" }],
+        },
+      } satisfies Record<typeof scenario, CategoryModel.attributeOperations>;
+      const before = await api.categories({ id: category.id }).get();
+      expectDefined(before.data);
+      const result = await api.categories({ id: category.id }).patch({
+        name: `${category.name} renamed`,
+        attributes: operations[scenario],
+      });
+      expect(result.error).toMatchObject({ status: 422 });
+      expect((await api.categories({ id: category.id }).get()).data).toEqual(
+        before.data
+      );
+    }
+  );
+
+  test.each(["sql conflict", "invalid attribute", "missing category"] as const)(
+    "should clean new uploads and preserve stored images after %s",
+    async (scenario) => {
+      const category = await createTestCategory({ testDb, attributeCount: 1 });
+      const [attribute] = category.attributes;
+      expectDefined(attribute);
+      const before = await api.categories({ id: category.id }).get();
+      expectDefined(before.data);
+      const name = `${category.name} renamed`;
+      const result = await api
+        .categories({
+          id:
+            scenario === "missing category" ? Bun.randomUUIDv7() : category.id,
+        })
+        .patch({
+          name,
+          file: file(filePath2),
+          ...(scenario === "sql conflict" && {
+            attributes: {
+              create: [{ name: attribute.name, values: ["sample"] }],
+            },
+          }),
+          ...(scenario === "invalid attribute" && {
+            attributes: { delete: [Bun.randomUUIDv7()] },
+          }),
+        });
+      expect(result.error).toMatchObject({
+        status: scenario === "sql conflict" ? 409 : 404,
+      });
+      expect((await api.categories({ id: category.id }).get()).data).toEqual(
+        before.data
+      );
+      const keys = uploads.uploadedFiles
+        .filter((uploaded) =>
+          uploaded.name.startsWith(`${name.replaceAll(" ", "-")}-`)
+        )
+        .map(({ key }) => key);
+      expect(keys).toHaveLength(3);
+      expect(uploads.deleteFiles).toHaveBeenCalledWith(keys);
+      for (const key of [
+        before.data.image.keyThumb,
+        before.data.image.keyMedium,
+        before.data.image.keyLarge,
+      ]) {
+        expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
+          expect.arrayContaining([key])
+        );
+      }
+    }
+  );
+
+  test("should delete old upload keys after replacement and retain new files", async () => {
+    const category = await createTestCategory({ testDb });
+    const before = await api.categories({ id: category.id }).get();
+    expectDefined(before.data);
+    const result = await api
+      .categories({ id: category.id })
+      .patch({ name: category.name, file: file(filePath2) });
+    expect(result.status).toBe(200);
+    expectDefined(result.data);
+    expect(uploads.deleteFiles).toHaveBeenCalledWith([
+      before.data.image.keyThumb,
+      before.data.image.keyMedium,
+      before.data.image.keyLarge,
+    ]);
+    for (const key of [
+      result.data.image.keyThumb,
+      result.data.image.keyMedium,
+      result.data.image.keyLarge,
+    ]) {
+      expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
+        expect.arrayContaining([key])
+      );
+    }
   });
 
   test.each([
@@ -719,6 +911,19 @@ describe.concurrent("Category routes test", () => {
 
       expect(status).toBe(409);
       expect(error).toMatchObject({ status });
+      expect(
+        await db.query.image.findMany({ where: { altText: "other category" } })
+      ).toHaveLength(1);
+      const keys = uploads.uploadedFiles
+        .filter((uploaded) => uploaded.name.startsWith("other-category-"))
+        .map(({ key }) => key);
+      expect(keys).toHaveLength(6);
+      expect(uploads.deleteFiles).toHaveBeenCalledWith(keys.slice(3));
+      for (const key of keys.slice(0, 3)) {
+        expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
+          expect.arrayContaining([key])
+        );
+      }
     });
 
     test("should error if name start with a uppercase letter", async () => {
@@ -998,6 +1203,11 @@ describe.concurrent("Category routes test", () => {
       expect(status).toBe(200);
       expectDefined(data);
       expect(data).toBe("OK");
+      expect(uploads.deleteFiles).toHaveBeenCalledWith([
+        oldCategory.image.keyThumb,
+        oldCategory.image.keyMedium,
+        oldCategory.image.keyLarge,
+      ]);
 
       // Check image is well deleted
       const image = await db.query.image.findFirst({
