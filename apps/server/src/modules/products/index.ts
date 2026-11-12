@@ -59,6 +59,12 @@ export const productsRouter = new Elysia({
   )
   .guard({ schema: "merge", params: uuidGuard })
   .get("/:id", async ({ params }) => await productService.getById(params))
+  .get(
+    "/:id/comments",
+    { query: ProductModel.commentsQuery },
+    async ({ params, query }) =>
+      await productService.getComments({ ...params, ...query })
+  )
   .patch(
     "/:id",
     {

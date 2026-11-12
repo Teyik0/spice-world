@@ -1,8 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { treaty } from "@elysia/eden";
 import type { categoryRouter } from "@spice-world/server/modules/categories";
-import { eq } from "drizzle-orm";
-import { attributeValueTable } from "../drizzle/schema";
+import { eq, inArray, sql } from "drizzle-orm";
+import {
+  attributeValueTable,
+  imageDeletionTable,
+  productTable,
+} from "../drizzle/schema";
 import type * as CategoryModel from "../src/modules/categories/model";
 import { createTestDatabase } from "./utils/db-manager";
 import {
@@ -37,6 +41,17 @@ describe.concurrent("Category routes test", () => {
     );
     api = treaty(router);
   });
+
+  const pendingChecks = async (keys: string[]) =>
+    (
+      await db
+        .select({
+          fileKey: imageDeletionTable.fileKey,
+          attempts: imageDeletionTable.attempts,
+        })
+        .from(imageDeletionTable)
+        .where(inArray(imageDeletionTable.fileKey, keys))
+    ).sort((a, b) => a.fileKey.localeCompare(b.fileKey));
 
   afterAll(async () => {
     await db.$client.close();
@@ -196,7 +211,26 @@ describe.concurrent("Category routes test", () => {
         )
         .map(({ key }) => key);
       expect(keys).toHaveLength(3);
-      expect(uploads.deleteFiles).toHaveBeenCalledWith(keys);
+      expect(await pendingChecks(keys)).toEqual(
+        [...keys].sort().map((fileKey) => ({ fileKey, attempts: 0 }))
+      );
+      for (const key of keys) {
+        expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
+          expect.arrayContaining([key])
+        );
+      }
+      expect(
+        await db
+          .select()
+          .from(imageDeletionTable)
+          .where(
+            inArray(imageDeletionTable.fileKey, [
+              before.data.image.keyThumb,
+              before.data.image.keyMedium,
+              before.data.image.keyLarge,
+            ])
+          )
+      ).toEqual([]);
       for (const key of [
         before.data.image.keyThumb,
         before.data.image.keyMedium,
@@ -209,30 +243,65 @@ describe.concurrent("Category routes test", () => {
     }
   );
 
-  test("should delete old upload keys after replacement and retain new files", async () => {
-    const category = await createTestCategory({ testDb });
-    const before = await api.categories({ id: category.id }).get();
-    expectDefined(before.data);
-    const result = await api
-      .categories({ id: category.id })
-      .patch({ name: category.name, file: file(filePath2) });
-    expect(result.status).toBe(200);
-    expectDefined(result.data);
-    expect(uploads.deleteFiles).toHaveBeenCalledWith([
-      before.data.image.keyThumb,
-      before.data.image.keyMedium,
-      before.data.image.keyLarge,
-    ]);
-    for (const key of [
-      result.data.image.keyThumb,
-      result.data.image.keyMedium,
-      result.data.image.keyLarge,
-    ]) {
-      expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
-        expect.arrayContaining([key])
+  test.each([false, true])(
+    "should enqueue old upload keys after replacement with attributes: %s",
+    async (withAttributes) => {
+      const category = await createTestCategory({ testDb });
+      const before = await api.categories({ id: category.id }).get();
+      expectDefined(before.data);
+      const result = await api.categories({ id: category.id }).patch({
+        name: category.name,
+        file: file(filePath2),
+        ...(withAttributes && {
+          attributes: { create: [{ name: "origin", values: ["france"] }] },
+        }),
+      });
+      expect(result.status).toBe(200);
+      expectDefined(result.data);
+      expect((await api.categories({ id: category.id }).get()).data).toEqual(
+        result.data
       );
+      const keys = [
+        before.data.image.keyThumb,
+        before.data.image.keyMedium,
+        before.data.image.keyLarge,
+      ];
+      const tasks = await db
+        .select()
+        .from(imageDeletionTable)
+        .where(inArray(imageDeletionTable.fileKey, keys));
+      expect(tasks.map(({ fileKey }) => fileKey).sort()).toEqual(
+        [...keys].sort()
+      );
+      const [clock] = await db
+        .select({ now: sql<Date>`clock_timestamp()` })
+        .from(imageDeletionTable)
+        .limit(1);
+      expectDefined(clock);
+      const { now } = clock;
+      for (const task of tasks) {
+        expect(task.notBefore.getTime() - now.getTime()).toBeGreaterThan(
+          14 * 60_000
+        );
+        expect(task.notBefore.getTime() - now.getTime()).toBeLessThanOrEqual(
+          15 * 60_000
+        );
+        expect(task.attempts).toBe(0);
+        expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
+          expect.arrayContaining([task.fileKey])
+        );
+      }
+      for (const key of [
+        result.data.image.keyThumb,
+        result.data.image.keyMedium,
+        result.data.image.keyLarge,
+      ]) {
+        expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
+          expect.arrayContaining([key])
+        );
+      }
     }
-  });
+  );
 
   test.each([
     { existing: 1, deleted: 1, created: [], valid: false },
@@ -555,6 +624,18 @@ describe.concurrent("Category routes test", () => {
       name: category.name,
     });
     expect(unchanged).toMatchObject({ oldImage: null });
+    expect(
+      await db
+        .select()
+        .from(imageDeletionTable)
+        .where(
+          inArray(imageDeletionTable.fileKey, [
+            before.keyThumb,
+            before.keyMedium,
+            before.keyLarge,
+          ])
+        )
+    ).toEqual([]);
     expect(
       await db.query.image.findFirst({ where: { id: before.id } })
     ).toEqual(before);
@@ -918,8 +999,13 @@ describe.concurrent("Category routes test", () => {
         .filter((uploaded) => uploaded.name.startsWith("other-category-"))
         .map(({ key }) => key);
       expect(keys).toHaveLength(6);
-      expect(uploads.deleteFiles).toHaveBeenCalledWith(keys.slice(3));
-      for (const key of keys.slice(0, 3)) {
+      expect(await pendingChecks(keys.slice(3))).toEqual(
+        keys
+          .slice(3)
+          .sort()
+          .map((fileKey) => ({ fileKey, attempts: 0 }))
+      );
+      for (const key of keys) {
         expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
           expect.arrayContaining([key])
         );
@@ -1182,6 +1268,82 @@ describe.concurrent("Category routes test", () => {
   });
 
   describe("Delete category - DELETE/:id", () => {
+    test("should return 404 for a missing category", async () => {
+      const result = await api.categories({ id: Bun.randomUUIDv7() }).delete();
+      expect(result.error).toMatchObject({
+        status: 404,
+        value: { code: "CATEGORY_NOT_FOUND" },
+      });
+    });
+
+    test("should preserve a category used by a product without enqueuing its image", async () => {
+      const category = await createTestCategory({ testDb });
+      const image = await db.query.image.findFirst({
+        where: { id: category.imageId },
+      });
+      expectDefined(image);
+      const id = Bun.randomUUIDv7();
+      await db.insert(productTable).values({
+        id,
+        name: id,
+        slug: id,
+        description: "test",
+        categoryId: category.id,
+        updatedAt: new Date(),
+      });
+      const result = await api.categories({ id: category.id }).delete();
+      expect(result.error).toMatchObject({
+        status: 400,
+        value: {
+          code: "CATEGORY_IN_USE",
+          message: "Category is used by products",
+        },
+      });
+      expect(
+        await db.query.category.findFirst({ where: { id: category.id } })
+      ).toMatchObject({ id: category.id });
+      expect(
+        await db.query.image.findFirst({ where: { id: image.id } })
+      ).toEqual(image);
+      expect(
+        await db
+          .select()
+          .from(imageDeletionTable)
+          .where(
+            inArray(imageDeletionTable.fileKey, [
+              image.keyThumb,
+              image.keyMedium,
+              image.keyLarge,
+            ])
+          )
+      ).toEqual([]);
+    });
+
+    test("should serialize concurrent deletions and enqueue each image key once", async () => {
+      const category = await createTestCategory({ testDb });
+      const image = await db.query.image.findFirst({
+        where: { id: category.imageId },
+      });
+      expectDefined(image);
+      const results = await Promise.all(
+        Array.from({ length: 2 }, () =>
+          api.categories({ id: category.id }).delete()
+        )
+      );
+      expect(results.map(({ status }) => status).sort()).toEqual([200, 404]);
+      const keys = [image.keyThumb, image.keyMedium, image.keyLarge];
+      expect(
+        (
+          await db
+            .select()
+            .from(imageDeletionTable)
+            .where(inArray(imageDeletionTable.fileKey, keys))
+        )
+          .map(({ fileKey }) => fileKey)
+          .sort()
+      ).toEqual([...keys].sort());
+    });
+
     test("should post and delete category", async () => {
       const filePath = `${import.meta.dir}/public/cumin.webp`;
       const { data: oldCategory, status: oldStatus } =
@@ -1203,11 +1365,23 @@ describe.concurrent("Category routes test", () => {
       expect(status).toBe(200);
       expectDefined(data);
       expect(data).toBe("OK");
-      expect(uploads.deleteFiles).toHaveBeenCalledWith([
+      const keys = [
         oldCategory.image.keyThumb,
         oldCategory.image.keyMedium,
         oldCategory.image.keyLarge,
-      ]);
+      ];
+      const tasks = await db
+        .select()
+        .from(imageDeletionTable)
+        .where(inArray(imageDeletionTable.fileKey, keys));
+      expect(tasks.map(({ fileKey }) => fileKey).sort()).toEqual(
+        [...keys].sort()
+      );
+      for (const key of keys) {
+        expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
+          expect.arrayContaining([key])
+        );
+      }
 
       // Check image is well deleted
       const image = await db.query.image.findFirst({
@@ -1216,6 +1390,84 @@ describe.concurrent("Category routes test", () => {
       expect(image).toBeUndefined();
     });
   });
+
+  test("should drop referenced keys and delete orphan files on cleanup", async () => {
+    const category = await createTestCategory({ testDb });
+    const image = await db.query.image.findFirst({
+      where: { id: category.imageId },
+    });
+    expectDefined(image);
+    const orphan = `orphan-${Bun.randomUUIDv7()}`;
+    await db.insert(imageDeletionTable).values(
+      [image.keyThumb, orphan].map((fileKey) => ({
+        fileKey,
+        notBefore: sql`statement_timestamp()`,
+      }))
+    );
+    await api.categories({ id: Bun.randomUUIDv7() }).delete();
+    for (let i = 0; i < 50; i += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: polls the afterResponse cleanup sequentially
+      if ((await pendingChecks([image.keyThumb, orphan])).length === 0) {
+        break;
+      }
+      await Bun.sleep(20);
+    }
+    expect(await pendingChecks([image.keyThumb, orphan])).toEqual([]);
+    expect(uploads.deleteFiles).toHaveBeenCalledWith([orphan]);
+    expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
+      expect.arrayContaining([image.keyThumb])
+    );
+    expect(await db.query.image.findFirst({ where: { id: image.id } })).toEqual(
+      image
+    );
+  });
+
+  test.each(["patch", "delete"] as const)(
+    "should rollback %s when image deletion enqueue fails",
+    async (operation) => {
+      const category = await createTestCategory({ testDb, attributeCount: 1 });
+      const before = await api.categories({ id: category.id }).get();
+      expectDefined(before.data);
+      const keys = [
+        before.data.image.keyThumb,
+        before.data.image.keyMedium,
+        before.data.image.keyLarge,
+      ];
+      const constraint = `reject_deletion_${Bun.randomUUIDv7().replaceAll("-", "")}`;
+      // A key-specific database constraint injects a real write failure without affecting other tests.
+      await db.execute(
+        sql`alter table ${imageDeletionTable} add constraint ${sql.identifier(constraint)} check ("fileKey" <> ${before.data.image.keyThumb})`.inlineParams()
+      );
+      try {
+        const result =
+          operation === "patch"
+            ? await api.categories({ id: category.id }).patch({
+                name: `${category.name} renamed`,
+                file: file(filePath2),
+              })
+            : await api.categories({ id: category.id }).delete();
+        expect(result.error).toMatchObject({ status: 500 });
+        expect((await api.categories({ id: category.id }).get()).data).toEqual(
+          before.data
+        );
+        expect(
+          await db
+            .select()
+            .from(imageDeletionTable)
+            .where(inArray(imageDeletionTable.fileKey, keys))
+        ).toEqual([]);
+        for (const key of keys) {
+          expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
+            expect.arrayContaining([key])
+          );
+        }
+      } finally {
+        await db.execute(
+          sql`alter table ${imageDeletionTable} drop constraint ${sql.identifier(constraint)}`
+        );
+      }
+    }
+  );
 
   describe("Update category - PATCH/:id", () => {
     test("should update category with new name only", async () => {

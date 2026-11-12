@@ -19,6 +19,8 @@ export const getQuery = t.Object({
   take: t.Optional(t.Number({ default: 25, minimum: 1, maximum: 100 })),
   status: t.Optional(productStatus),
   categories: t.Optional(t.Array(t.String())),
+  /** Collection handle; results follow the collection's order unless sortBy is set. */
+  collection: t.Optional(t.String()),
   sortBy: t.Optional(
     t.Union([
       t.Literal("name"),
@@ -36,6 +38,15 @@ export type getByIdResult = Exclude<
   Awaited<ReturnType<typeof productService.getById>>,
   // biome-ignore lint/suspicious/noExplicitAny: ok
   ElysiaStatus<any>
+>;
+
+export const commentsQuery = t.Object({
+  skip: t.Optional(t.Number({ default: 0, minimum: 0 })),
+  take: t.Optional(t.Number({ default: 15, minimum: 1, maximum: 50 })),
+});
+export type commentsQuery = UnwrapSchema<typeof commentsQuery>;
+export type commentsResult = Awaited<
+  ReturnType<typeof productService.getComments>
 >;
 
 export const countQuery = t.Object({

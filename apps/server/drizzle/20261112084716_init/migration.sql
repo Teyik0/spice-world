@@ -1,26 +1,6 @@
--- Current sql file was generated after introspecting the database
--- If you want to run this migration please uncomment this code before executing migrations
-/*
+CREATE TYPE "OrderStatus" AS ENUM('PENDING', 'PAID', 'FULFILLED', 'CANCELLED', 'REFUNDED');--> statement-breakpoint
 CREATE TYPE "ProductStatus" AS ENUM('DRAFT', 'PUBLISHED', 'ARCHIVED');--> statement-breakpoint
 CREATE TYPE "ShippingStatus" AS ENUM('PENDING', 'SHIPPED', 'DELIVERED');--> statement-breakpoint
-CREATE TYPE "OrderStatus" AS ENUM('PENDING', 'PAID', 'FULFILLED', 'CANCELLED', 'REFUNDED');--> statement-breakpoint
-CREATE TABLE "_AttributeValueToProductVariant" (
-	"A" text,
-	"B" text,
-	CONSTRAINT "_AttributeValueToProductVariant_AB_pkey" PRIMARY KEY("A","B")
-);
---> statement-breakpoint
-CREATE TABLE "_prisma_migrations" (
-	"id" varchar(36) PRIMARY KEY,
-	"checksum" varchar(64) NOT NULL,
-	"finished_at" timestamp with time zone,
-	"migration_name" varchar(255) NOT NULL,
-	"logs" text,
-	"rolled_back_at" timestamp with time zone,
-	"started_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"applied_steps_count" integer DEFAULT 0 NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "account" (
 	"id" text PRIMARY KEY,
 	"userId" text NOT NULL,
@@ -49,10 +29,29 @@ CREATE TABLE "AttributeValue" (
 	"attributeId" text NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "_AttributeValueToProductVariant" (
+	"A" text,
+	"B" text,
+	CONSTRAINT "_AttributeValueToProductVariant_AB_pkey" PRIMARY KEY("A","B")
+);
+--> statement-breakpoint
 CREATE TABLE "Category" (
 	"id" text PRIMARY KEY,
 	"name" text NOT NULL,
 	"imageId" text NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "CollectionProduct" (
+	"collectionId" text,
+	"productId" text,
+	"position" integer NOT NULL,
+	CONSTRAINT "CollectionProduct_pkey" PRIMARY KEY("collectionId","productId")
+);
+--> statement-breakpoint
+CREATE TABLE "Collection" (
+	"id" text PRIMARY KEY,
+	"handle" text NOT NULL,
+	"name" text NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "Comment" (
@@ -62,6 +61,12 @@ CREATE TABLE "Comment" (
 	"userId" text NOT NULL,
 	"createdAt" timestamp(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	"updatedAt" timestamp(3) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "ImageDeletion" (
+	"fileKey" text PRIMARY KEY,
+	"notBefore" timestamp with time zone NOT NULL,
+	"attempts" integer DEFAULT 0 NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "Image" (
@@ -75,6 +80,20 @@ CREATE TABLE "Image" (
 	"urlThumb" text NOT NULL,
 	"urlMedium" text NOT NULL,
 	"urlLarge" text NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "OrderItem" (
+	"id" text PRIMARY KEY,
+	"orderId" text NOT NULL,
+	"productId" text NOT NULL,
+	"productName" text NOT NULL,
+	"productImage" text,
+	"variantId" text,
+	"variantName" text,
+	"variantSku" text,
+	"unitPrice" integer NOT NULL,
+	"quantity" integer NOT NULL,
+	"totalPrice" integer NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "Order" (
@@ -95,18 +114,15 @@ CREATE TABLE "Order" (
 	"trackingNumber" text
 );
 --> statement-breakpoint
-CREATE TABLE "OrderItem" (
-	"id" text PRIMARY KEY,
-	"orderId" text NOT NULL,
-	"productId" text NOT NULL,
-	"productName" text NOT NULL,
-	"productImage" text,
-	"variantId" text,
-	"variantName" text,
-	"variantSku" text,
-	"unitPrice" integer NOT NULL,
-	"quantity" integer NOT NULL,
-	"totalPrice" integer NOT NULL
+CREATE TABLE "_prisma_migrations" (
+	"id" varchar(36) PRIMARY KEY,
+	"checksum" varchar(64) NOT NULL,
+	"finished_at" timestamp with time zone,
+	"migration_name" varchar(255) NOT NULL,
+	"logs" text,
+	"rolled_back_at" timestamp with time zone,
+	"started_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"applied_steps_count" integer DEFAULT 0 NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "Product" (
@@ -174,24 +190,28 @@ CREATE TABLE "VerificationToken" (
 	"expires" timestamp(3) NOT NULL
 );
 --> statement-breakpoint
-CREATE INDEX "_AttributeValueToProductVariant_B_index" ON "_AttributeValueToProductVariant" ("B");--> statement-breakpoint
 CREATE INDEX "account_userId_idx" ON "account" ("userId");--> statement-breakpoint
 CREATE UNIQUE INDEX "Attribute_categoryId_name_key" ON "Attribute" ("categoryId","name");--> statement-breakpoint
 CREATE UNIQUE INDEX "AttributeValue_attributeId_value_key" ON "AttributeValue" ("attributeId","value");--> statement-breakpoint
+CREATE INDEX "_AttributeValueToProductVariant_B_index" ON "_AttributeValueToProductVariant" ("B");--> statement-breakpoint
 CREATE UNIQUE INDEX "Category_imageId_key" ON "Category" ("imageId");--> statement-breakpoint
 CREATE UNIQUE INDEX "Category_name_key" ON "Category" ("name");--> statement-breakpoint
+CREATE UNIQUE INDEX "CollectionProduct_collectionId_position_key" ON "CollectionProduct" ("collectionId","position");--> statement-breakpoint
+CREATE INDEX "CollectionProduct_productId_idx" ON "CollectionProduct" ("productId");--> statement-breakpoint
+CREATE UNIQUE INDEX "Collection_handle_key" ON "Collection" ("handle");--> statement-breakpoint
+CREATE INDEX "ImageDeletion_notBefore_idx" ON "ImageDeletion" ("notBefore");--> statement-breakpoint
 CREATE UNIQUE INDEX "Image_keyLarge_key" ON "Image" ("keyLarge");--> statement-breakpoint
 CREATE UNIQUE INDEX "Image_keyMedium_key" ON "Image" ("keyMedium");--> statement-breakpoint
 CREATE UNIQUE INDEX "Image_keyThumb_key" ON "Image" ("keyThumb");--> statement-breakpoint
 CREATE INDEX "Image_productId_isThumbnail_idx" ON "Image" ("productId","isThumbnail");--> statement-breakpoint
+CREATE INDEX "OrderItem_orderId_idx" ON "OrderItem" ("orderId");--> statement-breakpoint
+CREATE INDEX "OrderItem_productId_idx" ON "OrderItem" ("productId");--> statement-breakpoint
+CREATE INDEX "OrderItem_variantId_idx" ON "OrderItem" ("variantId");--> statement-breakpoint
 CREATE INDEX "Order_createdAt_idx" ON "Order" ("createdAt");--> statement-breakpoint
 CREATE INDEX "Order_status_idx" ON "Order" ("status");--> statement-breakpoint
 CREATE UNIQUE INDEX "Order_stripePaymentIntentId_key" ON "Order" ("stripePaymentIntentId");--> statement-breakpoint
 CREATE UNIQUE INDEX "Order_stripeSessionId_key" ON "Order" ("stripeSessionId");--> statement-breakpoint
 CREATE INDEX "Order_userId_idx" ON "Order" ("userId");--> statement-breakpoint
-CREATE INDEX "OrderItem_orderId_idx" ON "OrderItem" ("orderId");--> statement-breakpoint
-CREATE INDEX "OrderItem_productId_idx" ON "OrderItem" ("productId");--> statement-breakpoint
-CREATE INDEX "OrderItem_variantId_idx" ON "OrderItem" ("variantId");--> statement-breakpoint
 CREATE INDEX "Product_categoryId_idx" ON "Product" ("categoryId");--> statement-breakpoint
 CREATE INDEX "Product_name_fts_idx" ON "Product" USING gin (to_tsvector('french'::regconfig, name));--> statement-breakpoint
 CREATE UNIQUE INDEX "Product_name_key" ON "Product" ("name");--> statement-breakpoint
@@ -208,18 +228,19 @@ CREATE INDEX "verification_identifier_idx" ON "verification" ("identifier");--> 
 CREATE UNIQUE INDEX "VerificationToken_identifier_token_key" ON "VerificationToken" ("identifier","token");--> statement-breakpoint
 CREATE UNIQUE INDEX "VerificationToken_token_key" ON "VerificationToken" ("token");--> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
-ALTER TABLE "session" ADD CONSTRAINT "session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
-ALTER TABLE "Comment" ADD CONSTRAINT "Comment_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;--> statement-breakpoint
-ALTER TABLE "Comment" ADD CONSTRAINT "Comment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE RESTRICT ON UPDATE CASCADE;--> statement-breakpoint
-ALTER TABLE "Category" ADD CONSTRAINT "Category_imageId_fkey" FOREIGN KEY ("imageId") REFERENCES "Image"("id") ON DELETE RESTRICT ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "Attribute" ADD CONSTRAINT "Attribute_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "AttributeValue" ADD CONSTRAINT "AttributeValue_attributeId_fkey" FOREIGN KEY ("attributeId") REFERENCES "Attribute"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
-ALTER TABLE "Image" ADD CONSTRAINT "Image_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
-ALTER TABLE "Product" ADD CONSTRAINT "Product_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;--> statement-breakpoint
-ALTER TABLE "ProductVariant" ADD CONSTRAINT "ProductVariant_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
-ALTER TABLE "Order" ADD CONSTRAINT "Order_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE RESTRICT ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "_AttributeValueToProductVariant" ADD CONSTRAINT "_AttributeValueToProductVariant_A_fkey" FOREIGN KEY ("A") REFERENCES "AttributeValue"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "_AttributeValueToProductVariant" ADD CONSTRAINT "_AttributeValueToProductVariant_B_fkey" FOREIGN KEY ("B") REFERENCES "ProductVariant"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
+ALTER TABLE "Category" ADD CONSTRAINT "Category_imageId_fkey" FOREIGN KEY ("imageId") REFERENCES "Image"("id") ON DELETE RESTRICT ON UPDATE CASCADE;--> statement-breakpoint
+ALTER TABLE "CollectionProduct" ADD CONSTRAINT "CollectionProduct_collectionId_Collection_id_fkey" FOREIGN KEY ("collectionId") REFERENCES "Collection"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "CollectionProduct" ADD CONSTRAINT "CollectionProduct_productId_Product_id_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "Comment" ADD CONSTRAINT "Comment_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;--> statement-breakpoint
+ALTER TABLE "Comment" ADD CONSTRAINT "Comment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE RESTRICT ON UPDATE CASCADE;--> statement-breakpoint
+ALTER TABLE "Image" ADD CONSTRAINT "Image_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
-ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "ProductVariant"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-*/
+ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "ProductVariant"("id") ON DELETE SET NULL ON UPDATE CASCADE;--> statement-breakpoint
+ALTER TABLE "Order" ADD CONSTRAINT "Order_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE RESTRICT ON UPDATE CASCADE;--> statement-breakpoint
+ALTER TABLE "Product" ADD CONSTRAINT "Product_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;--> statement-breakpoint
+ALTER TABLE "ProductVariant" ADD CONSTRAINT "ProductVariant_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
+ALTER TABLE "session" ADD CONSTRAINT "session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;

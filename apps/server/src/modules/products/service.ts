@@ -1,3 +1,4 @@
+import { db } from "@spice-world/server/lib/db";
 import {
   deleteUploads,
   type MultiSizeUploadData,
@@ -7,8 +8,10 @@ import {
 import { prisma } from "@spice-world/server/lib/prisma";
 import type { Product } from "@spice-world/server/prisma/client";
 import { type SQL, sql } from "bun";
+import { eq } from "drizzle-orm";
 import { status } from "elysia";
 import { LRUCache } from "lru-cache";
+import { commentTable } from "../../../drizzle/schema";
 import { categoryService } from "../categories/service";
 import { uploadFileErrStatus, type uuidGuard } from "../shared";
 import type * as ProductModel from "./model";
@@ -81,7 +84,7 @@ const localCache = new LRUCache<string, any>({
 
 /**
  * Invalidate product listing cache entries by pattern matching.
- * Cache key format: products:{sortBy}:{sortDir}:{skip}:{take}:{name}:{status}:{categories}
+ * Cache key format: products:{sortBy}:{sortDir}:{skip}:{take}:{name}:{status}:{categories}:{collection}
  *
  * @param options - Filter options for surgical invalidation
  * @param options.categoryIds - Invalidate entries containing these category IDs
@@ -89,7 +92,7 @@ const localCache = new LRUCache<string, any>({
  *
  * If no options provided, clears entire cache (fallback for complex operations)
  */
-function invalidateProductListings(options?: {
+export function invalidateProductListings(options?: {
   categoryIds?: string[];
   statuses?: string[];
 }) {
@@ -106,7 +109,7 @@ function invalidateProductListings(options?: {
       continue;
     }
 
-    // Key format: products:{sortBy}:{sortDir}:{skip}:{take}:{name}:{status}:{categories}
+    // Key format: products:{sortBy}:{sortDir}:{skip}:{take}:{name}:{status}:{categories}:{collection}
     const parts = key.split(":");
     const keyStatus = parts[6] ?? "";
     const keyCategories = parts[7] ?? "";
@@ -140,6 +143,22 @@ function invalidateProductListings(options?: {
   }
 }
 
+/** A collection is listed in its curated order unless a sort is requested. */
+function collectionClauses(
+  handle: string | undefined,
+  sorted: boolean,
+  orderBy: SQL.Query<unknown>
+) {
+  if (!handle) {
+    return { join: sql``, orderBy };
+  }
+  return {
+    join: sql`JOIN "CollectionProduct" cp ON cp."productId" = p.id
+		JOIN "Collection" c ON c.id = cp."collectionId" AND c.handle = ${handle}`,
+    orderBy: sorted ? orderBy : sql`cp.position`,
+  };
+}
+
 export const productService = {
   async get({
     name,
@@ -147,6 +166,7 @@ export const productService = {
     take,
     status: productStatus,
     categories,
+    collection,
     sortBy,
     sortDir,
   }: ProductModel.getQuery) {
@@ -160,7 +180,8 @@ export const productService = {
 
     const cacheKey =
       `products:${sortBy ?? "default"}:${sortDir}:${skip}:${take}:` +
-      `${name ?? ""}:${productStatus ?? ""}:${categoriesArray?.join(",") ?? ""}`;
+      `${name ?? ""}:${productStatus ?? ""}:${categoriesArray?.join(",") ?? ""}:` +
+      `${collection ?? ""}`;
 
     type getProduct = Product & {
       img: string | null;
@@ -201,9 +222,13 @@ export const productService = {
 
     const isPriceSort =
       orderByField === "priceMin" || orderByField === "priceMax";
-    const orderByClause = isPriceSort
-      ? sql`v_agg.${sql(orderByField)}`
-      : sql`p.${sql(orderByField)}`;
+    const byCollection = collectionClauses(
+      collection,
+      sortBy !== undefined,
+      isPriceSort
+        ? sql`v_agg.${sql(orderByField)}`
+        : sql`p.${sql(orderByField)}`
+    );
     const nullsClause = isPriceSort ? sql`NULLS LAST` : sql``;
 
     const orderDirection = direction === "asc" ? sql`ASC` : sql`DESC`;
@@ -217,6 +242,7 @@ export const productService = {
 			v_agg."priceMax",
 			v_agg."totalStock"
 		FROM "Product" p
+		${byCollection.join}
 		LEFT JOIN LATERAL (
 			SELECT
 				MIN(price) FILTER (WHERE stock > 0) AS "priceMin",
@@ -226,10 +252,30 @@ export const productService = {
 			WHERE "productId" = p.id
 		) v_agg ON true
 		${whereClause}
-		ORDER BY ${orderByClause} ${orderDirection} ${nullsClause} ${limitClause} ${offsetClause}`;
+		ORDER BY ${byCollection.orderBy} ${orderDirection} ${nullsClause} ${limitClause} ${offsetClause}`;
 
     localCache.set(cacheKey, [...products]);
     return [...products];
+  },
+
+  /** Newest first; only the author's display name leaves the server. */
+  async getComments({
+    id,
+    skip,
+    take,
+  }: uuidGuard & ProductModel.commentsQuery) {
+    const [comments, total] = await Promise.all([
+      db.query.comment.findMany({
+        where: { productId: id },
+        orderBy: { createdAt: "desc", id: "desc" },
+        offset: skip,
+        limit: take,
+        columns: { id: true, text: true, createdAt: true },
+        with: { user: { columns: { name: true } } },
+      }),
+      db.$count(commentTable, eq(commentTable.productId, id)),
+    ]);
+    return { comments, total };
   },
 
   async getById({ id }: uuidGuard) {

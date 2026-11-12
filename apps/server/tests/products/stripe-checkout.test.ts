@@ -40,9 +40,7 @@ describe("Stripe Checkout", () => {
     });
 
     // Import auth after setting up mocks but before using it
-    const { auth } = await import(
-      "@spice-world/server/plugins/better-auth.plugin.tsx"
-    );
+    const { auth } = await import("@spice-world/server/plugins/auth.plugin");
 
     // Create test user for authenticated requests
     const testUser = await auth.api.createUser({

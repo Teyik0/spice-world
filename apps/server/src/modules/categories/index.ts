@@ -1,7 +1,6 @@
-import { utapi } from "@spice-world/server/lib/images";
 import { drizzleErrorPlugin } from "@spice-world/server/plugins/drizzle.plugin";
-import { prismaErrorPlugin } from "@spice-world/server/plugins/prisma.plugin";
 import { Elysia, status, t } from "elysia";
+import { imageCleanupPlugin } from "../../plugins/image.plugin";
 import { uuidGuard } from "../shared";
 import * as CategoryModel from "./model";
 import { categoryService } from "./service";
@@ -11,8 +10,8 @@ export const categoryRouter = new Elysia({
   prefix: "/categories",
   tags: ["Categories"],
 })
-  .use(prismaErrorPlugin("Category"))
   .use(drizzleErrorPlugin)
+  .use(imageCleanupPlugin)
   .get(
     "/",
     {
@@ -26,6 +25,7 @@ export const categoryRouter = new Elysia({
     {
       body: CategoryModel.postBody,
       response: { 201: CategoryModel.categoryResult },
+      imageCleanup: true,
     },
     async ({ body }) => await categoryService.post(body)
   )
@@ -41,28 +41,9 @@ export const categoryRouter = new Elysia({
     },
     async ({ params }) => await categoryService.getById(params)
   )
-  .state("imageKeys", null as null | string[])
-  .onAfterResponse(async ({ store }) => {
-    // cleanup patch and delete
-    if (!store.imageKeys) {
-      return;
-    }
-
-    const { success } = await utapi.deleteFiles(store.imageKeys);
-    if (!success) {
-      console.warn(`Failed to delete images ${store.imageKeys.join(", ")}`);
-    }
-
-    store.imageKeys = null; // Reset imageKeys to null
-  })
-  .delete("/:id", async ({ params, store }) => {
+  .delete("/:id", { imageCleanup: true }, async ({ params }) => {
     const result = await categoryService.delete(params);
-    store.imageKeys = [
-      result.deletedImage.keyThumb,
-      result.deletedImage.keyMedium,
-      result.deletedImage.keyLarge,
-    ];
-    return status(200);
+    return "status" in result ? result : status(200);
   })
   .patch(
     "/:id",
@@ -74,8 +55,9 @@ export const categoryRouter = new Elysia({
         404: CategoryModel.patchNotFound,
         500: CategoryModel.patchFailure,
       },
+      imageCleanup: true,
     },
-    async ({ body, params, store }) => {
+    async ({ body, params }) => {
       const result = await categoryService.patch({
         ...params,
         ...body,
@@ -84,13 +66,6 @@ export const categoryRouter = new Elysia({
       if ("status" in result) {
         return result;
       }
-      store.imageKeys = result.oldImage
-        ? [
-            result.oldImage.keyThumb,
-            result.oldImage.keyMedium,
-            result.oldImage.keyLarge,
-          ]
-        : null;
       return result.category;
     }
   );

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { orderService } from "@spice-world/server/modules/orders/service";
-import { auth } from "@spice-world/server/plugins/better-auth.plugin.tsx";
+import { auth } from "@spice-world/server/plugins/auth.plugin";
 import { createTestDatabase } from "./utils/db-manager";
 import { expectDefined, randomLowerString } from "./utils/helper";
 

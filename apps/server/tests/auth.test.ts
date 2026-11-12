@@ -3,7 +3,7 @@ import { treaty } from "@elysia/eden";
 import {
   auth,
   betterAuthPlugin,
-} from "@spice-world/server/plugins/better-auth.plugin.tsx";
+} from "@spice-world/server/plugins/auth.plugin";
 import Elysia from "elysia";
 import { createTestDatabase } from "./utils/db-manager";
 import { expectDefined, randomLowerString } from "./utils/helper";
@@ -258,14 +258,6 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
 
   describe("Admin Routes Access Control", async () => {
     const { ordersRouter } = await import("@spice-world/server/modules/orders");
-    const { productsRouter } = await import(
-      "@spice-world/server/modules/products"
-    );
-
-    const adminApp = new Elysia()
-      .use(betterAuthPlugin)
-      .use(ordersRouter)
-      .use(productsRouter);
 
     let ordersApi: ReturnType<typeof treaty<typeof ordersRouter>>;
     let normalUserCookie: string;
@@ -329,31 +321,6 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
     });
 
     describe("Orders Admin Access", () => {
-      test("admin should access /api/is-admin endpoint", async () => {
-        const adminCheckApi = treaty(adminApp);
-        const { data, status } = await adminCheckApi.api["is-admin"].get({
-          headers: {
-            cookie: adminUserCookie,
-          },
-        });
-
-        expectDefined(data);
-        expect(data.user.role).toBe("admin");
-        expect(status).toBe(200);
-      });
-
-      test("normal user should not access /api/is-admin endpoint", async () => {
-        const adminCheckApi = treaty(adminApp);
-        const { data, status } = await adminCheckApi.api["is-admin"].get({
-          headers: {
-            cookie: normalUserCookie,
-          },
-        });
-
-        expect(data).toBeNull();
-        expect(status).toBe(403);
-      });
-
       test("admin can update order status", async () => {
         // Generate unique identifiers
         const testId = randomLowerString(8);

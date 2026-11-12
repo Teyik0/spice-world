@@ -4,10 +4,12 @@ import { Elysia } from "elysia";
 import type { ConstraintFailure } from "../lib/db";
 import { attributeConstraintFailures } from "../modules/attributes/errors";
 import { categoryConstraintFailures } from "../modules/categories/errors";
+import { collectionConstraintFailures } from "../modules/collections/errors";
 
 const constraintFailures = new Map<string, ConstraintFailure>([
   ...attributeConstraintFailures,
   ...categoryConstraintFailures,
+  ...collectionConstraintFailures,
 ]);
 
 function getPostgresError(error: unknown) {

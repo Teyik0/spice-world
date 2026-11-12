@@ -1,4 +1,4 @@
-import { betterAuthPlugin } from "@spice-world/server/plugins/better-auth.plugin";
+import { betterAuthPlugin } from "@spice-world/server/plugins/auth.plugin";
 import { prismaErrorPlugin } from "@spice-world/server/plugins/prisma.plugin";
 import { Elysia, status } from "elysia";
 import {

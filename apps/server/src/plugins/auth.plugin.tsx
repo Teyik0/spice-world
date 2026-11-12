@@ -169,8 +169,4 @@ export const betterAuthPlugin = new Elysia({
         };
       },
     }),
-  })
-  .get("/api/is-admin", { access: "admin" }, ({ session, user }) => ({
-    session,
-    user,
-  }));
+  });

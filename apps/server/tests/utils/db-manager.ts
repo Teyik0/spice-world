@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@spice-world/server/prisma/client";
 import { drizzle } from "drizzle-orm/bun-sql";
+import { migrate } from "drizzle-orm/bun-sql/migrator";
 import { relations } from "../../drizzle/relations";
 
 export interface TestDatabase {
@@ -19,7 +20,7 @@ const NON_ALPHANUMERIC = /[^a-zA-Z0-9]/gu;
  * Each test file gets its own PostgreSQL database to prevent conflicts
  * when running tests concurrently
  *
- * The database is created empty and the schema is applied using prisma db push.
+ * The database is created empty and the schema is applied using the drizzle migrations.
  * This avoids copying data from the main database (which could have 100k+ products).
  *
  * IMPORTANT: This function modifies process.env.DATABASE_URL to point to the test database.
@@ -72,26 +73,19 @@ export async function createTestDatabase(
   // Create connection string for the new test database
   const testConnectionString = `postgres://${url.username}:${url.password}@${url.host}/${databaseName}?sslmode=disable`;
 
-  // Apply schema using prisma db push (schema only, no data)
+  // Apply schema using the drizzle migrations (schema only, no data)
   const originalDbUrl = Bun.env.DATABASE_URL;
   Bun.env.DATABASE_URL = testConnectionString;
+  const testDrizzle = drizzle({ connection: testConnectionString, relations });
 
   try {
-    const proc = Bun.spawn(["bunx", "prisma", "db", "push"], {
-      cwd: `${import.meta.dir}/../../`,
-      env: { ...Bun.env, DATABASE_URL: testConnectionString },
-      stdout: "pipe",
-      stderr: "pipe",
+    await migrate(testDrizzle, {
+      migrationsFolder: `${import.meta.dir}/../../drizzle`,
     });
-
-    const exitCode = await proc.exited;
-    if (exitCode !== 0) {
-      const stderr = await new Response(proc.stderr).text();
-      throw new Error(`prisma db push failed: ${stderr}`);
-    }
   } catch (error) {
     // Restore original URL before throwing
     Bun.env.DATABASE_URL = originalDbUrl;
+    await testDrizzle.$client.close();
 
     // Try to cleanup the created database
     const cleanupAdapter = new PrismaPg({ connectionString: BASE_DB_URL });
@@ -109,7 +103,6 @@ export async function createTestDatabase(
 
   const testAdapter = new PrismaPg({ connectionString: testConnectionString });
   const testClient = new PrismaClient({ adapter: testAdapter });
-  const testDrizzle = drizzle({ connection: testConnectionString, relations });
   globalThis.__prisma = testClient;
 
   // Cleanup function to drop the database and restore original DATABASE_URL

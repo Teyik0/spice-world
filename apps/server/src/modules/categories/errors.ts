@@ -1,6 +1,14 @@
 import type { ConstraintFailure } from "../../lib/db";
 
 export const categoryConstraintFailures = new Map<string, ConstraintFailure>([
+  ...["23001", "23503"].map((code): [string, ConstraintFailure] => [
+    `${code}:Product_categoryId_fkey`,
+    {
+      status: 400,
+      code: "CATEGORY_IN_USE",
+      message: "Category is used by products",
+    },
+  ]),
   [
     "23505:Category_name_key",
     {

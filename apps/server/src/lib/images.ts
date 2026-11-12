@@ -1,6 +1,29 @@
 import { env } from "@spice-world/server/lib/env";
+import { sql } from "drizzle-orm";
 import { UTApi } from "uploadthing/server";
 import type { UploadedFileData } from "uploadthing/types";
+import { imageDeletionTable } from "../../drizzle/schema";
+import { db } from "./db";
+
+/** Queue keys to be checked in 15 min: deleted from UploadThing unless still referenced by "Image". */
+export const enqueueImageCheck = (
+  exec: Pick<typeof db, "insert">,
+  keys: string[]
+) =>
+  keys.length > 0
+    ? exec
+        .insert(imageDeletionTable)
+        .values(
+          keys.map((fileKey) => ({
+            fileKey,
+            notBefore: sql`statement_timestamp() + interval '15 minutes'`,
+          }))
+        )
+        .onConflictDoUpdate({
+          target: imageDeletionTable.fileKey,
+          set: { notBefore: sql`excluded."notBefore"` },
+        })
+    : undefined;
 
 export const utapi = new UTApi({
   token: env.UPLOADTHING_TOKEN,
@@ -67,21 +90,15 @@ const uploadBatch = async (
 ): Promise<{ data: MultiSizeUploadData[] | null; error: string | null }> => {
   const filesToUpload = allVariants.map((variant) => variant.file);
 
-  // Single atomic upload call
   const results = await utapi.uploadFiles(filesToUpload);
+  // Orphan by default: the cleanup keeps only keys a committed "Image" references.
+  await enqueueImageCheck(
+    db,
+    results.flatMap((r) => (r.data ? [r.data.key] : []))
+  );
 
-  // Check for any errors
   const errors = results.filter((r) => r.error);
   if (errors.length > 0) {
-    // Cleanup any successful uploads
-    const successfulUploads = results
-      .filter((r) => r.data)
-      .map((r) => r.data as UploadedFileData);
-
-    if (successfulUploads.length > 0) {
-      await utapi.deleteFiles(successfulUploads.map((u) => u.key));
-    }
-
     return {
       data: null,
       error: errors.map((e) => e.error?.message || "Upload failed").join(", "),

@@ -18,6 +18,8 @@ const tables = {
   user: schema.userTable,
   verification: schema.verificationTable,
   verificationToken: schema.verificationTokenTable,
+  collection: schema.collectionTable,
+  collectionProduct: schema.collectionProductTable,
 };
 
 export const relations = defineRelations(tables, (r) => ({
@@ -137,6 +139,16 @@ export const relations = defineRelations(tables, (r) => ({
     user: r.one.user({
       from: r.session.userId,
       to: r.user.id,
+    }),
+  },
+  collection: {
+    items: r.many.collectionProduct(),
+  },
+  collectionProduct: {
+    collection: r.one.collection({
+      from: r.collectionProduct.collectionId,
+      to: r.collection.id,
+      optional: false,
     }),
   },
 }));

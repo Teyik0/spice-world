@@ -258,6 +258,16 @@ export const imageTable = pgTable(
   ]
 );
 
+export const imageDeletionTable = pgTable(
+  "ImageDeletion",
+  {
+    fileKey: text().primaryKey(),
+    notBefore: timestamp({ withTimezone: true }).notNull(),
+    attempts: integer().default(0).notNull(),
+  },
+  (table) => [index("ImageDeletion_notBefore_idx").on(table.notBefore)]
+);
+
 export const orderTable = pgTable(
   "Order",
   {
@@ -469,7 +479,7 @@ export const userTable = pgTable(
     name: text(),
     email: text(),
     emailVerified: boolean().default(false).notNull(),
-    imageTable: text(),
+    image: text(),
     role: text().default("user").notNull(),
     createdAt: timestamp({ precision: 3 })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -524,5 +534,36 @@ export const verificationTokenTable = pgTable(
       "btree",
       table.token.asc().nullsLast()
     ),
+  ]
+);
+
+export const collectionTable = pgTable(
+  "Collection",
+  {
+    id: text().primaryKey(),
+    handle: text().notNull(),
+    name: text().notNull(),
+  },
+  (table) => [uniqueIndex("Collection_handle_key").on(table.handle)]
+);
+
+export const collectionProductTable = pgTable(
+  "CollectionProduct",
+  {
+    collectionId: text()
+      .notNull()
+      .references(() => collectionTable.id, { onDelete: "cascade" }),
+    productId: text()
+      .notNull()
+      .references(() => productTable.id, { onDelete: "cascade" }),
+    position: integer().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.collectionId, table.productId] }),
+    uniqueIndex("CollectionProduct_collectionId_position_key").on(
+      table.collectionId,
+      table.position
+    ),
+    index("CollectionProduct_productId_idx").on(table.productId),
   ]
 );

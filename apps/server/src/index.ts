@@ -6,11 +6,12 @@ import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { env } from "@spice-world/server/lib/env";
 import { attributeRouter } from "@spice-world/server/modules/attributes";
 import { categoryRouter } from "@spice-world/server/modules/categories";
+import { collectionRouter } from "@spice-world/server/modules/collections";
 import { ordersRouter } from "@spice-world/server/modules/orders";
 import { productsRouter } from "@spice-world/server/modules/products";
 import { Elysia, setFileTypeDetector } from "elysia";
 import { fileTypeFromBlob } from "file-type";
-import { betterAuthPlugin } from "./plugins/better-auth.plugin.tsx";
+import { betterAuthPlugin } from "./plugins/auth.plugin.tsx";
 
 setFileTypeDetector(fileTypeFromBlob);
 
@@ -77,6 +78,7 @@ const app = new Elysia()
     }
   })
   .use(categoryRouter)
+  .use(collectionRouter)
   .use(attributeRouter)
   .use(productsRouter)
   .use(ordersRouter)

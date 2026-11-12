@@ -11,6 +11,7 @@ import {
   attributeValueTable,
   categoryTable,
   imageTable,
+  productTable,
 } from "../../drizzle/schema";
 import type { createTestDatabase, TestDatabase } from "./db-manager";
 
@@ -225,6 +226,32 @@ export const createTestCategory = async ({
     expectDefined(category);
     return category;
   });
+};
+
+/** Inserts bare products (no variants, no images) in a fresh category. */
+export const createTestProducts = async (
+  testDb: TestDatabase,
+  count: number,
+  status: "DRAFT" | "PUBLISHED" = "PUBLISHED"
+) => {
+  const category = await createTestCategory({ testDb });
+  return await testDb.db
+    .insert(productTable)
+    .values(
+      Array.from({ length: count }, () => {
+        const testId = randomLowerString(8);
+        return {
+          id: Bun.randomUUIDv7(),
+          name: `test product ${testId}`,
+          slug: `test-product-${testId}`,
+          description: "Test product description",
+          status,
+          categoryId: category.id,
+          updatedAt: new Date(),
+        };
+      })
+    )
+    .returning();
 };
 
 interface SetupProductOptions {

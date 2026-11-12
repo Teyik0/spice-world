@@ -1,5 +1,5 @@
 import { env } from "../lib/env";
-import { stripeClient } from "../plugins/better-auth.plugin";
+import { stripeClient } from "../plugins/auth.plugin";
 
 export interface CheckoutItem {
   currency: string;
