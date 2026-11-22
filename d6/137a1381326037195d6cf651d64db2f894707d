@@ -1,0 +1,117 @@
+apps/server/src/index.ts
+  s_5272e41344f821::t_9548ce415392b0 55-57
+  s_5272e41344f821::t_7fe3d784142246 29
+  s_5272e41344f821::t_0e50e007ccaf1a 68,70-72
+apps/server/src/modules/categories/service.ts
+  s_d3a435921027bb::t_e41048a556a3dd 3,72-101,103-106,108-110,112-124,126-130,132-139,142-157,159-187,190-198,200-201,338
+apps/server/src/plugins/image.plugin.ts
+  s_d3a435921027bb::t_e41048a556a3dd 9-10
+apps/server/load/load.test.ts
+  s_5819f83b84c69a::t_51fcacf53a4362 45
+  s_5819f83b84c69a::t_f5ce4aa58b3239 41-42,44,46,68-104,106-114,123-131,182-184,186-206,208-210,220-222,224,227-234
+  s_5819f83b84c69a::t_fd78b2c21e1077 132,156-161,165-174
+  s_5819f83b84c69a::t_09c5649a0f2cad 1
+  s_5819f83b84c69a::t_e5f15903258e50 162-164
+  s_5819f83b84c69a::t_5cf98d7812ff4d 207
+  s_5819f83b84c69a::t_d316e85fce4e6b 223,225-226
+  s_5819f83b84c69a::t_ccd5520a58fede 105,175-181
+  s_5819f83b84c69a::t_4ce9aa9babf1b8 39-40,43
+  s_5819f83b84c69a::t_fbba5ff8ffb9cd 115-122
+  s_5819f83b84c69a::t_f48b1b73f5dd14 38
+  s_5819f83b84c69a::t_bdb0f419d91de0 211
+  s_5819f83b84c69a::t_bcadb59b8384c0 133
+apps/server/src/plugins/auth.plugin.tsx
+  s_5272e41344f821::t_8a1994d7a9ab8e 28-33
+apps/server/load/seed.data.ts
+  s_5cda183a1078c3::t_786cc68698de52 92,98-102
+  s_5cda183a1078c3::t_3fd6efe3634581 156-157
+  s_3101773c98b209::t_0712eb114e191d 3
+  s_5cda183a1078c3::t_3288ff1b336625 15-16
+  s_3101773c98b209::t_f24429cb2cc6b0 206
+  s_5cda183a1078c3::t_318e7e9101c990 90,146-148,150,152,158-165,167-174,176-199,202
+  s_5cda183a1078c3::t_6395d4af0662f2 43-45
+  s_5cda183a1078c3::t_966ea3c7520e86 58-60
+  s_5cda183a1078c3::t_831fa277d6bf45 80-81
+  s_5cda183a1078c3::t_e1910c64c30783 52-57,61
+  s_5cda183a1078c3::t_43718e1f969134 82-84,175
+  s_5cda183a1078c3::t_cf1a65ba9b1467 207-216,218-219,223-224
+  s_3101773c98b209::t_db1c8fd56b9cc8 4-13,71-77,79,86-87,200,232
+  s_5cda183a1078c3::t_5f718a38c8dbbf 1-2,39-40,42,48-51,62-66,68-70,85,89,111,141,166,205,226
+  s_5272e41344f821::t_308ca3a4d96644 19-24,28-37
+  s_5cda183a1078c3::t_c0621f677a964e 93-97,103-110,112-117,119,121-127,129-133,135-140,143
+  s_5cda183a1078c3::t_0cd43b67a58938 154-155
+  s_5cda183a1078c3::t_69c015e8027159 204
+apps/server/package.json
+  s_3101773c98b209::t_ed57149f7a10e8 40
+  s_c9dd4d7072f033::t_0e2e619bcb99d6 33
+  s_c9dd4d7072f033::t_21302d83df3d70 31-32
+apps/server/tests/category.test.ts
+  s_d3a435921027bb::t_660d7ee58b3172 295-301,1010,1402-1411,1414-1417
+  s_d3a435921027bb::t_13451d5238b89e 213,1008
+  s_d3a435921027bb::t_86d43e8bb19d92 10,1412-1413
+  s_d3a435921027bb::t_d4e4d03a4b4ddd 1418-1419
+apps/server/tests/utils/helper.ts
+  s_c9dd4d7072f033::t_5cd82b83f178eb 71-76,181,183,207,209
+  s_d3a435921027bb::t_13451d5238b89e 29
+apps/server/src/lib/images.ts
+  s_d3a435921027bb::t_deed0a3d7323af 60,62-64
+  s_d3a435921027bb::t_082b2e33ac9111 65
+  s_d3a435921027bb::t_199afd4abb3741 52-55,59,61
+  s_d3a435921027bb::t_e41048a556a3dd 2-3,28-51,58,84,112-115,131,134,136,162-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6137a1381326037195d6cf651d64db2f894707d",
+  "prompts": {},
+  "sessions": {
+    "s_3101773c98b209": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "027685b1-a5dd-4501-ada8-63b94c0f9247",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_5272e41344f821": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e30ebcad3ffedF2Aq2gcQ5cQOf",
+        "model": "unknown"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_5819f83b84c69a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e30b19bc1ffeDXWSS7WTXW5doW",
+        "model": "unknown"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_5cda183a1078c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d07804f-2b5e-4e72-bb08-ac0c467aed8b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_c9dd4d7072f033": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79f29fad-43bd-482a-9250-948b43a5a3a5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_d3a435921027bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e418d01f-95b2-4fa4-9ae6-c71da1d0f1dd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
