@@ -1,341 +1,232 @@
-import { faker } from "@faker-js/faker";
-import { prisma } from "../src/lib/prisma";
-import type { Image } from "../src/prisma/client";
+import { eq, isNotNull, sql } from "drizzle-orm";
+import { reset, seed } from "drizzle-seed";
+import * as schema from "../drizzle/schema";
+import {
+  attributeTable,
+  attributeValueTable,
+  attributeValueToProductVariantTable,
+  categoryTable,
+  imageTable,
+  productTable,
+  productVariantTable,
+} from "../drizzle/schema";
+import { db } from "../src/lib/db";
 
-const NUM_PRODUCTS = 100_000;
-const VARIANTS_PER_PRODUCT = 5;
-const BATCH_SIZE = 1000; // Products per createMany
-
-// Cache: categoryId -> { attributeId -> attributeValueIds[] }
-const categoryAttributesCache = new Map<string, Map<string, string[]>>();
+const NUM_PRODUCTS = 100_000; // variants (×5) and images (×2) are set via `with` in seedProductBatch
+const BATCH_SIZE = 5000; // products per seed() call, one log line each
 
 const ATTRIBUTE_VALUES: Record<string, string[]> = {
-  Size: ["Small", "Medium", "Large", "XL"],
-  Color: ["Black", "White", "Red", "Blue", "Green"],
-  Weight: ["50g", "100g", "250g", "500g", "1kg"],
-  Material: ["Cotton", "Polyester", "Leather", "Metal", "Wood"],
-  Style: ["Classic", "Modern", "Vintage", "Minimalist"],
-  Origin: ["France", "Italy", "Japan", "USA", "Spain"],
+  size: ["small", "medium", "large", "xxl"],
+  color: ["black", "white", "red", "blue", "green"],
+  weight: ["50g", "100g", "250g", "500g", "1kg"],
+  material: ["cotton", "polyester", "leather", "metal", "wood"],
+  style: ["classic", "modern", "vintage", "minimalist"],
+  origin: ["france", "italy", "japan", "usa", "spain"],
 };
-
 const ATTRIBUTE_NAMES = Object.keys(ATTRIBUTE_VALUES);
 const CATEGORY_NAMES = [
-  "Electronics",
-  "Clothing",
-  "Food & Beverages",
-  "Home & Garden",
-  "Sports & Outdoors",
-  "Books & Media",
-  "Health & Beauty",
-  "Toys & Games",
-  "Automotive",
-  "Office Supplies",
+  "electronics",
+  "clothing",
+  "food and beverages",
+  "home and garden",
+  "sports and outdoors",
+  "books and media",
+  "health and beauty",
+  "toys and games",
+  "automotive",
+  "office supplies",
 ];
+const ADJECTIVES = ["Rustic", "Smoked", "Organic", "Sleek", "Vintage", "Wild"];
+const NOUNS = ["Paprika", "Pepper", "Saffron", "Lamp", "Chair", "Bottle"];
 
-async function getOrCreateCategoryWithAttributes(categoryName: string) {
-  const imageKey = `category-${faker.string.nanoid()}`;
-
-  const category = await prisma.category.upsert({
-    where: { name: categoryName },
-    update: {},
-    create: {
-      name: categoryName,
-      image: {
-        create: {
-          urlThumb: faker.image.url({ width: 128, height: 128 }),
-          keyThumb: imageKey,
-          urlMedium: faker.image.url({ width: 500, height: 500 }),
-          keyMedium: imageKey,
-          urlLarge: faker.image.url({ width: 1200, height: 1200 }),
-          keyLarge: imageKey,
-          isThumbnail: true,
-        },
-      },
-    },
-    include: {
-      attributes: {
-        include: {
-          values: true,
-        },
-      },
-    },
-  });
-
-  if (categoryAttributesCache.has(category.id)) {
-    return {
-      category,
-      attributesByAttrId: categoryAttributesCache.get(category.id) as Map<
-        string,
-        string[]
-      >,
-    };
-  }
-
-  const attributesByAttrId = new Map<string, string[]>();
-
-  if (category.attributes.length > 0) {
-    for (const attr of category.attributes) {
-      attributesByAttrId.set(
-        attr.id,
-        attr.values.map((v) => v.id)
-      );
-    }
-  } else {
-    const selectedAttrNames = faker.helpers.arrayElements(
-      ATTRIBUTE_NAMES,
-      faker.number.int({ min: 500, max: 10_000 })
-    );
-
-    for (const attrName of selectedAttrNames) {
-      const values = ATTRIBUTE_VALUES[attrName];
-      if (!values) {
-        throw new Error(`Unknown attribute: ${attrName}`);
-      }
-
-      // biome-ignore lint/performance/noAwaitInLoops: Keep seed writes sequential to bound database load and preserve cache ordering.
-      const attr = await prisma.attribute.create({
-        data: {
-          name: attrName,
-          categoryId: category.id,
-          values: {
-            create: values.map((v) => ({ value: v })),
-          },
-        },
-        include: { values: true },
-      });
-
-      attributesByAttrId.set(
-        attr.id,
-        attr.values.map((v) => v.id)
-      );
-    }
-  }
-
-  categoryAttributesCache.set(category.id, attributesByAttrId);
-  return { category, attributesByAttrId };
-}
-
-function pickRandomAttributeValueIds(
-  attributesByAttrId: Map<string, string[]>
-): string[] {
-  const selectedIds: string[] = [];
-  const entries = Array.from(attributesByAttrId.values());
-  for (const valueIds of entries) {
-    const randomValueId = faker.helpers.arrayElement(valueIds);
-    selectedIds.push(randomValueId);
-  }
-  return selectedIds;
-}
-
-async function seedCategoriesAndAttributes() {
-  console.log("Creating categories and attributes...");
-
-  for (const categoryName of CATEGORY_NAMES) {
-    // biome-ignore lint/performance/noAwaitInLoops: Keep seed writes sequential to bound database load and preserve cache ordering.
-    await getOrCreateCategoryWithAttributes(categoryName);
-  }
-
-  console.log(
-    `✓ Created ${CATEGORY_NAMES.length} categories with attributes\n`
+const imageUrls = (size: number) =>
+  Array.from(
+    { length: 20 },
+    (_, i) => `https://picsum.photos/seed/${i}/${size}/${size}`
   );
-}
 
-async function createProductBatch(batchSize: number): Promise<void> {
-  // Step 1: Generate product data
-  const productsData: Array<{
-    name: string;
-    slug: string;
-    description: string;
-    status: "DRAFT" | "ARCHIVED" | "PUBLISHED";
-    categoryId: string;
-  }> = [];
-  const productsWithCategoryInfo: Array<{
-    index: number;
-    categoryId: string;
-    attributesByAttrId: Map<string, string[]>;
-  }> = [];
-
-  for (let i = 0; i < batchSize; i += 1) {
-    const categoryName = faker.helpers.arrayElement(CATEGORY_NAMES);
-    const { category, attributesByAttrId } =
-      // biome-ignore lint/performance/noAwaitInLoops: Keep seed writes sequential to bound database load and preserve cache ordering.
-      await getOrCreateCategoryWithAttributes(categoryName);
-
-    const baseName = faker.commerce.productName().toLowerCase();
-    const uniqueSuffix = faker.string.alpha({ length: 6, casing: "lower" });
-    const name = `${baseName} ${uniqueSuffix}`; // Guaranteed unique
-    const slug = `${faker.helpers.slugify(baseName)}-${uniqueSuffix}`; // Guaranteed unique
-
-    productsData.push({
+async function seedCategories() {
+  const categories = CATEGORY_NAMES.map((name, i) => ({
+    id: Bun.randomUUIDv7(),
+    name,
+    imageId: Bun.randomUUIDv7(),
+    image: {
+      isThumbnail: true,
+      keyThumb: `category-${i}-thumb`,
+      keyMedium: `category-${i}-medium`,
+      keyLarge: `category-${i}-large`,
+      urlThumb: `https://picsum.photos/seed/category-${i}/128/128`,
+      urlMedium: `https://picsum.photos/seed/category-${i}/500/500`,
+      urlLarge: `https://picsum.photos/seed/category-${i}/1200/1200`,
+    },
+  }));
+  // 2-3 attributes per category, rotating through ATTRIBUTE_NAMES
+  const attributes = categories.flatMap(({ id: categoryId }, i) =>
+    ATTRIBUTE_NAMES.slice(i % 4, (i % 4) + 2 + (i % 2)).map((name) => ({
+      id: Bun.randomUUIDv7(),
       name,
-      slug,
-      description: faker.commerce.productDescription().toLowerCase(),
-      status: faker.helpers.arrayElement(["DRAFT", "ARCHIVED", "PUBLISHED"]),
-      categoryId: category.id,
-    });
-
-    productsWithCategoryInfo.push({
-      index: i,
-      categoryId: category.id,
-      attributesByAttrId,
-    });
-  }
-
-  // Step 2: Bulk insert products
-  await prisma.product.createMany({
-    data: productsData,
-    skipDuplicates: true,
-  });
-
-  // Step 3: Fetch created products to get IDs
-  const createdProducts = await prisma.product.findMany({
-    where: {
-      slug: {
-        in: productsData.map((p) => p.slug),
-      },
-    },
-    select: {
-      id: true,
-      slug: true,
-      categoryId: true,
-    },
-  });
-
-  // Step 4: Create a map of slug -> product
-  const productMap = new Map(createdProducts.map((p) => [p.slug, p]));
-
-  // Step 5: Generate variants and images data
-  const variantsData: Array<{
-    productId: string;
-    price: number;
-    stock: number;
-    attributeValueIds: string[];
-  }> = [];
-  const imagesData: Omit<Image, "altText" | "id">[] = [];
-
-  for (const [i, productData] of productsData.entries()) {
-    const product = productMap.get(productData.slug);
-    if (!product) {
-      continue;
-    }
-
-    const categoryInfo = productsWithCategoryInfo[i];
-    if (!categoryInfo) {
-      throw new Error(`Missing category for product: ${productData.slug}`);
-    }
-
-    // Generate variants
-    for (let v = 0; v < VARIANTS_PER_PRODUCT; v += 1) {
-      const attributeValueIds = pickRandomAttributeValueIds(
-        categoryInfo.attributesByAttrId
-      );
-
-      variantsData.push({
-        productId: product.id,
-        price: faker.number.int({ min: 500, max: 10_000 }),
-        stock: faker.number.int({ min: 0, max: 500 }),
-        attributeValueIds,
-      });
-    }
-
-    // Generate images
-    imagesData.push(
-      {
-        productId: product.id,
-        urlThumb: faker.image.url({ width: 128, height: 128 }),
-        keyThumb: `${product.id}-1-thumb`,
-        urlMedium: faker.image.url({ width: 500, height: 500 }),
-        keyMedium: `${product.id}-1-medium`,
-        urlLarge: faker.image.url({ width: 1200, height: 1200 }),
-        keyLarge: `${product.id}-1-large`,
-        isThumbnail: true,
-      },
-      {
-        productId: product.id,
-        urlThumb: faker.image.url({ width: 128, height: 128 }),
-        keyThumb: `${product.id}-thumb`,
-        urlMedium: faker.image.url({ width: 500, height: 500 }),
-        keyMedium: `${product.id}-medium`,
-        urlLarge: faker.image.url({ width: 1200, height: 1200 }),
-        keyLarge: `${product.id}-large`,
-        isThumbnail: false,
-      }
-    );
-  }
-
-  // Step 6: Bulk insert images
-  await prisma.image.createMany({
-    data: imagesData,
-    skipDuplicates: true,
-  });
-
-  // Step 7: Create variants with attributeValue connections (must use individual creates)
-  await prisma.$transaction(
-    async (tx) => {
-      for (const variantData of variantsData) {
-        // biome-ignore lint/performance/noAwaitInLoops: Keep seed writes sequential to bound database load and preserve cache ordering.
-        await tx.productVariant.create({
-          data: {
-            productId: variantData.productId,
-            price: variantData.price,
-            stock: variantData.stock,
-            attributeValues: {
-              connect: variantData.attributeValueIds.map((id) => ({ id })),
-            },
-          },
-        });
-      }
-    },
-    {
-      maxWait: 30_000,
-      timeout: 120_000,
-    }
+      categoryId,
+    }))
   );
+  const values = attributes.flatMap(({ id: attributeId, name }) =>
+    (ATTRIBUTE_VALUES[name] ?? []).map((value) => ({
+      id: Bun.randomUUIDv7(),
+      value,
+      attributeId,
+    }))
+  );
+
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(imageTable)
+      .values(
+        categories.map(({ imageId, image }) => ({ id: imageId, ...image }))
+      );
+    await tx.insert(categoryTable).values(categories);
+    await tx.insert(attributeTable).values(attributes);
+    await tx.insert(attributeValueTable).values(values);
+  });
+  return categories.map(({ id }) => id);
+}
+
+// Uniqueness is only guaranteed within one seed() call: cross-batch unique columns use uuid().
+function seedProductBatch(
+  categoryIds: string[],
+  offset: number,
+  count: number
+) {
+  return seed(
+    db,
+    { productTable, productVariantTable, imageTable },
+    { seed: offset }
+  ).refine((f) => ({
+    productTable: {
+      count,
+      columns: {
+        id: f.uuid(),
+        name: f.valuesFromArray({
+          values: Array.from({ length: count }, (_, j) => {
+            const i = offset + j;
+            return `${ADJECTIVES[i % ADJECTIVES.length]} ${NOUNS[Math.floor(i / ADJECTIVES.length) % NOUNS.length]} ${i.toString(36)}`;
+          }),
+          isUnique: true,
+        }),
+        slug: f.uuid(), // overwritten from name in fixInvariants()
+        description: f.loremIpsum({ sentencesCount: 2 }),
+        categoryId: f.valuesFromArray({ values: categoryIds }),
+        version: false,
+      },
+      with: { productVariantTable: 5, imageTable: 2 },
+    },
+    productVariantTable: {
+      columns: {
+        id: f.uuid(),
+        sku: false,
+        currency: false,
+        price: f.int({ minValue: 500, maxValue: 10_000 }),
+        stock: f.int({ minValue: 0, maxValue: 500 }),
+      },
+    },
+    imageTable: {
+      columns: {
+        id: f.uuid(),
+        altText: false,
+        isThumbnail: false,
+        keyThumb: f.uuid(),
+        keyMedium: f.uuid(),
+        keyLarge: f.uuid(),
+        urlThumb: f.valuesFromArray({ values: imageUrls(128) }),
+        urlMedium: f.valuesFromArray({ values: imageUrls(500) }),
+        urlLarge: f.valuesFromArray({ values: imageUrls(1200) }),
+      },
+    },
+  }));
+}
+
+async function step(label: string, query: PromiseLike<unknown>) {
+  const start = performance.now();
+  await query;
+  console.log(
+    `  ✓ ${label} in ${((performance.now() - start) / 1000).toFixed(1)}s`
+  );
+}
+
+// Invariants drizzle-seed can't express: derived slug, one thumbnail per product,
+// one value per category attribute for each variant.
+function fixInvariants() {
+  return db.transaction(async (tx) => {
+    await step(
+      "slugs",
+      tx.update(productTable).set({
+        slug: sql`regexp_replace(lower(${productTable.name}), '[^a-z0-9]+', '-', 'g')`,
+      })
+    );
+    await step(
+      "thumbnails",
+      tx
+        .update(imageTable)
+        .set({ isThumbnail: true })
+        .where(
+          sql`${imageTable.id} in ${tx
+            .selectDistinctOn([imageTable.productId], { id: imageTable.id })
+            .from(imageTable)
+            .where(isNotNull(imageTable.productId))
+            .orderBy(imageTable.productId, imageTable.id)}`
+        )
+    );
+    await step(
+      "variant attribute values",
+      tx.insert(attributeValueToProductVariantTable).select(
+        tx
+          .selectDistinctOn([productVariantTable.id, attributeTable.id], {
+            a: attributeValueTable.id,
+            b: productVariantTable.id,
+          })
+          .from(productVariantTable)
+          .innerJoin(
+            productTable,
+            eq(productTable.id, productVariantTable.productId)
+          )
+          .innerJoin(
+            attributeTable,
+            eq(attributeTable.categoryId, productTable.categoryId)
+          )
+          .innerJoin(
+            attributeValueTable,
+            eq(attributeValueTable.attributeId, attributeTable.id)
+          )
+          .orderBy(productVariantTable.id, attributeTable.id, sql`random()`)
+      )
+    );
+  });
 }
 
 async function main() {
-  console.log(
-    `Generating ${NUM_PRODUCTS} products in batches of ${BATCH_SIZE}...\n`
-  );
+  const start = performance.now();
+  await reset(db, schema);
+  const categoryIds = await seedCategories();
+  console.log(`✓ Seeded ${CATEGORY_NAMES.length} categories with attributes`);
 
-  // Step 1: Pre-create all categories and attributes
-  await seedCategoriesAndAttributes();
-
-  // Step 2: Create products in batches
-  const totalBatches = Math.ceil(NUM_PRODUCTS / BATCH_SIZE);
-  const startTime = Date.now();
-
-  for (let batchIndex = 0; batchIndex < totalBatches; batchIndex += 1) {
-    const isLastBatch = batchIndex === totalBatches - 1;
-    const currentBatchSize = isLastBatch
-      ? NUM_PRODUCTS - batchIndex * BATCH_SIZE
-      : BATCH_SIZE;
-
-    const batchStartTime = Date.now();
-
-    // biome-ignore lint/performance/noAwaitInLoops: Keep seed writes sequential to bound database load and preserve cache ordering.
-    await createProductBatch(currentBatchSize);
-
-    const batchDuration = ((Date.now() - batchStartTime) / 1000).toFixed(2);
-    const totalCreated = Math.min((batchIndex + 1) * BATCH_SIZE, NUM_PRODUCTS);
-    const progress = ((totalCreated / NUM_PRODUCTS) * 100).toFixed(1);
-    const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
-    const rate = (totalCreated / (Date.now() - startTime)) * 1000;
-    const eta = ((NUM_PRODUCTS - totalCreated) / rate).toFixed(0);
-
+  for (let offset = 0; offset < NUM_PRODUCTS; offset += BATCH_SIZE) {
+    const count = Math.min(BATCH_SIZE, NUM_PRODUCTS - offset);
+    const batchStart = performance.now();
+    // biome-ignore lint/performance/noAwaitInLoops: Keep seed writes sequential to bound database load.
+    await seedProductBatch(categoryIds, offset, count);
+    const done = offset + count;
+    const rate = done / ((performance.now() - start) / 1000);
     console.log(
-      `Batch ${batchIndex + 1}/${totalBatches} (${currentBatchSize} products) completed in ${batchDuration}s | ` +
-        `Total: ${totalCreated.toLocaleString()}/${NUM_PRODUCTS.toLocaleString()} (${progress}%) | ` +
-        `Rate: ${rate.toFixed(0)}/s | Elapsed: ${elapsed}s | ETA: ${eta}s`
+      `Batch ${offset / BATCH_SIZE + 1}/${Math.ceil(NUM_PRODUCTS / BATCH_SIZE)} in ${((performance.now() - batchStart) / 1000).toFixed(1)}s | ` +
+        `${done.toLocaleString()}/${NUM_PRODUCTS.toLocaleString()} | ${rate.toFixed(0)}/s | ETA ${((NUM_PRODUCTS - done) / rate).toFixed(0)}s`
     );
   }
 
-  const totalDuration = ((Date.now() - startTime) / 1000).toFixed(2);
+  console.log("Linking variants to attribute values, thumbnails, slugs...");
+  await fixInvariants();
   console.log(
-    `\n✓ Done! Created ${NUM_PRODUCTS.toLocaleString()} products in ${totalDuration}s 🎉`
+    `✓ Seeded ${NUM_PRODUCTS.toLocaleString()} products in ${((performance.now() - start) / 1000).toFixed(1)}s`
   );
 }
 
 main()
   .catch((e) => console.error(e))
-  .finally(async () => await prisma.$disconnect());
+  .finally(async () => await db.$client.close());

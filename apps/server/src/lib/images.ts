@@ -1,6 +1,6 @@
 import { env } from "@spice-world/server/lib/env";
-import { sql } from "drizzle-orm";
-import { UTApi } from "uploadthing/server";
+import { and, gt, inArray, sql } from "drizzle-orm";
+import { UTApi, UTFile } from "uploadthing/server";
 import type { UploadedFileData } from "uploadthing/types";
 import { imageDeletionTable } from "../../drizzle/schema";
 import { db } from "./db";
@@ -25,8 +25,44 @@ export const enqueueImageCheck = (
         })
     : undefined;
 
+/**
+ * Claims uploads for the current transaction. Throws (→ rollback) when the cleanup already took
+ * a key, so a committed "Image" never references a deleted file. Call it right before the write
+ * that references the keys: an early return commits the transaction, and the claim with it.
+ */
+export async function claimUploads(
+  tx: Pick<typeof db, "delete">,
+  uploads: MultiSizeUploadData[]
+) {
+  const keys = uploads.flatMap((u) => [u.thumb.key, u.medium.key, u.large.key]);
+  const claimed = await tx
+    .delete(imageDeletionTable)
+    .where(
+      and(
+        inArray(imageDeletionTable.fileKey, keys),
+        gt(imageDeletionTable.notBefore, sql`statement_timestamp()`)
+      )
+    )
+    .returning({ fileKey: imageDeletionTable.fileKey });
+  if (claimed.length !== keys.length) {
+    throw new Error("Upload expired before commit");
+  }
+}
+
+type UTFetch = NonNullable<
+  NonNullable<ConstructorParameters<typeof UTApi>[0]>["fetch"]
+>;
+
 export const utapi = new UTApi({
   token: env.UPLOADTHING_TOKEN,
+  defaultKeyType: "customId",
+  fetch: ((input: string | URL | Request, init?: RequestInit) => {
+    const timeout = AbortSignal.timeout(60_000);
+    return fetch(input, {
+      ...init,
+      signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
+    });
+  }) as unknown as UTFetch,
 });
 
 // Image size configurations for multi-size upload
@@ -45,7 +81,7 @@ export interface MultiSizeUploadData {
 }
 
 interface ImageVariant {
-  file: File;
+  file: UTFile & { customId: string };
   originalIndex: number;
   size: ImageSize;
 }
@@ -73,7 +109,10 @@ const transformImage = (
         .blob();
 
       return {
-        file: new File([blob], name, { type: blob.type }),
+        file: new UTFile([blob], name, {
+          customId: Bun.randomUUIDv7(),
+          type: blob.type,
+        }) as ImageVariant["file"],
         originalIndex,
         size,
       };
@@ -89,13 +128,12 @@ const uploadBatch = async (
   allVariants: ImageVariant[]
 ): Promise<{ data: MultiSizeUploadData[] | null; error: string | null }> => {
   const filesToUpload = allVariants.map((variant) => variant.file);
-
-  const results = await utapi.uploadFiles(filesToUpload);
-  // Orphan by default: the cleanup keeps only keys a committed "Image" references.
+  // Orphan by default, queued before upload: only a claim by a committed transaction keeps a file.
   await enqueueImageCheck(
     db,
-    results.flatMap((r) => (r.data ? [r.data.key] : []))
+    filesToUpload.map((f) => f.customId)
   );
+  const results = await utapi.uploadFiles(filesToUpload);
 
   const errors = results.filter((r) => r.error);
   if (errors.length > 0) {
@@ -121,7 +159,12 @@ const uploadBatch = async (
     // biome-ignore lint/style/noNonNullAssertion: loop bounds guarantee existence
     const imageData = resultsByIndex.get(variant!.originalIndex)!;
     // biome-ignore lint/style/noNonNullAssertion: loop bounds guarantee existence
-    imageData[variant!.size] = result!.data as UploadedFileData;
+    imageData[variant!.size] = {
+      // biome-ignore lint/style/noNonNullAssertion: loop bounds guarantee existence
+      ...(result!.data as UploadedFileData),
+      // biome-ignore lint/style/noNonNullAssertion: loop bounds guarantee existence
+      key: variant!.file.customId,
+    };
   }
 
   // Convert map to array maintaining order

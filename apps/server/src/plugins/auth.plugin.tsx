@@ -25,6 +25,12 @@ export const auth = betterAuth({
   }),
   trustedOrigins: ["http://localhost:3000", "http://localhost:3001"], // Both frontend and backend
   advanced: { database: { joins: true } },
+  session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60,
+    },
+  },
   rateLimit: {
     enabled: true,
     window: 10, // time window in seconds

@@ -26,7 +26,7 @@ const formattedDate = () =>
     hour12: false,
   });
 
-let startTime = performance.now();
+const requestStart = new WeakMap<Request, number>();
 
 const app = new Elysia()
   .use(
@@ -52,8 +52,10 @@ const app = new Elysia()
       allowedHeaders: ["Content-Type", "Authorization"],
     })
   )
+  .onRequest(({ request }) => {
+    requestStart.set(request, performance.now());
+  })
   .onTransform(({ body, params, path, request: { method } }) => {
-    startTime = performance.now();
     console.log(`${formattedDate()} - ${method} ${path}`, {
       body,
       params,
@@ -63,9 +65,11 @@ const app = new Elysia()
   .guard({
     access: "optional",
   })
-  .onAfterResponse(({ user, path, set }) => {
+  .onAfterResponse(({ user, path, request, set }) => {
     console.log(`${formattedDate()} - RESPONSE ${path}`, {
-      performance: `${(performance.now() - startTime).toFixed(2)} ms`,
+      performance: `${(
+        performance.now() - (requestStart.get(request) ?? performance.now())
+      ).toFixed(2)} ms`,
       status: set.status,
       user: user ? user.id : "anonymous",
     });

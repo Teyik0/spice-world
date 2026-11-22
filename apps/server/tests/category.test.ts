@@ -7,6 +7,7 @@ import {
   imageDeletionTable,
   productTable,
 } from "../drizzle/schema";
+import type { MultiSizeUploadData } from "../src/lib/images";
 import type * as CategoryModel from "../src/modules/categories/model";
 import { createTestDatabase } from "./utils/db-manager";
 import {
@@ -209,7 +210,7 @@ describe.concurrent("Category routes test", () => {
         .filter((uploaded) =>
           uploaded.name.startsWith(`${name.replaceAll(" ", "-")}-`)
         )
-        .map(({ key }) => key);
+        .map(({ customId }) => customId as string);
       expect(keys).toHaveLength(3);
       expect(await pendingChecks(keys)).toEqual(
         [...keys].sort().map((fileKey) => ({ fileKey, attempts: 0 }))
@@ -291,6 +292,13 @@ describe.concurrent("Category routes test", () => {
           expect.arrayContaining([task.fileKey])
         );
       }
+      expect(
+        await pendingChecks([
+          result.data.image.keyThumb,
+          result.data.image.keyMedium,
+          result.data.image.keyLarge,
+        ])
+      ).toEqual([]);
       for (const key of [
         result.data.image.keyThumb,
         result.data.image.keyMedium,
@@ -582,7 +590,7 @@ describe.concurrent("Category routes test", () => {
         { id: expect.any(String), attributeId: attribute.id, value: "added" },
       ])
     );
-    await expect(
+    expect(
       categoryService.patch({
         id: category.id,
         name: `${category.name} conflict`,
@@ -997,9 +1005,9 @@ describe.concurrent("Category routes test", () => {
       ).toHaveLength(1);
       const keys = uploads.uploadedFiles
         .filter((uploaded) => uploaded.name.startsWith("other-category-"))
-        .map(({ key }) => key);
+        .map(({ customId }) => customId as string);
       expect(keys).toHaveLength(6);
-      expect(await pendingChecks(keys.slice(3))).toEqual(
+      expect(await pendingChecks(keys)).toEqual(
         keys
           .slice(3)
           .sort()
@@ -1389,6 +1397,24 @@ describe.concurrent("Category routes test", () => {
       });
       expect(image).toBeUndefined();
     });
+  });
+
+  test("should refuse to claim uploads the cleanup may already have deleted", async () => {
+    const { claimUploads } = await import("@spice-world/server/lib/images");
+    const ids = Array.from({ length: 3 }, () => Bun.randomUUIDv7());
+    await db.insert(imageDeletionTable).values(
+      ids.map((fileKey) => ({
+        fileKey,
+        notBefore: sql`statement_timestamp()`,
+      }))
+    );
+    const [thumb, medium, large] = ids.map((key) => ({ key }));
+    // Due rows may be swept by a concurrent cleanup at any time: only the refusal is deterministic.
+   expect(
+      db.transaction((tx) =>
+        claimUploads(tx, [{ thumb, medium, large } as MultiSizeUploadData])
+      )
+    ).rejects.toThrow("Upload expired before commit");
   });
 
   test("should drop referenced keys and delete orphan files on cleanup", async () => {

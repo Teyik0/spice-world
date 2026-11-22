@@ -1,5 +1,6 @@
 import { db } from "@spice-world/server/lib/db";
 import {
+  claimUploads,
   enqueueImageCheck,
   type MultiSizeUploadData,
   uploadFiles,
@@ -68,130 +69,136 @@ export const categoryService = {
       return uploadFileErrStatus(fileError);
     }
 
-    const createdImageId = Bun.randomUUIDv7();
-    const createdImage = db.$with("created_image").as(
-      db
-        .insert(imageTable)
-        .values({
-          id: createdImageId,
-          keyThumb: images[0]?.thumb.key as string,
-          urlThumb: images[0]?.thumb.ufsUrl as string,
-          keyMedium: images[0]?.medium.key as string,
-          urlMedium: images[0]?.medium.ufsUrl as string,
-          keyLarge: images[0]?.large.key as string,
-          urlLarge: images[0]?.large.ufsUrl as string,
-          altText: name,
-          isThumbnail: true,
-        })
-        .returning()
-    );
-    const createdCategoryId = Bun.randomUUIDv7();
-    const createdCategory = db.$with("created_category").as(
-      db
-        .insert(categoryTable)
-        .values({
-          id: createdCategoryId,
-          name,
-          imageId: createdImageId,
-        })
-        .returning()
-    );
+    return await db.transaction(async (tx) => {
+      await claimUploads(tx, images);
+      const createdImageId = Bun.randomUUIDv7();
+      const createdImage = tx.$with("created_image").as(
+        tx
+          .insert(imageTable)
+          .values({
+            id: createdImageId,
+            keyThumb: images[0]?.thumb.key as string,
+            urlThumb: images[0]?.thumb.ufsUrl as string,
+            keyMedium: images[0]?.medium.key as string,
+            urlMedium: images[0]?.medium.ufsUrl as string,
+            keyLarge: images[0]?.large.key as string,
+            urlLarge: images[0]?.large.ufsUrl as string,
+            altText: name,
+            isThumbnail: true,
+          })
+          .returning()
+      );
+      const createdCategoryId = Bun.randomUUIDv7();
+      const createdCategory = tx.$with("created_category").as(
+        tx
+          .insert(categoryTable)
+          .values({
+            id: createdCategoryId,
+            name,
+            imageId: createdImageId,
+          })
+          .returning()
+      );
 
-    const newAttributes = (attributes ?? []).map((attribute) => ({
-      id: Bun.randomUUIDv7(),
-      ...attribute,
-    }));
+      const newAttributes = (attributes ?? []).map((attribute) => ({
+        id: Bun.randomUUIDv7(),
+        ...attribute,
+      }));
 
-    type AttributeWithValues =
-      CategoryModel.categoryResult["attributes"][number];
-    const { productId, ...categoryImageColumns } = getColumns(createdImage);
+      type AttributeWithValues =
+        CategoryModel.categoryResult["attributes"][number];
+      const { productId, ...categoryImageColumns } = getColumns(createdImage);
 
-    if (!newAttributes.length) {
-      const [category] = await db
-        .with(createdImage, createdCategory)
+      if (!newAttributes.length) {
+        const [category] = await tx
+          .with(createdImage, createdCategory)
+          .select({
+            id: createdCategory.id,
+            name: createdCategory.name,
+            image: categoryImageColumns,
+          })
+          .from(createdCategory)
+          .innerJoin(
+            createdImage,
+            eq(createdImage.id, createdCategory.imageId)
+          );
+
+        return status("Created", {
+          ...(category as NonNullable<typeof category>),
+          attributes: [] as AttributeWithValues[],
+        });
+      }
+
+      const createdAttributes = tx.$with("created_attributes").as(
+        tx
+          .insert(attributeTable)
+          .values(
+            newAttributes.map(({ id, name: attributeName }) => ({
+              id,
+              name: attributeName,
+              categoryId: createdCategoryId,
+            }))
+          )
+          .returning()
+      );
+      const createdAttributesValues = tx.$with("created_values").as(
+        tx
+          .insert(attributeValueTable)
+          .values(
+            newAttributes.flatMap((attribute) =>
+              attribute.values.map((value) => ({
+                id: Bun.randomUUIDv7(),
+                value,
+                attributeId: attribute.id,
+              }))
+            )
+          )
+          .returning()
+      );
+
+      const [category] = await tx
+        .with(
+          createdImage,
+          createdCategory,
+          createdAttributes,
+          createdAttributesValues
+        )
         .select({
           id: createdCategory.id,
           name: createdCategory.name,
           image: categoryImageColumns,
+          attributes: sql<AttributeWithValues[]>`
+            coalesce(
+              (
+                select jsonb_agg(
+                  jsonb_build_object(
+                    'id', a.id,
+                    'name', a.name,
+                    'values',
+                    coalesce(
+                      (
+                        select jsonb_agg(
+                          jsonb_build_object('id', v.id, 'value', v.value)
+                        )
+                        from ${createdAttributesValues} as v
+                        where v."attributeId" = a.id
+                      ),
+                      '[]'::jsonb
+                    )
+                  )
+                )
+                from ${createdAttributes} as a
+                where a."categoryId" = ${createdCategory.id}
+              ),
+              '[]'::jsonb
+            )
+          `.as("attributes"),
         })
         .from(createdCategory)
         .innerJoin(createdImage, eq(createdImage.id, createdCategory.imageId));
 
-      return status("Created", {
-        ...(category as NonNullable<typeof category>),
-        attributes: [] as AttributeWithValues[],
-      });
-    }
-
-    const createdAttributes = db.$with("created_attributes").as(
-      db
-        .insert(attributeTable)
-        .values(
-          newAttributes.map(({ id, name: attributeName }) => ({
-            id,
-            name: attributeName,
-            categoryId: createdCategoryId,
-          }))
-        )
-        .returning()
-    );
-    const createdAttributesValues = db.$with("created_values").as(
-      db
-        .insert(attributeValueTable)
-        .values(
-          newAttributes.flatMap((attribute) =>
-            attribute.values.map((value) => ({
-              id: Bun.randomUUIDv7(),
-              value,
-              attributeId: attribute.id,
-            }))
-          )
-        )
-        .returning()
-    );
-
-    const [category] = await db
-      .with(
-        createdImage,
-        createdCategory,
-        createdAttributes,
-        createdAttributesValues
-      )
-      .select({
-        id: createdCategory.id,
-        name: createdCategory.name,
-        image: categoryImageColumns,
-        attributes: sql<AttributeWithValues[]>`
-          coalesce(
-            (
-              select jsonb_agg(
-                jsonb_build_object(
-                  'id', a.id,
-                  'name', a.name,
-                  'values',
-                  coalesce(
-                    (
-                      select jsonb_agg(
-                        jsonb_build_object('id', v.id, 'value', v.value)
-                      )
-                      from ${createdAttributesValues} as v
-                      where v."attributeId" = a.id
-                    ),
-                    '[]'::jsonb
-                  )
-                )
-              )
-              from ${createdAttributes} as a
-              where a."categoryId" = ${createdCategory.id}
-            ),
-            '[]'::jsonb
-          )
-        `.as("attributes"),
-      })
-      .from(createdCategory)
-      .innerJoin(createdImage, eq(createdImage.id, createdCategory.imageId));
-
-    return status("Created", category as NonNullable<typeof category>);
+      return status("Created", category as NonNullable<typeof category>);
+    });
   },
 
   async patch({
@@ -328,6 +335,7 @@ export const categoryService = {
           .where(eq(categoryTable.id, id));
 
         if (imageUpdate) {
+          await claimUploads(tx, [newFile as MultiSizeUploadData]);
           await tx
             .update(imageTable)
             .set(imageUpdate)

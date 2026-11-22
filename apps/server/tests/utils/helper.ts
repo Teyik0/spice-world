@@ -1,7 +1,6 @@
 import { expect, spyOn } from "bun:test";
 import { basename } from "node:path";
 import type { treaty } from "@elysia/eden";
-import { faker } from "@faker-js/faker";
 import type { productsRouter } from "@spice-world/server/modules/products";
 import type * as ProductModel from "@spice-world/server/modules/products/model";
 import type { UnwrapSchema } from "elysia";
@@ -27,7 +26,7 @@ const createUploadedFileData = (uploadedFile: File): UploadedFileData => ({
   ufsUrl: "https://mock-uploadthing.com/image.webp",
   name: uploadedFile.name,
   size: uploadedFile.size,
-  customId: null,
+  customId: (uploadedFile as File & { customId?: string }).customId ?? null,
   type: "image/webp",
   fileHash: "mock-hash",
 });
@@ -68,6 +67,12 @@ export function randomLowerString(length = 10): string {
   }
   return result;
 }
+
+const randomInt = (min: number, max: number) =>
+  min + Math.floor(Math.random() * (max - min + 1));
+
+const pick = <T>(items: readonly T[], count: number): T[] =>
+  items.toSorted(() => Math.random() - 0.5).slice(0, count);
 
 const ATTRIBUTE_VALUES = {
   size: ["small", "medium", "large", "extra large", "xxl"],
@@ -173,9 +178,9 @@ export const createTestCategory = async ({
   const selectedAttributes =
     attributeCount === 0
       ? []
-      : faker.helpers.arrayElements(
+      : pick(
           ATTRIBUTE_NAMES,
-          attributeCount ?? { min: 1, max: ATTRIBUTE_NAMES.length }
+          attributeCount ?? randomInt(1, ATTRIBUTE_NAMES.length)
         );
 
   return await testDb.db.transaction(async (tx) => {
@@ -199,10 +204,9 @@ export const createTestCategory = async ({
       id: Bun.randomUUIDv7(),
       name: attrName,
       categoryId,
-      values: faker.helpers.arrayElements(
+      values: pick(
         ATTRIBUTE_VALUES[attrName],
-        attributeValueCount ??
-          faker.number.int({ min: 2, max: ATTRIBUTE_VALUES[attrName].length })
+        attributeValueCount ?? randomInt(2, ATTRIBUTE_VALUES[attrName].length)
       ),
     }));
     if (attributes.length) {

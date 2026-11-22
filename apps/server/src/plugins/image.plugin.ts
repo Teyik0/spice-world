@@ -6,9 +6,8 @@ import { utapi } from "../lib/images";
 
 async function deleteFiles(keys: string[]) {
   try {
-    const result = await utapi.deleteFiles(keys);
-    // A zero count is ambiguous: retain the task until the provider confirms deletion.
-    return result.success && result.deletedCount === keys.length;
+    // Queued keys are never referenced by a committed "Image": a missing file is already the goal.
+    return (await utapi.deleteFiles(keys)).success;
   } catch {
     return false;
   }
