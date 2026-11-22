@@ -23,18 +23,24 @@ export type patchBody = UnwrapSchema<typeof patchBody>;
 export const attributeResult = t.Object({
   id: uuid,
   name: nameLowerPattern,
-  category: t.Object({
-    id: uuid,
-    name: nameLowerPattern,
-    imageId: uuid,
-  }),
-  values: t.Array(
-    t.Object({
+  category: t.Object(
+    {
       id: uuid,
-      attributeId: uuid,
-      value: nameLowerPatternWithNumber,
-    }),
-    { minItems: 1 }
+      name: nameLowerPattern,
+      imageId: uuid,
+    },
+    { additionalProperties: false },
+  ),
+  values: t.Array(
+    t.Object(
+      {
+        id: uuid,
+        attributeId: uuid,
+        value: nameLowerPatternWithNumber,
+      },
+      { additionalProperties: false },
+    ),
+    { minItems: 1 },
   ),
 });
 export type attributeResult = UnwrapSchema<typeof attributeResult>;

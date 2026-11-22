@@ -25,12 +25,12 @@ export const imageCleanupPlugin = new Elysia({
               .select()
               .from(imageDeletionTable)
               .where(
-                lte(imageDeletionTable.notBefore, sql`statement_timestamp()`)
+                lte(imageDeletionTable.notBefore, sql`statement_timestamp()`),
               )
               .orderBy(
                 asc(imageDeletionTable.attempts),
                 asc(imageDeletionTable.notBefore),
-                asc(imageDeletionTable.fileKey)
+                asc(imageDeletionTable.fileKey),
               )
               .limit(10)
               .for("update", { skipLocked: true });
@@ -51,15 +51,15 @@ export const imageCleanupPlugin = new Elysia({
                 or(
                   inArray(imageTable.keyThumb, keys),
                   inArray(imageTable.keyMedium, keys),
-                  inArray(imageTable.keyLarge, keys)
-                )
+                  inArray(imageTable.keyLarge, keys),
+                ),
               );
             const referenced = new Set(
               references.flatMap((image) => [
                 image.keyThumb,
                 image.keyMedium,
                 image.keyLarge,
-              ])
+              ]),
             );
             const deletable = keys.filter((key) => !referenced.has(key));
             const deleted =
@@ -77,7 +77,7 @@ export const imageCleanupPlugin = new Elysia({
                 .where(inArray(imageDeletionTable.fileKey, deletable));
             }
           },
-          { isolationLevel: "read committed" }
+          { isolationLevel: "read committed" },
         );
       } catch (error) {
         console.error("Image cleanup failed", error);

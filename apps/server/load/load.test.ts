@@ -49,7 +49,7 @@ const JSON_OUTPUT = /\{.*\}/su;
 async function runLoadTest(
   endpoint: string,
   connections = 100,
-  duration = "10s"
+  duration = "10s",
 ): Promise<BombardierResult> {
   const url = `http://localhost:3001${endpoint}`;
 
@@ -116,12 +116,12 @@ async function runLoadTestSuite(tc: LoadTestCase): Promise<{
     // Warm each variant once: a cold /products miss runs the full variant
     // aggregation (~1s+ per query), which would saturate PG and time out.
     await Promise.all(
-      queries.map((q) => fetch(`http://localhost:3001${tc.path}${q}`))
+      queries.map((q) => fetch(`http://localhost:3001${tc.path}${q}`)),
     );
   }
 
   const results = await Promise.all(
-    queries.map((q) => runLoadTest(`${tc.path}${q}`, perInstance, duration))
+    queries.map((q) => runLoadTest(`${tc.path}${q}`, perInstance, duration)),
   );
 
   return {
@@ -135,40 +135,40 @@ function logLoadTestResults(
   endpoint: string,
   connections: number,
   duration: string,
-  stats: BombardierResult
+  stats: BombardierResult,
 ): void {
   console.log(`\n📊 ${endpoint} (${connections} connections, ${duration}):`);
   console.log(`   RPS: ${stats.result.rps.mean.toFixed(2)} req/s`);
   console.log(
-    `   Latency p50: ${(stats.result.latency.percentiles["50"] / 1000).toFixed(2)}ms`
+    `   Latency p50: ${(stats.result.latency.percentiles["50"] / 1000).toFixed(2)}ms`,
   );
   console.log(
-    `   Latency p95: ${(stats.result.latency.percentiles["95"] / 1000).toFixed(2)}ms`
+    `   Latency p95: ${(stats.result.latency.percentiles["95"] / 1000).toFixed(2)}ms`,
   );
   console.log(
-    `   Latency p99: ${(stats.result.latency.percentiles["99"] / 1000).toFixed(2)}ms`
+    `   Latency p99: ${(stats.result.latency.percentiles["99"] / 1000).toFixed(2)}ms`,
   );
   console.log(
-    `   Successful: ${stats.result.req2xx} | Errors: ${stats.result.req4xx + stats.result.req5xx}`
+    `   Successful: ${stats.result.req2xx} | Errors: ${stats.result.req4xx + stats.result.req5xx}`,
   );
 }
 
 function expectHealthyLoad(
   endpoint: string,
   stats: BombardierResult,
-  minRps: number
+  minRps: number,
 ): void {
   expect(
     stats.result.req4xx + stats.result.req5xx + stats.result.others,
-    `${endpoint}: 4xx/5xx/others should be 0 (req2xx > minRps proves counters parsed)`
+    `${endpoint}: 4xx/5xx/others should be 0 (req2xx > minRps proves counters parsed)`,
   ).toBe(0);
   expect(
     stats.result.rps.mean,
-    `${endpoint}: RPS ${stats.result.rps.mean.toFixed(0)} should exceed ${minRps}`
+    `${endpoint}: RPS ${stats.result.rps.mean.toFixed(0)} should exceed ${minRps}`,
   ).toBeGreaterThan(minRps);
   expect(
     stats.result.latency.percentiles["99"] / 1000,
-    `${endpoint}: p99 should stay under 500ms`
+    `${endpoint}: p99 should stay under 500ms`,
   ).toBeLessThan(500);
 }
 
@@ -230,6 +230,6 @@ describe("Load Testing", () => {
       logLoadTestResults(label, connections, duration, stats);
       expectHealthyLoad(label, stats, tc.minRps);
     },
-    3_000_000
+    3_000_000,
   );
 });

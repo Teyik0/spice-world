@@ -71,7 +71,7 @@ export async function createStripeCheckout({
   } catch (error) {
     throw new StripeApiError(
       `Failed to create Stripe checkout: ${error instanceof Error ? error.message : "Unknown error"}`,
-      { cause: error }
+      { cause: error },
     );
   }
 }

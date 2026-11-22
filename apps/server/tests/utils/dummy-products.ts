@@ -247,8 +247,8 @@ export async function createDummyProducts(prisma: PrismaClient) {
               },
             },
           },
-        })
-      )
+        }),
+      ),
     );
   });
 
@@ -257,7 +257,7 @@ export async function createDummyProducts(prisma: PrismaClient) {
   await Promise.all(
     productsData.map((productData) => {
       const category = categories.find(
-        (cat) => cat.name === productData.category
+        (cat) => cat.name === productData.category,
       );
       if (!category) {
         return Promise.resolve();
@@ -310,7 +310,7 @@ export async function createDummyProducts(prisma: PrismaClient) {
           },
         },
       });
-    })
+    }),
   );
   const products = await prisma.product.findMany({
     include: {

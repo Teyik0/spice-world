@@ -23,9 +23,8 @@ describe.concurrent("DELETE /products/:id - Integration Tests", () => {
     // Mock uploadthing BEFORE importing the router
     await mockUtapi();
 
-    const { productsRouter: router } = await import(
-      "@spice-world/server/modules/products"
-    );
+    const { productsRouter: router } =
+      await import("@spice-world/server/modules/products");
     api = treaty(router);
   });
 

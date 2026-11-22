@@ -45,10 +45,10 @@ export const ordersRouter = new Elysia({
       const result = await orderService.createCheckout(
         user.id,
         body.items,
-        body.shippingAddress
+        body.shippingAddress,
       );
       return status("Created", result);
-    }
+    },
   )
 
   .get(
@@ -64,7 +64,7 @@ export const ordersRouter = new Elysia({
         limit: Number(query.limit) || 10,
         status: query.status,
       });
-    }
+    },
   )
 
   .get(
@@ -76,7 +76,7 @@ export const ordersRouter = new Elysia({
     async ({ params, user }) => {
       const isAdmin = user.role === "admin";
       return await orderService.getById(params.id, user.id, isAdmin);
-    }
+    },
   )
 
   .patch(
@@ -90,6 +90,6 @@ export const ordersRouter = new Elysia({
       await orderService.updateStatus(
         params.id,
         body.status,
-        body.trackingNumber
-      )
+        body.trackingNumber,
+      ),
   );

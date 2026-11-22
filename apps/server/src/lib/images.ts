@@ -8,7 +8,7 @@ import { db } from "./db";
 /** Queue keys to be checked in 15 min: deleted from UploadThing unless still referenced by "Image". */
 export const enqueueImageCheck = (
   exec: Pick<typeof db, "insert">,
-  keys: string[]
+  keys: string[],
 ) =>
   keys.length > 0
     ? exec
@@ -17,7 +17,7 @@ export const enqueueImageCheck = (
           keys.map((fileKey) => ({
             fileKey,
             notBefore: sql`statement_timestamp() + interval '15 minutes'`,
-          }))
+          })),
         )
         .onConflictDoUpdate({
           target: imageDeletionTable.fileKey,
@@ -32,7 +32,7 @@ export const enqueueImageCheck = (
  */
 export async function claimUploads(
   tx: Pick<typeof db, "delete">,
-  uploads: MultiSizeUploadData[]
+  uploads: MultiSizeUploadData[],
 ) {
   const keys = uploads.flatMap((u) => [u.thumb.key, u.medium.key, u.large.key]);
   const claimed = await tx
@@ -40,8 +40,8 @@ export async function claimUploads(
     .where(
       and(
         inArray(imageDeletionTable.fileKey, keys),
-        gt(imageDeletionTable.notBefore, sql`statement_timestamp()`)
-      )
+        gt(imageDeletionTable.notBefore, sql`statement_timestamp()`),
+      ),
     )
     .returning({ fileKey: imageDeletionTable.fileKey });
   if (claimed.length !== keys.length) {
@@ -93,7 +93,7 @@ interface ImageVariant {
 const transformImage = (
   filename: string,
   file: File,
-  originalIndex: number
+  originalIndex: number,
 ): Promise<ImageVariant[]> => {
   const sizes: ImageSize[] = ["thumb", "medium", "large"];
 
@@ -116,7 +116,7 @@ const transformImage = (
         originalIndex,
         size,
       };
-    })
+    }),
   );
 };
 
@@ -125,13 +125,13 @@ const transformImage = (
  * All succeed or all fail
  */
 const uploadBatch = async (
-  allVariants: ImageVariant[]
+  allVariants: ImageVariant[],
 ): Promise<{ data: MultiSizeUploadData[] | null; error: string | null }> => {
   const filesToUpload = allVariants.map((variant) => variant.file);
   // Orphan by default, queued before upload: only a claim by a committed transaction keeps a file.
   await enqueueImageCheck(
     db,
-    filesToUpload.map((f) => f.customId)
+    filesToUpload.map((f) => f.customId),
   );
   const results = await utapi.uploadFiles(filesToUpload);
 
@@ -186,7 +186,7 @@ const uploadBatch = async (
  * Useful for cleanup on rollback
  */
 export const deleteUploads = async (
-  uploads: MultiSizeUploadData[]
+  uploads: MultiSizeUploadData[],
 ): Promise<void> => {
   if (uploads.length === 0) {
     return;
@@ -207,7 +207,7 @@ export const deleteUploads = async (
  */
 export const uploadFiles = async (
   filename: string,
-  files: File[] | File
+  files: File[] | File,
 ): Promise<{ data: MultiSizeUploadData[] | null; error: string | null }> => {
   try {
     // Transform all images to all sizes in parallel
@@ -220,7 +220,7 @@ export const uploadFiles = async (
           transformImage(
             `${filename.toLowerCase().replace(/\s+/gu, "-")}`,
             files,
-            0
+            0,
           ),
         ];
 

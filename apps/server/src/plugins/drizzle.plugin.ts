@@ -29,7 +29,7 @@ export const drizzleErrorPlugin = new Elysia({
 
   const constraintFailure = postgresError?.constraint
     ? constraintFailures.get(
-        `${postgresError.errno}:${postgresError.constraint}`
+        `${postgresError.errno}:${postgresError.constraint}`,
       )
     : undefined;
 

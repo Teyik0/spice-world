@@ -28,7 +28,7 @@ const NON_ALPHANUMERIC = /[^a-zA-Z0-9]/gu;
  * The cleanup drops the created database — always call it, otherwise test databases accumulate.
  */
 export async function createTestDatabase(
-  testFileName: string
+  testFileName: string,
 ): Promise<TestDatabase> {
   if (Bun.env.NODE_ENV === "production") {
     throw new Error("You can't create test databases in production");
@@ -92,7 +92,7 @@ export async function createTestDatabase(
     const cleanupClient = new PrismaClient({ adapter: cleanupAdapter });
     try {
       await cleanupClient.$executeRawUnsafe(
-        `DROP DATABASE IF EXISTS "${databaseName}"`
+        `DROP DATABASE IF EXISTS "${databaseName}"`,
       );
     } finally {
       await cleanupClient.$disconnect();
@@ -121,7 +121,7 @@ export async function createTestDatabase(
       // WITH (FORCE): terminate any leaked connections before dropping (PG >= 13),
       // otherwise concurrent tests can leave a connection open and the drop fails with 55006.
       await dropClient.$executeRawUnsafe(
-        `DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`
+        `DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`,
       );
     } finally {
       await dropClient.$disconnect();

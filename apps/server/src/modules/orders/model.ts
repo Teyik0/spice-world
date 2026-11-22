@@ -9,13 +9,13 @@ export const OrderStatus = t.Union(
     t.Literal("CANCELLED"),
     t.Literal("REFUNDED"),
   ],
-  { additionalProperties: false }
+  { additionalProperties: false },
 );
 export type OrderStatus = UnwrapSchema<typeof OrderStatus>;
 
 export const ShippingStatus = t.Union(
   [t.Literal("PENDING"), t.Literal("SHIPPED"), t.Literal("DELIVERED")],
-  { additionalProperties: false }
+  { additionalProperties: false },
 );
 export type ShippingStatus = UnwrapSchema<typeof ShippingStatus>;
 
@@ -24,7 +24,7 @@ export const checkoutBody = t.Object({
     t.Object({
       variantId: t.String(),
       quantity: t.Number({ minimum: 1 }),
-    })
+    }),
   ),
   shippingAddress: t.Object({
     name: t.String(),

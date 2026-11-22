@@ -76,7 +76,7 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
     test("should send reset password email correctly", async () => {
       const sendEmailMock = spyOn(
         auth.options.emailAndPassword,
-        "sendResetPassword"
+        "sendResetPassword",
       );
 
       await auth.options.emailAndPassword.sendResetPassword({
@@ -95,7 +95,7 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
     test("should send verification email correctly", async () => {
       const sendEmailMock = spyOn(
         auth.options.emailVerification,
-        "sendVerificationEmail"
+        "sendVerificationEmail",
       );
 
       await auth.options.emailVerification.sendVerificationEmail({
@@ -114,7 +114,7 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
     test("should send change email confirmation correctly", async () => {
       const sendEmailMock = spyOn(
         auth.options.user.changeEmail,
-        "sendChangeEmailConfirmation"
+        "sendChangeEmailConfirmation",
       );
 
       await auth.options.user.changeEmail.sendChangeEmailConfirmation({
@@ -135,7 +135,7 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
     test("should send password reset correctly", async () => {
       const sendEmailMock = spyOn(
         auth.options.emailAndPassword,
-        "onPasswordReset"
+        "onPasswordReset",
       );
 
       await auth.options.emailAndPassword.onPasswordReset({
@@ -401,7 +401,7 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
             headers: {
               cookie: adminUserCookie,
             },
-          }
+          },
         );
 
         expectDefined(data);
@@ -492,7 +492,7 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
             headers: {
               cookie: normalUserCookie,
             },
-          }
+          },
         );
 
         expect(data).toBeNull();

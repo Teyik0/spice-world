@@ -42,7 +42,7 @@ const NOUNS = ["Paprika", "Pepper", "Saffron", "Lamp", "Chair", "Bottle"];
 const imageUrls = (size: number) =>
   Array.from(
     { length: 20 },
-    (_, i) => `https://picsum.photos/seed/${i}/${size}/${size}`
+    (_, i) => `https://picsum.photos/seed/${i}/${size}/${size}`,
   );
 
 async function seedCategories() {
@@ -66,21 +66,21 @@ async function seedCategories() {
       id: Bun.randomUUIDv7(),
       name,
       categoryId,
-    }))
+    })),
   );
   const values = attributes.flatMap(({ id: attributeId, name }) =>
     (ATTRIBUTE_VALUES[name] ?? []).map((value) => ({
       id: Bun.randomUUIDv7(),
       value,
       attributeId,
-    }))
+    })),
   );
 
   await db.transaction(async (tx) => {
     await tx
       .insert(imageTable)
       .values(
-        categories.map(({ imageId, image }) => ({ id: imageId, ...image }))
+        categories.map(({ imageId, image }) => ({ id: imageId, ...image })),
       );
     await tx.insert(categoryTable).values(categories);
     await tx.insert(attributeTable).values(attributes);
@@ -93,12 +93,12 @@ async function seedCategories() {
 function seedProductBatch(
   categoryIds: string[],
   offset: number,
-  count: number
+  count: number,
 ) {
   return seed(
     db,
     { productTable, productVariantTable, imageTable },
-    { seed: offset }
+    { seed: offset },
   ).refine((f) => ({
     productTable: {
       count,
@@ -147,7 +147,7 @@ async function step(label: string, query: PromiseLike<unknown>) {
   const start = performance.now();
   await query;
   console.log(
-    `  ✓ ${label} in ${((performance.now() - start) / 1000).toFixed(1)}s`
+    `  ✓ ${label} in ${((performance.now() - start) / 1000).toFixed(1)}s`,
   );
 }
 
@@ -159,7 +159,7 @@ function fixInvariants() {
       "slugs",
       tx.update(productTable).set({
         slug: sql`regexp_replace(lower(${productTable.name}), '[^a-z0-9]+', '-', 'g')`,
-      })
+      }),
     );
     await step(
       "thumbnails",
@@ -171,8 +171,8 @@ function fixInvariants() {
             .selectDistinctOn([imageTable.productId], { id: imageTable.id })
             .from(imageTable)
             .where(isNotNull(imageTable.productId))
-            .orderBy(imageTable.productId, imageTable.id)}`
-        )
+            .orderBy(imageTable.productId, imageTable.id)}`,
+        ),
     );
     await step(
       "variant attribute values",
@@ -185,18 +185,18 @@ function fixInvariants() {
           .from(productVariantTable)
           .innerJoin(
             productTable,
-            eq(productTable.id, productVariantTable.productId)
+            eq(productTable.id, productVariantTable.productId),
           )
           .innerJoin(
             attributeTable,
-            eq(attributeTable.categoryId, productTable.categoryId)
+            eq(attributeTable.categoryId, productTable.categoryId),
           )
           .innerJoin(
             attributeValueTable,
-            eq(attributeValueTable.attributeId, attributeTable.id)
+            eq(attributeValueTable.attributeId, attributeTable.id),
           )
-          .orderBy(productVariantTable.id, attributeTable.id, sql`random()`)
-      )
+          .orderBy(productVariantTable.id, attributeTable.id, sql`random()`),
+      ),
     );
   });
 }
@@ -216,14 +216,14 @@ async function main() {
     const rate = done / ((performance.now() - start) / 1000);
     console.log(
       `Batch ${offset / BATCH_SIZE + 1}/${Math.ceil(NUM_PRODUCTS / BATCH_SIZE)} in ${((performance.now() - batchStart) / 1000).toFixed(1)}s | ` +
-        `${done.toLocaleString()}/${NUM_PRODUCTS.toLocaleString()} | ${rate.toFixed(0)}/s | ETA ${((NUM_PRODUCTS - done) / rate).toFixed(0)}s`
+        `${done.toLocaleString()}/${NUM_PRODUCTS.toLocaleString()} | ${rate.toFixed(0)}/s | ETA ${((NUM_PRODUCTS - done) / rate).toFixed(0)}s`,
     );
   }
 
   console.log("Linking variants to attribute values, thumbnails, slugs...");
   await fixInvariants();
   console.log(
-    `✓ Seeded ${NUM_PRODUCTS.toLocaleString()} products in ${((performance.now() - start) / 1000).toFixed(1)}s`
+    `✓ Seeded ${NUM_PRODUCTS.toLocaleString()} products in ${((performance.now() - start) / 1000).toFixed(1)}s`,
   );
 }
 

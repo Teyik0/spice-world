@@ -43,7 +43,7 @@ export const orderService = {
   async createCheckout(
     userId: string,
     items: { variantId: string; quantity: number }[],
-    shippingAddress: ShippingAddress
+    shippingAddress: ShippingAddress,
   ) {
     return await prisma.$transaction(async (tx) => {
       // Validate items inside transaction with atomic stock check
@@ -82,7 +82,7 @@ export const orderService = {
       }
       const subtotal = enrichedItems.reduce(
         (sum, item) => sum + item.price * item.quantity,
-        0
+        0,
       );
       const shipping = subtotal > 50 ? 0 : 5;
 
@@ -138,7 +138,7 @@ export const orderService = {
   async handleOrderPaid(
     stripeSessionId: string,
     orderId: string,
-    stripePaymentIntentId: string | null
+    stripePaymentIntentId: string | null,
   ) {
     return await prisma.$transaction(async (tx) => {
       // Verify the order exists and matches the metadata orderId
@@ -148,7 +148,7 @@ export const orderService = {
 
       if (existingOrder.id !== orderId) {
         throw new Error(
-          `Order mismatch: session ${stripeSessionId} does not match order ${orderId}`
+          `Order mismatch: session ${stripeSessionId} does not match order ${orderId}`,
         );
       }
 
@@ -167,7 +167,7 @@ export const orderService = {
   async get(
     userId: string,
     isAdmin: boolean,
-    query: { page: number; limit: number; status?: OrderStatus }
+    query: { page: number; limit: number; status?: OrderStatus },
   ) {
     const where = {
       ...(!isAdmin && { userId }),
@@ -210,7 +210,7 @@ export const orderService = {
   async updateStatus(
     orderId: string,
     status: OrderStatus,
-    trackingNumber?: string
+    trackingNumber?: string,
   ) {
     const data: Record<string, unknown> = { status };
 

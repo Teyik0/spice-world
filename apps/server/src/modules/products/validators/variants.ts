@@ -32,14 +32,14 @@ export const validateVariants = ({
       attr.values.map((val) => ({
         id: val.id,
         attributeId: attr.id,
-      }))
+      })),
     );
   const allErrors: ValidationError[] = [];
 
   const addVariantContext = (
     errors: ValidationError[],
     variantIndex: number,
-    operation: string
+    operation: string,
   ) =>
     errors.map((error) => ({
       ...error,
@@ -55,14 +55,14 @@ export const validateVariants = ({
     const vva1Errors = validateVA1(
       variant.sku ?? `create[${index}]`,
       allowedAttributeValues,
-      attrValueIds
+      attrValueIds,
     );
     allErrors.push(...addVariantContext(vva1Errors, index, "create"));
 
     const vva2Errors = validateVA2(
       variant.sku ?? `create[${index}]`,
       allowedAttributeValues,
-      attrValueIds
+      attrValueIds,
     );
     allErrors.push(...addVariantContext(vva2Errors, index, "create"));
   });
@@ -76,14 +76,14 @@ export const validateVariants = ({
     const vva1Errors = validateVA1(
       variant.sku ?? variant.id,
       allowedAttributeValues,
-      attrValueIds
+      attrValueIds,
     );
     allErrors.push(...addVariantContext(vva1Errors, index, "update"));
 
     const vva2Errors = validateVA2(
       variant.sku ?? variant.id,
       allowedAttributeValues,
-      attrValueIds
+      attrValueIds,
     );
     allErrors.push(...addVariantContext(vva2Errors, index, "update"));
   });
@@ -116,7 +116,7 @@ export const validateVariants = ({
       })) || []),
     // Existing variants not being updated or deleted
     ...(currVariants?.filter(
-      (v) => !(updatedIds.has(v.id) || deletedIds.has(v.id))
+      (v) => !(updatedIds.has(v.id) || deletedIds.has(v.id)),
     ) || []),
   ];
   const validateVA4Result = validateVA4(finalVariants);
@@ -139,7 +139,7 @@ export const validateVariants = ({
 function validateVA1(
   variantSkuOrId: string,
   allowedAttributeValues: AllowedAttributeValue[],
-  attributeValueIds: string[]
+  attributeValueIds: string[],
 ) {
   const allowedIds = new Set(allowedAttributeValues.map((a) => a.id));
   const invalidIds = attributeValueIds.filter((id) => !allowedIds.has(id));
@@ -158,7 +158,7 @@ function validateVA1(
 function validateVA2(
   variantSkuOrId: string,
   allowedAttributeValues: AllowedAttributeValue[],
-  attributeValueIds: string[]
+  attributeValueIds: string[],
 ): ValidationError[] {
   const valueToAttributeMap = new Map<string, string>();
   for (const attrValue of allowedAttributeValues) {
@@ -226,7 +226,7 @@ function validateVA3({
 
   const maxVariants = category.attributes.reduce(
     (acc, attr) => acc * (attr.values.length || 1),
-    1
+    1,
   );
 
   if (variantCount > maxVariants) {
@@ -255,7 +255,7 @@ function validateVA4(
   variants: {
     id?: string;
     attributeValueIds: string[];
-  }[]
+  }[],
 ): ValidationError | null {
   const combinations = new Map<string, string>();
 

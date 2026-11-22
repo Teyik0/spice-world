@@ -30,7 +30,7 @@ export function analyzeVariantOperations(
     attributeValues: Array<{ id: string }>;
   }>,
   newCategoryHasAttributes: boolean,
-  isCategoryChanging?: boolean
+  isCategoryChanging?: boolean,
 ): VariantAnalysis {
   // No operations = no changes, not reconfigured
   if (!vOps) {
@@ -53,12 +53,12 @@ export function analyzeVariantOperations(
 
   // Remaining variants after delete
   const remainingVariants = currentVariants.filter(
-    (v) => !deletedIds.has(v.id)
+    (v) => !deletedIds.has(v.id),
   );
 
   // Untouched = remaining but not updated
   const untouchedVariants = remainingVariants.filter(
-    (v) => !updatedIds.has(v.id)
+    (v) => !updatedIds.has(v.id),
   );
 
   // Final count
@@ -71,14 +71,14 @@ export function analyzeVariantOperations(
   // Created variants with attributeValueIds
   if (vOps.create) {
     variantsWithValidAttrs += vOps.create.filter(
-      (v) => v.attributeValueIds && v.attributeValueIds.length > 0
+      (v) => v.attributeValueIds && v.attributeValueIds.length > 0,
     ).length;
   }
 
   // Updated variants with NEW attributeValueIds
   if (vOps.update) {
     variantsWithValidAttrs += vOps.update.filter(
-      (v) => v.attributeValueIds && v.attributeValueIds.length > 0
+      (v) => v.attributeValueIds && v.attributeValueIds.length > 0,
     ).length;
   }
 
@@ -115,7 +115,7 @@ export function determineStatus(
     status: ProductStatus;
   },
   requestedCategory: CategoryModel.categoryResult | null,
-  analysis: VariantAnalysis
+  analysis: VariantAnalysis,
 ): {
   finalStatus: ProductStatus;
   warnings?: Array<{ code: string; message: string }>;

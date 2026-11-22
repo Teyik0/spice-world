@@ -19,7 +19,7 @@ export const attributeRouter = new Elysia({
         200: t.Array(AttributeModel.attributeResult),
       },
     },
-    async ({ query }) => await attributeService.get(query)
+    async ({ query }) => await attributeService.get(query),
   )
   .post(
     "/",
@@ -27,7 +27,7 @@ export const attributeRouter = new Elysia({
       body: AttributeModel.postBody,
       response: { 201: AttributeModel.attributeResult },
     },
-    async ({ body }) => await attributeService.post(body)
+    async ({ body }) => await attributeService.post(body),
   )
   .get("/count", async () => await attributeService.count())
   .guard({ schema: "merge", params: uuidGuard })
@@ -39,7 +39,7 @@ export const attributeRouter = new Elysia({
         404: AttributeModel.attributeNotFound,
       },
     },
-    async ({ params }) => await attributeService.getById(params)
+    async ({ params }) => await attributeService.getById(params),
   )
   .patch(
     "/:id",
@@ -51,7 +51,7 @@ export const attributeRouter = new Elysia({
       },
     },
     async ({ params, body }) =>
-      await attributeService.patch({ ...params, ...body })
+      await attributeService.patch({ ...params, ...body }),
   )
   .delete("/:id", async ({ params }) => await attributeService.delete(params))
   .post(
@@ -61,7 +61,7 @@ export const attributeRouter = new Elysia({
       response: { 201: AttributeValueModel.attributeValueResult },
     },
     async ({ params, body }) =>
-      await attributeValueService.post({ ...params, ...body })
+      await attributeValueService.post({ ...params, ...body }),
   )
   .group("/values", (app) =>
     app
@@ -76,10 +76,11 @@ export const attributeRouter = new Elysia({
           },
         },
         async ({ params, body }) =>
-          await attributeValueService.patch({ ...params, ...body })
+          await attributeValueService.patch({ ...params, ...body }),
       )
       .delete(
         "/:id",
-        async ({ params: { id } }) => await attributeValueService.delete({ id })
-      )
+        async ({ params: { id } }) =>
+          await attributeValueService.delete({ id }),
+      ),
   );

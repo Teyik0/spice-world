@@ -1,6 +1,11 @@
 import type { Product } from "@spice-world/server/prisma/client";
 import { type ElysiaStatus, t, type UnwrapSchema } from "elysia";
-import { nameLowerPattern, uuid } from "../shared";
+import {
+  imageResult,
+  nameLowerPattern,
+  nameLowerPatternWithNumber,
+  uuid,
+} from "../shared";
 import type { productService } from "./service";
 
 export const MAX_IMAGES_PER_PRODUCT = 5;
@@ -9,7 +14,7 @@ export const productStatus = t.Union(
   [t.Literal("DRAFT"), t.Literal("PUBLISHED"), t.Literal("ARCHIVED")],
   {
     additionalProperties: false,
-  }
+  },
 );
 export type productStatus = UnwrapSchema<typeof productStatus>;
 
@@ -19,7 +24,6 @@ export const getQuery = t.Object({
   take: t.Optional(t.Number({ default: 25, minimum: 1, maximum: 100 })),
   status: t.Optional(productStatus),
   categories: t.Optional(t.Array(t.String())),
-  /** Collection handle; results follow the collection's order unless sortBy is set. */
   collection: t.Optional(t.String()),
   sortBy: t.Optional(
     t.Union([
@@ -28,7 +32,7 @@ export const getQuery = t.Object({
       t.Literal("updatedAt"),
       t.Literal("priceMin"),
       t.Literal("priceMax"),
-    ])
+    ]),
   ),
   sortDir: t.Optional(t.Union([t.Literal("asc"), t.Literal("desc")])),
 });
@@ -62,7 +66,7 @@ export const imageCreate = t.Object({
 
 export const imageOperations = t.Object({
   create: t.Optional(
-    t.Array(imageCreate, { maxItems: MAX_IMAGES_PER_PRODUCT })
+    t.Array(imageCreate, { maxItems: MAX_IMAGES_PER_PRODUCT }),
   ),
   update: t.Optional(
     t.Array(
@@ -72,26 +76,26 @@ export const imageOperations = t.Object({
         altText: t.Optional(t.String()),
         isThumbnail: t.Optional(t.Boolean()),
       }),
-      { maxItems: MAX_IMAGES_PER_PRODUCT }
-    )
+      { maxItems: MAX_IMAGES_PER_PRODUCT },
+    ),
   ),
   delete: t.Optional(t.Array(uuid)),
 });
 export type imageOperations = UnwrapSchema<typeof imageOperations>;
 
 export const variantCreate = t.Object({
-  price: t.Number({ minimum: 0 }),
+  price: t.Integer({ minimum: 0 }),
   sku: t.Optional(t.String({ minLength: 3 })),
-  stock: t.Optional(t.Number({ minimum: 0, default: 0 })),
+  stock: t.Optional(t.Integer({ minimum: 0, default: 0 })),
   currency: t.Optional(t.String({ default: "EUR" })),
   attributeValueIds: t.Array(uuid),
 });
 
 const variantUpdate = t.Object({
   id: uuid,
-  price: t.Optional(t.Number({ minimum: 0 })),
+  price: t.Optional(t.Integer({ minimum: 0 })),
   sku: t.Optional(t.String({ minLength: 3 })),
-  stock: t.Optional(t.Number({ minimum: 0 })),
+  stock: t.Optional(t.Integer({ minimum: 0 })),
   currency: t.Optional(t.String()),
   attributeValueIds: t.Optional(t.Array(uuid)),
 });
@@ -148,7 +152,7 @@ export const bulkPatchResponse = t.Object({
       name: t.String(),
       code: t.String(),
       error: t.String(),
-    })
+    }),
   ),
 });
 export type bulkPatchResponse = UnwrapSchema<typeof bulkPatchResponse>;
@@ -177,3 +181,56 @@ export interface MultipleVariantErrors {
   details: ValidationErrorDetail[];
   message: string;
 }
+
+export const variantResult = t.Object(
+  {
+    id: uuid,
+    sku: t.Nullable(t.String({ minLength: 1 })),
+    price: t.Integer({ minimum: 0 }),
+    currency: t.String(),
+    stock: t.Integer({ minimum: 0 }),
+    attributeValues: t.Array(
+      t.Object(
+        {
+          id: uuid,
+          value: nameLowerPatternWithNumber,
+          attributeId: uuid,
+        },
+        { additionalProperties: false },
+      ),
+    ),
+  },
+  { additionalProperties: false },
+);
+
+export const productResult = t.Object(
+  {
+    id: uuid,
+    name: nameLowerPattern,
+    slug: t.String({ minLength: 1 }),
+    description: t.String({ minLength: 1 }),
+    status: productStatus,
+    version: t.Integer(),
+    images: t.Array(imageResult),
+    category: t.Object(
+      {
+        id: uuid,
+        name: nameLowerPattern,
+        imageId: uuid,
+        attributes: t.Array(uuid),
+      },
+      { additionalProperties: false },
+    ),
+    variants: t.Array(variantResult),
+    createdAt: t.Date(),
+    updatedAt: t.Date(),
+  },
+  { additionalProperties: false },
+);
+export type productResult = UnwrapSchema<typeof productResult>;
+
+export const productNotFound = t.Object({
+  code: t.Literal("PRODUCT_NOT_FOUND"),
+  message: t.Literal("Product not found"),
+});
+export type productNotFound = UnwrapSchema<typeof productNotFound>;

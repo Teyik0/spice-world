@@ -36,7 +36,7 @@ async function setProducts(tx: Tx, collectionId: string, productIds: string[]) {
         collectionId,
         productId,
         position,
-      }))
+      })),
     );
   }
 }

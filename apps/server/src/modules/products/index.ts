@@ -30,32 +30,32 @@ export const productsRouter = new Elysia({
     {
       query: ProductModel.getQuery,
     },
-    async ({ query }) => await productService.get(query)
+    async ({ query }) => await productService.get(query),
   )
   .get(
     "/count",
     {
       query: ProductModel.countQuery,
     },
-    async ({ query }) => await productService.count(query)
+    async ({ query }) => await productService.count(query),
   )
   .post(
     "/",
     {
       body: ProductModel.postBody,
     },
-    async ({ body }) => await productService.post(body)
+    async ({ body }) => await productService.post(body),
   )
   .patch(
     "/bulk",
     {
       body: ProductModel.bulkPatchBody,
     },
-    async ({ body }) => await productService.bulkPatch(body)
+    async ({ body }) => await productService.bulkPatch(body),
   )
   .get(
     "/slug/:slug",
-    async ({ params }) => await productService.getBySlug(params)
+    async ({ params }) => await productService.getBySlug(params),
   )
   .guard({ schema: "merge", params: uuidGuard })
   .get("/:id", async ({ params }) => await productService.getById(params))
@@ -63,7 +63,7 @@ export const productsRouter = new Elysia({
     "/:id/comments",
     { query: ProductModel.commentsQuery },
     async ({ params, query }) =>
-      await productService.getComments({ ...params, ...query })
+      await productService.getComments({ ...params, ...query }),
   )
   .patch(
     "/:id",
@@ -74,7 +74,7 @@ export const productsRouter = new Elysia({
       productService.patch({
         id: params.id,
         ...body,
-      })
+      }),
   )
   .delete("/:id", async ({ params, status }) => {
     const product = await productService.delete(params);
@@ -85,7 +85,7 @@ export const productsRouter = new Elysia({
           img.keyThumb,
           img.keyMedium,
           img.keyLarge,
-        ])
+        ]),
       );
     }
     return status(200);

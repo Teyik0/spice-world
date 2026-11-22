@@ -86,7 +86,7 @@ export const categoryService = {
             altText: name,
             isThumbnail: true,
           })
-          .returning()
+          .returning(),
       );
       const createdCategoryId = Bun.randomUUIDv7();
       const createdCategory = tx.$with("created_category").as(
@@ -97,7 +97,7 @@ export const categoryService = {
             name,
             imageId: createdImageId,
           })
-          .returning()
+          .returning(),
       );
 
       const newAttributes = (attributes ?? []).map((attribute) => ({
@@ -116,11 +116,13 @@ export const categoryService = {
             id: createdCategory.id,
             name: createdCategory.name,
             image: categoryImageColumns,
+            createdAt: createdCategory.createdAt,
+            updatedAt: createdCategory.updatedAt,
           })
           .from(createdCategory)
           .innerJoin(
             createdImage,
-            eq(createdImage.id, createdCategory.imageId)
+            eq(createdImage.id, createdCategory.imageId),
           );
 
         return status("Created", {
@@ -137,9 +139,9 @@ export const categoryService = {
               id,
               name: attributeName,
               categoryId: createdCategoryId,
-            }))
+            })),
           )
-          .returning()
+          .returning(),
       );
       const createdAttributesValues = tx.$with("created_values").as(
         tx
@@ -150,10 +152,10 @@ export const categoryService = {
                 id: Bun.randomUUIDv7(),
                 value,
                 attributeId: attribute.id,
-              }))
-            )
+              })),
+            ),
           )
-          .returning()
+          .returning(),
       );
 
       const [category] = await tx
@@ -161,7 +163,7 @@ export const categoryService = {
           createdImage,
           createdCategory,
           createdAttributes,
-          createdAttributesValues
+          createdAttributesValues,
         )
         .select({
           id: createdCategory.id,
@@ -193,6 +195,8 @@ export const categoryService = {
               '[]'::jsonb
             )
           `.as("attributes"),
+          createdAt: createdCategory.createdAt,
+          updatedAt: createdCategory.updatedAt,
         })
         .from(createdCategory)
         .innerJoin(createdImage, eq(createdImage.id, createdCategory.imageId));
@@ -231,7 +235,7 @@ export const categoryService = {
     const updates = attributes?.update ?? [];
     const deleteIds = attributes?.delete ?? [];
     const hasAttributeOperations = Boolean(
-      attributes?.create?.length || updates.length || deleteIds.length
+      attributes?.create?.length || updates.length || deleteIds.length,
     );
 
     const outcome = await db.transaction(
@@ -282,7 +286,7 @@ export const categoryService = {
         }
 
         const currentAttributes = new Map(
-          current.attributes.map((attribute) => [attribute.id, attribute])
+          current.attributes.map((attribute) => [attribute.id, attribute]),
         );
         for (const requestedAttributeId of [
           ...updates.map(({ id: attributeId }) => attributeId),
@@ -305,7 +309,7 @@ export const categoryService = {
             });
           }
           const existingValueIds = new Set(
-            attribute.values.map(({ id: valueId }) => valueId)
+            attribute.values.map(({ id: valueId }) => valueId),
           );
           const valueIds = [
             ...(values?.update?.map(({ id: valueId }) => valueId) ?? []),
@@ -365,7 +369,7 @@ export const categoryService = {
         }
 
         const valueDeleteIds = updates.flatMap(
-          ({ values }) => values?.delete ?? []
+          ({ values }) => values?.delete ?? [],
         );
         if (valueDeleteIds.length) {
           await tx
@@ -377,15 +381,15 @@ export const categoryService = {
           ({ id: attributeId, name: attributeName }) =>
             attributeName === undefined
               ? []
-              : [{ id: attributeId, name: attributeName }]
+              : [{ id: attributeId, name: attributeName }],
         );
         if (attributeNameUpdates.length) {
           const cases = sql.join(
             attributeNameUpdates.map(
               ({ id: attributeId, name: attributeName }) =>
-                sql`when ${attributeTable.id} = ${attributeId} then ${attributeName}`
+                sql`when ${attributeTable.id} = ${attributeId} then ${attributeName}`,
             ),
-            sql` `
+            sql` `,
           );
           await tx
             .update(attributeTable)
@@ -395,8 +399,8 @@ export const categoryService = {
             .where(
               inArray(
                 attributeTable.id,
-                attributeNameUpdates.map(({ id: attributeId }) => attributeId)
-              )
+                attributeNameUpdates.map(({ id: attributeId }) => attributeId),
+              ),
             );
         }
 
@@ -406,15 +410,15 @@ export const categoryService = {
               id: valueId,
               attributeId,
               value,
-            })) ?? []
+            })) ?? [],
         );
         if (valueUpdates.length) {
           const cases = sql.join(
             valueUpdates.map(
               ({ id: valueId, attributeId, value }) =>
-                sql`when ${attributeValueTable.id} = ${valueId} and ${attributeValueTable.attributeId} = ${attributeId} then ${value}`
+                sql`when ${attributeValueTable.id} = ${valueId} and ${attributeValueTable.attributeId} = ${attributeId} then ${value}`,
             ),
-            sql` `
+            sql` `,
           );
           await tx
             .update(attributeValueTable)
@@ -424,13 +428,13 @@ export const categoryService = {
             .where(
               inArray(
                 attributeValueTable.id,
-                valueUpdates.map(({ id: valueId }) => valueId)
-              )
+                valueUpdates.map(({ id: valueId }) => valueId),
+              ),
             );
         }
 
         const createdAttributes = (attributes?.create ?? []).map(
-          (attribute) => ({ ...attribute, id: Bun.randomUUIDv7() })
+          (attribute) => ({ ...attribute, id: Bun.randomUUIDv7() }),
         );
         if (createdAttributes.length) {
           await tx.insert(attributeTable).values(
@@ -438,7 +442,7 @@ export const categoryService = {
               id: attributeId,
               name: attrName,
               categoryId: id,
-            }))
+            })),
           );
         }
 
@@ -448,14 +452,14 @@ export const categoryService = {
               id: Bun.randomUUIDv7(),
               attributeId: attribute.id,
               value,
-            }))
+            })),
           ),
           ...updates.flatMap(({ id: attributeId, values }) =>
             (values?.create ?? []).map((value) => ({
               id: Bun.randomUUIDv7(),
               attributeId,
               value,
-            }))
+            })),
           ),
         ];
         if (createdValues.length) {
@@ -472,7 +476,7 @@ export const categoryService = {
           createdValuesByAttribute.set(attributeId, values);
         }
         const updatesById = new Map(
-          updates.map((update) => [update.id, update])
+          updates.map((update) => [update.id, update]),
         );
         const deletedAttributeIds = new Set(deleteIds);
         const finalAttributes = current.attributes.flatMap((attribute) => {
@@ -485,7 +489,7 @@ export const categoryService = {
             update?.values?.update?.map(({ id: valueId, value }) => [
               valueId,
               value,
-            ]) ?? []
+            ]) ?? [],
           );
           return [
             {
@@ -500,7 +504,7 @@ export const categoryService = {
                           id: valueId,
                           value: valueUpdatesById.get(valueId) ?? value,
                         },
-                      ]
+                      ],
                 ),
                 ...(createdValuesByAttribute.get(attribute.id) ?? []),
               ],
@@ -512,7 +516,7 @@ export const categoryService = {
             id: attribute.id,
             name: attribute.name,
             values: createdValuesByAttribute.get(attribute.id) ?? [],
-          }))
+          })),
         );
 
         return {
@@ -525,7 +529,7 @@ export const categoryService = {
           oldImage: imageUpdate ? current.image : null,
         };
       },
-      { isolationLevel: "read committed" }
+      { isolationLevel: "read committed" },
     );
     return outcome;
   },

@@ -18,7 +18,7 @@ export const categoryRouter = new Elysia({
       query: CategoryModel.getQuery,
       response: { 200: t.Array(CategoryModel.categoryResult) },
     },
-    async ({ query }) => await categoryService.get(query)
+    async ({ query }) => await categoryService.get(query),
   )
   .post(
     "/",
@@ -27,7 +27,7 @@ export const categoryRouter = new Elysia({
       response: { 201: CategoryModel.categoryResult },
       imageCleanup: true,
     },
-    async ({ body }) => await categoryService.post(body)
+    async ({ body }) => await categoryService.post(body),
   )
   .get("/count", async () => await categoryService.count())
   .guard({ schema: "merge", params: uuidGuard })
@@ -39,7 +39,7 @@ export const categoryRouter = new Elysia({
         404: CategoryModel.categoryNotFound,
       },
     },
-    async ({ params }) => await categoryService.getById(params)
+    async ({ params }) => await categoryService.getById(params),
   )
   .delete("/:id", { imageCleanup: true }, async ({ params }) => {
     const result = await categoryService.delete(params);
@@ -67,5 +67,5 @@ export const categoryRouter = new Elysia({
         return result;
       }
       return result.category;
-    }
+    },
   );

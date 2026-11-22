@@ -172,7 +172,7 @@ describe.concurrent("Collection routes test", () => {
         name: "Invalid",
       });
       expect(status).toBe(422);
-    }
+    },
   );
 
   test("rejects duplicate product ids and an empty patch", async () => {
@@ -217,7 +217,7 @@ describe.concurrent("Collection routes test", () => {
     const { status } = await api.collections({ id: created.data.id }).delete();
     expect(status).toBe(200);
     expect((await api.collections({ id: created.data.id }).get()).status).toBe(
-      404
+      404,
     );
     const rows = await testDb.db
       .select({ id: productTable.id })
@@ -269,7 +269,7 @@ describe.concurrent("Collection routes test", () => {
       query: { collection: h, sortBy: "name", sortDir: "asc" },
     });
     expect(byName.data?.map(({ name }) => name)).toEqual(
-      [c, draft, a].map(({ name }) => name).sort()
+      [c, draft, a].map(({ name }) => name).sort(),
     );
 
     const unknown = await productsApi.products.get({

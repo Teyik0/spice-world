@@ -29,7 +29,7 @@ describe("Stripe Checkout", () => {
     // Mock Stripe Checkout function
     createStripeCheckoutMock = spyOn(
       stripeCheckoutModule,
-      "createStripeCheckout"
+      "createStripeCheckout",
     ).mockImplementation(() => {
       const mockSessionId = `mock_checkout_${Date.now()}_${Math.random().toString(36).slice(2)}`;
       return Promise.resolve({
@@ -67,12 +67,10 @@ describe("Stripe Checkout", () => {
     const setCookie = signInResp.headers.get("set-cookie");
     userCookie = setCookie?.split(";")[0] || "";
 
-    const { productsRouter: authenticatedProductsRouter } = await import(
-      "@spice-world/server/modules/products"
-    );
-    const { ordersRouter: authenticatedOrdersRouter } = await import(
-      "@spice-world/server/modules/orders"
-    );
+    const { productsRouter: authenticatedProductsRouter } =
+      await import("@spice-world/server/modules/products");
+    const { ordersRouter: authenticatedOrdersRouter } =
+      await import("@spice-world/server/modules/orders");
 
     productsApi = treaty(authenticatedProductsRouter);
     ordersApi = treaty(authenticatedOrdersRouter);
@@ -129,7 +127,7 @@ describe("Stripe Checkout", () => {
           headers: {
             cookie: userCookie,
           },
-        }
+        },
       );
 
       // Should pass validation with Stripe (no polarProductId requirement)
@@ -178,7 +176,7 @@ describe("Stripe Checkout", () => {
           headers: {
             cookie: userCookie,
           },
-        }
+        },
       );
 
       expect(status).toBe(201);

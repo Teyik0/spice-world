@@ -36,7 +36,7 @@ export const mockUtapi = async () => {
   const uploadedFiles: UploadedFileData[] = [];
 
   spyOn(imagesModule.utapi, "uploadFiles").mockImplementation(((
-    files: File | File[]
+    files: File | File[],
   ) => {
     const createResult = (uploadedFile: File) => {
       const data = createUploadedFileData(uploadedFile);
@@ -45,13 +45,13 @@ export const mockUtapi = async () => {
     };
 
     return Promise.resolve(
-      Array.isArray(files) ? files.map(createResult) : createResult(files)
+      Array.isArray(files) ? files.map(createResult) : createResult(files),
     );
   }) as typeof imagesModule.utapi.uploadFiles);
 
   const deleteFiles = spyOn(
     imagesModule.utapi,
-    "deleteFiles"
+    "deleteFiles",
   ).mockImplementation((async () => ({
     success: true,
     deletedCount: 1,
@@ -149,7 +149,7 @@ export const createTestCategory = async ({
 
   if (attributeCount !== undefined && attributeCount > ATTRIBUTE_NAMES.length) {
     throw new Error(
-      `attributeCount cannot be greater than ${ATTRIBUTE_NAMES.length}`
+      `attributeCount cannot be greater than ${ATTRIBUTE_NAMES.length}`,
     );
   }
 
@@ -157,19 +157,19 @@ export const createTestCategory = async ({
   if (attributeValueCount !== undefined) {
     if (attributeValueCount <= 0) {
       throw new Error(
-        `attributeValueCount must be greater than 0, got ${attributeValueCount}`
+        `attributeValueCount must be greater than 0, got ${attributeValueCount}`,
       );
     }
 
     if (attributeValueCount > 5) {
       throw new Error(
-        `attributeValueCount cannot exceed maximum pool size of 5, got ${attributeValueCount}`
+        `attributeValueCount cannot exceed maximum pool size of 5, got ${attributeValueCount}`,
       );
     }
 
     if (attributeCount === 0 && attributeValueCount > 0) {
       throw new Error(
-        `attributeCount must be greater than 0 when attributeValueCount is specified (received attributeCount: 0, attributeValueCount: ${attributeValueCount})`
+        `attributeCount must be greater than 0 when attributeValueCount is specified (received attributeCount: 0, attributeValueCount: ${attributeValueCount})`,
       );
     }
   }
@@ -180,7 +180,7 @@ export const createTestCategory = async ({
       ? []
       : pick(
           ATTRIBUTE_NAMES,
-          attributeCount ?? randomInt(1, ATTRIBUTE_NAMES.length)
+          attributeCount ?? randomInt(1, ATTRIBUTE_NAMES.length),
         );
 
   return await testDb.db.transaction(async (tx) => {
@@ -197,16 +197,21 @@ export const createTestCategory = async ({
       altText: categoryName,
       isThumbnail: true,
     });
-    await tx
-      .insert(categoryTable)
-      .values({ id: categoryId, name: categoryName, imageId });
+    const date = new Date();
+    await tx.insert(categoryTable).values({
+      id: categoryId,
+      name: categoryName,
+      imageId,
+      createdAt: date,
+      updatedAt: date,
+    });
     const attributes = selectedAttributes.map((attrName) => ({
       id: Bun.randomUUIDv7(),
       name: attrName,
       categoryId,
       values: pick(
         ATTRIBUTE_VALUES[attrName],
-        attributeValueCount ?? randomInt(2, ATTRIBUTE_VALUES[attrName].length)
+        attributeValueCount ?? randomInt(2, ATTRIBUTE_VALUES[attrName].length),
       ),
     }));
     if (attributes.length) {
@@ -219,8 +224,8 @@ export const createTestCategory = async ({
             id: Bun.randomUUIDv7(),
             attributeId: attribute.id,
             value,
-          }))
-        )
+          })),
+        ),
       );
     }
     const category = await tx.query.category.findFirst({
@@ -236,7 +241,7 @@ export const createTestCategory = async ({
 export const createTestProducts = async (
   testDb: TestDatabase,
   count: number,
-  status: "DRAFT" | "PUBLISHED" = "PUBLISHED"
+  status: "DRAFT" | "PUBLISHED" = "PUBLISHED",
 ) => {
   const category = await createTestCategory({ testDb });
   return await testDb.db
@@ -253,7 +258,7 @@ export const createTestProducts = async (
           categoryId: category.id,
           updatedAt: new Date(),
         };
-      })
+      }),
     )
     .returning();
 };
@@ -286,7 +291,7 @@ interface SetupProductOptions {
 export const createSetupProduct =
   (
     testDb: TestDatabase,
-    api: ReturnType<typeof treaty<typeof productsRouter>>
+    api: ReturnType<typeof treaty<typeof productsRouter>>,
   ) =>
   async ({
     attributeCount,

@@ -1,7 +1,6 @@
 import { t, type UnwrapSchema } from "elysia";
 import {
-  imageKey,
-  imageUrl,
+  imageResult,
   nameLowerPattern,
   nameLowerPatternWithNumber,
   uuid,
@@ -23,11 +22,11 @@ export const postAttributes = t.Refine(
         uniqueItems: true,
       }),
     }),
-    { minItems: 1 }
+    { minItems: 1 },
   ),
   (attributes) =>
     new Set(attributes.map(({ name }) => name)).size === attributes.length,
-  () => "Attribute names to create must be unique within a category"
+  () => "Attribute names to create must be unique within a category",
 );
 export type postAttribute = UnwrapSchema<typeof postAttributes>;
 
@@ -41,12 +40,12 @@ export type postBody = UnwrapSchema<typeof postBody>;
 export const attributeValueOperations = t.Refine(
   t.Object({
     create: t.Optional(
-      t.Array(nameLowerPatternWithNumber, { minItems: 1, uniqueItems: true })
+      t.Array(nameLowerPatternWithNumber, { minItems: 1, uniqueItems: true }),
     ),
     update: t.Optional(
       t.Array(t.Object({ id: uuid, value: nameLowerPatternWithNumber }), {
         minItems: 1,
-      })
+      }),
     ),
     delete: t.Optional(t.Array(uuid, { minItems: 1, uniqueItems: true })),
   }),
@@ -56,7 +55,7 @@ export const attributeValueOperations = t.Refine(
     new Set([...create, ...update.map(({ value }) => value)]).size ===
       create.length + update.length,
   () =>
-    "Attribute values must be unique and can only be updated or deleted once per request"
+    "Attribute values must be unique and can only be updated or deleted once per request",
 );
 export type attributeValueOperations = UnwrapSchema<
   typeof attributeValueOperations
@@ -72,8 +71,8 @@ export const attributeOperations = t.Refine(
           name: t.Optional(nameLowerPattern),
           values: t.Optional(attributeValueOperations),
         }),
-        { minItems: 1 }
-      )
+        { minItems: 1 },
+      ),
     ),
     delete: t.Optional(t.Array(uuid, { minItems: 1, uniqueItems: true })),
   }),
@@ -90,7 +89,7 @@ export const attributeOperations = t.Refine(
     );
   },
   () =>
-    "Attribute names must be unique and attributes can only be updated or deleted once per request"
+    "Attribute names must be unique and attributes can only be updated or deleted once per request",
 );
 export type attributeOperations = UnwrapSchema<typeof attributeOperations>;
 
@@ -101,33 +100,34 @@ export const patchBody = t.Object({
 });
 export type patchBody = UnwrapSchema<typeof patchBody>;
 
-export const categoryResult = t.Object({
-  id: uuid,
-  name: nameLowerPattern,
-  image: t.Object({
+export const categoryResult = t.Object(
+  {
     id: uuid,
-    altText: t.Nullable(t.String()),
-    isThumbnail: t.Boolean(),
-    keyThumb: imageKey,
-    keyMedium: imageKey,
-    keyLarge: imageKey,
-    urlThumb: imageUrl,
-    urlMedium: imageUrl,
-    urlLarge: imageUrl,
-  }),
-  attributes: t.Array(
-    t.Object({
-      id: uuid,
-      name: nameLowerPattern,
-      values: t.Array(
-        t.Object({
+    name: nameLowerPattern,
+    image: imageResult,
+    attributes: t.Array(
+      t.Object(
+        {
           id: uuid,
-          value: nameLowerPatternWithNumber,
-        })
+          name: nameLowerPattern,
+          values: t.Array(
+            t.Object(
+              {
+                id: uuid,
+                value: nameLowerPatternWithNumber,
+              },
+              { additionalProperties: false },
+            ),
+          ),
+        },
+        { additionalProperties: false },
       ),
-    })
-  ),
-});
+    ),
+    createdAt: t.Date(),
+    updatedAt: t.Date(),
+  },
+  { additionalProperties: false },
+);
 export type categoryResult = UnwrapSchema<typeof categoryResult>;
 export const categoryNotFound = t.Object({
   code: t.Literal("CATEGORY_NOT_FOUND"),

@@ -42,7 +42,7 @@ export const attributeService = {
         db
           .insert(attributeTable)
           .values({ id: attributeId, name, categoryId })
-          .returning()
+          .returning(),
       );
     const createdValues = db.$with("created_values").as(
       db
@@ -52,9 +52,9 @@ export const attributeService = {
             id: Bun.randomUUIDv7(),
             attributeId,
             value,
-          }))
+          })),
         )
-        .returning()
+        .returning(),
     );
 
     const [attribute] = await db
@@ -75,7 +75,7 @@ export const attributeService = {
       .from(createdAttribute)
       .innerJoin(
         categoryTable,
-        eq(categoryTable.id, createdAttribute.categoryId)
+        eq(categoryTable.id, createdAttribute.categoryId),
       );
 
     return status("Created", attribute as NonNullable<typeof attribute>);
@@ -93,8 +93,8 @@ export const attributeService = {
       .where(
         and(
           eq(attributeTable.id, id),
-          eq(categoryTable.id, attributeTable.categoryId)
-        )
+          eq(categoryTable.id, attributeTable.categoryId),
+        ),
       )
       .returning({
         id: attributeTable.id,
@@ -145,7 +145,7 @@ export const attributeValueService = {
 
     return status(
       "Created",
-      attributeValue as NonNullable<typeof attributeValue>
+      attributeValue as NonNullable<typeof attributeValue>,
     );
   },
 
@@ -169,7 +169,7 @@ export const attributeValueService = {
           .from(attributeTable)
           .innerJoin(
             attributeValueTable,
-            eq(attributeValueTable.attributeId, attributeTable.id)
+            eq(attributeValueTable.attributeId, attributeTable.id),
           )
           .where(eq(attributeValueTable.id, id))
           .for("update", { of: attributeTable });
@@ -198,7 +198,7 @@ export const attributeValueService = {
           .where(eq(attributeValueTable.id, id));
         return status(200);
       },
-      { isolationLevel: "read committed" }
+      { isolationLevel: "read committed" },
     );
   },
 };

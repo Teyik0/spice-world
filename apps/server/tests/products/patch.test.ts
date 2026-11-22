@@ -24,9 +24,8 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
     testDb = await createTestDatabase("patch.test.ts");
     // Mock uploadthing BEFORE importing the router
     await mockUtapi();
-    const { productsRouter: router } = await import(
-      "@spice-world/server/modules/products"
-    );
+    const { productsRouter: router } =
+      await import("@spice-world/server/modules/products");
 
     api = treaty(router);
     setupProduct = createSetupProduct(testDb, api);
@@ -531,7 +530,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       expect(data.variants.length).toBeGreaterThanOrEqual(1);
 
       const updatedVariant = data.variants.find(
-        (v) => v.id === variantToUpdate.id
+        (v) => v.id === variantToUpdate.id,
       );
       expectDefined(updatedVariant);
       expect(updatedVariant.price).toBe(1299);

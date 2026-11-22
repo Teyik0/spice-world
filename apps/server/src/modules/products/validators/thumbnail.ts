@@ -12,7 +12,7 @@ export function validateSingleThumbnail({
   currentImages = [],
 }: ThumbnailContext) {
   const thumbnails = new Map(
-    currentImages.map((image) => [image.id, image.isThumbnail])
+    currentImages.map((image) => [image.id, image.isThumbnail]),
   );
   const affectedIds = new Set<string>();
 

@@ -31,7 +31,7 @@ describe.concurrent("Attribute routes test", () => {
           id: Bun.randomUUIDv7(),
           attributeId: id,
           value,
-        }))
+        })),
       );
       const attribute = await tx.query.attribute.findFirst({
         where: { id },
@@ -46,9 +46,8 @@ describe.concurrent("Attribute routes test", () => {
   beforeAll(async () => {
     testDb = await createTestDatabase("attribute.test.ts");
     ({ db } = await import("@spice-world/server/lib/db"));
-    const { attributeRouter: router } = await import(
-      "@spice-world/server/modules/attributes"
-    );
+    const { attributeRouter: router } =
+      await import("@spice-world/server/modules/attributes");
     api = treaty(router);
 
     testCategory = await createTestCategory({ testDb, name: "spice" });
@@ -246,7 +245,7 @@ describe.concurrent("Attribute routes test", () => {
           where: { id: attribute.id },
           columns: { categoryId: false },
           with: { values: true, category: true },
-        })
+        }),
       ).toEqual(data);
     });
 
@@ -450,8 +449,8 @@ describe.concurrent("Attribute routes test", () => {
       expect(
         await db.$count(
           attributeValueTable,
-          eq(attributeValueTable.attributeId, attribute.id)
-        )
+          eq(attributeValueTable.attributeId, attribute.id),
+        ),
       ).toBe(1);
     });
 
@@ -465,14 +464,16 @@ describe.concurrent("Attribute routes test", () => {
       expectDefined(attribute);
 
       const results = await Promise.all(
-        attribute.values.map(({ id }) => api.attributes.values({ id }).delete())
+        attribute.values.map(({ id }) =>
+          api.attributes.values({ id }).delete(),
+        ),
       );
       expect(results.map((result) => result.status).sort()).toEqual([200, 400]);
       expect(
         await db.$count(
           attributeValueTable,
-          eq(attributeValueTable.attributeId, attribute.id)
-        )
+          eq(attributeValueTable.attributeId, attribute.id),
+        ),
       ).toBe(1);
     });
 
@@ -495,8 +496,8 @@ describe.concurrent("Attribute routes test", () => {
       expect(
         await db.$count(
           attributeValueTable,
-          eq(attributeValueTable.attributeId, attribute.id)
-        )
+          eq(attributeValueTable.attributeId, attribute.id),
+        ),
       ).toBe(1);
     });
 
@@ -511,9 +512,8 @@ describe.concurrent("Attribute routes test", () => {
       const [first, second] = attribute.values;
       expectDefined(first);
       expectDefined(second);
-      const { categoryRouter } = await import(
-        "@spice-world/server/modules/categories"
-      );
+      const { categoryRouter } =
+        await import("@spice-world/server/modules/categories");
       const categoriesApi = treaty(categoryRouter);
 
       const results = await Promise.all([
@@ -529,8 +529,8 @@ describe.concurrent("Attribute routes test", () => {
       expect(
         await db.$count(
           attributeValueTable,
-          eq(attributeValueTable.attributeId, attribute.id)
-        )
+          eq(attributeValueTable.attributeId, attribute.id),
+        ),
       ).toBe(1);
     });
 

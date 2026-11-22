@@ -13,7 +13,7 @@ export const collectionRouter = new Elysia({
   .get(
     "/",
     { response: { 200: t.Array(CollectionModel.collectionResult) } },
-    async () => await collectionService.get()
+    async () => await collectionService.get(),
   )
   .post(
     "/",
@@ -21,7 +21,7 @@ export const collectionRouter = new Elysia({
       body: CollectionModel.postBody,
       response: { 201: CollectionModel.collectionResult },
     },
-    async ({ body }) => await collectionService.post(body)
+    async ({ body }) => await collectionService.post(body),
   )
   .guard({ schema: "merge", params: uuidGuard })
   .get(
@@ -32,7 +32,7 @@ export const collectionRouter = new Elysia({
         404: CollectionModel.collectionNotFound,
       },
     },
-    async ({ params }) => await collectionService.getById(params)
+    async ({ params }) => await collectionService.getById(params),
   )
   .patch(
     "/:id",
@@ -44,10 +44,10 @@ export const collectionRouter = new Elysia({
       },
     },
     async ({ body, params }) =>
-      await collectionService.patch({ ...params, ...body })
+      await collectionService.patch({ ...params, ...body }),
   )
   .delete(
     "/:id",
     { response: { 404: CollectionModel.collectionNotFound } },
-    async ({ params }) => await collectionService.delete(params)
+    async ({ params }) => await collectionService.delete(params),
   );

@@ -9,11 +9,14 @@ export type postBody = UnwrapSchema<typeof postBody>;
 export const patchBody = postBody;
 export type patchBody = UnwrapSchema<typeof postBody>;
 
-export const attributeValueResult = t.Object({
-  id: uuid,
-  attributeId: uuid,
-  value: nameLowerPatternWithNumber,
-});
+export const attributeValueResult = t.Object(
+  {
+    id: uuid,
+    attributeId: uuid,
+    value: nameLowerPatternWithNumber,
+  },
+  { additionalProperties: false },
+);
 export type attributeValueResult = UnwrapSchema<typeof attributeValueResult>;
 export const attributeValueNotFound = t.Object({
   code: t.Literal("ATTRIBUTE_VALUE_NOT_FOUND"),

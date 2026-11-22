@@ -67,9 +67,9 @@ export const attributeValueToProductVariantTable = pgTable(
       .onDelete("cascade"),
     index("_AttributeValueToProductVariant_B_index").using(
       "btree",
-      table.b.asc().nullsLast()
+      table.b.asc().nullsLast(),
     ),
-  ]
+  ],
 );
 
 export const prismaMigrationsTable = pgTable("_prisma_migrations", {
@@ -111,7 +111,7 @@ export const accountTable = pgTable(
       .onUpdate("cascade")
       .onDelete("cascade"),
     index("account_userId_idx").using("btree", table.userId.asc().nullsLast()),
-  ]
+  ],
 );
 
 export const attributeTable = pgTable(
@@ -120,6 +120,12 @@ export const attributeTable = pgTable(
     id: text().primaryKey(),
     name: text().notNull(),
     categoryId: text().notNull(),
+    createdAt: timestamp({ precision: 3 })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3 })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
   },
   (table) => [
     foreignKey({
@@ -132,9 +138,9 @@ export const attributeTable = pgTable(
     uniqueIndex(attributeConstraintNames.namePerCategory).using(
       "btree",
       table.categoryId.asc().nullsLast(),
-      table.name.asc().nullsLast()
+      table.name.asc().nullsLast(),
     ),
-  ]
+  ],
 );
 
 export const attributeValueTable = pgTable(
@@ -143,6 +149,12 @@ export const attributeValueTable = pgTable(
     id: text().primaryKey(),
     value: text().notNull(),
     attributeId: text().notNull(),
+    createdAt: timestamp({ precision: 3 })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3 })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
   },
   (table) => [
     foreignKey({
@@ -155,9 +167,9 @@ export const attributeValueTable = pgTable(
     uniqueIndex(attributeConstraintNames.valuePerAttribute).using(
       "btree",
       table.attributeId.asc().nullsLast(),
-      table.value.asc().nullsLast()
+      table.value.asc().nullsLast(),
     ),
-  ]
+  ],
 );
 
 export const categoryTable = pgTable(
@@ -166,6 +178,12 @@ export const categoryTable = pgTable(
     id: text().primaryKey(),
     name: text().notNull(),
     imageId: text().notNull(),
+    createdAt: timestamp({ precision: 3 })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3 })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
     foreignKey({
@@ -177,13 +195,13 @@ export const categoryTable = pgTable(
       .onDelete("restrict"),
     uniqueIndex("Category_imageId_key").using(
       "btree",
-      table.imageId.asc().nullsLast()
+      table.imageId.asc().nullsLast(),
     ),
     uniqueIndex("Category_name_key").using(
       "btree",
-      table.name.asc().nullsLast()
+      table.name.asc().nullsLast(),
     ),
-  ]
+  ],
 );
 
 export const commentTable = pgTable(
@@ -213,7 +231,7 @@ export const commentTable = pgTable(
     })
       .onUpdate("cascade")
       .onDelete("restrict"),
-  ]
+  ],
 );
 
 export const imageTable = pgTable(
@@ -240,22 +258,22 @@ export const imageTable = pgTable(
       .onDelete("cascade"),
     uniqueIndex("Image_keyLarge_key").using(
       "btree",
-      table.keyLarge.asc().nullsLast()
+      table.keyLarge.asc().nullsLast(),
     ),
     uniqueIndex("Image_keyMedium_key").using(
       "btree",
-      table.keyMedium.asc().nullsLast()
+      table.keyMedium.asc().nullsLast(),
     ),
     uniqueIndex("Image_keyThumb_key").using(
       "btree",
-      table.keyThumb.asc().nullsLast()
+      table.keyThumb.asc().nullsLast(),
     ),
     index("Image_productId_isThumbnail_idx").using(
       "btree",
       table.productId.asc().nullsLast(),
-      table.isThumbnail.asc().nullsLast()
+      table.isThumbnail.asc().nullsLast(),
     ),
-  ]
+  ],
 );
 
 export const imageDeletionTable = pgTable(
@@ -265,7 +283,7 @@ export const imageDeletionTable = pgTable(
     notBefore: timestamp({ withTimezone: true }).notNull(),
     attempts: integer().default(0).notNull(),
   },
-  (table) => [index("ImageDeletion_notBefore_idx").on(table.notBefore)]
+  (table) => [index("ImageDeletion_notBefore_idx").on(table.notBefore)],
 );
 
 export const orderTable = pgTable(
@@ -299,19 +317,19 @@ export const orderTable = pgTable(
       .onDelete("restrict"),
     index("Order_createdAt_idx").using(
       "btree",
-      table.createdAt.asc().nullsLast()
+      table.createdAt.asc().nullsLast(),
     ),
     index("Order_status_idx").using("btree", table.status.asc().nullsLast()),
     uniqueIndex("Order_stripePaymentIntentId_key").using(
       "btree",
-      table.stripePaymentIntentId.asc().nullsLast()
+      table.stripePaymentIntentId.asc().nullsLast(),
     ),
     uniqueIndex("Order_stripeSessionId_key").using(
       "btree",
-      table.stripeSessionId.asc().nullsLast()
+      table.stripeSessionId.asc().nullsLast(),
     ),
     index("Order_userId_idx").using("btree", table.userId.asc().nullsLast()),
-  ]
+  ],
 );
 
 export const orderItemTable = pgTable(
@@ -346,17 +364,17 @@ export const orderItemTable = pgTable(
       .onDelete("set null"),
     index("OrderItem_orderId_idx").using(
       "btree",
-      table.orderId.asc().nullsLast()
+      table.orderId.asc().nullsLast(),
     ),
     index("OrderItem_productId_idx").using(
       "btree",
-      table.productId.asc().nullsLast()
+      table.productId.asc().nullsLast(),
     ),
     index("OrderItem_variantId_idx").using(
       "btree",
-      table.variantId.asc().nullsLast()
+      table.variantId.asc().nullsLast(),
     ),
-  ]
+  ],
 );
 
 export const productTable = pgTable(
@@ -384,22 +402,22 @@ export const productTable = pgTable(
       .onDelete("restrict"),
     index("Product_categoryId_idx").using(
       "btree",
-      table.categoryId.asc().nullsLast()
+      table.categoryId.asc().nullsLast(),
     ),
     index("Product_name_fts_idx").using(
       "gin",
-      sql`to_tsvector('french'::regconfig, name)`
+      sql`to_tsvector('french'::regconfig, name)`,
     ),
     uniqueIndex("Product_name_key").using(
       "btree",
-      table.name.asc().nullsLast()
+      table.name.asc().nullsLast(),
     ),
     uniqueIndex("Product_slug_key").using(
       "btree",
-      table.slug.asc().nullsLast()
+      table.slug.asc().nullsLast(),
     ),
     index("Product_status_idx").using("btree", table.status.asc().nullsLast()),
-  ]
+  ],
 );
 
 export const productVariantTable = pgTable(
@@ -426,19 +444,19 @@ export const productVariantTable = pgTable(
       .onDelete("cascade"),
     index("ProductVariant_productId_idx").using(
       "btree",
-      table.productId.asc().nullsLast()
+      table.productId.asc().nullsLast(),
     ),
     index("ProductVariant_productId_stock_price_idx").using(
       "btree",
       table.productId.asc().nullsLast(),
       table.stock.asc().nullsLast(),
-      table.price.asc().nullsLast()
+      table.price.asc().nullsLast(),
     ),
     uniqueIndex("ProductVariant_sku_key").using(
       "btree",
-      table.sku.asc().nullsLast()
+      table.sku.asc().nullsLast(),
     ),
-  ]
+  ],
 );
 
 export const sessionTable = pgTable(
@@ -466,10 +484,10 @@ export const sessionTable = pgTable(
       .onDelete("cascade"),
     uniqueIndex("session_token_key").using(
       "btree",
-      table.token.asc().nullsLast()
+      table.token.asc().nullsLast(),
     ),
     index("session_userId_idx").using("btree", table.userId.asc().nullsLast()),
-  ]
+  ],
 );
 
 export const userTable = pgTable(
@@ -494,9 +512,9 @@ export const userTable = pgTable(
     uniqueIndex("user_email_key").using("btree", table.email.asc().nullsLast()),
     uniqueIndex("user_stripeCustomerId_key").using(
       "btree",
-      table.stripeCustomerId.asc().nullsLast()
+      table.stripeCustomerId.asc().nullsLast(),
     ),
-  ]
+  ],
 );
 
 export const verificationTable = pgTable(
@@ -512,9 +530,9 @@ export const verificationTable = pgTable(
   (table) => [
     index("verification_identifier_idx").using(
       "btree",
-      table.identifier.asc().nullsLast()
+      table.identifier.asc().nullsLast(),
     ),
-  ]
+  ],
 );
 
 export const verificationTokenTable = pgTable(
@@ -528,13 +546,13 @@ export const verificationTokenTable = pgTable(
     uniqueIndex("VerificationToken_identifier_token_key").using(
       "btree",
       table.identifier.asc().nullsLast(),
-      table.token.asc().nullsLast()
+      table.token.asc().nullsLast(),
     ),
     uniqueIndex("VerificationToken_token_key").using(
       "btree",
-      table.token.asc().nullsLast()
+      table.token.asc().nullsLast(),
     ),
-  ]
+  ],
 );
 
 export const collectionTable = pgTable(
@@ -543,8 +561,14 @@ export const collectionTable = pgTable(
     id: text().primaryKey(),
     handle: text().notNull(),
     name: text().notNull(),
+    createdAt: timestamp({ precision: 3 })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3 })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
   },
-  (table) => [uniqueIndex("Collection_handle_key").on(table.handle)]
+  (table) => [uniqueIndex("Collection_handle_key").on(table.handle)],
 );
 
 export const collectionProductTable = pgTable(
@@ -557,13 +581,19 @@ export const collectionProductTable = pgTable(
       .notNull()
       .references(() => productTable.id, { onDelete: "cascade" }),
     position: integer().notNull(),
+    createdAt: timestamp({ precision: 3 })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3 })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
   },
   (table) => [
     primaryKey({ columns: [table.collectionId, table.productId] }),
     uniqueIndex("CollectionProduct_collectionId_position_key").on(
       table.collectionId,
-      table.position
+      table.position,
     ),
     index("CollectionProduct_productId_idx").on(table.productId),
-  ]
+  ],
 );

@@ -39,10 +39,10 @@ const app = new Elysia()
               Authorization: `Bearer ${env.AXIOM_TOKEN}`,
               "X-Axiom-Dataset": "spice-world",
             },
-          })
+          }),
         ),
       ],
-    })
+    }),
   )
   .use(
     cors({
@@ -50,7 +50,7 @@ const app = new Elysia()
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       credentials: true,
       allowedHeaders: ["Content-Type", "Authorization"],
-    })
+    }),
   )
   .onRequest(({ request }) => {
     requestStart.set(request, performance.now());
@@ -89,6 +89,6 @@ const app = new Elysia()
   .listen(Bun.env.PORT ?? 3001);
 
 console.log(
-  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
+  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`,
 );
 export type App = typeof app;

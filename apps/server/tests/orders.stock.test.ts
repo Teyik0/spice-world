@@ -117,7 +117,7 @@ describe("Order Service - Stock Validation & Reservation", () => {
           city: "Test City",
           postalCode: "12345",
           country: "FR",
-        }
+        },
       );
 
       expect(result.order.status).toBe("PENDING");
@@ -183,8 +183,8 @@ describe("Order Service - Stock Validation & Reservation", () => {
             city: "Test City",
             postalCode: "12345",
             country: "FR",
-          }
-        )
+          },
+        ),
       ).rejects.toMatchObject({
         message: expect.stringContaining("Insufficient stock"),
       });
@@ -212,8 +212,8 @@ describe("Order Service - Stock Validation & Reservation", () => {
             city: "Test City",
             postalCode: "12345",
             country: "FR",
-          }
-        )
+          },
+        ),
       ).rejects.toMatchObject({
         message: expect.stringContaining("Insufficient stock"),
       });
@@ -308,8 +308,8 @@ describe("Order Service - Stock Validation & Reservation", () => {
             city: "Test City",
             postalCode: "12345",
             country: "FR",
-          }
-        )
+          },
+        ),
       ).rejects.toMatchObject({
         message: expect.stringContaining("Insufficient stock"),
       });
@@ -380,7 +380,7 @@ describe("Order Service - Stock Validation & Reservation", () => {
           city: "Test City",
           postalCode: "12345",
           country: "FR",
-        }
+        },
       );
 
       // Stock should now be 8 (reserved)
@@ -395,7 +395,7 @@ describe("Order Service - Stock Validation & Reservation", () => {
       const result = await orderService.handleOrderPaid(
         checkout.order.stripeSessionId,
         checkout.order.id,
-        "pi_test_123"
+        "pi_test_123",
       );
 
       expect(result.status).toBe("PAID");
@@ -404,7 +404,7 @@ describe("Order Service - Stock Validation & Reservation", () => {
       const variantAfterPayment = await testDb.client.productVariant.findUnique(
         {
           where: { id: variantId },
-        }
+        },
       );
       expectDefined(variantAfterPayment);
       expect(variantAfterPayment.stock).toBe(8); // Should still be 8

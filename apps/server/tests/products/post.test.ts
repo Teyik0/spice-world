@@ -22,9 +22,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
     testDb = await createTestDatabase("post-integration.test.ts");
     // Mock uploadthing BEFORE importing the router
     await mockUtapi();
-    const { productsRouter: router } = await import(
-      "@spice-world/server/modules/products"
-    );
+    const { productsRouter: router } =
+      await import("@spice-world/server/modules/products");
 
     api = treaty(router);
   });
@@ -399,7 +398,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
       expect(data.images).toHaveLength(5);
       expect(data.images.filter((img) => img.isThumbnail).length).toBe(1);
       expect(
-        data.images.find((img) => img.altText === "Image 1")?.isThumbnail
+        data.images.find((img) => img.altText === "Image 1")?.isThumbnail,
       ).toBe(true);
     });
   });
@@ -570,7 +569,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
           price: 999 + idx,
           sku: `sku${testId}${idx}`,
           attributeValueIds: [value.id],
-        })
+        }),
       );
 
       // Add one more variant with empty attributeValueIds to exceed capacity
@@ -829,7 +828,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
           price: 999 + idx,
           sku: `sku${testId}${idx}`,
           attributeValueIds: [value.id],
-        })
+        }),
       );
 
       // Add variant with empty attributeValueIds to exceed capacity

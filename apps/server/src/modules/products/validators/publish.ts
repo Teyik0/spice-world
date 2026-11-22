@@ -43,16 +43,16 @@ export interface CategoryChangeAutoDraftInput {
  * Pure function for unit testing.
  */
 export function validatePublishHasPositivePrice(
-  input: PublishPriceValidationInput
+  input: PublishPriceValidationInput,
 ): ValidationResult<void> {
   const deletedIds = new Set(input.variantsToDelete ?? []);
 
   const remainingVariants = input.currentVariants.filter(
-    (v) => v.id && !deletedIds.has(v.id)
+    (v) => v.id && !deletedIds.has(v.id),
   );
 
   const updateMap = new Map(
-    (input.variantsToUpdate ?? []).map((u) => [u.id, u])
+    (input.variantsToUpdate ?? []).map((u) => [u.id, u]),
   );
 
   const finalExistingPrices = remainingVariants.map((v) => {
@@ -86,16 +86,16 @@ export function validatePublishHasPositivePrice(
  * - If category has attributes AND >1 variant: each variant must have attributeValues
  */
 export function validatePublishAttributeRequirements(
-  input: PublishAttributeValidationInput
+  input: PublishAttributeValidationInput,
 ): ValidationResult<void> {
   const deletedIds = new Set(input.variantsToDelete ?? []);
 
   const remainingVariants = input.currentVariants.filter(
-    (v) => v.id && !deletedIds.has(v.id)
+    (v) => v.id && !deletedIds.has(v.id),
   );
 
   const updateMap = new Map(
-    (input.variantsToUpdate ?? []).map((u) => [u.id, u])
+    (input.variantsToUpdate ?? []).map((u) => [u.id, u]),
   );
 
   const finalExistingVariants = remainingVariants.map((v) => {
@@ -127,7 +127,7 @@ export function validatePublishAttributeRequirements(
 
   if (variantCount > 1) {
     const variantsWithoutAttributes = allFinalVariants.filter(
-      (v) => v.attributeValueIds.length === 0
+      (v) => v.attributeValueIds.length === 0,
     );
 
     if (variantsWithoutAttributes.length > 0) {
@@ -152,7 +152,7 @@ export function validatePublishAttributeRequirements(
  * Exception: If product has only 1 variant and category has NO attributes, no auto-draft needed.
  */
 export function determineStatusAfterCategoryChange(
-  input: CategoryChangeAutoDraftInput
+  input: CategoryChangeAutoDraftInput,
 ): ProductStatus {
   if (input.newCategoryHasAttributes) {
     if (input.variantsWithAttributeValues < input.finalVariantCount) {
@@ -171,7 +171,7 @@ export function determineStatusAfterCategoryChange(
 export function computeFinalVariantCount(
   currentCount: number,
   variantsToCreate?: unknown[],
-  variantsToDelete?: string[]
+  variantsToDelete?: string[],
 ): number {
   const createCount = variantsToCreate?.length ?? 0;
   const deleteCount = variantsToDelete?.length ?? 0;

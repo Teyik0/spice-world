@@ -126,7 +126,7 @@ export const auth = betterAuth({
           await orderService.handleOrderPaid(
             session.id,
             orderId,
-            paymentIntentId
+            paymentIntentId,
           );
         }
       },
@@ -144,8 +144,7 @@ interface AccessContext extends MacroTypeLambda {
   output: "optional" extends this["input"]
     ? {
         [K in keyof typeof auth.$Infer.Session]:
-          | (typeof auth.$Infer.Session)[K]
-          | null;
+          (typeof auth.$Infer.Session)[K] | null;
       }
     : typeof auth.$Infer.Session;
 }

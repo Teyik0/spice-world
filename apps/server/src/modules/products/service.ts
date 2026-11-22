@@ -147,7 +147,7 @@ export function invalidateProductListings(options?: {
 function collectionClauses(
   handle: string | undefined,
   sorted: boolean,
-  orderBy: SQL.Query<unknown>
+  orderBy: SQL.Query<unknown>,
 ) {
   if (!handle) {
     return { join: sql``, orderBy };
@@ -203,12 +203,12 @@ export const productService = {
     }
     if (name) {
       conditions.push(
-        sql`to_tsvector('french', p.name) @@ plainto_tsquery('french', ${name})`
+        sql`to_tsvector('french', p.name) @@ plainto_tsquery('french', ${name})`,
       );
     }
     if (categoriesArray?.length) {
       conditions.push(
-        sql`p."categoryId" IN (SELECT id FROM "Category" WHERE name IN ${sql(categoriesArray)})`
+        sql`p."categoryId" IN (SELECT id FROM "Category" WHERE name IN ${sql(categoriesArray)})`,
       );
     }
 
@@ -216,7 +216,7 @@ export const productService = {
       conditions.length > 0
         ? conditions.reduce(
             (prev, curr) => sql`${prev} AND ${curr}`,
-            sql`WHERE ${conditions[0]}`
+            sql`WHERE ${conditions[0]}`,
           )
         : sql``;
 
@@ -227,7 +227,7 @@ export const productService = {
       sortBy !== undefined,
       isPriceSort
         ? sql`v_agg.${sql(orderByField)}`
-        : sql`p.${sql(orderByField)}`
+        : sql`p.${sql(orderByField)}`,
     );
     const nullsClause = isPriceSort ? sql`NULLS LAST` : sql``;
 
@@ -363,7 +363,7 @@ export const productService = {
 
     const { data: uploadMap, error: uploadError } = await uploadFiles(
       name,
-      iOps.create.map((img) => img.file)
+      iOps.create.map((img) => img.file),
     );
     if (uploadError || !uploadMap) {
       return uploadFileErrStatus(uploadError ?? "Unknown upload error");
@@ -419,8 +419,8 @@ export const productService = {
               include: {
                 attributeValues: true,
               },
-            })
-          )
+            }),
+          ),
         );
 
         return {
@@ -507,7 +507,7 @@ export const productService = {
         attributeValues: v.attributeValues,
       })),
       (categoryChange ?? currentProduct.category).attributes.length > 0,
-      !!categoryChange // Flag if category is changing
+      !!categoryChange, // Flag if category is changing
     );
 
     // Determine final status using pre-computed analysis
@@ -519,7 +519,7 @@ export const productService = {
         status: currentProduct.status,
       },
       categoryChange,
-      analysis
+      analysis,
     );
 
     const oldKeysToDelete: string[] = [];
@@ -530,13 +530,13 @@ export const productService = {
       iOps?.create?.length
         ? uploadFiles(
             productName,
-            iOps.create.map((img) => img.file)
+            iOps.create.map((img) => img.file),
           )
         : Promise.resolve({ data: [] as MultiSizeUploadData[], error: null }),
       iOps?.update?.filter((op) => op.file)?.length
         ? uploadFiles(
             productName,
-            iOps.update.filter((op) => op.file).map((op) => op.file as File)
+            iOps.update.filter((op) => op.file).map((op) => op.file as File),
           )
         : Promise.resolve({ data: [] as MultiSizeUploadData[], error: null }),
     ]);
@@ -612,9 +612,9 @@ export const productService = {
                     i.keyThumb,
                     i.keyMedium,
                     i.keyLarge,
-                  ])
+                  ]),
                 );
-              })()
+              })(),
             );
           }
 
@@ -639,7 +639,7 @@ export const productService = {
                     productId: id,
                   };
                 }),
-              })
+              }),
             );
           }
 
@@ -651,10 +651,10 @@ export const productService = {
                 // Separate thumbnail-only updates (no file, no altText) from complex updates
                 const thumbnailOnlyUpdates = updates.filter(
                   (op) =>
-                    op.isThumbnail !== undefined && !op.file && !op.altText
+                    op.isThumbnail !== undefined && !op.file && !op.altText,
                 );
                 const complexUpdates = updates.filter(
-                  (op) => op.file || op.altText
+                  (op) => op.file || op.altText,
                 );
 
                 // Batch update thumbnails only - single query for all
@@ -664,8 +664,8 @@ export const productService = {
                       tx.image.update({
                         where: { id: op.id },
                         data: { isThumbnail: op.isThumbnail },
-                      })
-                    )
+                      }),
+                    ),
                   );
                 }
 
@@ -673,8 +673,8 @@ export const productService = {
                 if (complexUpdates.length > 0) {
                   const currentImages = await Promise.all(
                     complexUpdates.map((op) =>
-                      tx.image.findUnique({ where: { id: op.id } })
-                    )
+                      tx.image.findUnique({ where: { id: op.id } }),
+                    ),
                   );
 
                   await Promise.all(
@@ -686,7 +686,7 @@ export const productService = {
                       }
 
                       const uploadIndex = updateOpsWithFiles.findIndex(
-                        (uop) => uop.id === op.id
+                        (uop) => uop.id === op.id,
                       );
                       const uploaded =
                         uploadIndex !== -1 && updateUploads.data
@@ -697,7 +697,7 @@ export const productService = {
                         oldKeysToDelete.push(
                           currentImage.keyThumb,
                           currentImage.keyMedium,
-                          currentImage.keyLarge
+                          currentImage.keyLarge,
                         );
                       }
 
@@ -721,10 +721,10 @@ export const productService = {
                                 op.isThumbnail ?? currentImage.isThumbnail,
                             },
                       });
-                    })
+                    }),
                   );
                 }
-              })()
+              })(),
             );
           }
         }
@@ -735,7 +735,7 @@ export const productService = {
             operationPromises.push(
               tx.productVariant.deleteMany({
                 where: { id: { in: vOps.delete }, productId: id },
-              })
+              }),
             );
           }
 
@@ -765,9 +765,9 @@ export const productService = {
                       }),
                     },
                     include: { attributeValues: true },
-                  })
-                )
-              )
+                  }),
+                ),
+              ),
             );
           }
 
@@ -809,8 +809,8 @@ export const productService = {
               tx.productVariant.update({
                 where: { id: v.id },
                 data: { attributeValues: { set: [] } },
-              })
-            )
+              }),
+            ),
           );
         }
 
@@ -945,8 +945,8 @@ export const productService = {
             tx.productVariant.update({
               where: { id: v.id },
               data: { attributeValues: { set: [] } },
-            })
-          )
+            }),
+          ),
         );
       }
 

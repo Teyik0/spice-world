@@ -9,7 +9,7 @@ import type * as ProductModel from "../model";
  */
 function validateVIO1(
   updateOps: ProductModel.imageOperations["update"],
-  deleteIds: string[] | undefined
+  deleteIds: string[] | undefined,
 ): ValidationError | null {
   if (!(updateOps?.length && deleteIds?.length)) {
     return null;
@@ -34,7 +34,7 @@ function validateVIO1(
 function validateVIO2(
   deleteIds: string[] | undefined,
   currentImages: { id: string; isThumbnail: boolean }[],
-  createCount: number
+  createCount: number,
 ): ValidationError | null {
   if (!currentImages.length) {
     return null;
@@ -79,7 +79,7 @@ export function validateImages({
     const vio2 = validateVIO2(
       imagesOps.delete,
       currentImages,
-      imagesOps.create?.length ?? 0
+      imagesOps.create?.length ?? 0,
     );
     if (vio2) {
       errors.push(vio2);

@@ -28,9 +28,8 @@ describe.concurrent("GET /products - Integration Tests", () => {
 
     testDb = await createTestDatabase("get.test.ts");
 
-    const { productsRouter: router } = await import(
-      "@spice-world/server/modules/products"
-    );
+    const { productsRouter: router } =
+      await import("@spice-world/server/modules/products");
     api = treaty(router);
 
     const { categories, products } = await createDummyProducts(testDb.client);
@@ -65,7 +64,7 @@ describe.concurrent("GET /products - Integration Tests", () => {
         expectDefined(currentItem);
         expectDefined(nextItem);
         expect(
-          currentItem.name.localeCompare(nextItem.name)
+          currentItem.name.localeCompare(nextItem.name),
         ).toBeLessThanOrEqual(0);
       }
     });
@@ -129,13 +128,13 @@ describe.concurrent("GET /products - Integration Tests", () => {
       }
 
       const category1Products = data.filter(
-        (p) => p.categoryId === category1.id
+        (p) => p.categoryId === category1.id,
       );
       const category2Products = data.filter(
-        (p) => p.categoryId === category2.id
+        (p) => p.categoryId === category2.id,
       );
       expect(category1Products.length + category2Products.length).toBe(
-        data.length
+        data.length,
       );
     });
 

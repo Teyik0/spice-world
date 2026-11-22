@@ -37,9 +37,8 @@ describe.concurrent("Category routes test", () => {
     ({ db } = await import("@spice-world/server/lib/db"));
     uploads = await mockUtapi();
 
-    const { categoryRouter: router } = await import(
-      "@spice-world/server/modules/categories"
-    );
+    const { categoryRouter: router } =
+      await import("@spice-world/server/modules/categories");
     api = treaty(router);
   });
 
@@ -93,9 +92,9 @@ describe.concurrent("Category routes test", () => {
         value: { code: "CATEGORY_ATTRIBUTE_VALUE_NOT_FOUND" },
       });
       expect((await api.categories({ id: category.id }).get()).data).toEqual(
-        before.data
+        before.data,
       );
-    }
+    },
   );
 
   test.each([
@@ -169,9 +168,9 @@ describe.concurrent("Category routes test", () => {
       });
       expect(result.error).toMatchObject({ status: 422 });
       expect((await api.categories({ id: category.id }).get()).data).toEqual(
-        before.data
+        before.data,
       );
-    }
+    },
   );
 
   test.each(["sql conflict", "invalid attribute", "missing category"] as const)(
@@ -204,20 +203,20 @@ describe.concurrent("Category routes test", () => {
         status: scenario === "sql conflict" ? 409 : 404,
       });
       expect((await api.categories({ id: category.id }).get()).data).toEqual(
-        before.data
+        before.data,
       );
       const keys = uploads.uploadedFiles
         .filter((uploaded) =>
-          uploaded.name.startsWith(`${name.replaceAll(" ", "-")}-`)
+          uploaded.name.startsWith(`${name.replaceAll(" ", "-")}-`),
         )
         .map(({ customId }) => customId as string);
       expect(keys).toHaveLength(3);
       expect(await pendingChecks(keys)).toEqual(
-        [...keys].sort().map((fileKey) => ({ fileKey, attempts: 0 }))
+        [...keys].sort().map((fileKey) => ({ fileKey, attempts: 0 })),
       );
       for (const key of keys) {
         expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
-          expect.arrayContaining([key])
+          expect.arrayContaining([key]),
         );
       }
       expect(
@@ -229,8 +228,8 @@ describe.concurrent("Category routes test", () => {
               before.data.image.keyThumb,
               before.data.image.keyMedium,
               before.data.image.keyLarge,
-            ])
-          )
+            ]),
+          ),
       ).toEqual([]);
       for (const key of [
         before.data.image.keyThumb,
@@ -238,10 +237,10 @@ describe.concurrent("Category routes test", () => {
         before.data.image.keyLarge,
       ]) {
         expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
-          expect.arrayContaining([key])
+          expect.arrayContaining([key]),
         );
       }
-    }
+    },
   );
 
   test.each([false, true])(
@@ -260,7 +259,7 @@ describe.concurrent("Category routes test", () => {
       expect(result.status).toBe(200);
       expectDefined(result.data);
       expect((await api.categories({ id: category.id }).get()).data).toEqual(
-        result.data
+        result.data,
       );
       const keys = [
         before.data.image.keyThumb,
@@ -272,7 +271,7 @@ describe.concurrent("Category routes test", () => {
         .from(imageDeletionTable)
         .where(inArray(imageDeletionTable.fileKey, keys));
       expect(tasks.map(({ fileKey }) => fileKey).sort()).toEqual(
-        [...keys].sort()
+        [...keys].sort(),
       );
       const [clock] = await db
         .select({ now: sql<Date>`clock_timestamp()` })
@@ -282,14 +281,14 @@ describe.concurrent("Category routes test", () => {
       const { now } = clock;
       for (const task of tasks) {
         expect(task.notBefore.getTime() - now.getTime()).toBeGreaterThan(
-          14 * 60_000
+          14 * 60_000,
         );
         expect(task.notBefore.getTime() - now.getTime()).toBeLessThanOrEqual(
-          15 * 60_000
+          15 * 60_000,
         );
         expect(task.attempts).toBe(0);
         expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
-          expect.arrayContaining([task.fileKey])
+          expect.arrayContaining([task.fileKey]),
         );
       }
       expect(
@@ -297,7 +296,7 @@ describe.concurrent("Category routes test", () => {
           result.data.image.keyThumb,
           result.data.image.keyMedium,
           result.data.image.keyLarge,
-        ])
+        ]),
       ).toEqual([]);
       for (const key of [
         result.data.image.keyThumb,
@@ -305,10 +304,10 @@ describe.concurrent("Category routes test", () => {
         result.data.image.keyLarge,
       ]) {
         expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
-          expect.arrayContaining([key])
+          expect.arrayContaining([key]),
         );
       }
-    }
+    },
   );
 
   test.each([
@@ -325,9 +324,8 @@ describe.concurrent("Category routes test", () => {
     });
     const [attribute] = category.attributes;
     expectDefined(attribute);
-    const { categoryService } = await import(
-      "@spice-world/server/modules/categories/service"
-    );
+    const { categoryService } =
+      await import("@spice-world/server/modules/categories/service");
     const name = `${category.name} renamed`;
     const runPatch = () =>
       categoryService.patch({
@@ -365,7 +363,7 @@ describe.concurrent("Category routes test", () => {
     expect(
       await db.query.category.findFirst({
         where: { id: category.id },
-      })
+      }),
     ).toMatchObject({
       name: scenario.valid ? name : category.name,
     });
@@ -381,9 +379,8 @@ describe.concurrent("Category routes test", () => {
     const [otherAttribute] = otherCategory.attributes;
     expectDefined(attribute);
     expectDefined(otherAttribute);
-    const { categoryService } = await import(
-      "@spice-world/server/modules/categories/service"
-    );
+    const { categoryService } =
+      await import("@spice-world/server/modules/categories/service");
 
     const rejected = await categoryService.patch({
       id: category.id,
@@ -395,13 +392,13 @@ describe.concurrent("Category routes test", () => {
       response: { code: "CATEGORY_ATTRIBUTE_NOT_FOUND" },
     });
     expect(
-      await db.query.category.findFirst({ where: { id: category.id } })
+      await db.query.category.findFirst({ where: { id: category.id } }),
     ).toMatchObject({ name: category.name });
     expect(
-      await db.query.attribute.findFirst({ where: { id: attribute.id } })
+      await db.query.attribute.findFirst({ where: { id: attribute.id } }),
     ).toBeDefined();
     expect(
-      await db.query.attribute.findFirst({ where: { id: otherAttribute.id } })
+      await db.query.attribute.findFirst({ where: { id: otherAttribute.id } }),
     ).toBeDefined();
 
     const result = await categoryService.patch({
@@ -411,16 +408,16 @@ describe.concurrent("Category routes test", () => {
     });
     expect(result).toMatchObject({ category: { id: category.id } });
     expect(
-      await db.query.attribute.findFirst({ where: { id: attribute.id } })
+      await db.query.attribute.findFirst({ where: { id: attribute.id } }),
     ).toBeUndefined();
     expect(
       await db.$count(
         attributeValueTable,
-        eq(attributeValueTable.attributeId, attribute.id)
-      )
+        eq(attributeValueTable.attributeId, attribute.id),
+      ),
     ).toBe(0);
     expect(
-      await db.query.attribute.findFirst({ where: { id: otherAttribute.id } })
+      await db.query.attribute.findFirst({ where: { id: otherAttribute.id } }),
     ).toBeDefined();
   });
 
@@ -430,9 +427,8 @@ describe.concurrent("Category routes test", () => {
     expectDefined(first);
     expectDefined(second);
     expectDefined(untouched);
-    const { categoryService } = await import(
-      "@spice-world/server/modules/categories/service"
-    );
+    const { categoryService } =
+      await import("@spice-world/server/modules/categories/service");
     const categoryName = `${category.name} renamed`;
     await categoryService.patch({
       id: category.id,
@@ -449,13 +445,13 @@ describe.concurrent("Category routes test", () => {
       await db.query.attribute.findFirst({
         where: { id: first.id },
         with: { values: true },
-      })
+      }),
     ).toEqual({ ...first, name: "renamed first" });
     expect(
-      await db.query.attribute.findFirst({ where: { id: second.id } })
+      await db.query.attribute.findFirst({ where: { id: second.id } }),
     ).toMatchObject({ name: "renamed second" });
     expect(
-      await db.query.attribute.findFirst({ where: { id: untouched.id } })
+      await db.query.attribute.findFirst({ where: { id: untouched.id } }),
     ).toMatchObject({ name: untouched.name });
 
     expect(
@@ -468,24 +464,23 @@ describe.concurrent("Category routes test", () => {
             { id: second.id, name: untouched.name },
           ],
         },
-      })
+      }),
     ).rejects.toBeDefined();
     expect(
-      await db.query.category.findFirst({ where: { id: category.id } })
+      await db.query.category.findFirst({ where: { id: category.id } }),
     ).toMatchObject({ name: categoryName });
     expect(
-      await db.query.attribute.findFirst({ where: { id: first.id } })
+      await db.query.attribute.findFirst({ where: { id: first.id } }),
     ).toMatchObject({ name: "renamed first" });
     expect(
-      await db.query.attribute.findFirst({ where: { id: second.id } })
+      await db.query.attribute.findFirst({ where: { id: second.id } }),
     ).toMatchObject({ name: "renamed second" });
   });
 
   test("should create attributes and values atomically behind validation", async () => {
     const category = await createTestCategory({ testDb });
-    const { categoryService } = await import(
-      "@spice-world/server/modules/categories/service"
-    );
+    const { categoryService } =
+      await import("@spice-world/server/modules/categories/service");
     const name = `${category.name} updated`;
     const input = [
       { name: "origin", values: ["france", "italy"] },
@@ -506,7 +501,7 @@ describe.concurrent("Category routes test", () => {
       const attribute = stored.find((item) => item.name === expected.name);
       expectDefined(attribute);
       expect(attribute.values.map(({ value }) => value).sort()).toEqual(
-        [...expected.values].sort()
+        [...expected.values].sort(),
       );
       for (const value of attribute.values) {
         expect(value.attributeId).toBe(attribute.id);
@@ -526,7 +521,7 @@ describe.concurrent("Category routes test", () => {
       response: { code: "CATEGORY_ATTRIBUTE_NOT_FOUND" },
     });
     expect(
-      await db.query.attribute.findMany({ where: { categoryId: category.id } })
+      await db.query.attribute.findMany({ where: { categoryId: category.id } }),
     ).toHaveLength(input.length);
 
     expect(
@@ -536,13 +531,13 @@ describe.concurrent("Category routes test", () => {
         attributes: {
           create: [{ name: "rollback", values: ["duplicate", "duplicate"] }],
         },
-      })
+      }),
     ).rejects.toBeDefined();
     expect(
-      await db.query.attribute.findMany({ where: { categoryId: category.id } })
+      await db.query.attribute.findMany({ where: { categoryId: category.id } }),
     ).toHaveLength(input.length);
     expect(
-      await db.query.category.findFirst({ where: { id: category.id } })
+      await db.query.category.findFirst({ where: { id: category.id } }),
     ).toMatchObject({ name });
   });
 
@@ -558,9 +553,8 @@ describe.concurrent("Category routes test", () => {
     expectDefined(renamed);
     expectDefined(deleted);
     expectDefined(retained);
-    const { categoryService } = await import(
-      "@spice-world/server/modules/categories/service"
-    );
+    const { categoryService } =
+      await import("@spice-world/server/modules/categories/service");
     const name = `${category.name} updated`;
     const result = await categoryService.patch({
       id: category.id,
@@ -588,7 +582,7 @@ describe.concurrent("Category routes test", () => {
         { ...renamed, value: "renamed" },
         retained,
         { id: expect.any(String), attributeId: attribute.id, value: "added" },
-      ])
+      ]),
     );
     expect(
       categoryService.patch({
@@ -605,16 +599,16 @@ describe.concurrent("Category routes test", () => {
             },
           ],
         },
-      })
+      }),
     ).rejects.toBeDefined();
     expect(
       await db.query.attributeValue.findMany({
         where: { attributeId: attribute.id },
         orderBy: { id: "asc" },
-      })
+      }),
     ).toEqual([...stored].sort((a, b) => a.id.localeCompare(b.id)));
     expect(
-      await db.query.category.findFirst({ where: { id: category.id } })
+      await db.query.category.findFirst({ where: { id: category.id } }),
     ).toMatchObject({ name });
   });
 
@@ -624,9 +618,8 @@ describe.concurrent("Category routes test", () => {
       where: { id: category.imageId },
     });
     expectDefined(before);
-    const { categoryService } = await import(
-      "@spice-world/server/modules/categories/service"
-    );
+    const { categoryService } =
+      await import("@spice-world/server/modules/categories/service");
     const unchanged = await categoryService.patch({
       id: category.id,
       name: category.name,
@@ -641,11 +634,11 @@ describe.concurrent("Category routes test", () => {
             before.keyThumb,
             before.keyMedium,
             before.keyLarge,
-          ])
-        )
+          ]),
+        ),
     ).toEqual([]);
     expect(
-      await db.query.image.findFirst({ where: { id: before.id } })
+      await db.query.image.findFirst({ where: { id: before.id } }),
     ).toEqual(before);
 
     const replaced = await categoryService.patch({
@@ -681,7 +674,7 @@ describe.concurrent("Category routes test", () => {
     });
     expect(rejected).toMatchObject({ status: 404 });
     expect(
-      await db.query.image.findFirst({ where: { id: before.id } })
+      await db.query.image.findFirst({ where: { id: before.id } }),
     ).toEqual(after);
   });
 
@@ -697,9 +690,8 @@ describe.concurrent("Category routes test", () => {
     const [renamedValue, deletedValue] = changed.values;
     expectDefined(renamedValue);
     expectDefined(deletedValue);
-    const { categoryService } = await import(
-      "@spice-world/server/modules/categories/service"
-    );
+    const { categoryService } =
+      await import("@spice-world/server/modules/categories/service");
     const result = await categoryService.patch({
       id: category.id,
       name: `${category.name} updated`,
@@ -733,7 +725,7 @@ describe.concurrent("Category routes test", () => {
         .map((attribute) => ({
           ...attribute,
           values: [...attribute.values].sort((a, b) =>
-            a.id.localeCompare(b.id)
+            a.id.localeCompare(b.id),
           ),
         }))
         .sort((a, b) => a.id.localeCompare(b.id)),
@@ -768,8 +760,8 @@ describe.concurrent("Category routes test", () => {
           attributes: {
             update: [{ id: attribute.id, values: { delete: [id] } }],
           },
-        })
-      )
+        }),
+      ),
     );
     expect(results.map(({ status }) => status).sort()).toEqual([200, 400]);
     expect(results.find(({ status }) => status === 400)?.error).toMatchObject({
@@ -779,8 +771,8 @@ describe.concurrent("Category routes test", () => {
     expect(
       await db.$count(
         attributeValueTable,
-        eq(attributeValueTable.attributeId, attribute.id)
-      )
+        eq(attributeValueTable.attributeId, attribute.id),
+      ),
     ).toBe(1);
   });
 
@@ -807,8 +799,8 @@ describe.concurrent("Category routes test", () => {
     expect(
       await db.$count(
         attributeValueTable,
-        eq(attributeValueTable.attributeId, attribute.id)
-      )
+        eq(attributeValueTable.attributeId, attribute.id),
+      ),
     ).toBe(2);
   });
 
@@ -839,7 +831,7 @@ describe.concurrent("Category routes test", () => {
       await db.query.attributeValue.findMany({
         where: { attributeId: attribute.id },
         columns: { value: true },
-      })
+      }),
     ).toEqual([{ value: "replacement" }]);
   });
 
@@ -865,10 +857,10 @@ describe.concurrent("Category routes test", () => {
             id: expect.any(String),
             name: input.name,
             values: expect.arrayContaining(
-              input.values.map((value) => ({ id: expect.any(String), value }))
+              input.values.map((value) => ({ id: expect.any(String), value })),
             ),
-          }))
-        )
+          })),
+        ),
       );
     });
 
@@ -895,24 +887,23 @@ describe.concurrent("Category routes test", () => {
 
         expect(result.error).toMatchObject({ status: 422 });
         expect(
-          await db.query.category.findFirst({ where: { name } })
+          await db.query.category.findFirst({ where: { name } }),
         ).toBeUndefined();
         expect(
-          await db.query.image.findMany({ where: { altText: name } })
+          await db.query.image.findMany({ where: { altText: name } }),
         ).toEqual([]);
         expect(
           await db.query.attribute.findMany({
             where: { name: "rollback color" },
-          })
+          }),
         ).toEqual([]);
-      }
+      },
     );
 
     for (const withAttributes of [false, true]) {
       test(`should return the same category from POST and GET with attributes: ${withAttributes}`, async () => {
-        const { categoryService } = await import(
-          "@spice-world/server/modules/categories/service"
-        );
+        const { categoryService } =
+          await import("@spice-world/server/modules/categories/service");
         const created = await categoryService.post({
           name: withAttributes
             ? "category response with attributes"
@@ -923,11 +914,8 @@ describe.concurrent("Category routes test", () => {
           }),
         });
         expect(created.status).toBe(201);
-        if (created.status !== 201) {
-          throw new Error("Category creation failed");
-        }
         expect(
-          await categoryService.getById({ id: created.response.id })
+          await categoryService.getById({ id: created.response.id }),
         ).toEqual(created.response);
       });
     }
@@ -1001,7 +989,7 @@ describe.concurrent("Category routes test", () => {
       expect(status).toBe(409);
       expect(error).toMatchObject({ status });
       expect(
-        await db.query.image.findMany({ where: { altText: "other category" } })
+        await db.query.image.findMany({ where: { altText: "other category" } }),
       ).toHaveLength(1);
       const keys = uploads.uploadedFiles
         .filter((uploaded) => uploaded.name.startsWith("other-category-"))
@@ -1011,11 +999,11 @@ describe.concurrent("Category routes test", () => {
         keys
           .slice(3)
           .sort()
-          .map((fileKey) => ({ fileKey, attempts: 0 }))
+          .map((fileKey) => ({ fileKey, attempts: 0 })),
       );
       for (const key of keys) {
         expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
-          expect.arrayContaining([key])
+          expect.arrayContaining([key]),
         );
       }
     });
@@ -1205,7 +1193,7 @@ describe.concurrent("Category routes test", () => {
       expect(data.attributes).toHaveLength(1);
       expect(data.attributes[0]?.values).toHaveLength(3);
       expect(data.attributes[0]?.values.map((v) => v.value)).toContain(
-        "iphone 15"
+        "iphone 15",
       );
     });
   });
@@ -1308,10 +1296,10 @@ describe.concurrent("Category routes test", () => {
         },
       });
       expect(
-        await db.query.category.findFirst({ where: { id: category.id } })
+        await db.query.category.findFirst({ where: { id: category.id } }),
       ).toMatchObject({ id: category.id });
       expect(
-        await db.query.image.findFirst({ where: { id: image.id } })
+        await db.query.image.findFirst({ where: { id: image.id } }),
       ).toEqual(image);
       expect(
         await db
@@ -1322,8 +1310,8 @@ describe.concurrent("Category routes test", () => {
               image.keyThumb,
               image.keyMedium,
               image.keyLarge,
-            ])
-          )
+            ]),
+          ),
       ).toEqual([]);
     });
 
@@ -1335,8 +1323,8 @@ describe.concurrent("Category routes test", () => {
       expectDefined(image);
       const results = await Promise.all(
         Array.from({ length: 2 }, () =>
-          api.categories({ id: category.id }).delete()
-        )
+          api.categories({ id: category.id }).delete(),
+        ),
       );
       expect(results.map(({ status }) => status).sort()).toEqual([200, 404]);
       const keys = [image.keyThumb, image.keyMedium, image.keyLarge];
@@ -1348,7 +1336,7 @@ describe.concurrent("Category routes test", () => {
             .where(inArray(imageDeletionTable.fileKey, keys))
         )
           .map(({ fileKey }) => fileKey)
-          .sort()
+          .sort(),
       ).toEqual([...keys].sort());
     });
 
@@ -1383,11 +1371,11 @@ describe.concurrent("Category routes test", () => {
         .from(imageDeletionTable)
         .where(inArray(imageDeletionTable.fileKey, keys));
       expect(tasks.map(({ fileKey }) => fileKey).sort()).toEqual(
-        [...keys].sort()
+        [...keys].sort(),
       );
       for (const key of keys) {
         expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
-          expect.arrayContaining([key])
+          expect.arrayContaining([key]),
         );
       }
 
@@ -1406,14 +1394,14 @@ describe.concurrent("Category routes test", () => {
       ids.map((fileKey) => ({
         fileKey,
         notBefore: sql`statement_timestamp()`,
-      }))
+      })),
     );
     const [thumb, medium, large] = ids.map((key) => ({ key }));
     // Due rows may be swept by a concurrent cleanup at any time: only the refusal is deterministic.
-   expect(
+    expect(
       db.transaction((tx) =>
-        claimUploads(tx, [{ thumb, medium, large } as MultiSizeUploadData])
-      )
+        claimUploads(tx, [{ thumb, medium, large } as MultiSizeUploadData]),
+      ),
     ).rejects.toThrow("Upload expired before commit");
   });
 
@@ -1428,7 +1416,7 @@ describe.concurrent("Category routes test", () => {
       [image.keyThumb, orphan].map((fileKey) => ({
         fileKey,
         notBefore: sql`statement_timestamp()`,
-      }))
+      })),
     );
     await api.categories({ id: Bun.randomUUIDv7() }).delete();
     for (let i = 0; i < 50; i += 1) {
@@ -1441,10 +1429,10 @@ describe.concurrent("Category routes test", () => {
     expect(await pendingChecks([image.keyThumb, orphan])).toEqual([]);
     expect(uploads.deleteFiles).toHaveBeenCalledWith([orphan]);
     expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
-      expect.arrayContaining([image.keyThumb])
+      expect.arrayContaining([image.keyThumb]),
     );
     expect(await db.query.image.findFirst({ where: { id: image.id } })).toEqual(
-      image
+      image,
     );
   });
 
@@ -1462,7 +1450,7 @@ describe.concurrent("Category routes test", () => {
       const constraint = `reject_deletion_${Bun.randomUUIDv7().replaceAll("-", "")}`;
       // A key-specific database constraint injects a real write failure without affecting other tests.
       await db.execute(
-        sql`alter table ${imageDeletionTable} add constraint ${sql.identifier(constraint)} check ("fileKey" <> ${before.data.image.keyThumb})`.inlineParams()
+        sql`alter table ${imageDeletionTable} add constraint ${sql.identifier(constraint)} check ("fileKey" <> ${before.data.image.keyThumb})`.inlineParams(),
       );
       try {
         const result =
@@ -1474,25 +1462,25 @@ describe.concurrent("Category routes test", () => {
             : await api.categories({ id: category.id }).delete();
         expect(result.error).toMatchObject({ status: 500 });
         expect((await api.categories({ id: category.id }).get()).data).toEqual(
-          before.data
+          before.data,
         );
         expect(
           await db
             .select()
             .from(imageDeletionTable)
-            .where(inArray(imageDeletionTable.fileKey, keys))
+            .where(inArray(imageDeletionTable.fileKey, keys)),
         ).toEqual([]);
         for (const key of keys) {
           expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
-            expect.arrayContaining([key])
+            expect.arrayContaining([key]),
           );
         }
       } finally {
         await db.execute(
-          sql`alter table ${imageDeletionTable} drop constraint ${sql.identifier(constraint)}`
+          sql`alter table ${imageDeletionTable} drop constraint ${sql.identifier(constraint)}`,
         );
       }
-    }
+    },
   );
 
   describe("Update category - PATCH/:id", () => {
@@ -1612,10 +1600,10 @@ describe.concurrent("Category routes test", () => {
       expect(category.data.attributes).toHaveLength(3);
 
       const attributeToUpdate = category.data.attributes.find(
-        (a) => a.name === "couleur"
+        (a) => a.name === "couleur",
       );
       const attributeToDelete = category.data.attributes.find(
-        (a) => a.name === "poids"
+        (a) => a.name === "poids",
       );
       expectDefined(attributeToUpdate);
       expectDefined(attributeToDelete);
@@ -1646,13 +1634,13 @@ describe.concurrent("Category routes test", () => {
       expect(data.attributes).toHaveLength(3);
 
       const updatedAttr = data.attributes.find(
-        (a: { id: string }) => a.id === attributeToUpdate.id
+        (a: { id: string }) => a.id === attributeToUpdate.id,
       );
       const createdAttr = data.attributes.find(
-        (a: { name: string }) => a.name === "origine"
+        (a: { name: string }) => a.name === "origine",
       );
       const deletedAttr = data.attributes.find(
-        (a: { id: string }) => a.id === attributeToDelete.id
+        (a: { id: string }) => a.id === attributeToDelete.id,
       );
 
       expectDefined(updatedAttr);
@@ -1734,8 +1722,8 @@ describe.concurrent("Category routes test", () => {
       expect(data.attributes).toHaveLength(1);
       expect(
         data.attributes.find(
-          (a: { id: string }) => a.id === attributeToDelete.id
-        )
+          (a: { id: string }) => a.id === attributeToDelete.id,
+        ),
       ).toBeUndefined();
     });
 
@@ -1789,7 +1777,7 @@ describe.concurrent("Category routes test", () => {
 
       expectDefined(category.data);
       const tailleAttribute = category.data.attributes.find(
-        (a) => a.name === "taille"
+        (a) => a.name === "taille",
       );
       expectDefined(tailleAttribute);
 

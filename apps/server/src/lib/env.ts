@@ -16,7 +16,7 @@ const envSchema = t.Object({
       t.Literal("production"),
       t.Literal("preview"),
     ],
-    { default: "development" }
+    { default: "development" },
   ),
   PORT: t.String({ default: "3001" }),
   STRIPE_SECRET_KEY: t.String({ minLength: 1 }),
@@ -56,7 +56,7 @@ function validateEnv(): EnvSchema {
       STRIPE_CANCEL_URL: process.env.STRIPE_CANCEL_URL,
       NODE_ENV: process.env.NODE_ENV,
       PORT: process.env.PORT,
-    })
+    }),
   );
 
   return parsed;

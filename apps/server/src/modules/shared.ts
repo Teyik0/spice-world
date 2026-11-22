@@ -59,11 +59,10 @@ export class ProductValidationError extends Error {
 }
 
 export type ValidationResult<TData = void> =
-  | { success: true; data: TData }
-  | { success: false; error: ValidationError };
+  { success: true; data: TData } | { success: false; error: ValidationError };
 
 export function assertValid<T extends ValidationResult>(
-  result: T
+  result: T,
 ): asserts result is Extract<T, { success: true }> {
   if (!result.success) {
     throw new ProductValidationError(result.error);
@@ -71,7 +70,7 @@ export function assertValid<T extends ValidationResult>(
 }
 
 export function assertValidWithData<T>(
-  result: ValidationResult<T>
+  result: ValidationResult<T>,
 ): asserts result is { success: true; data: T } {
   if (!result.success) {
     throw new ProductValidationError(result.error);
@@ -112,7 +111,7 @@ export const imageUrl = t.String({
 });
 
 export const uploadFileErrStatus = (
-  fileError: UploadFileResult["error"] | { message: string } | string | null
+  fileError: UploadFileResult["error"] | { message: string } | string | null,
 ) => {
   const message =
     typeof fileError === "string"
@@ -120,3 +119,16 @@ export const uploadFileErrStatus = (
       : (fileError?.message ?? "Unknown error while uploading file(s)");
   throw status("Bad Gateway", message);
 };
+
+export const imageResult = t.Object({
+  id: uuid,
+  altText: t.Nullable(t.String()),
+  isThumbnail: t.Boolean(),
+  keyThumb: imageKey,
+  keyMedium: imageKey,
+  keyLarge: imageKey,
+  urlThumb: imageUrl,
+  urlMedium: imageUrl,
+  urlLarge: imageUrl,
+});
+export type ImageResult = UnwrapSchema<typeof imageResult>;

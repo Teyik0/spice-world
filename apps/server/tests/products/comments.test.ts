@@ -20,7 +20,7 @@ describe.concurrent("GET /products/:id/comments", () => {
   const productWithComments = async (count: number) => {
     const { product } = await createSetupProduct(
       testDb,
-      api
+      api,
     )({
       attributeCount: 1,
       attributeValueCount: 1,
@@ -59,7 +59,7 @@ describe.concurrent("GET /products/:id/comments", () => {
           userId: user.id,
           createdAt: new Date(i * 60_000),
           updatedAt: now,
-        }))
+        })),
       );
     }
     return product;
@@ -69,9 +69,8 @@ describe.concurrent("GET /products/:id/comments", () => {
     testDb = await createTestDatabase("comments.test.ts");
     ({ db } = await import("@spice-world/server/lib/db"));
     await mockUtapi();
-    const { productsRouter: router } = await import(
-      "@spice-world/server/modules/products"
-    );
+    const { productsRouter: router } =
+      await import("@spice-world/server/modules/products");
     api = treaty(router);
   });
 

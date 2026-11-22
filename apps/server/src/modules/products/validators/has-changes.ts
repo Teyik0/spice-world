@@ -58,7 +58,7 @@ function hasImageChanges({
   if (imagesOps?.update && imagesOps.update.length > 0) {
     return imagesOps.update.some((imgToUpdate) => {
       const current = currentImages.find(
-        (currImg) => currImg.id === imgToUpdate.id
+        (currImg) => currImg.id === imgToUpdate.id,
       );
       // no matching in current and update img then no change
       if (!current) {
@@ -114,7 +114,7 @@ function hasVariantChanges({
         (op.attributeValueIds !== undefined &&
           !arraysEqual(
             op.attributeValueIds,
-            current.attributeValues.map((av) => av.id)
+            current.attributeValues.map((av) => av.id),
           ))
       );
     });
