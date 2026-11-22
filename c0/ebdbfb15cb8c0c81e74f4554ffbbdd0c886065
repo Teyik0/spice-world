@@ -1,0 +1,20 @@
+apps/server/src/modules/products/model.ts
+  s_dead168fd9aed7::t_67f69a86d747f9 184-190
+  s_dead168fd9aed7::t_c59b76218a3791 191-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c0ebdbfb15cb8c0c81e74f4554ffbbdd0c886065",
+  "prompts": {},
+  "sessions": {
+    "s_dead168fd9aed7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_dfc81c21affeN0j0XVyd2y7wCU",
+        "model": "unknown"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
