@@ -20,7 +20,8 @@
   "catalog": {
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "elysia": "rc",
+    "elysia": "2.0.0-rc.1",
+    "typebox": "^1.4.7",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "@elysia/eden": "2.0.0-rc.1"
@@ -36,11 +37,10 @@
     "ultracite": "8.1.0"
   },
   "patchedDependencies": {
-    "@tanstack/form-core@1.27.5": "patches/@tanstack%2Fform-core@1.27.5.patch",
     "@elysia/eden@2.0.0-rc.1": "patches/@elysia%2Feden@2.0.0-rc.1.patch"
   },
   "dependencies": {
     "sst": "^3.19.3",
-    "elysia": "rc"
+    "elysia": "catalog:"
   }
 }
