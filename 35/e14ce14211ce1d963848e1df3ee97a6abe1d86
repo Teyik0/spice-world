@@ -1,0 +1,31 @@
+package.json
+  s_c9dd4d7072f033::t_74a5b1f2c36c1e 44
+  s_c9dd4d7072f033::t_85c7029a894dce 23
+  s_c9dd4d7072f033::t_a2eb8c3da92fbc 24
+.env.example
+  s_af8a6d4b76ddbd::t_585c18933903c2 1-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "35e14ce14211ce1d963848e1df3ee97a6abe1d86",
+  "prompts": {},
+  "sessions": {
+    "s_af8a6d4b76ddbd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18825-9426-7882-9bb4-8233aa31af3a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_c9dd4d7072f033": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79f29fad-43bd-482a-9250-948b43a5a3a5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
