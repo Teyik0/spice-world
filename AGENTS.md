@@ -7,9 +7,14 @@ Key features: product management, categories with dynamic attributes, user authe
 
 **apps/server** (port 3000): Elysia API with Prisma, Better Auth, Stripe
   - `/src/modules`: Business logic (products, categories, orders)
-  - `/prisma/schema.prisma`: Database models
+  - `/drizzle/schema.ts`: Database models
 
 **apps/web** (port 5173): React/Next.js admin dashboard
+  - Uses Eden Treaty for type-safe API calls
+  - TanStack Form for form management
+  - shadcn/ui components
+
+**apps/storefront** (port 3002): React/Furin admin dashboard
   - Uses Eden Treaty for type-safe API calls
   - TanStack Form for form management
   - shadcn/ui components
@@ -18,7 +23,7 @@ Key features: product management, categories with dynamic attributes, user authe
 
 # Relevant code sample
 
-using @elysiajs/eden in the frontend to fetch data from the elysia backend
+using @elysia/eden in the frontend to fetch data from the elysia backend
 ```ts
 api.<route>(<params>).<method>(<body>)
 // example:
@@ -55,16 +60,12 @@ cd apps/server && bun dev
 cd apps/web && bun dev
 ```
 
-**Prisma database management**
-```sh
-cd apps/server && bun run prisma generate
-```
-
 **Linting, formatting and typechecking**
 ```sh
 bun run format # Lint, auto-fix and format with Biome (ultracite)
 bun check -p apps/server
 bun check -p apps/web
+bun check -p apps/storefront
 ```
 
 ## Task involving backend end change (apps/server)
@@ -75,8 +76,9 @@ bun check -p apps/web
 - MUST use tests/utils/helper.ts pattern when needed
 - MUST use expect().toMatchObject() when doing asserting api error call (to avoid type issue)
 - MUST check how others test are setup and follow the same pattern
-- MUST run the associated file(s) test when an endpoint is modified `bun test tests/<test_file>`, don't rerun the whole tests suite
+- MUST run the associated file(s) test when an endpoint is modified `bun test tests/<test_file>`, don't rerun the whole tests suite on each pass
+- MUST ABSOLUTELY load and apply `elysia` skill for
 
-## Task involving frontend end change (apps/web)
+## Task involving frontend end change (apps/web or apps/storefront)
 
 - MUST ABSOLUTELY load and apply `frontend-design` and `web-design-guidelines` skills for ANY task involving frontend/UI, regardless of what the user asks
