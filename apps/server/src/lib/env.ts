@@ -20,6 +20,10 @@ const envSchema = t.Object({
     { default: "development" },
   ),
   PORT: t.String({ default: "3001" }),
+  WEB_ORIGINS: t.String({
+    pattern: "^https?://[^/,\\s*]+(,https?://[^/,\\s*]+)*$",
+    default: "http://localhost:3000,http://localhost:3001",
+  }),
   STRIPE_SECRET_KEY: t.String({ minLength: 1 }),
   STRIPE_WEBHOOK_SECRET: t.String({ minLength: 1 }),
   STRIPE_PUBLISHABLE_KEY: t.String({ minLength: 1 }),
@@ -57,6 +61,7 @@ function validateEnv(): EnvSchema {
       STRIPE_CANCEL_URL: process.env.STRIPE_CANCEL_URL,
       NODE_ENV: process.env.NODE_ENV,
       PORT: process.env.PORT,
+      WEB_ORIGINS: process.env.WEB_ORIGINS,
     }),
   );
 
@@ -65,3 +70,5 @@ function validateEnv(): EnvSchema {
 
 // Run validation immediately on module load and get the parsed result
 export const env = validateEnv();
+
+export const origins = env.WEB_ORIGINS.split(",");

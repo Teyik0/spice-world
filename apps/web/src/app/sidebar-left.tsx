@@ -1,5 +1,6 @@
 "use client";
 
+import { Logo } from "@spice-world/web/components/logo";
 import { ThemeToggle } from "@spice-world/web/components/theme-provider";
 import {
   Avatar,
@@ -27,7 +28,7 @@ import {
   Boxes,
   BringToFront,
   ChartSpline,
-  Command,
+  GalleryHorizontalEnd,
   LogOut,
   UserCircle,
 } from "lucide-react";
@@ -45,6 +46,11 @@ const navItems = [
     title: "Products",
     url: "/products",
     icon: Boxes,
+  },
+  {
+    title: "Collections",
+    url: "/collections",
+    icon: GalleryHorizontalEnd,
   },
   {
     title: "Users",
@@ -81,10 +87,11 @@ export function AppSidebar({ login }: { login: Session }) {
         {/* Header with logo */}
         <header className="p-2">
           <Link
-            className="bg-sidebar-primary text-sidebar-primary-foreground flex h-8 w-8 items-center justify-center rounded-lg transition-opacity hover:opacity-90"
+            aria-label="Spice World"
+            className="flex size-8 rounded-lg transition-opacity hover:opacity-90"
             href="/"
           >
-            <Command className="h-5 w-5" />
+            <Logo className="size-8" />
           </Link>
         </header>
 

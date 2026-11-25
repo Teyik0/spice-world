@@ -2,9 +2,10 @@ import { expect, spyOn } from "bun:test";
 import { basename } from "node:path";
 
 import type { treaty } from "@elysia/eden";
+import type * as OrderModel from "@spice-world/server/modules/orders/model";
 import type { productsRouter } from "@spice-world/server/modules/products";
 import type * as ProductModel from "@spice-world/server/modules/products/model";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { UnwrapSchema } from "elysia";
 import type { UploadedFileData, UploadFileResult } from "uploadthing/types";
 
@@ -14,8 +15,11 @@ import {
   attributeValueToProductVariantTable,
   categoryTable,
   imageTable,
+  orderItemTable,
+  orderTable,
   productTable,
   productVariantTable,
+  userTable,
 } from "../../drizzle/schema";
 import type { createTestDatabase, TestDatabase } from "./db-manager";
 
@@ -107,6 +111,22 @@ export const mockUtapi = async () => {
   return { uploadedFiles, uploadFiles, deleteFiles, failNextUpload };
 };
 
+export const verifyEmail = async ({ db }: TestDatabase, userId: string) => {
+  await db
+    .update(userTable)
+    .set({ emailVerified: true })
+    .where(eq(userTable.id, userId));
+};
+
+/** Inserted directly: auth.api.createUser would create a Stripe customer. */
+export const createTestUser = async ({ db }: TestDatabase) => {
+  const id = crypto.randomUUID();
+  await db
+    .insert(userTable)
+    .values({ id, name: "Test User", email: `${id}@example.com` });
+  return id;
+};
+
 /** Creates a user with the given role and returns its session cookie. */
 export const createSessionCookie = async (
   testDb: TestDatabase,
@@ -118,10 +138,7 @@ export const createSessionCookie = async (
   const { user } = await auth.api.createUser({
     body: { email, password: "password", name: role, role },
   });
-  await testDb.client.user.update({
-    where: { id: user.id },
-    data: { emailVerified: true },
-  });
+  await verifyEmail(testDb, user.id);
   const { headers } = await auth.api.signInEmail({
     body: { email, password: "password" },
     returnHeaders: true,
@@ -413,6 +430,78 @@ export const createTestProducts = async (
       }),
     )
     .returning();
+};
+
+/** Inserts a variant in a fresh product. */
+export const createTestVariant = async (
+  testDb: TestDatabase,
+  {
+    price = 1099,
+    stock = 10,
+    status = "PUBLISHED",
+  }: {
+    price?: number;
+    status?: ProductModel.productStatus;
+    stock?: number;
+  } = {},
+) => {
+  const [product] = await createTestProducts(testDb, 1, status);
+  expectDefined(product);
+  const [variant] = await testDb.db
+    .insert(productVariantTable)
+    .values({
+      id: Bun.randomUUIDv7(),
+      productId: product.id,
+      price,
+      stock,
+      sku: crypto.randomUUID(),
+    })
+    .returning();
+  expectDefined(variant);
+  return variant;
+};
+
+export const shippingAddress = {
+  name: "Test User",
+  line1: "123 Test St",
+  city: "Test City",
+  postalCode: "12345",
+  country: "FR",
+};
+
+/** Inserts an order of one variant, without Stripe. */
+export const createTestOrder = async (
+  testDb: TestDatabase,
+  userId: string,
+  status: OrderModel.OrderStatus = "PENDING",
+) => {
+  const variant = await createTestVariant(testDb);
+  const [order] = await testDb.db
+    .insert(orderTable)
+    .values({
+      id: Bun.randomUUIDv7(),
+      userId,
+      status,
+      stripeSessionId: `cs_test_${crypto.randomUUID()}`,
+      subtotalAmount: variant.price,
+      shippingAmount: 500,
+      totalAmount: variant.price + 500,
+      shippingAddress,
+    })
+    .returning();
+  expectDefined(order);
+  await testDb.db.insert(orderItemTable).values({
+    id: Bun.randomUUIDv7(),
+    orderId: order.id,
+    productId: variant.productId,
+    productName: "test product",
+    variantId: variant.id,
+    variantSku: variant.sku,
+    unitPrice: variant.price,
+    quantity: 1,
+    totalPrice: variant.price,
+  });
+  return order;
 };
 
 interface SetupProductOptions {

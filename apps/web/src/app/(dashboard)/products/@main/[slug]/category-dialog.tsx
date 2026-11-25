@@ -1,7 +1,7 @@
 import {
-  type getByIdResult,
-  type getResult,
+  type categoryResult,
   patchBody,
+  postAttributes,
   postBody,
 } from "@spice-world/server/modules/categories/model";
 import { Form, useForm } from "@spice-world/web/components/tanstack-form";
@@ -39,13 +39,19 @@ import { useFileUpload } from "@spice-world/web/hooks/use-file-upload";
 import { useIsMobile } from "@spice-world/web/hooks/use-mobile";
 import { app, elysiaErrorToString } from "@spice-world/web/lib/elysia";
 import { unknownError } from "@spice-world/web/lib/utils";
+import { t, type UnwrapSchema } from "elysia";
 import { Edit2, ImageIcon, Trash2Icon } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+const createFormBody = t.Object({
+  ...postBody.properties,
+  attributes: t.Optional(t.Object({ create: t.Optional(postAttributes) })),
+});
+
 interface CategoryDialogProps {
-  categories: getResult;
+  categories: categoryResult[];
   onCategoryChange: () => void;
 }
 
@@ -111,14 +117,14 @@ export const CategoryDialog = ({
 };
 
 interface CategoryFormProps {
-  categories: getResult;
+  categories: categoryResult[];
   handleClose: () => void;
 }
 
 const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
   const [categoryId, setCategoryId] = useState<string>("new");
-  const [currentCategory, setCurrentCategory] = useState<getByIdResult | null>(
-    null
+  const [currentCategory, setCurrentCategory] = useState<categoryResult | null>(
+    null,
   );
 
   const resetForm = () => {
@@ -135,7 +141,7 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
       const { data, error } = await app.categories({ id }).get();
       if (error) {
         toast.error(
-          `Failed to fetch category with error ${error.status}: ${elysiaErrorToString(error)}`
+          `Failed to fetch category with error ${error.status}: ${elysiaErrorToString(error)}`,
         );
         resetForm();
         return;
@@ -148,22 +154,24 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
       form.setFieldValue("attributes.create", undefined);
       form.setFieldValue(
         "attributes.update",
-        data.attributes.map((attr) => ({
-          id: attr.id,
-          name: attr.name,
-          values: {
-            create: attr.values.map((v) => v.value),
-            delete: undefined,
-          },
-        }))
+        data.attributes.length
+          ? data.attributes.map((attr) => ({
+              id: attr.id,
+              name: attr.name,
+              values: {
+                create: attr.values.map((v) => v.value),
+                delete: undefined,
+              },
+            }))
+          : undefined, // patchBody rejects an empty list
       );
       form.setFieldValue("file", undefined);
       clearFiles();
     }
   };
 
-  const form = useForm<typeof postBody | typeof patchBody>({
-    schema: categoryId === "new" ? postBody : patchBody,
+  const form = useForm<typeof createFormBody | typeof patchBody>({
+    schema: categoryId === "new" ? createFormBody : patchBody,
     validationMode: "onSubmit",
     defaultValues: {
       name: "",
@@ -178,7 +186,7 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
       try {
         switch (categoryId) {
           case "new": {
-            await handleCreate(values as postBody);
+            await handleCreate(values as UnwrapSchema<typeof createFormBody>);
             break;
           }
 
@@ -192,18 +200,21 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
           error,
           categoryId === "new"
             ? "Failed to create category"
-            : "Failed to update category"
+            : "Failed to update category",
         );
         toast.error(elysiaErrorToString(err));
       }
     },
   });
 
-  const handleCreate = async (values: postBody) => {
-    const { error } = await app.categories.post(values);
+  const handleCreate = async (values: UnwrapSchema<typeof createFormBody>) => {
+    const { error } = await app.categories.post({
+      ...values,
+      attributes: values.attributes?.create,
+    });
     if (error) {
       toast.error(
-        `Failed to create category with error ${error.status}: ${elysiaErrorToString(error)}`
+        `Failed to create category with error ${error.status}: ${elysiaErrorToString(error)}`,
       );
       return;
     }
@@ -212,36 +223,44 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
   };
 
   const handleUpdate = async (values: patchBody) => {
-    // Filter out duplicate attribute values to avoid conflicts
-    if (values.attributes?.update && currentCategory?.attributes) {
-      values.attributes.update = values.attributes.update.map((formAttr) => {
-        const existingAttr = currentCategory.attributes.find(
-          (attr) => attr.id === formAttr.id
-        );
-        if (!(existingAttr && formAttr.values?.create)) {
-          return formAttr;
-        }
+    // `create` holds every displayed value: diff it with the stored ones.
+    // Never mutate `values`: a retry after an API error must diff the same list.
+    const update = values.attributes?.update?.map((formAttr) => {
+      const existing = currentCategory?.attributes.find(
+        ({ id }) => id === formAttr.id,
+      )?.values;
+      const kept = formAttr.values?.create;
+      if (!(existing && kept)) {
+        return formAttr;
+      }
+      const created = kept.filter(
+        (value) => !existing.some((v) => v.value === value),
+      );
+      const deleted = existing.filter(({ value }) => !kept.includes(value));
+      return {
+        ...formAttr,
+        values: {
+          create: created.length ? created : undefined,
+          delete: deleted.length ? deleted.map(({ id }) => id) : undefined,
+        },
+      };
+    });
 
-        // Remove values that already exist in the database
-        const existingValues = existingAttr.values.map((v) => v.value);
-        const filteredValues = formAttr.values.create.filter(
-          (value) => !existingValues.includes(value)
-        );
+    const removed = currentCategory?.attributes.filter(
+      ({ id }) => !update?.some((attr) => attr.id === id),
+    );
 
-        return {
-          ...formAttr,
-          values: {
-            ...formAttr.values,
-            create: filteredValues.length > 0 ? filteredValues : undefined,
-          },
-        };
-      });
-    }
-
-    const { error } = await app.categories({ id: categoryId }).patch(values);
+    const { error } = await app.categories({ id: categoryId }).patch({
+      ...values,
+      attributes: values.attributes && {
+        ...values.attributes,
+        update,
+        delete: removed?.length ? removed.map(({ id }) => id) : undefined,
+      },
+    });
     if (error) {
       toast.error(
-        `Failed to update category with error ${error.status}: ${elysiaErrorToString(error)}`
+        `Failed to update category with error ${error.status}: ${elysiaErrorToString(error)}`,
       );
       return;
     }
@@ -254,7 +273,7 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
       const { error } = await app.categories({ id: categoryId }).delete();
       if (error) {
         toast.error(
-          `Failed to delete category with error ${error.status}: ${elysiaErrorToString(error)}`
+          `Failed to delete category with error ${error.status}: ${elysiaErrorToString(error)}`,
         );
         return;
       }
@@ -384,7 +403,7 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
                                   ({
                                     label: v,
                                     value: v,
-                                  }) as MultiSelectOption
+                                  }) as MultiSelectOption,
                               ) ?? null
                             }
                             placeholder="Select or create attribute values"
@@ -453,23 +472,6 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
                                 value: value.toLowerCase(),
                               };
                             }}
-                            onRemove={(removedValue, valueIndex) => {
-                              const currentDeletes =
-                                form.getFieldValue(
-                                  `attributes.update[${index}].values.delete`
-                                ) || [];
-                              const valueToDel = currentCategory?.attributes[
-                                index
-                              ]?.values.find((v) => v.value === removedValue);
-                              if (!valueToDel) {
-                                return;
-                              }
-                              form.setFieldValue(
-                                `attributes.update[${index}].values.delete`,
-                                [...currentDeletes, valueToDel.id]
-                              );
-                              avField.removeValue(valueIndex);
-                            }}
                             options={[
                               ...(avField.state.value?.map((v) => ({
                                 label: v,
@@ -495,7 +497,11 @@ const CategoryForm = ({ categories, handleClose }: CategoryFormProps) => {
                     </form.AppField>
                     <Button
                       aria-label="Remove attribute"
-                      onClick={() => field.removeValue(index)}
+                      onClick={() =>
+                        field.state.value?.length === 1
+                          ? field.handleChange(undefined)
+                          : field.removeValue(index)
+                      }
                       type="button"
                     >
                       <Trash2Icon className="col-span-1 w-full bg-red-900 text-black hover:bg-red-800 hover:text-black" />

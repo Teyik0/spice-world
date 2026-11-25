@@ -18,12 +18,13 @@ import {
 } from "@spice-world/web/components/ui/select";
 import { app } from "@spice-world/web/lib/elysia";
 import { useState } from "react";
+
 import { type ProductForm, useProductSidebarSync } from "../../store";
 import { CategoryDialog } from "./category-dialog";
 
 interface ProductFormClassificationProps {
   form: ProductForm;
-  initialCategories: CategoryModel.getResult;
+  initialCategories: CategoryModel.categoryResult[];
   isNew: boolean;
   slug: string;
 }
@@ -37,10 +38,10 @@ export const ProductFormClassification = ({
   const updateSidebar = useProductSidebarSync(isNew, slug);
 
   const [categories, setCategories] =
-    useState<CategoryModel.getResult>(initialCategories);
+    useState<CategoryModel.categoryResult[]>(initialCategories);
 
   const fetchCategories = async () => {
-    const { data } = await app.categories.get();
+    const { data } = await app.categories.get({ query: { take: 100 } });
     if (data) {
       setCategories(data);
     }
@@ -55,8 +56,7 @@ export const ProductFormClassification = ({
       const existingIds = variantsUpdate?.map((v) => v.id) || [];
 
       form.setFieldValue("variants", {
-        delete: existingIds,
-        update: [],
+        ...(existingIds.length > 0 && { delete: existingIds, update: [] }),
         create: [
           {
             price: 0,

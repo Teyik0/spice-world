@@ -1,16 +1,19 @@
-import { app } from "@spice-world/web/lib/elysia";
+import { authClient } from "@spice-world/web/lib/utils";
 import { type NextRequest, NextResponse } from "next/server";
 
 export default async function middleware(req: NextRequest) {
   const cookieName = "better-auth.session_token";
   const sessionCookie = req.cookies.get(cookieName)?.value;
-  const { error } = await app.api["is-admin"].get({
-    headers: {
-      cookie: sessionCookie ? `${cookieName}=${sessionCookie}` : "",
+
+  const { data: session } = await authClient.getSession({
+    fetchOptions: {
+      headers: {
+        cookie: sessionCookie ? `${cookieName}=${sessionCookie}` : "",
+      },
     },
   });
 
-  if (error) {
+  if (!session?.user || session.user.role !== "admin") {
     return NextResponse.redirect(new URL("/signin", req.url));
   }
 

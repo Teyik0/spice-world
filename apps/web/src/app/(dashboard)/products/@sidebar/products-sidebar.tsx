@@ -85,7 +85,7 @@ export function ProductsHydrator({
   initialProducts,
   children,
 }: {
-  initialProducts: ProductModel.getResult;
+  initialProducts: ProductModel.productListItem[];
   children: React.ReactNode;
 }) {
   useHydrateAtoms([[productPagesAtom, [initialProducts]]]);

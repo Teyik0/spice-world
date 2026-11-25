@@ -3,13 +3,12 @@ import { beforeAll, describe, expect, it } from "bun:test";
 import { treaty } from "@elysia/eden";
 import { productsRouter } from "@spice-world/server/modules/products";
 import type * as ProductModel from "@spice-world/server/modules/products/model";
-import type {
-  Category,
-  Image,
-  Product,
-  ProductVariant,
-} from "@spice-world/server/prisma/client";
 
+import {
+  collectionProductTable,
+  collectionTable,
+  productVariantTable,
+} from "../../drizzle/schema";
 import { testDb } from "../setup";
 import { createDummyProducts } from "../utils/dummy-products";
 import {
@@ -27,14 +26,13 @@ const api = treaty(productsRouter, {
 const userCookie = await createSessionCookie(testDb, "user");
 
 describe.concurrent("GET /products - Integration Tests", () => {
-  let testCategories: Category[];
-  let testProducts: (Product & {
-    variants: ProductVariant[];
-    images: Image[];
-  })[];
+  let testCategories: Awaited<
+    ReturnType<typeof createDummyProducts>
+  >["categories"];
+  let testProducts: Awaited<ReturnType<typeof createDummyProducts>>["products"];
 
   beforeAll(async () => {
-    const { categories, products } = await createDummyProducts(testDb.client);
+    const { categories, products } = await createDummyProducts(testDb);
     testCategories = categories;
     testProducts = products;
   });
@@ -42,7 +40,7 @@ describe.concurrent("GET /products - Integration Tests", () => {
   describe("GET /products", () => {
     it("should return a list of products sorted by name", async () => {
       const { data, status } = await api.products.get({
-        query: { sortBy: "name", sortDir: "asc" },
+        query: { sortBy: "name", sortDir: "asc", take: 100 },
       });
 
       expect(status).toBe(200);
@@ -56,9 +54,8 @@ describe.concurrent("GET /products - Integration Tests", () => {
       }
 
       for (let i = 0; i < data.length - 1; i += 1) {
-        const currentItem: ProductModel.getResult[number] | undefined = data[i];
-        const nextItem: ProductModel.getResult[number] | undefined =
-          data[i + 1];
+        const currentItem: ProductModel.productListItem | undefined = data[i];
+        const nextItem: ProductModel.productListItem | undefined = data[i + 1];
         expectDefined(currentItem);
         expectDefined(nextItem);
         expect(
@@ -69,7 +66,7 @@ describe.concurrent("GET /products - Integration Tests", () => {
 
     it("should return a list of products sorted by price", async () => {
       const { data, status } = await api.products.get({
-        query: { sortBy: "priceMin", sortDir: "asc" },
+        query: { sortBy: "priceMin", sortDir: "asc", take: 100 },
       });
 
       expect(status).toBe(200);
@@ -83,8 +80,8 @@ describe.concurrent("GET /products - Integration Tests", () => {
       }
 
       for (let i = 0; i < data.length - 1; i += 1) {
-        const current = data[i] as ProductModel.getResult[number];
-        const next = data[i + 1] as ProductModel.getResult[number];
+        const current = data[i] as ProductModel.productListItem;
+        const next = data[i + 1] as ProductModel.productListItem;
         if (current.priceMin !== null && next.priceMin !== null) {
           expect(current.priceMin).toBeLessThanOrEqual(next.priceMin);
         }
@@ -194,11 +191,9 @@ describe.concurrent("GET /products - Integration Tests", () => {
         expectDefined(published);
         expectDefined(draft);
         expectDefined(archived);
-        const categories = await testDb.client.category.findMany({
+        const categories = await testDb.db.query.category.findMany({
           where: {
-            products: {
-              some: { id: { in: [published.id, draft.id, archived.id] } },
-            },
+            products: { id: { in: [published.id, draft.id, archived.id] } },
           },
         });
         const names = categories.map(({ name }) => name);
@@ -251,9 +246,10 @@ describe.concurrent("GET /products - Integration Tests", () => {
 
   describe("cache", () => {
     const listing = async (id: string) => {
-      const category = await testDb.client.category.findFirstOrThrow({
-        where: { products: { some: { id } } },
+      const category = await testDb.db.query.category.findFirst({
+        where: { products: { id } },
       });
+      expectDefined(category);
       return async () => {
         const { data } = await api.products.get({
           query: { status: "PUBLISHED", categories: [category.name] },
@@ -265,8 +261,11 @@ describe.concurrent("GET /products - Integration Tests", () => {
     it("drops a product from its old status listing after a patch", async () => {
       const [product] = await createTestProducts(testDb, 1);
       expectDefined(product);
-      await testDb.client.productVariant.create({
-        data: { productId: product.id, price: 1000, stock: 1 },
+      await testDb.db.insert(productVariantTable).values({
+        id: Bun.randomUUIDv7(),
+        productId: product.id,
+        price: 1000,
+        stock: 1,
       });
       const list = await listing(product.id);
       expect(await list()).toEqual([product.id]);
@@ -300,9 +299,10 @@ describe.concurrent("GET /products - Integration Tests", () => {
     const products = await createTestProducts(testDb, 6);
     const [first] = products;
     expectDefined(first);
-    const category = await testDb.client.category.findUniqueOrThrow({
+    const category = await testDb.db.query.category.findFirst({
       where: { id: first.categoryId },
     });
+    expectDefined(category);
     // No variant: every priceMin is null, so all of them tie.
     const pages = await Promise.all(
       [0, 2, 4].map((skip) =>
@@ -318,6 +318,53 @@ describe.concurrent("GET /products - Integration Tests", () => {
     );
     expect(pages.flatMap(({ data }) => data?.map(({ id }) => id))).toEqual(
       products.map(({ id }) => id).sort(),
+    );
+  });
+
+  it("returns the typed not found problem", async () => {
+    const results = await Promise.all([
+      api.products({ id: Bun.randomUUIDv7() }).get(),
+      api.products.slug({ slug: "missing" }).get(),
+      api.products({ id: Bun.randomUUIDv7() }).comments.get({ query: {} }),
+    ]);
+    for (const { error } of results) {
+      expect(error).toMatchObject({
+        status: 404,
+        value: { code: "PRODUCT_NOT_FOUND", message: "Product not found" },
+      });
+    }
+  });
+
+  it("finds products by full-text name", async () => {
+    const [product] = await createTestProducts(testDb, 1);
+    expectDefined(product);
+    const { data } = await api.products.get({ query: { name: product.name } });
+    expect(data?.map(({ id }) => id)).toEqual([product.id]);
+  });
+
+  it("lists a collection in its curated order, unless a sort is requested", async () => {
+    const products = await createTestProducts(testDb, 3);
+    const curated = products.map(({ id }) => id).reverse();
+    const collectionId = Bun.randomUUIDv7();
+    const handle = collectionId;
+    await testDb.db
+      .insert(collectionTable)
+      .values({ id: collectionId, handle, name: handle });
+    await testDb.db.insert(collectionProductTable).values(
+      curated.map((productId, position) => ({
+        collectionId,
+        productId,
+        position,
+      })),
+    );
+
+    const [byPosition, byName] = await Promise.all([
+      api.products.get({ query: { collection: handle } }),
+      api.products.get({ query: { collection: handle, sortBy: "name" } }),
+    ]);
+    expect(byPosition.data?.map(({ id }) => id)).toEqual(curated);
+    expect(byName.data?.map(({ name }) => name)).toEqual(
+      products.map(({ name }) => name).sort(),
     );
   });
 });

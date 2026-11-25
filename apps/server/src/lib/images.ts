@@ -189,26 +189,6 @@ const uploadBatch = async (
 };
 
 /**
- * Delete uploaded files by their upload data
- * Useful for cleanup on rollback
- */
-export const deleteUploads = async (
-  uploads: MultiSizeUploadData[],
-): Promise<void> => {
-  if (uploads.length === 0) {
-    return;
-  }
-
-  const keys = uploads.flatMap((upload) => [
-    upload.thumb.key,
-    upload.medium.key,
-    upload.large.key,
-  ]);
-
-  await utapi.deleteFiles(keys);
-};
-
-/**
  * Upload multiple images with all size variants
  * Atomic operation - all succeed or all fail
  */

@@ -1,5 +1,4 @@
 import type * as ProductModel from "@spice-world/server/modules/products/model";
-import type { ProductStatus } from "@spice-world/server/prisma/enums";
 import type { useForm } from "@spice-world/web/components/tanstack-form";
 import { atom, useSetAtom } from "jotai";
 import { useCallback } from "react";
@@ -14,7 +13,7 @@ export type ProductForm = ReturnType<
 
 /**
  * Product item data structure used for sidebar display
- * Matches the shape returned by ProductModel.getResult items
+ * Matches the shape returned by ProductModel.productListItem
  */
 export interface ProductItemProps {
   categoryId: string;
@@ -26,7 +25,7 @@ export interface ProductItemProps {
   priceMax: number | null;
   priceMin: number | null;
   slug: string;
-  status: ProductStatus;
+  status: ProductModel.productStatus;
   totalStock: number;
   updatedAt: Date;
   version: number;
@@ -47,7 +46,7 @@ export const selectedProductIdsAtom = atom<Set<string>>(new Set<string>());
 export const productsRefreshKeyAtom = atom<number>(0);
 
 /* Atome for infinite products scroll */
-export const productPagesAtom = atom<ProductModel.getResult[]>([]);
+export const productPagesAtom = atom<ProductModel.productListItem[][]>([]);
 export const productsAtom = atom((get) => get(productPagesAtom).flat());
 
 /**
@@ -61,18 +60,18 @@ export function useProductSidebarSync(isNew: boolean, slug: string) {
   return useCallback(
     <K extends keyof ProductItemProps>(
       field: K,
-      value: ProductItemProps[K]
+      value: ProductItemProps[K],
     ) => {
       if (isNew) {
         setNewProduct((prev) => (prev ? { ...prev, [field]: value } : prev));
       } else {
         setPages((pages) =>
           pages.map((page) =>
-            page.map((p) => (p.slug === slug ? { ...p, [field]: value } : p))
-          )
+            page.map((p) => (p.slug === slug ? { ...p, [field]: value } : p)),
+          ),
         );
       }
     },
-    [isNew, slug, setNewProduct, setPages]
+    [isNew, slug, setNewProduct, setPages],
   );
 }

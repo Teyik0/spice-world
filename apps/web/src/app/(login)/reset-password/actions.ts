@@ -4,6 +4,7 @@ import { invalidateSessionCache } from "@spice-world/web/lib/dal";
 import { standardSchema } from "@spice-world/web/lib/schema";
 import { actionClient, authClient } from "@spice-world/web/lib/utils";
 import { t } from "elysia";
+
 import { passwordValidation } from "../utils";
 
 const resetPasswordSchema = t.Object({
@@ -25,7 +26,7 @@ export const resetPasswordAction = actionClient
 
     if (!response.data) {
       throw new Error(
-        "The reset link may be invalid or expired. Please request a new one."
+        "The reset link may be invalid or expired. Please request a new one.",
       );
     }
 

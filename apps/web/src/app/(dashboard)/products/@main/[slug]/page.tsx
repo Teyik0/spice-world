@@ -1,5 +1,6 @@
-import { app } from "@spice-world/web/lib/elysia";
+import { app } from "@spice-world/web/lib/elysia-server";
 import { redirect } from "next/navigation";
+
 import { ProductForm } from "./form";
 
 export default async function ProductMainSlot({
@@ -8,7 +9,9 @@ export default async function ProductMainSlot({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const { data: categories } = await app.categories.get();
+  const { data: categories } = await app.categories.get({
+    query: { take: 100 },
+  });
 
   if (slug === "new") {
     const firstCategory = categories?.[0];
@@ -23,15 +26,14 @@ export default async function ProductMainSlot({
           status: "DRAFT",
           createdAt: new Date(),
           updatedAt: new Date(),
-          version: 0,
+          version: 1,
           category: firstCategory
             ? {
                 id: firstCategory.id,
                 name: firstCategory.name,
-                imageId: firstCategory.imageId,
                 attributes: [],
               }
-            : { id: "", name: "", imageId: "", attributes: [] },
+            : { id: "", name: "", attributes: [] },
           categoryId: firstCategory?.id ?? "",
           variants: [],
           images: [],

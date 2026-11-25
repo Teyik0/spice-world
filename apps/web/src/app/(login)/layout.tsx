@@ -26,7 +26,7 @@ export default function Layout({
               "hover:bg-muted/50",
               isSignIn
                 ? "bg-background text-foreground border-primary border-b-2"
-                : "text-muted-foreground"
+                : "text-muted-foreground",
             )}
             href="/signin"
           >
@@ -38,7 +38,7 @@ export default function Layout({
               "hover:bg-muted/50",
               isSignUp
                 ? "bg-background text-foreground border-primary border-b-2"
-                : "text-muted-foreground"
+                : "text-muted-foreground",
             )}
             href="/signup"
           >

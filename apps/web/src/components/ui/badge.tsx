@@ -23,7 +23,7 @@ const badgeVariants = cva(
     defaultVariants: {
       variant: "default",
     },
-  }
+  },
 );
 
 function Badge({
@@ -38,7 +38,7 @@ function Badge({
     state: { slot: "badge" },
     props: mergeProps<"span">(
       { className: cn(badgeVariants({ variant }), className) },
-      props
+      props,
     ),
   });
 }

@@ -30,6 +30,7 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
+
 import { type ProductForm, useProductSidebarSync } from "../../store";
 
 const MAX_IMAGES = 5;
@@ -86,7 +87,7 @@ export const ProductFormImages = ({
 
   const existingMap = useMemo(
     () => new Map(existingImages.map((img) => [img.id, img])),
-    [existingImages]
+    [existingImages],
   );
 
   const getFileUrl = (file: File) => {
@@ -155,7 +156,7 @@ export const ProductFormImages = ({
       }
       createdBlobUrls.current.clear();
     },
-    []
+    [],
   );
 
   // Sync thumbnail to sidebar
@@ -175,7 +176,7 @@ export const ProductFormImages = ({
       const invalid = files.filter((f) => f.size > MAX_FILE_SIZE);
       if (invalid.length > 0) {
         toast.error(
-          `Some files exceed the maximum size of ${formatBytes(MAX_FILE_SIZE)}`
+          `Some files exceed the maximum size of ${formatBytes(MAX_FILE_SIZE)}`,
         );
         return;
       }
@@ -195,7 +196,7 @@ export const ProductFormImages = ({
         api?.scrollTo(displayImages.length + files.length - 1);
       }, 50);
     },
-    [displayImages.length, imageOps, api, form]
+    [displayImages.length, imageOps, api, form],
   );
 
   const handleReplaceImage = useCallback(
@@ -246,7 +247,7 @@ export const ProductFormImages = ({
         // Replace new image (in create array)
         const currentCreate = imageOps?.create ?? [];
         const createIndex = currentCreate.findIndex(
-          (c) => c.file === imageToReplace?.file
+          (c) => c.file === imageToReplace?.file,
         );
 
         if (createIndex >= 0) {
@@ -261,7 +262,7 @@ export const ProductFormImages = ({
         }
       }
     },
-    [existingMap, imageOps, displayImages, form]
+    [existingMap, imageOps, displayImages, form],
   );
 
   const handleSetThumbnail = useCallback(
@@ -275,17 +276,19 @@ export const ProductFormImages = ({
           ...op,
           isThumbnail: op.file === selectedFile,
         })),
-        update: displayImages
-          .filter((image) => image.originalId !== undefined)
-          .map((image) => ({
-            ...currentUpdate.find((op) => op.id === image.id),
-            id: image.id,
-            isThumbnail: image.id === imageId,
-          })),
+        ...(existingMap.size > 0 && {
+          update: displayImages
+            .filter((image) => image.originalId !== undefined)
+            .map((image) => ({
+              ...currentUpdate.find((op) => op.id === image.id),
+              id: image.id,
+              isThumbnail: image.id === imageId,
+            })),
+        }),
       });
       api?.scrollTo(0);
     },
-    [displayImages, imageOps, form, api]
+    [displayImages, existingMap, imageOps, form, api],
   );
 
   const handleDeleteImage = useCallback(
@@ -315,7 +318,7 @@ export const ProductFormImages = ({
         // Remove from update if present
         form.setFieldValue(
           "images.update",
-          currentUpdate.filter((u) => u.id !== imageId)
+          currentUpdate.filter((u) => u.id !== imageId),
         );
         // Add to delete
         form.setFieldValue("images.delete", [...currentDelete, imageId]);
@@ -323,7 +326,7 @@ export const ProductFormImages = ({
         // Delete new image (in create array)
         const currentCreate = imageOps?.create ?? [];
         const createIndex = currentCreate.findIndex(
-          (c) => c.file === imageToDelete?.file
+          (c) => c.file === imageToDelete?.file,
         );
 
         if (createIndex >= 0) {
@@ -335,7 +338,7 @@ export const ProductFormImages = ({
 
       setCurrent(1);
     },
-    [displayImages, existingMap, imageOps, form]
+    [displayImages, existingMap, imageOps, form],
   );
 
   const handleFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -349,9 +352,9 @@ export const ProductFormImages = ({
   const sortedImages = useMemo(
     () =>
       [...displayImages].sort(
-        (a, b) => (b.isThumbnail ? 1 : 0) - (a.isThumbnail ? 1 : 0)
+        (a, b) => (b.isThumbnail ? 1 : 0) - (a.isThumbnail ? 1 : 0),
       ),
-    [displayImages]
+    [displayImages],
   );
 
   return (

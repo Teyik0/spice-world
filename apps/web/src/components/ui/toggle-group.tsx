@@ -7,8 +7,8 @@ import { cn } from "@spice-world/web/lib/utils";
 import type { VariantProps } from "class-variance-authority";
 import {
   type ComponentProps,
-  type CSSProperties,
   createContext,
+  type CSSProperties,
   useContext,
 } from "react";
 
@@ -37,7 +37,7 @@ function ToggleGroup({
     <ToggleGroupPrimitive
       className={cn(
         "group/toggle-group flex w-fit items-center gap-[--spacing(var(--gap))] rounded-md data-[spacing=default]:data-[variant=outline]:shadow-xs",
-        className
+        className,
       )}
       data-size={size}
       data-slot="toggle-group"
@@ -72,7 +72,7 @@ function ToggleGroupItem({
         }),
         "w-auto min-w-0 shrink-0 px-3 focus:z-10 focus-visible:z-10",
         "data-[spacing=0]:rounded-none data-[spacing=0]:shadow-none data-[spacing=0]:first:rounded-l-md data-[spacing=0]:last:rounded-r-md data-[spacing=0]:data-[variant=outline]:border-l-0 data-[spacing=0]:data-[variant=outline]:first:border-l",
-        className
+        className,
       )}
       data-size={context.size || size}
       data-slot="toggle-group-item"

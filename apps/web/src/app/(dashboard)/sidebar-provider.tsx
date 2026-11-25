@@ -3,12 +3,13 @@
 import { SidebarProvider } from "@spice-world/web/components/ui/sidebar";
 import { useMediaQuery } from "@spice-world/web/hooks/use-media-query";
 import {
-  type CSSProperties,
   createContext,
+  type CSSProperties,
   type ReactNode,
   useContext,
   useState,
 } from "react";
+
 import { setSidebarExpanded } from "./cookies";
 
 const SIDEBAR_WIDTH_COLLAPSED = "350px";
@@ -26,7 +27,7 @@ export function useSidebarExpanded() {
   const context = useContext(SidebarContext);
   if (!context) {
     throw new Error(
-      "useSidebarExpanded must be used within SidebarRightProvider"
+      "useSidebarExpanded must be used within SidebarRightProvider",
     );
   }
   return [context.expanded, context.setExpanded] as const;

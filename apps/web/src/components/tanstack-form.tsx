@@ -19,6 +19,7 @@ import { createFormHook, createFormHookContexts } from "@tanstack/react-form";
 import { AlertCircle, Loader2 } from "lucide-react";
 import type * as React from "react";
 import type { Static, TSchema } from "typebox";
+
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export const { fieldContext, useFieldContext, formContext, useFormContext } =
@@ -290,7 +291,7 @@ function FieldMessage({
       errorsToShow = hasSubmitError.map((err) =>
         typeof err === "string"
           ? { message: err }
-          : (err as { message?: string })
+          : (err as { message?: string }),
       );
     } else {
       // Fallback in case of unexpected shape
@@ -298,7 +299,9 @@ function FieldMessage({
     }
   } else {
     errorsToShow = field.state.meta.errors.map((err) =>
-      typeof err === "string" ? { message: err } : (err as { message?: string })
+      typeof err === "string"
+        ? { message: err }
+        : (err as { message?: string }),
     );
   }
 

@@ -10,13 +10,6 @@ export interface CheckoutItem {
   quantity: number;
 }
 
-export class StripeApiError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
-    super(message, options);
-    this.name = "StripeApiError";
-  }
-}
-
 /**
  * Creates a Stripe checkout session with inline line items
  * No product synchronization needed - prices are created at checkout time
@@ -26,8 +19,7 @@ export class StripeApiError extends Error {
  * @param params.metadata - Additional metadata to attach to session
  * @param params.successUrl - URL to redirect to after successful checkout
  * @param params.cancelUrl - URL to redirect to if checkout is cancelled
- * @returns Stripe checkout session containing session ID and URL
- * @throws {StripeApiError} If Stripe API call fails
+ * @returns Stripe checkout session containing session ID and URL, or null if the Stripe API call fails
  */
 export async function createStripeCheckout({
   items,
@@ -70,10 +62,8 @@ export async function createStripeCheckout({
       status: session.status as "open" | "complete" | "expired" | null,
     };
   } catch (error) {
-    throw new StripeApiError(
-      `Failed to create Stripe checkout: ${error instanceof Error ? error.message : "Unknown error"}`,
-      { cause: error },
-    );
+    console.error("Stripe checkout failed", error);
+    return null;
   }
 }
 

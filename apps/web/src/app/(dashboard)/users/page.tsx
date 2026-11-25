@@ -40,7 +40,7 @@ export default async function UsersPage() {
   const oneMonthAgo = new Date();
   oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
   const newUsersThisMonth = users.filter(
-    (u) => new Date(u.createdAt) > oneMonthAgo
+    (u) => new Date(u.createdAt) > oneMonthAgo,
   ).length;
 
   const stats = [

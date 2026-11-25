@@ -17,6 +17,7 @@ import { X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+
 import { passwordValidation } from "../utils";
 
 const signupFormSchema = t.Object({
@@ -90,7 +91,7 @@ export function SignUp() {
   // Access imagePreview from form state for display
   const imagePreview = useStore(
     form.store,
-    (state) => state.values.imagePreview
+    (state) => state.values.imagePreview,
   );
 
   return (
@@ -220,7 +221,7 @@ export function SignUp() {
                             reader.onloadend = () => {
                               form.setFieldValue(
                                 "imagePreview",
-                                reader.result as string
+                                reader.result as string,
                               );
                             };
                             reader.readAsDataURL(file);

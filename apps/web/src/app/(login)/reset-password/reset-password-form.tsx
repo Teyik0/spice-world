@@ -11,8 +11,9 @@ import {
 import { Input } from "@spice-world/web/components/ui/input";
 import { Label } from "@spice-world/web/components/ui/label";
 import { Loader2 } from "lucide-react";
-import Link from "next/link";
 import { useAction } from "next-safe-action/hooks";
+import Link from "next/link";
+
 import { resetPasswordAction } from "./actions";
 
 interface ResetPasswordFormProps {
@@ -146,7 +147,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
                   const errors = new Set([
                     ...(result.validationErrors.formErrors || []),
                     ...Object.values(
-                      result.validationErrors.fieldErrors || {}
+                      result.validationErrors.fieldErrors || {},
                     ).flat(),
                   ]);
 

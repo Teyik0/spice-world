@@ -41,6 +41,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+
 import { revalidateUsersLayout } from "../actions";
 import { currentUserAtom, newUserAtom } from "../store";
 import { UserFormBan } from "./form-ban";
@@ -92,7 +93,7 @@ export const UserForm = ({ user, isNew }: UserFormProps) => {
   const [email, setEmail] = useState(user.email ?? "");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"user" | "admin">(
-    (user.role ?? "user") as "user" | "admin"
+    (user.role ?? "user") as "user" | "admin",
   );
   const [banned, setBanned] = useState(user.banned ?? false);
   const [banReason, setBanReason] = useState(user.banReason ?? "");
@@ -188,7 +189,7 @@ export const UserForm = ({ user, isNew }: UserFormProps) => {
       }
     } catch (error) {
       toast.error(
-        `Failed to ${isNew ? "create" : "update"} user: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to ${isNew ? "create" : "update"} user: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     } finally {
       setIsSubmitting(false);
@@ -212,7 +213,7 @@ export const UserForm = ({ user, isNew }: UserFormProps) => {
       router.push("/users");
     } catch (error) {
       toast.error(
-        `Failed to delete user: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to delete user: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     } finally {
       setIsDeleting(false);

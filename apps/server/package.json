@@ -6,22 +6,20 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "prisma generate && PORT=3001 bun run --bun --watch --cpu-prof --cpu-prof-name '@spice-world/server' --inspect --title '@spice-world/server' src/index.ts",
+    "dev": "PORT=3001 bun run --bun --watch --cpu-prof --cpu-prof-name '@spice-world/server' --inspect --title '@spice-world/server' src/index.ts",
     "stripe": "stripe listen --events checkout.session.completed,checkout.session.async_payment_failed,checkout.session.expired --forward-to localhost:3001/api/auth/stripe/webhook",
-    "test": "bun test --randomize --parallel --concurrent --bail --timeout=20000",
-    "build": "bunx prisma generate && bun build src/index.ts --compile --target=bun --format=esm --bytecode --minify-whitespace --minify-syntax --sourcemap --outfile=dist/server",
+    "test": "bun test --randomize --parallel=4 --concurrent --bail --timeout=20000",
+    "build": "bun build src/index.ts --compile --target=bun --format=esm --bytecode --minify-whitespace --minify-syntax --sourcemap --outfile=dist/server",
     "start": "NODE_ENV=production PORT=3001 ./dist/server"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "^1.7.28",
     "@better-auth/stripe": "^1.7.28",
     "@elysia/cors": "rc",
     "@elysia/openapi": "rc",
     "@elysia/opentelemetry": "rc",
     "@opentelemetry/exporter-trace-otlp-proto": "^0.221.0",
     "@opentelemetry/sdk-trace-node": "^2.12.1",
-    "@prisma/adapter-neon": "^7.10.1",
-    "@prisma/adapter-pg": "^7.10.1",
-    "@prisma/client": "^7.10.1",
     "@spice-world/emails": "workspace:*",
     "better-auth": "^1.7.28",
     "drizzle-orm": "^1.0.0-rc.5",
@@ -39,7 +37,6 @@
     "@elysia/eden": "catalog:",
     "@types/react": "catalog:",
     "drizzle-kit": "^1.0.0-rc.5",
-    "drizzle-seed": "^1.0.0-rc.5",
-    "prisma": "^7.10.1"
+    "drizzle-seed": "^1.0.0-rc.5"
   }
 }

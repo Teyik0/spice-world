@@ -12,8 +12,9 @@ import {
   text,
   timestamp,
   uniqueIndex,
-  varchar,
 } from "drizzle-orm/pg-core";
+
+import type { checkoutBody } from "../src/modules/orders/model";
 
 export const attributeConstraintNames = {
   namePerCategory: "Attribute_categoryId_name_key",
@@ -83,19 +84,6 @@ export const attributeValueToProductVariantTable = pgTable(
     ),
   ],
 );
-
-export const prismaMigrationsTable = pgTable("_prisma_migrations", {
-  id: varchar({ length: 36 }).primaryKey(),
-  checksum: varchar({ length: 64 }).notNull(),
-  finishedAt: timestamp("finished_at", { withTimezone: true }),
-  migrationName: varchar("migration_name", { length: 255 }).notNull(),
-  logs: text(),
-  rolledBackAt: timestamp("rolled_back_at", { withTimezone: true }),
-  startedAt: timestamp("started_at", { withTimezone: true })
-    .default(sql`now()`)
-    .notNull(),
-  appliedStepsCount: integer("applied_steps_count").default(0).notNull(),
-});
 
 export const accountTable = pgTable(
   "account",
@@ -297,7 +285,7 @@ export const orderTable = pgTable(
     metadata: jsonb(),
     stripeSessionId: text().notNull(),
     stripePaymentIntentId: text(),
-    shippingAddress: jsonb(),
+    shippingAddress: jsonb().$type<checkoutBody["shippingAddress"]>(),
     shippingAmount: integer().default(0).notNull(),
     shippingStatus: shippingStatus().default("PENDING").notNull(),
     subtotalAmount: integer().notNull(),

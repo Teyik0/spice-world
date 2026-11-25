@@ -1,10 +1,18 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { orderService } from "@spice-world/server/modules/orders/service";
+import { eq, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 
+import { orderItemTable, orderTable } from "../../drizzle/schema";
 import { testDb } from "../setup";
-import { createTestProducts, expectDefined, mockStripe } from "../utils/helper";
+import {
+  createTestUser,
+  createTestVariant,
+  expectDefined,
+  mockStripe,
+  shippingAddress,
+} from "../utils/helper";
 
 describe.concurrent("Order checkout amounts and stock", () => {
   let stripe: Awaited<ReturnType<typeof mockStripe>>;
@@ -13,44 +21,29 @@ describe.concurrent("Order checkout amounts and stock", () => {
   beforeAll(async () => {
     expect(Bun.env.NODE_ENV).not.toBe("production");
     stripe = await mockStripe();
-    const user = await testDb.client.user.create({
-      data: {
-        id: crypto.randomUUID(),
-        name: "Checkout User",
-        email: "checkout@example.com",
-      },
-    });
-    userId = user.id;
+    userId = await createTestUser(testDb);
   });
 
   afterAll(() => {
     stripe.restore();
   });
 
-  const createVariant = async (price: number) => {
-    const [product] = await createTestProducts(testDb, 1);
-    expectDefined(product);
-    return await testDb.client.productVariant.create({
-      data: {
-        productId: product.id,
-        price,
-        stock: 10,
-        sku: crypto.randomUUID(),
-      },
-    });
+  const createVariant = (price: number, stock = 10) =>
+    createTestVariant(testDb, { price, stock });
+
+  const tryCheckout = (items: { variantId: string; quantity: number }[]) =>
+    orderService.createCheckout({ userId, items, shippingAddress });
+
+  const checkout = async (...args: Parameters<typeof tryCheckout>) => {
+    const { response } = await tryCheckout(...args);
+    if (!("order" in response)) {
+      throw new Error(response.message);
+    }
+    return response;
   };
 
-  const checkout = (items: { variantId: string; quantity: number }[]) =>
-    orderService.createCheckout(userId, items, {
-      name: "Test User",
-      line1: "123 Test St",
-      city: "Test City",
-      postalCode: "12345",
-      country: "FR",
-    });
-
   const stockOf = async (id: string) => {
-    const variant = await testDb.client.productVariant.findUnique({
+    const variant = await testDb.db.query.productVariant.findFirst({
       where: { id },
     });
     expectDefined(variant);
@@ -124,7 +117,7 @@ describe.concurrent("Order checkout amounts and stock", () => {
     const variant = await createVariant(1000);
     const { order } = await checkout([{ variantId: variant.id, quantity: 3 }]);
     expect(
-      await orderService.updateStatus(order.id, "CANCELLED"),
+      await orderService.updateStatus({ id: order.id, status: "CANCELLED" }),
     ).toMatchObject({ id: order.id, status: "CANCELLED" });
     expect(stripe.expire).toHaveBeenCalledWith(order.stripeSessionId);
     // The webhook triggered by the expiration must not restore stock again
@@ -137,7 +130,7 @@ describe.concurrent("Order checkout amounts and stock", () => {
     const { order } = await checkout([{ variantId: variant.id, quantity: 1 }]);
     stripe.statuses.set(order.stripeSessionId, "expired");
     expect(
-      await orderService.updateStatus(order.id, "CANCELLED"),
+      await orderService.updateStatus({ id: order.id, status: "CANCELLED" }),
     ).toMatchObject({ status: "CANCELLED" });
     expect(stripe.expire).not.toHaveBeenCalledWith(order.stripeSessionId);
     expect(await stockOf(variant.id)).toBe(10);
@@ -148,10 +141,10 @@ describe.concurrent("Order checkout amounts and stock", () => {
     const { order } = await checkout([{ variantId: variant.id, quantity: 3 }]);
     stripe.statuses.set(order.stripeSessionId, "complete");
     expect(
-      await orderService.updateStatus(order.id, "CANCELLED"),
+      await orderService.updateStatus({ id: order.id, status: "CANCELLED" }),
     ).toMatchObject({ status: 409, response: { code: "ORDER_ALREADY_PAID" } });
     expect(
-      await testDb.client.order.findUnique({ where: { id: order.id } }),
+      await testDb.db.query.order.findFirst({ where: { id: order.id } }),
     ).toMatchObject({ status: "PENDING" });
     expect(await stockOf(variant.id)).toBe(7);
   });
@@ -163,21 +156,148 @@ describe.concurrent("Order checkout amounts and stock", () => {
       const { order } = await checkout([
         { variantId: variant.id, quantity: 3 },
       ]);
-      await testDb.client.order.update({
-        where: { id: order.id },
-        data: { status },
-      });
+      await testDb.db
+        .update(orderTable)
+        .set({ status })
+        .where(eq(orderTable.id, order.id));
       expect(
-        await orderService.updateStatus(order.id, "CANCELLED"),
+        await orderService.updateStatus({ id: order.id, status: "CANCELLED" }),
       ).toMatchObject({
         status: 409,
         response: { code: "ORDER_REQUIRES_REFUND" },
       });
       expect(
-        await testDb.client.order.findUnique({ where: { id: order.id } }),
+        await testDb.db.query.order.findFirst({ where: { id: order.id } }),
       ).toMatchObject({ status });
       expect(stripe.expire).not.toHaveBeenCalledWith(order.stripeSessionId);
       expect(await stockOf(variant.id)).toBe(7);
     },
   );
+
+  test("stores the items, the customer and the address with the order", async () => {
+    const variant = await createVariant(1000);
+    const { order } = await checkout([{ variantId: variant.id, quantity: 2 }]);
+    expect(order).toMatchObject({
+      status: "PENDING",
+      shippingStatus: "PENDING",
+      shippingAddress,
+      user: { id: userId },
+      items: [
+        {
+          variantId: variant.id,
+          variantSku: variant.sku,
+          productId: variant.productId,
+          quantity: 2,
+        },
+      ],
+    });
+    expect(await orderService.getById({ id: order.id })).toEqual(order);
+    // Stored as a JSON object, not as a JSON string
+    const [row] = await testDb.db
+      .select({ city: sql<string>`${orderTable.shippingAddress} ->> 'city'` })
+      .from(orderTable)
+      .where(eq(orderTable.id, order.id));
+    expect(row?.city).toBe(shippingAddress.city);
+  });
+
+  test("refuses insufficient stock and unavailable variants, and reserves nothing", async () => {
+    const [enough, low, draft, archived] = await Promise.all([
+      createVariant(1000, 5),
+      createVariant(1500, 1),
+      createTestVariant(testDb, { status: "DRAFT" }),
+      createTestVariant(testDb, { status: "ARCHIVED" }),
+    ]);
+    const results = await Promise.all([
+      tryCheckout([
+        { variantId: enough.id, quantity: 3 },
+        { variantId: low.id, quantity: 3 },
+      ]),
+      ...[crypto.randomUUID(), draft.id, archived.id].map((variantId) =>
+        tryCheckout([
+          { variantId: enough.id, quantity: 3 },
+          { variantId, quantity: 1 },
+        ]),
+      ),
+    ]);
+    expect(results).toMatchObject(
+      [
+        "INSUFFICIENT_STOCK",
+        "VARIANT_NOT_AVAILABLE",
+        "VARIANT_NOT_AVAILABLE",
+        "VARIANT_NOT_AVAILABLE",
+      ].map((code) => ({ status: 409, response: { code } })),
+    );
+    expect([await stockOf(enough.id), await stockOf(low.id)]).toEqual([5, 1]);
+  });
+
+  test("never oversells a variant to concurrent checkouts", async () => {
+    const variant = await createVariant(1000, 5);
+    const results = await Promise.all(
+      Array.from({ length: 4 }, () =>
+        tryCheckout([{ variantId: variant.id, quantity: 2 }]),
+      ),
+    );
+    expect(results.map(({ status }) => Number(status)).sort()).toEqual([
+      201, 201, 409, 409,
+    ]);
+    expect(await stockOf(variant.id)).toBe(1);
+  });
+
+  test("does not deadlock on carts listing the same variants in another order", async () => {
+    const [a, b] = await Promise.all([createVariant(1000), createVariant(500)]);
+    const results = await Promise.all(
+      Array.from({ length: 6 }, (_, i) => {
+        const items = [a, b].map(({ id }) => ({ variantId: id, quantity: 1 }));
+        return tryCheckout(i % 2 ? items : items.reverse());
+      }),
+    );
+    expect(results.map(({ status }) => Number(status))).toEqual(
+      Array.from({ length: 6 }, () => 201),
+    );
+    expect([await stockOf(a.id), await stockOf(b.id)]).toEqual([4, 4]);
+  });
+
+  test("reserves nothing when Stripe is unavailable", async () => {
+    const variant = await createVariant(1234);
+    const { create } = stripe;
+    const original = create.getMockImplementation();
+    create.mockImplementation(((params: Stripe.Checkout.SessionCreateParams) =>
+      params.line_items?.some((line) => line.price_data?.unit_amount === 1234)
+        ? Promise.reject(new Error("boom"))
+        : original?.(params)) as never);
+    const result = await tryCheckout([{ variantId: variant.id, quantity: 1 }]);
+    expect(result).toMatchObject({
+      status: 502,
+      response: { code: "STRIPE_UNAVAILABLE" },
+    });
+    expect(await stockOf(variant.id)).toBe(10);
+  });
+
+  test("handleOrderPaid keeps the reserved stock, and rejects another session", async () => {
+    const variant = await createVariant(1000);
+    const { order } = await checkout([{ variantId: variant.id, quantity: 2 }]);
+    expect(
+      await orderService.handleOrderPaid("cs_other", order.id, null),
+    ).toMatchObject({ status: 404, response: { code: "ORDER_NOT_FOUND" } });
+    expect(
+      await orderService.handleOrderPaid(
+        order.stripeSessionId,
+        order.id,
+        "pi_paid",
+      ),
+    ).toMatchObject({ status: "PAID", stripePaymentIntentId: "pi_paid" });
+    expect(await stockOf(variant.id)).toBe(8);
+  });
+
+  test("cancelPending restores a variant repeated in an old order", async () => {
+    const variant = await createVariant(1000);
+    const { order } = await checkout([{ variantId: variant.id, quantity: 2 }]);
+    const [item] = order.items;
+    expectDefined(item);
+    await testDb.db
+      .insert(orderItemTable)
+      .values({ ...item, id: Bun.randomUUIDv7(), quantity: 1 });
+    await orderService.cancelPending(order.stripeSessionId, order.id);
+    expect(await stockOf(variant.id)).toBe(11); // 10 - 2 reserved + 3 restored
+  });
 });

@@ -74,10 +74,8 @@ describe.concurrent("DELETE /products/:id - Integration Tests", () => {
     expect(deletedProduct).toBeNull();
 
     const [images, variants] = await Promise.all([
-      testDb.client.image.findMany({
-        where: { id: { in: imageIds } },
-      }),
-      testDb.client.productVariant.findMany({
+      testDb.db.query.image.findMany({ where: { id: { in: imageIds } } }),
+      testDb.db.query.productVariant.findMany({
         where: { id: { in: variantIds } },
       }),
     ]);
@@ -92,6 +90,6 @@ describe.concurrent("DELETE /products/:id - Integration Tests", () => {
       .delete();
 
     expect(status).toBe(404);
-    expectDefined(error);
+    expect(error).toMatchObject({ value: { code: "PRODUCT_NOT_FOUND" } });
   });
 });

@@ -15,6 +15,7 @@ import { formatPrice } from "@spice-world/web/lib/utils";
 import { useAtom, useAtomValue } from "jotai";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
 import { newProductAtom, selectedProductIdsAtom } from "../store";
 
 interface Category {
@@ -24,7 +25,7 @@ interface Category {
 
 interface ProductsTableProps {
   categories: Category[];
-  products: ProductModel.getResult;
+  products: ProductModel.productListItem[];
 }
 
 export const statusVariants: Record<
@@ -38,7 +39,7 @@ export const statusVariants: Record<
 
 export const getCategoryName = (
   categoryId: string | undefined,
-  categories: Category[]
+  categories: Category[],
 ) => categories.find((c) => c.id === categoryId)?.name ?? "-";
 
 const NewProductTableRow = ({ categories }: { categories: Category[] }) => {

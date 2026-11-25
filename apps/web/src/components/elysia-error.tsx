@@ -1,7 +1,5 @@
-import {
-  type ElysiaAppError,
-  elysiaErrorToString,
-} from "@spice-world/web/lib/elysia";
+import type { ElysiaAppError } from "@spice-world/web/lib/elysia";
+import { elysiaErrorToString } from "@spice-world/web/lib/elysia";
 
 export const ErrorItem = ({ children }: { children: React.ReactNode }) => (
   <div
@@ -56,7 +54,7 @@ const ValidationError = (error: ValidationErrorProps) => {
   return (
     <ErrorItem>
       <strong className="font-medium">
-        Validation error on {field?.replace("/", "")}
+        Validation error{field ? ` on ${field.replace("/", "")}` : ""}
       </strong>
       <div>{elysiaErrorToString(error)}</div>
     </ErrorItem>

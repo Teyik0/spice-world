@@ -9,7 +9,12 @@ import {
 import Elysia from "elysia";
 
 import { testDb } from "./setup";
-import { expectDefined, mockStripe, randomLowerString } from "./utils/helper";
+import {
+  createTestOrder,
+  expectDefined,
+  mockStripe,
+  verifyEmail,
+} from "./utils/helper";
 
 describe.concurrent("BetterAuth Plugin Tests", () => {
   let adminUser: Awaited<ReturnType<typeof auth.api.createUser>>;
@@ -40,22 +45,8 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
       }),
     ]);
     await Promise.all([
-      testDb.client.user.update({
-        where: {
-          id: normalUser.user.id,
-        },
-        data: {
-          emailVerified: true,
-        },
-      }),
-      testDb.client.user.update({
-        where: {
-          id: adminUser.user.id,
-        },
-        data: {
-          emailVerified: true,
-        },
-      }),
+      verifyEmail(testDb, normalUser.user.id),
+      verifyEmail(testDb, adminUser.user.id),
     ]);
   });
 
@@ -144,6 +135,54 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
       expect(sendEmailMock).toHaveBeenCalledWith({
         user: adminUser.user,
       });
+    });
+  });
+
+  describe("Drizzle adapter", () => {
+    test("stores, reads and deletes sessions joined with their user", async () => {
+      const { headers } = await auth.api.signInEmail({
+        body: { email: normalUser.user.email, password: "password" },
+        returnHeaders: true,
+      });
+      const cookie = headers.get("set-cookie")?.split(";")[0] ?? "";
+      // Only the session cookie: no cookie cache, the session is read from the database
+      const session = await auth.api.getSession({
+        headers: new Headers({ cookie }),
+      });
+      expectDefined(session);
+      expect(session.user.id).toBe(normalUser.user.id);
+      expect(session.session.expiresAt.getTime()).toBeGreaterThan(Date.now());
+
+      await auth.api.signOut({ headers: new Headers({ cookie }) });
+      expect(
+        await auth.api.getSession({ headers: new Headers({ cookie }) }),
+      ).toBeNull();
+    });
+
+    test("stores and reads verifications", async () => {
+      const { internalAdapter } = await auth.$context;
+      const identifier = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 60_000);
+      await internalAdapter.createVerificationValue({
+        identifier,
+        value: "token",
+        expiresAt,
+      });
+      expect(
+        await internalAdapter.findVerificationValue(identifier),
+      ).toMatchObject({ identifier, value: "token", expiresAt });
+    });
+
+    test("rejects a duplicate email", () => {
+      expect(
+        auth.api.createUser({
+          body: {
+            email: normalUser.user.email,
+            password: "password",
+            name: "Duplicate",
+          },
+        }),
+      ).rejects.toMatchObject({ statusCode: 400 });
     });
   });
 
@@ -259,39 +298,9 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
     let ordersApi: ReturnType<typeof treaty<typeof ordersRouter>>;
     let normalUserCookie: string;
     let adminUserCookie: string;
-    let testCategory: {
-      id: string;
-      attributes: Array<{ id: string; values: Array<{ id: string }> }>;
-    };
 
     beforeAll(async () => {
       ordersApi = treaty(ordersRouter);
-
-      // Create a test category for products
-      testCategory = await testDb.client.category.create({
-        data: {
-          name: "Test Category",
-          image: {
-            create: {
-              keyThumb: "thumb-key",
-              keyMedium: "medium-key",
-              keyLarge: "large-key",
-              urlThumb: "https://example.com/thumb.webp",
-              urlMedium: "https://example.com/medium.webp",
-              urlLarge: "https://example.com/large.webp",
-              altText: "Test category image",
-              isThumbnail: true,
-            },
-          },
-        },
-        include: {
-          attributes: {
-            include: {
-              values: true,
-            },
-          },
-        },
-      });
 
       const [normalUserResp, adminUserResp] = await Promise.all([
         auth.api.signInEmail({
@@ -319,72 +328,7 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
 
     describe("Orders Admin Access", () => {
       test("admin can update order status", async () => {
-        // Generate unique identifiers
-        const testId = randomLowerString(8);
-
-        // Create a product and order for testing
-        const product = await testDb.client.product.create({
-          data: {
-            name: "Test Product Admin",
-            slug: `test-product-admin-${testId}`,
-            description: "Test product for admin",
-            status: "PUBLISHED",
-            categoryId: testCategory.id,
-            images: {
-              create: {
-                keyThumb: `thumb-${testId}`,
-                keyMedium: `medium-${testId}`,
-                keyLarge: `large-${testId}`,
-                urlThumb: "https://example.com/thumb.webp",
-                urlMedium: "https://example.com/medium.webp",
-                urlLarge: "https://example.com/large.webp",
-                altText: "Test",
-                isThumbnail: true,
-              },
-            },
-            variants: {
-              create: {
-                price: 1099,
-                currency: "EUR",
-                stock: 100,
-                sku: `ADMIN-TEST-${testId}`,
-              },
-            },
-          },
-          include: {
-            variants: true,
-          },
-        });
-
-        const order = await testDb.client.order.create({
-          data: {
-            userId: normalUser.user.id,
-            status: "PENDING",
-            stripeSessionId: `checkout_${testId}`,
-            subtotalAmount: 1099,
-            shippingAmount: 500,
-            totalAmount: 1599,
-            shippingAddress: {
-              name: "Test User",
-              line1: "123 Test St",
-              city: "Test City",
-              postalCode: "12345",
-              country: "FR",
-            },
-            items: {
-              create: {
-                productId: product.id,
-                productName: product.name,
-                variantId: product.variants[0]?.id,
-                variantSku: product.variants[0]?.sku,
-                unitPrice: 1099,
-                quantity: 1,
-                totalPrice: 1099,
-              },
-            },
-          },
-        });
-        expectDefined(product.variants[0]);
+        const order = await createTestOrder(testDb, normalUser.user.id);
 
         // Admin can update order status
         const { data, status } = await ordersApi.orders["by-id"]({
@@ -401,82 +345,19 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
           },
         );
 
-        expectDefined(data);
-        // Check if data is not an error object
-        if ("status" in data) {
-          expect(data.status).toBe("PAID");
-          expect(data.trackingNumber).toBe("TRACK123");
-        }
         expect(status).toBe(200);
+        expect(data).toMatchObject({
+          id: order.id,
+          status: "PAID",
+          trackingNumber: "TRACK123",
+          shippingStatus: "SHIPPED",
+          user: { id: normalUser.user.id, email: normalUser.user.email },
+          items: [{ quantity: 1 }],
+        });
       });
 
       test("normal user cannot update order status", async () => {
-        // Generate unique identifiers
-        const testId = randomLowerString(8);
-
-        // Create an order for normal user
-        const product = await testDb.client.product.create({
-          data: {
-            name: "Test Product User",
-            slug: `test-product-user-${testId}`,
-            description: "Test product for user",
-            status: "PUBLISHED",
-            categoryId: testCategory.id,
-            images: {
-              create: {
-                keyThumb: `thumb-${testId}`,
-                keyMedium: `medium-${testId}`,
-                keyLarge: `large-${testId}`,
-                urlThumb: "https://example.com/thumb.webp",
-                urlMedium: "https://example.com/medium.webp",
-                urlLarge: "https://example.com/large.webp",
-                altText: "Test",
-                isThumbnail: true,
-              },
-            },
-            variants: {
-              create: {
-                price: 1099,
-                currency: "EUR",
-                stock: 100,
-                sku: `USER-TEST-${testId}`,
-              },
-            },
-          },
-          include: {
-            variants: true,
-          },
-        });
-
-        const order = await testDb.client.order.create({
-          data: {
-            userId: normalUser.user.id,
-            status: "PENDING",
-            stripeSessionId: `checkout_${testId}`,
-            subtotalAmount: 1099,
-            shippingAmount: 500,
-            totalAmount: 1599,
-            shippingAddress: {
-              name: "Test User",
-              line1: "123 Test St",
-              city: "Test City",
-              postalCode: "12345",
-              country: "FR",
-            },
-            items: {
-              create: {
-                productId: product.id,
-                productName: product.name,
-                variantId: product.variants[0]?.id,
-                variantSku: product.variants[0]?.sku,
-                unitPrice: 1099,
-                quantity: 1,
-                totalPrice: 1099,
-              },
-            },
-          },
-        });
-        expectDefined(product.variants[0]);
+        const order = await createTestOrder(testDb, normalUser.user.id);
 
         // Normal user cannot update order status
         const { data, status } = await ordersApi.orders["by-id"]({
@@ -497,101 +378,10 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
       });
 
       test("admin can view all orders", async () => {
-        // Generate unique identifiers
-        const testId = randomLowerString(8);
-
-        // Create orders for both users
-        const product = await testDb.client.product.create({
-          data: {
-            name: "Test Product View",
-            slug: `test-product-view-${testId}`,
-            description: "Test",
-            status: "PUBLISHED",
-            categoryId: testCategory.id,
-            images: {
-              create: {
-                keyThumb: `thumb-${testId}`,
-                keyMedium: `medium-${testId}`,
-                keyLarge: `large-${testId}`,
-                urlThumb: "https://example.com/thumb.webp",
-                urlMedium: "https://example.com/medium.webp",
-                urlLarge: "https://example.com/large.webp",
-                altText: "Test",
-                isThumbnail: true,
-              },
-            },
-            variants: {
-              create: {
-                price: 1099,
-                currency: "EUR",
-                stock: 100,
-                sku: `VIEW-TEST-${testId}`,
-              },
-            },
-          },
-          include: {
-            variants: true,
-          },
-        });
-
-        await testDb.client.order.create({
-          data: {
-            userId: normalUser.user.id,
-            status: "PENDING",
-            stripeSessionId: `checkout_${testId}_1`,
-            subtotalAmount: 1099,
-            shippingAmount: 500,
-            totalAmount: 1599,
-            shippingAddress: {
-              name: "Test",
-              line1: "123",
-              city: "City",
-              postalCode: "12345",
-              country: "FR",
-            },
-            items: {
-              create: {
-                productId: product.id,
-                productName: product.name,
-                variantId: product.variants[0]?.id,
-                variantSku: product.variants[0]?.sku,
-                unitPrice: 1099,
-                quantity: 1,
-                totalPrice: 1099,
-              },
-            },
-          },
-        });
-        expectDefined(product.variants[0]);
-
-        await testDb.client.order.create({
-          data: {
-            userId: adminUser.user.id,
-            status: "PAID",
-            stripeSessionId: `checkout_${testId}_2`,
-            subtotalAmount: 1099,
-            shippingAmount: 500,
-            totalAmount: 1599,
-            shippingAddress: {
-              name: "Admin",
-              line1: "456",
-              city: "City",
-              postalCode: "12345",
-              country: "FR",
-            },
-            items: {
-              create: {
-                productId: product.id,
-                productName: product.name,
-                variantId: product.variants[0]?.id,
-                variantSku: product.variants[0]?.sku,
-                unitPrice: 1099,
-                quantity: 1,
-                totalPrice: 1099,
-              },
-            },
-          },
-        });
+        await Promise.all([
+          createTestOrder(testDb, normalUser.user.id),
+          createTestOrder(testDb, adminUser.user.id, "PAID"),
+        ]);
 
         // Admin can see all orders
         const { data, status } = await ordersApi.orders.get({
@@ -605,15 +395,15 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
         });
 
         expectDefined(data);
-        // Check if data is not an error object
-        if ("items" in data) {
-          expect(data.items.length).toBeGreaterThanOrEqual(2);
-        }
+        expect(data.items.length).toBeGreaterThanOrEqual(2);
         expect(status).toBe(200);
       });
 
       test("normal user can only view their own orders", async () => {
-        // Normal user should only see their orders
+        await Promise.all([
+          createTestOrder(testDb, normalUser.user.id),
+          createTestOrder(testDb, adminUser.user.id),
+        ]);
         const { data, status } = await ordersApi.orders.get({
           query: {
             page: 1,
@@ -626,11 +416,9 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
 
         expectDefined(data);
         expect(status).toBe(200);
-        // All returned orders should belong to normal user
-        if ("items" in data) {
-          for (const order of data.items) {
-            expect(order.userId).toBe(normalUser.user.id);
-          }
+        expect(data.items.length).toBeGreaterThanOrEqual(1);
+        for (const order of data.items) {
+          expect(order.userId).toBe(normalUser.user.id);
         }
       });
 

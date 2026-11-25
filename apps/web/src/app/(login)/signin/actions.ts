@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 
 export const setSignInCookie = async (
   rememberMe: boolean,
-  lastEmail: string
+  lastEmail: string,
 ) => {
   const cookieStore = await cookies();
   cookieStore.set("rememberMe", rememberMe ? "true" : "false");

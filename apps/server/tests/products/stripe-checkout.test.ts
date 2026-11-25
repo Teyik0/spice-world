@@ -13,6 +13,7 @@ import {
   expectDefined,
   file,
   mockUtapi,
+  verifyEmail,
 } from "../utils/helper";
 
 const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
@@ -50,10 +51,7 @@ describe("Stripe Checkout", () => {
         role: "user",
       },
     });
-    await testDb.client.user.update({
-      where: { id: testUser.user.id },
-      data: { emailVerified: true },
-    });
+    await verifyEmail(testDb, testUser.user.id);
 
     // Sign in to get cookie
     const signInResp = await auth.api.signInEmail({
@@ -76,7 +74,7 @@ describe("Stripe Checkout", () => {
     it("should succeed checkout validation without polarProductId requirement", async () => {
       const setupProduct = createSetupProduct(testDb, productsApi);
 
-      // Create a DRAFT product - with Stripe, no product sync is needed
+      // With Stripe, no product sync is needed
       const { product } = await setupProduct({
         attributeCount: 1,
         attributeValueCount: 2,
@@ -93,6 +91,13 @@ describe("Stripe Checkout", () => {
 
       const [variant] = product.variants;
       expectDefined(variant);
+      const { status: published } = await productsApi
+        .products({ id: product.id })
+        .patch(
+          { status: "PUBLISHED" },
+          { headers: { "x-version": product.version } },
+        );
+      expect(published).toBe(200);
 
       // With Stripe, checkout should work without polarProductId
       // Validation should pass (checkout flow uses inline Stripe checkout)
@@ -120,7 +125,7 @@ describe("Stripe Checkout", () => {
       );
 
       // Should pass validation with Stripe (no polarProductId requirement)
-      expect(status).not.toBe(400);
+      expect(status).toBe(201);
     });
 
     it("should create checkout session with Stripe", async () => {
@@ -143,6 +148,13 @@ describe("Stripe Checkout", () => {
 
       const [variant] = product.variants;
       expectDefined(variant);
+      const { status: published } = await productsApi
+        .products({ id: product.id })
+        .patch(
+          { status: "PUBLISHED" },
+          { headers: { "x-version": product.version } },
+        );
+      expect(published).toBe(200);
 
       // Checkout should create a Stripe session
       const { data, status } = await ordersApi.orders.checkout.post(

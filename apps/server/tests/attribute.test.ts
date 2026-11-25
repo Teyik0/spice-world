@@ -7,7 +7,11 @@ import { categoryRouter } from "@spice-world/server/modules/categories";
 import { eq } from "drizzle-orm";
 
 import type { categoryTable } from "../drizzle/schema";
-import { attributeTable, attributeValueTable } from "../drizzle/schema";
+import {
+  attributeTable,
+  attributeValueTable,
+  productTable,
+} from "../drizzle/schema";
 import { testDb } from "./setup";
 import {
   createProductUsingValues,
@@ -133,7 +137,7 @@ describe.concurrent("Attribute routes test", () => {
     expect(status).toBe(200);
 
     // Deleting the product frees the values
-    await testDb.client.product.delete({ where: { id: productId } });
+    await testDb.db.delete(productTable).where(eq(productTable.id, productId));
     const freed = await api.attributes({ id: attribute.id }).delete();
     expect(freed.status).toBe(200);
   });

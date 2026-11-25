@@ -1,4 +1,10 @@
-import type { PrismaClient } from "@spice-world/server/prisma/client";
+import {
+  categoryTable,
+  imageTable,
+  productTable,
+  productVariantTable,
+} from "../../drizzle/schema";
+import type { TestDatabase } from "./db-manager";
 
 const categoriesData = [
   {
@@ -226,97 +232,61 @@ const productsData = [
   },
 ];
 
-export async function createDummyProducts(prisma: PrismaClient) {
-  await prisma.$transaction(async (tx) => {
-    await Promise.all(
-      categoriesData.map((categoryData) =>
-        tx.category.create({
-          data: {
-            name: categoryData.name,
-            id: categoryData.id,
-            image: {
-              create: {
-                keyThumb: categoryData.image.keyThumb,
-                keyMedium: categoryData.image.keyMedium,
-                keyLarge: categoryData.image.keyLarge,
-                urlThumb: categoryData.image.urlThumb,
-                urlMedium: categoryData.image.urlMedium,
-                urlLarge: categoryData.image.urlLarge,
-                altText: categoryData.image.altText,
-                isThumbnail: categoryData.image.isThumbnail,
-              },
-            },
-          },
-        }),
+export async function createDummyProducts({ db }: TestDatabase) {
+  const categories = categoriesData.map(({ image, ...category }) => ({
+    ...category,
+    imageId: Bun.randomUUIDv7(),
+    image,
+  }));
+  const products = productsData.flatMap(({ category: name, ...product }) => {
+    const category = categories.find((cat) => cat.name === name);
+    return category
+      ? [
+          {
+            ...product,
+            id: Bun.randomUUIDv7(),
+            status: Math.random() > 0.5 ? "PUBLISHED" : "DRAFT",
+            categoryId: category.id,
+          } as const,
+        ]
+      : [];
+  });
+
+  return await db.transaction(async (tx) => {
+    await tx
+      .insert(imageTable)
+      .values(categories.map(({ image, imageId: id }) => ({ ...image, id })));
+    await tx
+      .insert(categoryTable)
+      .values(categories.map(({ image, ...category }) => category));
+    await tx.insert(productTable).values(products);
+    await tx.insert(productVariantTable).values(
+      products.flatMap(({ id: productId, slug }) =>
+        ["001", "002"].map((suffix) => ({
+          id: Bun.randomUUIDv7(),
+          productId,
+          price: Math.floor(Math.random() * 100),
+          sku: `${slug.toUpperCase()}-${suffix}`,
+          stock: Math.floor(Math.random() * 100),
+        })),
       ),
     );
+    await tx.insert(imageTable).values(
+      products.flatMap(({ id: productId, name, slug }) =>
+        [1, 2].map((n) => ({
+          id: Bun.randomUUIDv7(),
+          productId,
+          keyThumb: `${slug}-image-key-${n}-thumb`,
+          keyMedium: `${slug}-image-key-${n}-medium`,
+          keyLarge: `${slug}-image-key-${n}-large`,
+          urlThumb: `https://test-url.com/${slug}-image-${n}-thumb.jpg`,
+          urlMedium: `https://test-url.com/${slug}-image-${n}-medium.jpg`,
+          urlLarge: `https://test-url.com/${slug}-image-${n}-large.jpg`,
+          altText: `${name} Image ${n}`,
+          isThumbnail: n === 1,
+        })),
+      ),
+    );
+    return { categories, products };
   });
-
-  const categories = await prisma.category.findMany();
-
-  await Promise.all(
-    productsData.map((productData) => {
-      const category = categories.find(
-        (cat) => cat.name === productData.category,
-      );
-      if (!category) {
-        return Promise.resolve();
-      }
-
-      return prisma.product.create({
-        data: {
-          name: productData.name,
-          slug: productData.slug,
-          description: productData.description,
-          status: Math.random() > 0.5 ? "PUBLISHED" : "DRAFT",
-          categoryId: category.id,
-          variants: {
-            create: [
-              {
-                price: Math.random() * 100,
-                sku: `${productData.slug.toUpperCase()}-001`,
-                stock: Math.floor(Math.random() * 100),
-              },
-              {
-                price: Math.random() * 100,
-                sku: `${productData.slug.toUpperCase()}-002`,
-                stock: Math.floor(Math.random() * 100),
-              },
-            ],
-          },
-          images: {
-            create: [
-              {
-                keyThumb: `${productData.slug}-image-key-1-thumb`,
-                keyMedium: `${productData.slug}-image-key-1-medium`,
-                keyLarge: `${productData.slug}-image-key-1-large`,
-                urlThumb: `https://test-url.com/${productData.slug}-image-1-thumb.jpg`,
-                urlMedium: `https://test-url.com/${productData.slug}-image-1-medium.jpg`,
-                urlLarge: `https://test-url.com/${productData.slug}-image-1-large.jpg`,
-                altText: `${productData.name} Image 1`,
-                isThumbnail: true,
-              },
-              {
-                keyThumb: `${productData.slug}-image-key-2-thumb`,
-                keyMedium: `${productData.slug}-image-key-2-medium`,
-                keyLarge: `${productData.slug}-image-key-2-large`,
-                urlThumb: `https://test-url.com/${productData.slug}-image-2-thumb.jpg`,
-                urlMedium: `https://test-url.com/${productData.slug}-image-2-medium.jpg`,
-                urlLarge: `https://test-url.com/${productData.slug}-image-2-large.jpg`,
-                altText: `${productData.name} Image 2`,
-                isThumbnail: false,
-              },
-            ],
-          },
-        },
-      });
-    }),
-  );
-  const products = await prisma.product.findMany({
-    include: {
-      images: true,
-      variants: true,
-    },
-  });
-  return { categories, products };
 }

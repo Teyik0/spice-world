@@ -45,12 +45,13 @@ import type { UnwrapSchema } from "elysia";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+
 import type { ProductForm } from "../../store";
 
 function getAttributePlaceholder(
   loading: boolean,
   hasCategory: boolean,
-  count: number
+  count: number,
 ) {
   if (loading) {
     return "Loading...";
@@ -83,7 +84,7 @@ const AttributeSelectorDialog = ({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  attributes: AttributeModel.getResult;
+  attributes: AttributeModel.attributeResult[];
   onSelect: (attributeId: string) => void;
   valueName: string;
 }) => {
@@ -140,7 +141,9 @@ const AttributeSelectorDialog = ({
 };
 
 export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
-  const [attributes, setAttributes] = useState<AttributeModel.getResult>([]);
+  const [attributes, setAttributes] = useState<
+    AttributeModel.attributeResult[]
+  >([]);
   const [isLoadingAttributes, setIsLoadingAttributes] = useState(false);
   const [isAttributeSelectorOpen, setIsAttributeSelectorOpen] = useState(false);
   const [pendingValueName, setPendingValueName] = useState<string>("");
@@ -151,7 +154,7 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 
   // Type guard to check if variants has update/delete (patchBody)
   const isPatchVariants = (
-    v: typeof variants
+    v: typeof variants,
   ): v is {
     create?: Array<{
       price: number;
@@ -202,7 +205,7 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 
       if (error) {
         toast.error(
-          `Failed to fetch attributes: ${elysiaErrorToString(error)}`
+          `Failed to fetch attributes: ${elysiaErrorToString(error)}`,
         );
       }
 
@@ -224,13 +227,13 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
           value: val.value,
         })),
       })),
-    [attributes]
+    [attributes],
   );
 
   // Handler to initiate creation of new attribute value
   const handleCreateNew = (variantIndex: number) => {
     return (
-      valueName: string
+      valueName: string,
     ): Promise<{ id: string; value: string } | null> => {
       setPendingValueName(valueName);
       setCurrentVariantIndex(variantIndex);
@@ -252,24 +255,24 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
       const variantId = "id" in variant ? variant.id : undefined;
       const updateIndex = variants.update?.findIndex((v) => v.id === variantId);
       const createIndex = variants.create?.findIndex(
-        (_, i) => i === currentVariantIndex - (variants.update?.length || 0)
+        (_, i) => i === currentVariantIndex - (variants.update?.length || 0),
       );
 
       if (updateIndex !== undefined && updateIndex >= 0) {
         form.setFieldValue(
           `variants.update[${updateIndex as number}].attributeValueIds`,
-          newValues
+          newValues,
         );
       } else if (createIndex !== undefined && createIndex >= 0) {
         form.setFieldValue(
           `variants.create[${createIndex as number}].attributeValueIds`,
-          newValues
+          newValues,
         );
       }
     } else {
       form.setFieldValue(
         `variants.create[${currentVariantIndex}].attributeValueIds`,
-        newValues
+        newValues,
       );
     }
   };
@@ -349,21 +352,21 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
 
         // Also remove from update list
         const updatedUpdate = (variants.update || []).filter(
-          (v) => v.id !== variantId
+          (v) => v.id !== variantId,
         );
         form.setFieldValue("variants.update", updatedUpdate);
       } else {
         // It's a new variant - just remove from create list
         const createIndex = index - (variants.update?.length || 0);
         const updatedCreate = (variants.create || []).filter(
-          (_, i) => i !== createIndex
+          (_, i) => i !== createIndex,
         );
         form.setFieldValue("variants.create", updatedCreate);
       }
     } else {
       // postBody - update the entire variants object
       const updatedCreate = (variants.create || []).filter(
-        (_, i) => i !== index
+        (_, i) => i !== index,
       );
       form.setFieldValue("variants", {
         create: updatedCreate,
@@ -394,8 +397,7 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
             {variantsArray.map((variant, index) => {
               const variantId = "id" in variant ? variant.id : undefined;
               let fieldPrefix:
-                | `variants.create[${number}]`
-                | `variants.update[${number}]`;
+                `variants.create[${number}]` | `variants.update[${number}]`;
 
               if (isPatchVariants(variants)) {
                 const isUpdate = variantId !== undefined;
@@ -440,7 +442,7 @@ export const ProductFormVariants = ({ form }: ProductFormVariantsProps) => {
                             placeholder={getAttributePlaceholder(
                               isLoadingAttributes,
                               Boolean(categoryId),
-                              attributes.length
+                              attributes.length,
                             )}
                             value={field.state.value}
                           />

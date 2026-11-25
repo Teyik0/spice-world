@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import { treaty } from "@elysia/eden";
 import { productsRouter } from "@spice-world/server/modules/products";
+import type * as ProductModel from "@spice-world/server/modules/products/model";
 
 import { testDb } from "../setup";
 import {
@@ -355,7 +356,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       });
     });
 
-    it("should autoassign DRAFT status when category change and more than 1 variant", async () => {
+    it("should reject a category change that leaves a published product unpublishable, unless DRAFT is requested", async () => {
       const spicesCategory = await createTestCategory({
         testDb,
         attributeCount: 2,
@@ -401,18 +402,26 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       expect(createStatus).toBe(201);
       expectDefined(createdProduct);
 
-      const { data, status } = await api
-        .products({ id: createdProduct.id })
-        .patch(
-          {
-            categoryId: herbsCategory.id,
-          },
-          { headers: { "x-version": createdProduct.version } },
-        );
+      const patch = (body: ProductModel.patchBody) =>
+        api
+          .products({ id: createdProduct.id })
+          .patch(body, { headers: { "x-version": createdProduct.version } });
 
+      const { error } = await patch({ categoryId: herbsCategory.id });
+      expect(error).toMatchObject({ status: 400, value: { code: "PUB2" } });
+      expect(
+        (await api.products({ id: createdProduct.id }).get()).data,
+      ).toEqual(createdProduct);
+
+      const { data, status } = await patch({
+        categoryId: herbsCategory.id,
+        status: "DRAFT",
+      });
       expect(status).toBe(200);
       expect(data).toMatchObject({
         status: "DRAFT",
+        categoryId: herbsCategory.id,
+        variants: [{ attributeValues: [] }, { attributeValues: [] }],
       });
     });
 

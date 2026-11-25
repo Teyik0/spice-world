@@ -1,38 +1,26 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 
 import { stripeClient } from "@spice-world/server/lib/stripe";
+import type { OrderStatus } from "@spice-world/server/modules/orders/model";
 import * as authPlugin from "@spice-world/server/plugins/auth.plugin";
-import type { OrderStatus } from "@spice-world/server/prisma/client";
 
 import { testDb } from "../setup";
-import { expectDefined } from "../utils/helper";
+import {
+  createTestOrder,
+  createTestUser,
+  expectDefined,
+} from "../utils/helper";
 
 describe.concurrent("Stripe webhook", () => {
   let userId: string;
 
   beforeAll(async () => {
     expect(Bun.env.NODE_ENV).not.toBe("production");
-    // Inserted directly: auth.api.createUser would create a Stripe customer
-    const user = await testDb.client.user.create({
-      data: {
-        id: crypto.randomUUID(),
-        name: "Webhook User",
-        email: "webhook@example.com",
-      },
-    });
-    userId = user.id;
+    userId = await createTestUser(testDb);
   });
 
-  const createOrder = (status: OrderStatus = "PENDING") =>
-    testDb.client.order.create({
-      data: {
-        userId,
-        status,
-        stripeSessionId: `cs_test_${crypto.randomUUID()}`,
-        subtotalAmount: 1000,
-        totalAmount: 1000,
-      },
-    });
+  const createOrder = (status?: OrderStatus) =>
+    createTestOrder(testDb, userId, status);
 
   const send = async (
     type: string,
@@ -66,7 +54,7 @@ describe.concurrent("Stripe webhook", () => {
     id: string,
     expected: { status: OrderStatus; stripePaymentIntentId?: string | null },
   ) => {
-    const order = await testDb.client.order.findUnique({ where: { id } });
+    const order = await testDb.db.query.order.findFirst({ where: { id } });
     expectDefined(order);
     expect(order).toMatchObject(expected);
   };

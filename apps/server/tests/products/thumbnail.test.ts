@@ -3,8 +3,7 @@ import { describe, expect, it } from "bun:test";
 import { treaty } from "@elysia/eden";
 import { productsRouter } from "@spice-world/server/modules/products";
 import type * as ProductModel from "@spice-world/server/modules/products/model";
-import { validateSingleThumbnail } from "@spice-world/server/modules/products/validators/thumbnail";
-import type { Image } from "@spice-world/server/prisma/client";
+import { validateImages } from "@spice-world/server/modules/products/validators/images";
 
 import { testDb } from "../setup";
 import {
@@ -61,14 +60,15 @@ describe("Explicit thumbnail validation", () => {
 
   async function expectUnchanged(
     product: Pick<
-      ProductModel.getByIdResult,
+      ProductModel.productResult,
       "id" | "description" | "version" | "images"
     >,
   ) {
-    const persisted = await testDb.client.product.findUniqueOrThrow({
+    const persisted = await testDb.db.query.product.findFirst({
       where: { id: product.id },
-      include: { images: true },
+      with: { images: { columns: { productId: false } } },
     });
+    expectDefined(persisted);
     expect(persisted.description).toBe(product.description);
     expect(persisted.version).toBe(product.version);
     expect(
@@ -109,8 +109,8 @@ describe("Explicit thumbnail validation", () => {
       expect(status).toBe(422);
       expect(error?.value).toMatchObject({ code, field: "images" });
       expect(
-        await testDb.client.product.findFirst({ where: { name } }),
-      ).toBeNull();
+        await testDb.db.query.product.findFirst({ where: { name } }),
+      ).toBeUndefined();
     },
   );
 
@@ -130,8 +130,8 @@ describe("Explicit thumbnail validation", () => {
     expect(status).toBe(422);
     expect(error?.value).toMatchObject({ type: "validation" });
     expect(
-      await testDb.client.product.findFirst({ where: { name } }),
-    ).toBeNull();
+      await testDb.db.query.product.findFirst({ where: { name } }),
+    ).toBeUndefined();
   });
 
   it("preserves the current thumbnail when PATCH omits image operations", async () => {
@@ -394,7 +394,7 @@ describe("Explicit thumbnail validation", () => {
       { id: "second", isThumbnail: false },
     ];
     const before = structuredClone({ imagesOps, currentImages });
-    validateSingleThumbnail({ imagesOps, currentImages });
+    validateImages({ imagesOps, currentImages });
     expect({ imagesOps, currentImages }).toEqual(before);
   });
 
@@ -423,10 +423,11 @@ describe("Explicit thumbnail validation", () => {
       code:
         rejected.status === 409 ? "VERSION_CONFLICT" : "MULTIPLE_THUMBNAILS",
     });
-    const persisted = await testDb.client.product.findUniqueOrThrow({
+    const persisted = await testDb.db.query.product.findFirst({
       where: { id: product.id },
-      include: { images: true },
+      with: { images: { columns: { productId: false } } },
     });
+    expectDefined(persisted);
     expect(persisted.version).toBe(product.version + 1);
     expect(persisted.images.filter((img) => img.isThumbnail)).toHaveLength(1);
   });
@@ -456,7 +457,8 @@ describe("Explicit thumbnail validation", () => {
 
       const firstImage = product.images.find(
         (img) => img.altText === "First image",
-      ) as Image;
+      );
+      expectDefined(firstImage);
 
       const { error } = await api.products({ id: product.id }).patch(
         {
@@ -512,10 +514,12 @@ describe("Explicit thumbnail validation", () => {
 
       const firstImage = product.images.find(
         (img) => img.altText === "First image",
-      ) as Image;
+      );
+      expectDefined(firstImage);
       const secondImage = product.images.find(
         (img) => img.altText === "Second image",
-      ) as Image;
+      );
+      expectDefined(secondImage);
 
       const { error } = await api.products({ id: product.id }).patch(
         {

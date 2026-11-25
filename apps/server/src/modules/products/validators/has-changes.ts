@@ -12,7 +12,7 @@ export function hasProductChanges({
     iOps?: ProductModel.imageOperations;
     vOps?: ProductModel.variantOperations;
   };
-  currentProduct: ProductModel.getByIdResult;
+  currentProduct: ProductModel.productResult;
 }): boolean {
   const hasProductFieldsChange =
     (newData.name !== undefined && newData.name !== currentProduct.name) ||

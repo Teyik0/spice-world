@@ -1,6 +1,7 @@
 import { revalidateTag, unstable_cache } from "next/cache";
 import { headers } from "next/headers";
 import { cache } from "react";
+
 import { authClient } from "./utils";
 
 export const verifySession = cache(async () => {
@@ -22,7 +23,7 @@ const getCachedSession = unstable_cache(
   {
     tags: ["auth", "session"],
     revalidate: 3600,
-  }
+  },
 );
 
 // biome-ignore lint/suspicious/useAwait: Next.js Server Actions must expose async functions.

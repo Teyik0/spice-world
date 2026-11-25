@@ -1,6 +1,6 @@
 "use client";
 
-import type { ProductStatus } from "@spice-world/server/prisma/enums";
+import type * as ProductModel from "@spice-world/server/modules/products/model";
 import { Badge } from "@spice-world/web/components/ui/badge";
 import { Button } from "@spice-world/web/components/ui/button";
 import {
@@ -24,6 +24,7 @@ import { useAtom } from "jotai";
 import { CheckIcon, Loader2Icon, XIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+
 import { productStatusOptions } from "../search-params";
 import { productPagesAtom, selectedProductIdsAtom } from "../store";
 
@@ -35,7 +36,7 @@ interface Category {
 interface PendingChanges {
   categoryId?: string;
   categoryName?: string;
-  status?: ProductStatus;
+  status?: ProductModel.productStatus;
 }
 
 interface BulkActionsBarProps {
@@ -51,7 +52,7 @@ export function BulkActionsBar({ categories }: BulkActionsBarProps) {
     pendingChanges.status !== undefined ||
     pendingChanges.categoryId !== undefined;
 
-  const handleStatusSelect = (status: ProductStatus) => {
+  const handleStatusSelect = (status: ProductModel.productStatus) => {
     setPendingChanges((prev) => ({
       ...prev,
       status: prev.status === status ? undefined : status,
@@ -81,10 +82,10 @@ export function BulkActionsBar({ categories }: BulkActionsBarProps) {
           categoryId: pendingChanges.categoryId,
         });
         if (error) {
-          toast.error(
-            `Failed to bulk update products with error ${error.status}: ${elysiaErrorToString(error)}`
+          throw new Error(
+            `Failed to bulk update products with error ${error.status}: ${elysiaErrorToString(error)}`,
+            { cause: error },
           );
-          throw error;
         }
         // Update products in sidebar list
         setPages((pages) =>
@@ -100,8 +101,8 @@ export function BulkActionsBar({ categories }: BulkActionsBarProps) {
                   categoryId: pendingChanges.categoryId,
                 }),
               };
-            })
-          )
+            }),
+          ),
         );
         toast.success("Products updated successfully");
         setSelectedIds(new Set<string>());

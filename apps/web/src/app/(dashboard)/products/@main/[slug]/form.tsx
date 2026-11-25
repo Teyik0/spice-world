@@ -2,10 +2,9 @@
 
 import type * as CategoryModel from "@spice-world/server/modules/categories/model";
 import {
-  type getByIdResult,
   patchBody,
-  type patchResult,
   postBody,
+  type productResult,
 } from "@spice-world/server/modules/products/model";
 import { Form, useForm } from "@spice-world/web/components/tanstack-form";
 import { Badge } from "@spice-world/web/components/ui/badge";
@@ -26,8 +25,9 @@ import { useSetAtom } from "jotai";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
+
 import {
   newProductAtom,
   type ProductItemProps,
@@ -48,8 +48,8 @@ export const ProductForm = ({
   product,
   categories,
 }: {
-  product: getByIdResult;
-  categories: CategoryModel.getResult;
+  product: productResult;
+  categories: CategoryModel.categoryResult[];
 }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -60,6 +60,7 @@ export const ProductForm = ({
   const setNewProduct = useSetAtom(newProductAtom);
   const setPages = useSetAtom(productPagesAtom);
 
+  const versionRef = useRef(product.version);
   const [formResetKey, setFormResetKey] = useState(0);
   const [showCategoryWarning, setShowCategoryWarning] = useState(false);
   const [attributesToRemove, setAttributesToRemove] = useState<
@@ -68,6 +69,7 @@ export const ProductForm = ({
 
   const handleDiscard = () => {
     form.reset();
+    versionRef.current = product.version;
     setFormResetKey((k) => k + 1);
   };
 
@@ -97,48 +99,19 @@ export const ProductForm = ({
 
   const hasExistingAttributeValues = () =>
     product.variants.some(
-      (v) => v.attributeValues && v.attributeValues.length > 0
+      (v) => v.attributeValues && v.attributeValues.length > 0,
     );
-
-  /**
-   * Determines if the product will be auto-downgraded to DRAFT after category change.
-   * This happens when:
-   * - Product is currently PUBLISHED (or user requested PUBLISHED)
-   * - AND the product will have more than 1 variant after the change
-   *
-   * The new variants won't have attribute values from the new category,
-   * so they can't be PUBLISHED per PUB2 rules.
-   */
-  const willAutoDraftOnCategoryChange = (): boolean => {
-    const currentStatus = form.getFieldValue("status") ?? product.status;
-    if (currentStatus !== "PUBLISHED") {
-      return false;
-    }
-
-    // Count variants after category change
-    // When changing category, all existing variants are deleted and new ones created
-    const variantsOps = form.getFieldValue("variants");
-    const newVariantCount = variantsOps?.create?.length ?? 0;
-
-    // If only 1 variant, no auto-draft needed
-    if (newVariantCount <= 1) {
-      return false;
-    }
-
-    // Multiple variants without attribute values = auto-DRAFT
-    return true;
-  };
 
   const executeSubmit = async () => {
     const { values } = form.store.state;
     try {
-      let data: patchResult;
+      let data: productResult;
       if (isNew) {
         const result = await handleCreate(values as postBody);
         data = result;
       } else {
         data = await handleUpdate(values as patchBody);
-        form.setFieldValue("_version", data.version);
+        versionRef.current = data.version;
         form.setFieldValue("variants", {
           create: undefined,
           update: data.variants.map((v) => ({
@@ -161,7 +134,7 @@ export const ProductForm = ({
 
       // Update sidebar list
       const buildSidebarProduct = (
-        existingImg?: string | null
+        existingImg?: string | null,
       ): ProductItemProps => ({
         id: data.id,
         name: data.name,
@@ -178,11 +151,11 @@ export const ProductForm = ({
           null,
         priceMin: data.variants.reduce(
           (min, v) => Math.min(v.price, min),
-          data.variants[0]?.price ?? 0
+          data.variants[0]?.price ?? 0,
         ), // Stored in cents, converted to decimal by formatPrice
         priceMax: data.variants.reduce(
           (max, v) => Math.max(v.price, max),
-          data.variants[0]?.price ?? 0
+          data.variants[0]?.price ?? 0,
         ), // Stored in cents, converted to decimal by formatPrice
         totalStock: data.variants.reduce((sum, v) => sum + v.stock, 0),
       });
@@ -201,7 +174,7 @@ export const ProductForm = ({
 
         // Update existing product
         const pageIndex = pages.findIndex((page) =>
-          page.some((p) => p.id === data.id)
+          page.some((p) => p.id === data.id),
         );
         if (pageIndex === -1) {
           return pages;
@@ -214,20 +187,20 @@ export const ProductForm = ({
         }
 
         newPages[pageIndex] = currentPage.map((p) =>
-          p.id === data.id ? buildSidebarProduct(p.img) : p
+          p.id === data.id ? buildSidebarProduct(p.img) : p,
         );
         return newPages;
       });
 
       if (data.slug !== product.slug) {
         router.push(
-          `/products/${data.slug}${queryString ? `?${queryString}` : ""}`
+          `/products/${data.slug}${queryString ? `?${queryString}` : ""}`,
         );
       }
     } catch (error: unknown) {
       const err = unknownError(
         error,
-        isNew ? "Failed to create product" : "Failed to update product"
+        isNew ? "Failed to create product" : "Failed to update product",
       );
       toast.error(elysiaErrorToString(err));
     }
@@ -240,10 +213,10 @@ export const ProductForm = ({
       description: product.description,
       status: product.status,
       categoryId: product.categoryId,
-      _version: product.version,
-      variants: {
-        create: isNew
-          ? [
+      // Keep keys the schema rejects out: postBody only accepts `create`
+      variants: isNew
+        ? {
+            create: [
               {
                 price: 0, // Display as €0.00 in decimal format
                 sku: undefined,
@@ -251,11 +224,11 @@ export const ProductForm = ({
                 currency: "EUR",
                 attributeValueIds: [],
               },
-            ]
-          : undefined,
-        update: isNew
-          ? undefined
-          : product.variants.map((v) => ({
+            ],
+          }
+        : {
+            create: undefined,
+            update: product.variants.map((v) => ({
               id: v.id,
               price: v.price / 100, // Convert cents to decimal for display (1999 → 19.99)
               sku: v.sku ?? undefined,
@@ -263,13 +236,11 @@ export const ProductForm = ({
               currency: v.currency,
               attributeValueIds: v.attributeValues.map((av) => av.id),
             })),
-        delete: undefined,
-      },
-      images: {
-        create: undefined,
-        update: undefined,
-        delete: undefined,
-      },
+            delete: undefined,
+          },
+      images: isNew
+        ? { create: undefined }
+        : { create: undefined, update: undefined, delete: undefined },
     },
     onSubmit: async () => {
       if (!isNew && hasCategoryChanged() && hasExistingAttributeValues()) {
@@ -305,23 +276,14 @@ export const ProductForm = ({
 
     const { data, error } = await app.products.post(convertedValues);
     if (error) {
-      toast.error(
-        `Failed to create product with error ${error.status}: ${elysiaErrorToString(error)}`
+      throw new Error(
+        `Failed to create product with error ${error.status}: ${elysiaErrorToString(error)}`,
+        { cause: error },
       );
-      throw error;
     }
 
-    // Check for auto-DRAFT (requested PUBLISHED but got DRAFT)
-    // Note: values.price is in decimal (19.99), backend stores in cents (1999)
-    if (values.status === "PUBLISHED" && data.status === "DRAFT") {
-      toast.warning(
-        "Product saved as DRAFT. To publish, ensure at least one variant has price > 0 and all variants have attribute values."
-      );
-      form.setFieldValue("status", data.status);
-    } else {
-      toast.success("Product created successfully");
-      setNewProduct(null);
-    }
+    toast.success("Product created successfully");
+    setNewProduct(null);
     return data;
   };
 
@@ -347,24 +309,17 @@ export const ProductForm = ({
 
     const { data, error } = await app
       .products({ id: product.id })
-      .patch(convertedValues);
+      .patch(convertedValues, {
+        headers: { "x-version": versionRef.current },
+      });
     if (error) {
-      toast.error(
-        `Failed to update product with error ${error.status}: ${elysiaErrorToString(error)}`
+      throw new Error(
+        `Failed to update product with error ${error.status}: ${elysiaErrorToString(error)}`,
+        { cause: error },
       );
-      throw error;
     }
 
-    // Check for auto-DRAFT on category change
-    const requestedStatus = values.status ?? product.status;
-    if (requestedStatus === "PUBLISHED" && data.status === "DRAFT") {
-      toast.warning(
-        "Product saved as DRAFT. Category changed - variants need attribute values from the new category to be published."
-      );
-      form.setFieldValue("status", data.status);
-    } else {
-      toast.success("Product updated successfully");
-    }
+    toast.success("Product updated successfully");
     return data;
   };
 
@@ -375,13 +330,13 @@ export const ProductForm = ({
         const { error } = await app.products({ id: product.id }).delete();
         if (error) {
           toast.error(
-            `Failed to delete product: ${elysiaErrorToString(error)}`
+            `Failed to delete product: ${elysiaErrorToString(error)}`,
           );
           return;
         }
         // Remove product from sidebar list
         setPages((pages) =>
-          pages.map((page) => page.filter((p) => p.id !== product.id))
+          pages.map((page) => page.filter((p) => p.id !== product.id)),
         );
         toast.success("Product deleted successfully");
         router.push(`/products${queryString ? `?${queryString}` : ""}`);
@@ -549,17 +504,6 @@ export const ProductForm = ({
                   ))}
                 </div>
               ))}
-            </div>
-          )}
-
-          {willAutoDraftOnCategoryChange() && (
-            <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-950">
-              <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                <strong>Warning:</strong> This product is currently published.
-                After changing category, it will be set to{" "}
-                <strong>DRAFT</strong> because variants won't have attribute
-                values from the new category.
-              </p>
             </div>
           )}
 

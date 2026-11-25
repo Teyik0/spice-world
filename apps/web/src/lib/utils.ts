@@ -1,4 +1,4 @@
-import type { auth } from "@spice-world/server/plugins/better-auth.plugin";
+import type { auth } from "@spice-world/server/plugins/auth.plugin";
 import { standardSchema } from "@spice-world/web/lib/schema";
 import { createEnv } from "@t3-oss/env-nextjs";
 import { createAuthClient } from "better-auth/client";

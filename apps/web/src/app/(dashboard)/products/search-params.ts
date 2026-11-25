@@ -1,3 +1,4 @@
+import type { inferParserType } from "nuqs/server";
 import {
   createParser,
   createSearchParamsCache,
@@ -45,3 +46,17 @@ export const productsSearchParams = {
 
 export const productsSearchParamsCache =
   createSearchParamsCache(productsSearchParams);
+
+/** The URL state as the GET /products query, `skip` products in. */
+export const toProductsQuery = (
+  params: inferParserType<typeof productsSearchParams>,
+  skip = 0,
+) => ({
+  name: params.name || undefined,
+  skip,
+  take: INITIAL_PAGE_SIZE,
+  status: params.status ?? undefined,
+  categories: params.categories ?? undefined,
+  sortBy: params.sortBy,
+  sortDir: params.sortDir,
+});

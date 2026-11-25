@@ -1,8 +1,12 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: advanced types gestion
 import { treaty } from "@elysia/eden";
 import type { App } from "@spice-world/server/index";
+
 import { env, type unknownError } from "./utils";
 
+// Browser twin (see elysia-server.ts for the RSC twin): cookies are attached
+// by credentials: "include" itself. Client-safe: never import next/headers here
+// or every client bundle pulling this module fails to build.
 export const app = treaty<App>(env.NEXT_PUBLIC_BETTER_AUTH_URL, {
   fetch: {
     credentials: "include", // automatic includes cookies in requests
@@ -29,21 +33,27 @@ export type CategoryErrors =
   | RouteErrors<ReturnType<typeof app.categories>>;
 export type ProductErrors =
   | RouteErrors<typeof app.products>
+  | RouteErrors<typeof app.products.bulk>
   | RouteErrors<ReturnType<typeof app.products>>;
 export type AttributeErrors =
   | RouteErrors<typeof app.attributes>
   | RouteErrors<ReturnType<typeof app.attributes>>;
+export type CollectionErrors =
+  | RouteErrors<typeof app.collections>
+  | RouteErrors<ReturnType<typeof app.collections>>;
 
 // Used to type Elysia errors in the frontend at components/elysia-error.tsx
-export type ElysiaAppError = CategoryErrors | ProductErrors | AttributeErrors;
+export type ElysiaAppError =
+  CategoryErrors | ProductErrors | AttributeErrors | CollectionErrors;
 
 export const elysiaErrorToString = (
-  error: NonNullable<ElysiaAppError> | ReturnType<typeof unknownError>
+  error: NonNullable<ElysiaAppError> | ReturnType<typeof unknownError>,
 ) => {
   if (typeof error.value === "string") {
     return error.value;
   }
-  return "message" in error.value
-    ? error.value.message
-    : (error.value.detail ?? error.value.title);
+  if ("message" in error.value) {
+    return error.value.message;
+  }
+  return ("detail" in error.value && error.value.detail) || error.value.title;
 };

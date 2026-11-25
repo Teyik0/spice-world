@@ -30,9 +30,10 @@ import {
 } from "lucide-react";
 import { useQueryStates } from "nuqs";
 import { useDebouncedCallback } from "use-debounce";
+
 import {
-  productStatusOptions,
   productsSearchParams,
+  productStatusOptions,
   sortByOptions,
 } from "../search-params";
 
@@ -65,7 +66,7 @@ export function ProductsSearchBar({ categories }: { categories: Category[] }) {
   };
 
   const handleSortByChange = async (
-    sortBy: (typeof sortByOptions)[number] | null
+    sortBy: (typeof sortByOptions)[number] | null,
   ) => {
     await setSearchParams({ sortBy: sortBy ?? "name" });
   };

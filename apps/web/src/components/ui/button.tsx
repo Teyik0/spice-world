@@ -33,7 +33,7 @@ const buttonVariants = cva(
       variant: "default",
       size: "default",
     },
-  }
+  },
 );
 
 function Button({
@@ -46,7 +46,7 @@ function Button({
     <ButtonPrimitive
       className={cn(
         buttonVariants({ variant, size, className }),
-        "cursor-pointer"
+        "cursor-pointer",
       )}
       data-slot="button"
       {...props}

@@ -46,7 +46,7 @@ export interface FileUploadActions {
   clearErrors: () => void;
   clearFiles: () => void;
   getInputProps: (
-    props?: InputHTMLAttributes<HTMLInputElement>
+    props?: InputHTMLAttributes<HTMLInputElement>,
   ) => InputHTMLAttributes<HTMLInputElement> & {
     ref: React.RefObject<HTMLInputElement | null>;
   };
@@ -61,7 +61,7 @@ export interface FileUploadActions {
 }
 
 export const useFileUpload = (
-  options: FileUploadOptions = {}
+  options: FileUploadOptions = {},
 ): [FileUploadState, FileUploadActions] => {
   const {
     maxFiles = Number.POSITIVE_INFINITY,
@@ -114,7 +114,7 @@ export const useFileUpload = (
 
       return null;
     },
-    [accept, maxSize]
+    [accept, maxSize],
   );
 
   const createPreview = useCallback(
@@ -124,7 +124,7 @@ export const useFileUpload = (
       }
       return file.url;
     },
-    []
+    [],
   );
 
   const generateUniqueId = useCallback((file: File | FileMetadata): string => {
@@ -201,7 +201,7 @@ export const useFileUpload = (
             const isDuplicate = currentFiles.some(
               (existingFile) =>
                 existingFile.file.name === file.name &&
-                existingFile.file.size === file.size
+                existingFile.file.size === file.size,
             );
 
             // Show error for duplicate files instead of silently skipping
@@ -251,7 +251,7 @@ export const useFileUpload = (
       generateUniqueId,
       onFilesChange,
       onFilesAdded,
-    ]
+    ],
   );
 
   const removeFile = useCallback(
@@ -280,7 +280,7 @@ export const useFileUpload = (
         };
       });
     },
-    [onFilesChange]
+    [onFilesChange],
   );
 
   const clearErrors = useCallback(() => {
@@ -308,7 +308,7 @@ export const useFileUpload = (
         };
       });
     },
-    [onFilesChange]
+    [onFilesChange],
   );
 
   const handleDragEnter = useCallback((e: DragEvent<HTMLElement>) => {
@@ -356,7 +356,7 @@ export const useFileUpload = (
         }
       }
     },
-    [addFiles, multiple]
+    [addFiles, multiple],
   );
 
   const handleFileChange = useCallback(
@@ -365,7 +365,7 @@ export const useFileUpload = (
         addFiles(e.target.files);
       }
     },
-    [addFiles]
+    [addFiles],
   );
 
   const openFileDialog = useCallback(() => {
@@ -383,7 +383,7 @@ export const useFileUpload = (
       multiple: props.multiple === undefined ? multiple : props.multiple,
       ref: inputRef,
     }),
-    [accept, multiple, handleFileChange]
+    [accept, multiple, handleFileChange],
   );
 
   return [

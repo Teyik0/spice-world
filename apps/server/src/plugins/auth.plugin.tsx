@@ -1,15 +1,15 @@
+import { drizzleAdapter } from "@better-auth/drizzle-adapter/relations-v2";
 import { stripe } from "@better-auth/stripe";
 import PasswordReset from "@spice-world/emails/src/password-reset";
 import ResetPassword from "@spice-world/emails/src/reset-password";
 import VerifyEmail from "@spice-world/emails/src/spiceworld-welcome";
-import { env } from "@spice-world/server/lib/env";
-import { prisma } from "@spice-world/server/lib/prisma";
+import { db } from "@spice-world/server/lib/db";
+import { env, origins } from "@spice-world/server/lib/env";
 import { stripeClient } from "@spice-world/server/lib/stripe";
-import { prismaAdapter } from "better-auth/adapters/prisma";
 import { betterAuth } from "better-auth/minimal";
 import { admin, openAPI } from "better-auth/plugins";
 import type { MacroTypeLambda } from "elysia";
-import { Elysia, macroType } from "elysia";
+import { Elysia, ElysiaStatus, macroType } from "elysia";
 import { Resend } from "resend";
 import type Stripe from "stripe";
 
@@ -20,10 +20,8 @@ const resend = new Resend(env.RESEND_API_KEY);
 const from = "Spice World <noreply@teyik0.dev>";
 
 export const auth = betterAuth({
-  database: prismaAdapter(prisma, {
-    provider: "postgresql",
-  }),
-  trustedOrigins: ["http://localhost:3000", "http://localhost:3001"], // Both frontend and backend
+  database: drizzleAdapter(db, { provider: "pg" }),
+  trustedOrigins: origins,
   advanced: { database: { joins: true } },
   session: {
     cookieCache: {
@@ -121,11 +119,14 @@ export const auth = betterAuth({
             const { id, metadata, payment_intent, payment_status } =
               event.data.object;
             if (payment_status !== "unpaid" && metadata?.orderId) {
-              await orderService.handleOrderPaid(
+              const order = await orderService.handleOrderPaid(
                 id,
                 metadata.orderId,
                 typeof payment_intent === "string" ? payment_intent : null,
               );
+              if (order instanceof ElysiaStatus) {
+                throw new Error(order.response.message); // Better Auth answers 400: Stripe retries
+              }
             }
             break;
           }

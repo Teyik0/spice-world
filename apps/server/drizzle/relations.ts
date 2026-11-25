@@ -4,7 +4,6 @@ import * as schema from "./schema";
 
 const tables = {
   attributeValueToProductVariant: schema.attributeValueToProductVariantTable,
-  prismaMigrations: schema.prismaMigrationsTable,
   account: schema.accountTable,
   attribute: schema.attributeTable,
   attributeValue: schema.attributeValueTable,
@@ -102,8 +101,9 @@ export const relations = defineRelations(tables, (r) => ({
     category: r.one.category({
       from: r.product.categoryId,
       to: r.category.id,
+      optional: false,
     }),
-    productVariants: r.many.productVariant(),
+    variants: r.many.productVariant(),
   },
   comment: {
     product: r.one.product({
@@ -119,12 +119,13 @@ export const relations = defineRelations(tables, (r) => ({
     user: r.one.user({
       from: r.order.userId,
       to: r.user.id,
+      optional: false,
     }),
     productVariants: r.many.productVariant({
       from: r.order.id.through(r.orderItem.orderId),
       to: r.productVariant.id.through(r.orderItem.variantId),
     }),
-    orderItems: r.many.orderItem(),
+    items: r.many.orderItem(),
   },
   orderItem: {
     order: r.one.order({

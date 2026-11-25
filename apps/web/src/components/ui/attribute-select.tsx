@@ -17,8 +17,8 @@ import { Separator } from "@spice-world/web/components/ui/separator";
 import { cn } from "@spice-world/web/lib/utils";
 import { ChevronDown, Circle, CircleDot, XCircle, XIcon } from "lucide-react";
 import {
-  Fragment,
   forwardRef,
+  Fragment,
   type HTMLAttributes,
   useEffect,
   useMemo,
@@ -34,8 +34,10 @@ export interface AttributeGroup {
   }>;
 }
 
-interface AttributeSelectProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, "onValueChange"> {
+interface AttributeSelectProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "onValueChange"
+> {
   className?: string;
   creatable?: boolean;
   defaultValue?: string[];
@@ -44,7 +46,7 @@ interface AttributeSelectProps
   maxCount?: number;
   onBlur?: () => void;
   onCreateNew?: (
-    value: string
+    value: string,
   ) => Promise<{ id: string; value: string } | null>;
   onValueChange?: (value: string[]) => void;
   placeholder?: string;
@@ -67,7 +69,7 @@ export const AttributeSelect = forwardRef<HTMLDivElement, AttributeSelectProps>(
       creatable = false,
       ...props
     },
-    _ref
+    _ref,
   ) => {
     const [selectedValues, setSelectedValues] =
       useState<string[]>(defaultValue);
@@ -176,7 +178,7 @@ export const AttributeSelect = forwardRef<HTMLDivElement, AttributeSelectProps>(
         .map((group) => ({
           ...group,
           values: group.values.filter((val) =>
-            val.value.toLowerCase().includes(searchValue.toLowerCase())
+            val.value.toLowerCase().includes(searchValue.toLowerCase()),
           ),
         }))
         .filter((group) => group.values.length > 0);
@@ -187,8 +189,8 @@ export const AttributeSelect = forwardRef<HTMLDivElement, AttributeSelectProps>(
       searchValue.trim() &&
       !groups.some((group) =>
         group.values.some(
-          (val) => val.value.toLowerCase() === searchValue.trim().toLowerCase()
-        )
+          (val) => val.value.toLowerCase() === searchValue.trim().toLowerCase(),
+        ),
       );
 
     const handlePopoverChange = (open: boolean) => {
@@ -201,6 +203,7 @@ export const AttributeSelect = forwardRef<HTMLDivElement, AttributeSelectProps>(
     return (
       <Popover onOpenChange={handlePopoverChange} open={isPopoverOpen}>
         <PopoverTrigger
+          nativeButton={false}
           render={
             <div
               aria-disabled={disabled}
@@ -208,7 +211,7 @@ export const AttributeSelect = forwardRef<HTMLDivElement, AttributeSelectProps>(
                 "dark:bg-input/30 dark:hover:bg-input/50 h-9 w-full cursor-pointer rounded-md border bg-transparent p-0 font-normal shadow-xs transition-colors",
                 "grid grid-cols-1 items-center",
                 disabled && "cursor-not-allowed opacity-50",
-                className
+                className,
               )}
               onClick={() => !disabled && setIsPopoverOpen((prev) => !prev)}
               onKeyDown={(e) => {
@@ -233,7 +236,7 @@ export const AttributeSelect = forwardRef<HTMLDivElement, AttributeSelectProps>(
                       return (
                         <Badge
                           className={cn(
-                            "border-foreground/10 bg-card text-foreground hover:bg-card/80 shrink-0 pr-0 whitespace-nowrap transition-all duration-300 ease-in-out"
+                            "border-foreground/10 bg-card text-foreground hover:bg-card/80 shrink-0 pr-0 whitespace-nowrap transition-all duration-300 ease-in-out",
                           )}
                           key={valueId}
                         >
@@ -346,7 +349,7 @@ export const AttributeSelect = forwardRef<HTMLDivElement, AttributeSelectProps>(
         </PopoverContent>
       </Popover>
     );
-  }
+  },
 );
 
 AttributeSelect.displayName = "AttributeSelect";

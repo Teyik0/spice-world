@@ -1,9 +1,6 @@
 {
   "root": false,
   "extends": ["../../biome.jsonc"],
-  "files": {
-    "includes": ["!src/prisma"],
-  },
   "linter": {
     "rules": {
       "performance": {

@@ -3,7 +3,7 @@ import type { Static, TSchema } from "typebox";
 import { Compile } from "typebox/compile";
 
 export function standardSchema<T extends TSchema>(
-  schema: T
+  schema: T,
 ): StandardSchemaV1<Static<T>> {
   const validator = Compile(schema);
   return {

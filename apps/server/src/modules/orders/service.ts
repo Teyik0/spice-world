@@ -1,262 +1,266 @@
+import { db } from "@spice-world/server/lib/db";
 import { env } from "@spice-world/server/lib/env";
-import { prisma } from "@spice-world/server/lib/prisma";
-import type { OrderStatus } from "@spice-world/server/prisma/client";
-import { problem } from "elysia";
+import { and, asc, EmptyFilter, eq, inArray, sql } from "drizzle-orm";
+import { problem, status } from "elysia";
 import { Resend } from "resend";
 
+import {
+  orderItemTable,
+  orderTable,
+  productTable,
+  productVariantTable,
+} from "../../../drizzle/schema";
+import type { uuidGuard } from "../shared";
 import { closeStripeCheckout, createStripeCheckout } from "../stripe-checkout";
+import type * as OrderModel from "./model";
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
-interface CartItem {
-  price: number; // Price in cents
-  productId: string;
-  productName: string;
-  quantity: number;
-  variantId: string;
-  variantName?: string;
-  variantSku?: string;
-}
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-interface ShippingAddress {
-  city: string;
-  country: string;
-  line1: string;
-  line2?: string;
-  name: string;
-  postalCode: string;
-}
-
-function toJsonValue(address: ShippingAddress): Record<string, string> {
-  const result: Record<string, string> = {
-    name: address.name,
-    line1: address.line1,
-    city: address.city,
-    postalCode: address.postalCode,
-    country: address.country,
-  };
-  if (address.line2) {
-    result.line2 = address.line2;
-  }
-  return result;
+async function find(
+  where: { id: string; stripeSessionId?: string; userId?: string },
+  tx: Tx | typeof db = db,
+) {
+  return await tx.query.order.findFirst({
+    where,
+    ...orderService.findOptions,
+  });
 }
 
 export const orderService = {
-  async createCheckout(
-    userId: string,
-    items: { variantId: string; quantity: number }[],
-    shippingAddress: ShippingAddress,
-  ) {
-    return await prisma.$transaction(async (tx) => {
-      // Validate items inside transaction with atomic stock check
-      const enrichedItems: CartItem[] = [];
+  orderNotFound: problem("Not Found", {
+    code: "ORDER_NOT_FOUND",
+    message: "Order not found",
+  }),
 
-      for (const item of items) {
-        // Use update with decrement to atomically check and reserve stock
-        // This prevents TOCTOU race conditions by locking the row
-        try {
-          // biome-ignore lint/performance/noAwaitInLoops: Reserve stock sequentially within the same transaction and preserve item order.
-          const updatedVariant = await tx.productVariant.update({
-            where: {
-              id: item.variantId,
-              stock: { gte: item.quantity }, // Atomic check: only update if stock >= quantity
-            },
-            data: {
-              stock: { decrement: item.quantity }, // Reserve stock immediately
-            },
-            include: { product: true },
-          });
+  findOptions: {
+    with: {
+      user: {
+        columns: {
+          id: true as const,
+          name: true as const,
+          email: true as const,
+        },
+      },
+      items: { orderBy: { id: "asc" as const } },
+    },
+  },
 
-          enrichedItems.push({
-            variantId: item.variantId,
-            productId: updatedVariant.productId,
-            productName: updatedVariant.product.name,
-            variantName: updatedVariant.sku || undefined,
-            variantSku: updatedVariant.sku || undefined,
-            price: updatedVariant.price,
-            quantity: item.quantity,
-          });
-        } catch (cause) {
-          throw new Error(`Insufficient stock for variant ${item.variantId}`, {
-            cause,
+  async createCheckout({
+    userId,
+    items,
+    shippingAddress,
+  }: OrderModel.checkoutBody & { userId: string }) {
+    return await db.transaction(async (tx) => {
+      const variants = await tx
+        .select({
+          id: productVariantTable.id,
+          sku: productVariantTable.sku,
+          price: productVariantTable.price,
+          stock: productVariantTable.stock,
+          productId: productTable.id,
+          productName: productTable.name,
+          productStatus: productTable.status,
+        })
+        .from(productVariantTable)
+        .innerJoin(
+          productTable,
+          eq(productTable.id, productVariantTable.productId),
+        )
+        .where(
+          inArray(
+            productVariantTable.id,
+            items.map(({ variantId }) => variantId),
+          ),
+        )
+        .orderBy(asc(productVariantTable.id)) // Stable lock order
+        .for("update", { of: productVariantTable });
+      const variantsById = new Map(
+        variants.map((variant) => [variant.id, variant]),
+      );
+
+      const orderId = Bun.randomUUIDv7();
+      const lines: (typeof orderItemTable.$inferInsert)[] = [];
+      for (const { variantId, quantity } of items) {
+        const variant = variantsById.get(variantId);
+        if (variant?.productStatus !== "PUBLISHED") {
+          return problem("Conflict", {
+            code: "VARIANT_NOT_AVAILABLE",
+            message: `Variant ${variantId} is not available for purchase`,
           });
         }
+        if (variant.stock < quantity) {
+          return problem("Conflict", {
+            code: "INSUFFICIENT_STOCK",
+            message: `Insufficient stock for variant ${variantId}`,
+          });
+        }
+        lines.push({
+          id: Bun.randomUUIDv7(),
+          orderId,
+          productId: variant.productId,
+          productName: variant.productName,
+          variantId,
+          variantName: variant.sku,
+          variantSku: variant.sku,
+          unitPrice: variant.price,
+          quantity,
+          totalPrice: variant.price * quantity,
+        });
       }
-      const subtotal = enrichedItems.reduce(
-        (sum, item) => sum + item.price * item.quantity,
+
+      const subtotalAmount = lines.reduce(
+        (sum, { totalPrice }) => sum + totalPrice,
         0,
       );
-      const shipping = subtotal > 5000 ? 0 : 500; // Free above €50, else €5
+      const shippingAmount = subtotalAmount > 5000 ? 0 : 500; // Free above €50, else €5
 
-      // Create order with temporary stripe session id
-      // All monetary values stored as cents (Int)
-      const order = await tx.order.create({
-        data: {
-          userId,
-          status: "PENDING",
-          stripeSessionId: "temp",
-          subtotalAmount: subtotal,
-          shippingAmount: shipping,
-          totalAmount: subtotal + shipping,
-          shippingAddress: toJsonValue(shippingAddress),
-          items: {
-            create: enrichedItems.map((item) => ({
-              productId: item.productId,
-              productName: item.productName,
-              variantId: item.variantId,
-              variantName: item.variantName,
-              variantSku: item.variantSku,
-              unitPrice: item.price,
-              quantity: item.quantity,
-              totalPrice: item.price * item.quantity,
-            })),
-          },
-        },
-        include: { items: true },
-      });
-
+      // Nothing written yet: safe to return.
       const checkout = await createStripeCheckout({
         items: [
-          ...enrichedItems.map((item) => ({
-            name: item.productName,
-            price: item.price,
+          ...lines.map(({ productName, unitPrice, quantity }) => ({
+            name: productName,
+            price: unitPrice,
             currency: "EUR", // Default to EUR, can be made dynamic
-            quantity: item.quantity,
+            quantity,
           })),
-          ...(shipping
+          ...(shippingAmount
             ? [
                 {
                   name: "Livraison",
-                  price: shipping,
+                  price: shippingAmount,
                   currency: "EUR",
                   quantity: 1,
                 },
               ]
             : []),
         ],
-        metadata: { orderId: order.id },
+        metadata: { orderId },
       });
+      if (!checkout) {
+        return problem("Bad Gateway", {
+          code: "STRIPE_UNAVAILABLE",
+          message: "Stripe checkout could not be created",
+        });
+      }
 
-      await tx.order.update({
-        where: { id: order.id },
-        data: { stripeSessionId: checkout.id },
+      await tx.insert(orderTable).values({
+        id: orderId,
+        userId,
+        stripeSessionId: checkout.id,
+        subtotalAmount,
+        shippingAmount,
+        totalAmount: subtotalAmount + shippingAmount,
+        shippingAddress,
       });
+      await tx.insert(orderItemTable).values(lines);
+      await moveStock(tx, orderId, -1);
 
-      return {
-        order: { ...order, stripeSessionId: checkout.id },
+      return status("Created", {
+        order: (await find({ id: orderId }, tx)) as OrderModel.orderResult,
         checkoutUrl: checkout.url,
-      };
+      });
     });
   },
 
+  /** Stock is already reserved by createCheckout. */
   async handleOrderPaid(
     stripeSessionId: string,
-    orderId: string,
+    id: string,
     stripePaymentIntentId: string | null,
   ) {
-    return await prisma.$transaction(async (tx) => {
-      // Verify the order exists and matches the metadata orderId
-      const existingOrder = await tx.order.findUniqueOrThrow({
-        where: { stripeSessionId },
-      });
-
-      if (existingOrder.id !== orderId) {
-        throw new Error(
-          `Order mismatch: session ${stripeSessionId} does not match order ${orderId}`,
-        );
-      }
-
-      // Stock is already reserved in createCheckout via atomic decrement
-      // No need to decrement again here
-      // Stripe may deliver an event more than once: only PENDING can become PAID
-      await tx.order.updateMany({
-        where: { stripeSessionId, status: "PENDING" },
-        data: { status: "PAID", stripePaymentIntentId },
-      });
-
-      return await tx.order.findUniqueOrThrow({
-        where: { stripeSessionId },
-        include: { items: true, user: true },
-      });
-    });
+    // Stripe may deliver an event more than once: only PENDING can become PAID
+    await db
+      .update(orderTable)
+      .set({ status: "PAID", stripePaymentIntentId })
+      .where(
+        and(
+          eq(orderTable.id, id),
+          eq(orderTable.stripeSessionId, stripeSessionId),
+          eq(orderTable.status, "PENDING"),
+        ),
+      );
+    return (await find({ id, stripeSessionId })) ?? this.orderNotFound;
   },
 
   async cancelPending(stripeSessionId: string, id: string) {
-    await prisma.$transaction(async (tx) => {
-      const { count } = await tx.order.updateMany({
-        where: { id, stripeSessionId, status: "PENDING" },
-        data: { status: "CANCELLED" },
-      });
-      if (!count) {
+    await db.transaction(async (tx) => {
+      const [cancelled] = await tx
+        .update(orderTable)
+        .set({ status: "CANCELLED" })
+        .where(
+          and(
+            eq(orderTable.id, id),
+            eq(orderTable.stripeSessionId, stripeSessionId),
+            eq(orderTable.status, "PENDING"),
+          ),
+        )
+        .returning({ id: orderTable.id });
+      if (!cancelled) {
         return;
       }
-      const items = await tx.orderItem.findMany({
-        where: { orderId: id, variantId: { not: null } },
-        orderBy: { variantId: "asc" }, // Stable lock order
-      });
-      for (const { variantId, quantity } of items) {
-        // biome-ignore lint/performance/noAwaitInLoops: Lock variants one by one in a stable order.
-        await tx.productVariant.updateMany({
-          where: { id: variantId as string },
-          data: { stock: { increment: quantity } },
-        });
-      }
+      await tx
+        .select({ id: productVariantTable.id })
+        .from(productVariantTable)
+        .where(
+          inArray(
+            productVariantTable.id,
+            tx
+              .select({ id: orderItemTable.variantId })
+              .from(orderItemTable)
+              .where(eq(orderItemTable.orderId, id)),
+          ),
+        )
+        .orderBy(asc(productVariantTable.id)) // Stable lock order
+        .for("update");
+      await moveStock(tx, id, 1);
     });
   },
 
-  async get(
-    userId: string,
-    isAdmin: boolean,
-    query: { page: number; limit: number; status?: OrderStatus },
-  ) {
-    const where = {
-      ...(!isAdmin && { userId }),
-      ...(query.status && { status: query.status }),
-    };
-
-    const [orders, total] = await Promise.all([
-      prisma.order.findMany({
-        where,
-        include: {
-          user: { select: { id: true, name: true, email: true } },
-          items: true,
+  async get({
+    page,
+    limit,
+    status: orderStatus,
+    userId,
+  }: OrderModel.getQuery & { userId?: string }) {
+    const [items, total] = await Promise.all([
+      db.query.order.findMany({
+        where: {
+          userId: userId ?? EmptyFilter,
+          status: orderStatus ?? EmptyFilter,
         },
-        orderBy: { createdAt: "desc" },
-        skip: (query.page - 1) * query.limit,
-        take: query.limit,
+        orderBy: { createdAt: "desc", id: "desc" },
+        offset: (page - 1) * limit,
+        limit,
+        ...this.findOptions,
       }),
-      prisma.order.count({ where }),
+      db.$count(
+        orderTable,
+        and(
+          userId ? eq(orderTable.userId, userId) : undefined,
+          orderStatus && eq(orderTable.status, orderStatus),
+        ),
+      ),
     ]);
 
-    return { items: orders, total, page: query.page, limit: query.limit };
+    return { items, total, page, limit };
   },
 
-  async getById(orderId: string, userId: string, isAdmin: boolean) {
-    const order = await prisma.order.findUniqueOrThrow({
-      where: { id: orderId },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        items: true,
-      },
-    });
-
-    if (!isAdmin && order.userId !== userId) {
-      throw new Error("Unauthorized");
-    }
-
-    return order;
+  async getById(query: uuidGuard & { userId?: string }) {
+    return (await find(query)) ?? this.orderNotFound;
   },
 
-  async updateStatus(
-    orderId: string,
-    status: OrderStatus,
-    trackingNumber?: string,
-  ) {
-    if (status === "CANCELLED") {
-      const current = await prisma.order.findUniqueOrThrow({
-        where: { id: orderId },
-        select: { status: true, stripeSessionId: true },
-      });
+  async updateStatus({
+    id,
+    status: orderStatus,
+    trackingNumber,
+  }: OrderModel.updateStatusBody & uuidGuard) {
+    if (orderStatus === "CANCELLED") {
+      const current = await find({ id });
+      if (!current) {
+        return this.orderNotFound;
+      }
       if (current.status === "PAID" || current.status === "FULFILLED") {
         return problem("Conflict", {
           code: "ORDER_REQUIRES_REFUND",
@@ -270,30 +274,28 @@ export const orderService = {
             message: "The checkout session is already completed",
           });
         }
-        await this.cancelPending(current.stripeSessionId, orderId);
+        await this.cancelPending(current.stripeSessionId, id);
       }
     }
 
-    const data: Record<string, unknown> = { status };
-
-    if (trackingNumber) {
-      data.trackingNumber = trackingNumber;
-      data.shippingStatus = "SHIPPED";
+    await db
+      .update(orderTable)
+      .set({
+        status: orderStatus,
+        ...(trackingNumber && { trackingNumber, shippingStatus: "SHIPPED" }),
+      })
+      .where(eq(orderTable.id, id));
+    const order = await find({ id });
+    if (!order) {
+      return this.orderNotFound;
     }
-
-    // Update order first in a transaction
-    const order = await prisma.order.update({
-      where: { id: orderId },
-      data,
-      include: { items: true, user: true },
-    });
 
     // Send email as post-commit side effect (after DB update succeeds)
     if (trackingNumber && resend) {
       await resend.emails.send({
         from: "Spice World <orders@spiceworld.com>",
         to: order.user.email as string,
-        subject: `Votre commande #${orderId.slice(0, 8)} a été expédiée`,
+        subject: `Votre commande #${id.slice(0, 8)} a été expédiée`,
         html: `<p>Bonne nouvelle ! Votre commande a été expédiée.</p><p>Numéro de suivi : ${trackingNumber}</p>`,
       });
     }
@@ -301,3 +303,25 @@ export const orderService = {
     return order;
   },
 };
+
+/** Reserves (-1) or restores (1) the stock of an order. Lock its variants first. */
+async function moveStock(tx: Tx, orderId: string, direction: 1 | -1) {
+  const ordered = tx
+    .select({
+      variantId: orderItemTable.variantId,
+      quantity: sql<number>`sum(${orderItemTable.quantity})::int`.as(
+        "quantity",
+      ),
+    })
+    .from(orderItemTable)
+    .where(eq(orderItemTable.orderId, orderId))
+    .groupBy(orderItemTable.variantId) // old orders may repeat a variant
+    .as("ordered");
+  await tx
+    .update(productVariantTable)
+    .set({
+      stock: sql`${productVariantTable.stock} + ${direction}::int * ${ordered.quantity}`,
+    })
+    .from(ordered)
+    .where(eq(ordered.variantId, productVariantTable.id));
+}

@@ -47,7 +47,8 @@ export interface MultiSelectOption {
 }
 
 interface MultiSelectProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, "onValueChange">,
+  extends
+    Omit<HTMLAttributes<HTMLDivElement>, "onValueChange">,
     VariantProps<typeof multiSelectVariants> {
   className?: string;
   creatable?: boolean;
@@ -56,9 +57,8 @@ interface MultiSelectProps
   maxCount?: number;
   onBlur?: () => void;
   onCreateNew?: (
-    value: string
+    value: string,
   ) => MultiSelectOption | null | Promise<MultiSelectOption | null>;
-  onRemove?: (value: string, index: number) => void;
   onValueChange?: (value: string[]) => void;
   options: MultiSelectOption[] | null;
   placeholder?: string;
@@ -79,11 +79,10 @@ export const MultiSelect = forwardRef<HTMLDivElement, MultiSelectProps>(
       className,
       disabled = false,
       onCreateNew,
-      onRemove,
       creatable = false,
       ...props
     },
-    _ref
+    _ref,
   ) => {
     const [selectedValues, setSelectedValues] =
       useState<string[]>(defaultValue);
@@ -107,7 +106,7 @@ export const MultiSelect = forwardRef<HTMLDivElement, MultiSelectProps>(
       }
       const newSelectedValues = selectedValues.includes(optionValue)
         ? selectedValues.filter(
-            (selectedValue) => selectedValue !== optionValue
+            (selectedValue) => selectedValue !== optionValue,
           )
         : [...selectedValues, optionValue];
       setSelectedValues(newSelectedValues);
@@ -144,7 +143,7 @@ export const MultiSelect = forwardRef<HTMLDivElement, MultiSelectProps>(
       return options?.filter(
         (option) =>
           option.label.toLowerCase().includes(searchValue.toLowerCase()) ||
-          option.value.toLowerCase().includes(searchValue.toLowerCase())
+          option.value.toLowerCase().includes(searchValue.toLowerCase()),
       );
     }, [options, searchValue]);
 
@@ -152,7 +151,7 @@ export const MultiSelect = forwardRef<HTMLDivElement, MultiSelectProps>(
       creatable &&
       searchValue.trim() &&
       !options?.some(
-        (opt) => opt.label.toLowerCase() === searchValue.trim().toLowerCase()
+        (opt) => opt.label.toLowerCase() === searchValue.trim().toLowerCase(),
       );
 
     const handlePopoverChange = (open: boolean) => {
@@ -165,6 +164,7 @@ export const MultiSelect = forwardRef<HTMLDivElement, MultiSelectProps>(
     return (
       <Popover onOpenChange={handlePopoverChange} open={isPopoverOpen}>
         <PopoverTrigger
+          nativeButton={false}
           render={
             <div
               aria-disabled={disabled}
@@ -172,7 +172,7 @@ export const MultiSelect = forwardRef<HTMLDivElement, MultiSelectProps>(
                 "dark:bg-input/30 dark:hover:bg-input/50 h-9 w-full cursor-pointer rounded-md border bg-transparent p-0 font-normal shadow-xs transition-colors",
                 "grid grid-cols-1 items-center",
                 disabled && "cursor-not-allowed opacity-50",
-                className
+                className,
               )}
               onClick={() => !disabled && setIsPopoverOpen((prev) => !prev)}
               onKeyDown={(e) => {
@@ -188,39 +188,36 @@ export const MultiSelect = forwardRef<HTMLDivElement, MultiSelectProps>(
               {selectedValues.length > 0 ? (
                 <div className="flex justify-between">
                   <div className="flex min-w-0 items-center gap-1 overflow-x-auto overflow-y-hidden px-2 py-1 [&::-webkit-scrollbar]:h-0">
-                    {selectedValues
-                      .slice(0, maxCount)
-                      .map((selectedValue, index) => {
-                        const option = options?.find(
-                          (opt) => opt.value === selectedValue
-                        );
-                        if (!option) {
-                          return null;
-                        }
+                    {selectedValues.slice(0, maxCount).map((selectedValue) => {
+                      const option = options?.find(
+                        (opt) => opt.value === selectedValue,
+                      );
+                      if (!option) {
+                        return null;
+                      }
 
-                        return (
-                          <Badge
-                            className={cn(
-                              "border-foreground/10 bg-card text-foreground hover:bg-card/80 shrink-0 pr-0 whitespace-nowrap transition-all duration-300 ease-in-out"
-                            )}
-                            key={selectedValue}
+                      return (
+                        <Badge
+                          className={cn(
+                            "border-foreground/10 bg-card text-foreground hover:bg-card/80 shrink-0 pr-0 whitespace-nowrap transition-all duration-300 ease-in-out",
+                          )}
+                          key={selectedValue}
+                        >
+                          <span>{option.label}</span>
+                          <button
+                            aria-label={`Remove ${option.label}`}
+                            className="ml-1 rounded-sm hover:bg-white/20"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleOption(selectedValue);
+                            }}
+                            type="button"
                           >
-                            <span>{option.label}</span>
-                            <button
-                              aria-label={`Remove ${option.label}`}
-                              className="ml-1 rounded-sm hover:bg-white/20"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                onRemove?.(selectedValue, index);
-                                toggleOption(selectedValue);
-                              }}
-                              type="button"
-                            >
-                              <XCircle className="h-3 w-3" />
-                            </button>
-                          </Badge>
-                        );
-                      })}
+                            <XCircle className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      );
+                    })}
                     {selectedValues.length > maxCount && (
                       <Badge className="border-foreground/1 text-foreground shrink-0 bg-transparent whitespace-nowrap hover:bg-transparent">
                         {`+ ${selectedValues.length - maxCount} more`}
@@ -291,7 +288,7 @@ export const MultiSelect = forwardRef<HTMLDivElement, MultiSelectProps>(
                     <CommandItem
                       className={cn(
                         "cursor-pointer",
-                        option.disabled && "cursor-not-allowed opacity-50"
+                        option.disabled && "cursor-not-allowed opacity-50",
                       )}
                       disabled={option.disabled}
                       key={option.value}
@@ -302,7 +299,7 @@ export const MultiSelect = forwardRef<HTMLDivElement, MultiSelectProps>(
                           "border-primary mr-2 flex h-4 w-4 items-center justify-center rounded-sm border",
                           isSelected
                             ? "bg-primary text-primary-foreground"
-                            : "opacity-50 [&_svg]:invisible"
+                            : "opacity-50 [&_svg]:invisible",
                         )}
                       >
                         <CheckIcon className="h-4 w-4" />
@@ -317,7 +314,7 @@ export const MultiSelect = forwardRef<HTMLDivElement, MultiSelectProps>(
         </PopoverContent>
       </Popover>
     );
-  }
+  },
 );
 
 MultiSelect.displayName = "MultiSelect";

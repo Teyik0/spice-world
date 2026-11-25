@@ -18,7 +18,7 @@ COPY ./apps/web/tsconfig.json ./apps/web/tsconfig.json
 RUN bun install --frozen-lockfile --ignore-scripts
 
 COPY ./apps/server/src ./apps/server/src
-COPY ./apps/server/prisma ./apps/server/prisma
+COPY ./apps/server/drizzle ./apps/server/drizzle
 COPY ./packages/emails/src ./packages/emails/src
 
 WORKDIR /ws/apps/server

@@ -1,4 +1,5 @@
 import { afterAll, afterEach, expect, test } from "bun:test";
+
 import { Window } from "happy-dom";
 import { act } from "react";
 import type { Root } from "react-dom/client";
@@ -75,12 +76,12 @@ test("dialog render composition opens and closes without nested buttons", async 
         <DialogTitle>Confirm</DialogTitle>
         <DialogClose render={<Button>Cancel</Button>} />
       </DialogContent>
-    </Dialog>
+    </Dialog>,
   );
   expect(document.querySelector("button button")).toBeNull();
   await click('[data-slot="dialog-trigger"]');
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain(
-    "Confirm"
+    "Confirm",
   );
   await click('[data-slot="dialog-close"]');
   expect(document.querySelector('[role="dialog"]')).toBeNull();
@@ -92,10 +93,14 @@ test("indeterminate checkbox reports a boolean when clicked", async () => {
     checked = value;
   }
   await render(
-    <Checkbox checked={false} indeterminate onCheckedChange={onCheckedChange} />
+    <Checkbox
+      checked={false}
+      indeterminate
+      onCheckedChange={onCheckedChange}
+    />,
   );
   expect(
-    document.querySelector('[role="checkbox"]')?.getAttribute("aria-checked")
+    document.querySelector('[role="checkbox"]')?.getAttribute("aria-checked"),
   ).toBe("mixed");
   await click('[role="checkbox"]');
   expect(checked).toBe(true);
@@ -124,10 +129,10 @@ test("select displays the initial label before its popup is mounted and changes 
           <SelectItem value="u">User</SelectItem>
         </SelectGroup>
       </SelectContent>
-    </Select>
+    </Select>,
   );
   expect(
-    document.querySelector('[data-slot="select-value"]')?.textContent
+    document.querySelector('[data-slot="select-value"]')?.textContent,
   ).toBe("Admin");
   await click('[data-slot="select-trigger"]');
   await click('[role="option"]:last-child');
@@ -149,7 +154,7 @@ test("menu item can stay open for multiple category selections", async () => {
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
-    </DropdownMenu>
+    </DropdownMenu>,
   );
   await click('[data-slot="dropdown-menu-trigger"]');
   await click('[role="menuitem"]');
@@ -209,21 +214,21 @@ test("file upload validates size, type and duplicates and can be cleared", async
   const wrongType = new File(["x"], "text.txt", { type: "text/plain" });
 
   await render(
-    <UploadHarness oversized={oversized} valid={valid} wrongType={wrongType} />
+    <UploadHarness oversized={oversized} valid={valid} wrongType={wrongType} />,
   );
   await click('[data-file="large"]');
   expect(document.querySelector("[data-errors]")?.textContent).toContain(
-    "maximum size"
+    "maximum size",
   );
   await click('[data-file="type"]');
   expect(document.querySelector("[data-errors]")?.textContent).toContain(
-    "not an accepted file type"
+    "not an accepted file type",
   );
   await click('[data-file="valid"]');
   expect(document.querySelector("[data-files]")?.textContent).toBe("valid.png");
   await click('[data-file="valid"]');
   expect(document.querySelector("[data-errors]")?.textContent).toContain(
-    "already added"
+    "already added",
   );
   await click('[data-file="clear"]');
   expect(document.querySelector("[data-files]")?.textContent).toBe("");

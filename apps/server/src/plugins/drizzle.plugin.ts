@@ -6,11 +6,13 @@ import type { ConstraintFailure } from "../lib/db";
 import { attributeConstraintFailures } from "../modules/attributes/errors";
 import { categoryConstraintFailures } from "../modules/categories/errors";
 import { collectionConstraintFailures } from "../modules/collections/errors";
+import { productConstraintFailures } from "../modules/products/errors";
 
 const constraintFailures = new Map<string, ConstraintFailure>([
   ...attributeConstraintFailures,
   ...categoryConstraintFailures,
   ...collectionConstraintFailures,
+  ...productConstraintFailures,
 ]);
 
 function getPostgresError(error: unknown) {

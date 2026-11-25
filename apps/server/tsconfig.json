@@ -3,12 +3,11 @@
   "include": [
     "src/**/*",
     "tests/**/*",
-    "prisma.config.ts",
     "drizzle.config.ts",
     "drizzle/**/*",
     "sst-env.d.ts"
   ],
-  "exclude": ["node_modules", "dist", "src/prisma"],
+  "exclude": ["node_modules", "dist"],
   "compilerOptions": {
     "jsx": "react-jsx",
     "strictNullChecks": true
