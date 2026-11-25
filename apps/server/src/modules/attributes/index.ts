@@ -1,5 +1,7 @@
+import { betterAuthPlugin } from "@spice-world/server/plugins/auth.plugin";
 import { drizzleErrorPlugin } from "@spice-world/server/plugins/drizzle.plugin";
 import { Elysia, t } from "elysia";
+
 import { uuidGuard } from "../shared";
 import * as AttributeModel from "./model";
 import { attributeService, attributeValueService } from "./service";
@@ -11,9 +13,11 @@ export const attributeRouter = new Elysia({
   tags: ["Attributes"],
 })
   .use(drizzleErrorPlugin)
+  .use(betterAuthPlugin)
   .get(
     "/",
     {
+      access: "optional",
       query: AttributeModel.getQuery,
       response: {
         200: t.Array(AttributeModel.attributeResult),
@@ -24,16 +28,22 @@ export const attributeRouter = new Elysia({
   .post(
     "/",
     {
+      access: "admin",
       body: AttributeModel.postBody,
       response: { 201: AttributeModel.attributeResult },
     },
     async ({ body }) => await attributeService.post(body),
   )
-  .get("/count", async () => await attributeService.count())
+  .get(
+    "/count",
+    { access: "optional" },
+    async () => await attributeService.count(),
+  )
   .guard({ schema: "merge", params: uuidGuard })
   .get(
     "/:id",
     {
+      access: "optional",
       response: {
         200: AttributeModel.attributeResult,
         404: AttributeModel.attributeNotFound,
@@ -44,6 +54,7 @@ export const attributeRouter = new Elysia({
   .patch(
     "/:id",
     {
+      access: "admin",
       body: AttributeModel.patchBody,
       response: {
         200: AttributeModel.attributeResult,
@@ -53,10 +64,15 @@ export const attributeRouter = new Elysia({
     async ({ params, body }) =>
       await attributeService.patch({ ...params, ...body }),
   )
-  .delete("/:id", async ({ params }) => await attributeService.delete(params))
+  .delete(
+    "/:id",
+    { access: "admin" },
+    async ({ params }) => await attributeService.delete(params),
+  )
   .post(
     "/:id/values",
     {
+      access: "admin",
       body: AttributeValueModel.postBody,
       response: { 201: AttributeValueModel.attributeValueResult },
     },
@@ -69,6 +85,7 @@ export const attributeRouter = new Elysia({
       .patch(
         "/:id",
         {
+          access: "admin",
           body: AttributeValueModel.patchBody,
           response: {
             200: AttributeValueModel.attributeValueResult,
@@ -80,6 +97,7 @@ export const attributeRouter = new Elysia({
       )
       .delete(
         "/:id",
+        { access: "admin" },
         async ({ params: { id } }) =>
           await attributeValueService.delete({ id }),
       ),

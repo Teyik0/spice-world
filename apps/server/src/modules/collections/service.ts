@@ -1,12 +1,13 @@
 import { db } from "@spice-world/server/lib/db";
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { problem, status } from "elysia";
+
 import {
   collectionProductTable,
   collectionTable,
 } from "../../../drizzle/schema";
 import { invalidateProductListings } from "../products/service";
-import type { uuidGuard } from "../shared";
+import type { ExpectedVersion, uuidGuard } from "../shared";
 import type * as CollectionModel from "./model";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -78,29 +79,35 @@ export const collectionService = {
   async patch({
     id,
     productIds,
+    expectedVersion,
     ...data
-  }: uuidGuard & CollectionModel.patchBody) {
-    const collection = await db.transaction(async (tx) => {
-      // `id` keeps the SET non-empty; the UPDATE also locks the row so
-      // concurrent patches of the same collection run one after the other.
+  }: uuidGuard & CollectionModel.patchBody & ExpectedVersion) {
+    const result = await db.transaction(async (tx) => {
       const [row] = await tx
         .update(collectionTable)
-        .set({ ...data, id })
-        .where(eq(collectionTable.id, id))
+        .set({ ...data, version: sql`${collectionTable.version} + 1` })
+        .where(
+          and(
+            eq(collectionTable.id, id),
+            eq(collectionTable.version, expectedVersion),
+          ),
+        )
         .returning({ id: collectionTable.id });
       if (!row) {
-        return;
+        return (await find(id, tx))
+          ? problem("Conflict", {
+              code: "VERSION_CONFLICT",
+              message: "Collection modified. Reload and retry.",
+            })
+          : this.collectionNotFound;
       }
       if (productIds) {
         await setProducts(tx, id, productIds);
       }
-      return find(id, tx);
+      return (await find(id, tx)) as CollectionModel.collectionResult;
     });
-    if (!collection) {
-      return this.collectionNotFound;
-    }
     invalidateProductListings();
-    return collection;
+    return result;
   },
 
   async delete({ id }: uuidGuard) {

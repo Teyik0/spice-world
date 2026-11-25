@@ -1,10 +1,12 @@
 import { expect, spyOn } from "bun:test";
 import { basename } from "node:path";
+
 import type { treaty } from "@elysia/eden";
 import type { productsRouter } from "@spice-world/server/modules/products";
 import type * as ProductModel from "@spice-world/server/modules/products/model";
 import type { UnwrapSchema } from "elysia";
-import type { UploadedFileData } from "uploadthing/types";
+import type { UploadedFileData, UploadFileResult } from "uploadthing/types";
+
 import {
   attributeTable,
   attributeValueTable,
@@ -18,6 +20,22 @@ export function expectDefined<T>(value: T): asserts value is NonNullable<T> {
   expect(value).not.toBeUndefined();
   expect(value).not.toBeNull();
 }
+
+/** Retries an assertion until it passes, for work running after the response. */
+export const waitFor = async (
+  assertion: () => Promise<void>,
+  retries = 50,
+): Promise<void> => {
+  try {
+    await assertion();
+  } catch (error) {
+    if (retries === 0) {
+      throw error;
+    }
+    await Bun.sleep(20);
+    await waitFor(assertion, retries - 1);
+  }
+};
 
 const createUploadedFileData = (uploadedFile: File): UploadedFileData => ({
   key: `mock-key-${Date.now()}-${crypto.randomUUID()}`,
@@ -35,19 +53,44 @@ export const mockUtapi = async () => {
   const imagesModule = await import("@spice-world/server/lib/images");
   const uploadedFiles: UploadedFileData[] = [];
 
-  spyOn(imagesModule.utapi, "uploadFiles").mockImplementation(((
-    files: File | File[],
-  ) => {
-    const createResult = (uploadedFile: File) => {
-      const data = createUploadedFileData(uploadedFile);
-      uploadedFiles.push(data);
-      return { data, error: null };
-    };
+  const createResult = (uploadedFile: File): UploadFileResult => {
+    const data = createUploadedFileData(uploadedFile);
+    uploadedFiles.push(data);
+    return { data, error: null };
+  };
 
-    return Promise.resolve(
+  const uploadFiles = spyOn(
+    imagesModule.utapi,
+    "uploadFiles",
+  ).mockImplementation(((files: File | File[]) =>
+    Promise.resolve(
       Array.isArray(files) ? files.map(createResult) : createResult(files),
-    );
-  }) as typeof imagesModule.utapi.uploadFiles);
+    )) as typeof imagesModule.utapi.uploadFiles);
+
+  /** Like UTApi: the next batch resolves, with an error for one file. Returns its keys, filled on upload. */
+  const failNextUpload = (failedIndex: number) => {
+    const keys: string[] = [];
+    uploadFiles.mockImplementationOnce(((
+      files: (File & { customId: string })[],
+    ) => {
+      keys.push(...files.map(({ customId }) => customId));
+      return Promise.resolve(
+        files.map((uploadedFile, index): UploadFileResult =>
+          index === failedIndex
+            ? {
+                data: null,
+                error: {
+                  code: "UPLOAD_FAILED",
+                  message: "boom",
+                  data: undefined,
+                },
+              }
+            : createResult(uploadedFile),
+        ),
+      );
+    }) as unknown as typeof imagesModule.utapi.uploadFiles);
+    return keys;
+  };
 
   const deleteFiles = spyOn(
     imagesModule.utapi,
@@ -56,7 +99,86 @@ export const mockUtapi = async () => {
     success: true,
     deletedCount: 1,
   })) as typeof imagesModule.utapi.deleteFiles);
-  return { uploadedFiles, deleteFiles };
+
+  return { uploadedFiles, uploadFiles, deleteFiles, failNextUpload };
+};
+
+/** Creates a user with the given role and returns its session cookie. */
+export const createSessionCookie = async (
+  testDb: TestDatabase,
+  role: "user" | "admin" = "admin",
+) => {
+  await mockStripe(); // createUser would create a real Stripe customer
+  const { auth } = await import("@spice-world/server/plugins/auth.plugin");
+  const email = `${randomLowerString()}@example.com`;
+  const { user } = await auth.api.createUser({
+    body: { email, password: "password", name: role, role },
+  });
+  await testDb.client.user.update({
+    where: { id: user.id },
+    data: { emailVerified: true },
+  });
+  const { headers } = await auth.api.signInEmail({
+    body: { email, password: "password" },
+    returnHeaders: true,
+  });
+  return headers
+    .getSetCookie()
+    .map((cookie) => cookie.split(";")[0])
+    .join("; ");
+};
+
+/** Third party: replaces every Stripe call made by checkout and sign-up. */
+export const mockStripe = async () => {
+  const { stripeClient } = await import("@spice-world/server/lib/stripe");
+  const statuses = new Map<string, "open" | "complete" | "expired">();
+  const { sessions } = stripeClient.checkout;
+  const create = spyOn(sessions, "create").mockImplementation((() => {
+    const id = `cs_test_${crypto.randomUUID()}`;
+    statuses.set(id, "open");
+    return Promise.resolve({
+      id,
+      url: "https://checkout.example.com",
+      status: "open",
+    });
+  }) as never);
+  const retrieve = spyOn(sessions, "retrieve").mockImplementation(((
+    id: string,
+  ) => Promise.resolve({ id, status: statuses.get(id) })) as never);
+  const expire = spyOn(sessions, "expire").mockImplementation(((id: string) => {
+    statuses.set(id, "expired");
+    return Promise.resolve({ id, status: "expired" });
+  }) as never);
+  const search = spyOn(stripeClient.customers, "search").mockImplementation(
+    (() => Promise.resolve({ data: [] })) as never,
+  );
+  const createCustomer = spyOn(
+    stripeClient.customers,
+    "create",
+  ).mockImplementation((() =>
+    Promise.resolve({ id: `cus_${crypto.randomUUID()}` })) as never);
+  const retrieveCustomer = spyOn(
+    stripeClient.customers,
+    "retrieve",
+  ).mockImplementation(((id: string) =>
+    Promise.resolve({ id, deleted: true })) as never);
+  return {
+    create,
+    expire,
+    statuses,
+    restore: () => {
+      for (const spy of [
+        create,
+        retrieve,
+        expire,
+        search,
+        createCustomer,
+        retrieveCustomer,
+      ]) {
+        spy.mockRestore();
+      }
+    },
+  };
 };
 
 export function randomLowerString(length = 10): string {

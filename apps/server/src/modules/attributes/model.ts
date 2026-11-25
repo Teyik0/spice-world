@@ -1,4 +1,6 @@
-import { t, type UnwrapSchema } from "elysia";
+import type { UnwrapSchema } from "elysia";
+import { t } from "elysia";
+
 import { nameLowerPattern, nameLowerPatternWithNumber, uuid } from "../shared";
 
 export const getQuery = t.Object({
@@ -28,6 +30,8 @@ export const attributeResult = t.Object({
       id: uuid,
       name: nameLowerPattern,
       imageId: uuid,
+      createdAt: t.Date(),
+      updatedAt: t.Date(),
     },
     { additionalProperties: false },
   ),
@@ -37,11 +41,15 @@ export const attributeResult = t.Object({
         id: uuid,
         attributeId: uuid,
         value: nameLowerPatternWithNumber,
+        createdAt: t.Date(),
+        updatedAt: t.Date(),
       },
       { additionalProperties: false },
     ),
     { minItems: 1 },
   ),
+  createdAt: t.Date(),
+  updatedAt: t.Date(),
 });
 export type attributeResult = UnwrapSchema<typeof attributeResult>;
 export const attributeNotFound = t.Object({

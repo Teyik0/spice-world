@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
+
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@spice-world/server/prisma/client";
 import { drizzle } from "drizzle-orm/bun-sql";
 import { migrate } from "drizzle-orm/bun-sql/migrator";
+
 import { relations } from "../../drizzle/relations";
 
 export interface TestDatabase {
@@ -101,7 +103,10 @@ export async function createTestDatabase(
     throw error;
   }
 
-  const testAdapter = new PrismaPg({ connectionString: testConnectionString });
+  const testAdapter = new PrismaPg({
+    connectionString: testConnectionString,
+    options: "-c timezone=UTC",
+  });
   const testClient = new PrismaClient({ adapter: testAdapter });
   globalThis.__prisma = testClient;
 

@@ -1,4 +1,6 @@
-import { t, type UnwrapSchema } from "elysia";
+import type { UnwrapSchema } from "elysia";
+import { t } from "elysia";
+
 import { nameLowerPatternWithNumber, uuid } from "../shared";
 
 export const postBody = t.Object({
@@ -14,6 +16,8 @@ export const attributeValueResult = t.Object(
     id: uuid,
     attributeId: uuid,
     value: nameLowerPatternWithNumber,
+    createdAt: t.Date(),
+    updatedAt: t.Date(),
   },
   { additionalProperties: false },
 );

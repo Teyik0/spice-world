@@ -1,6 +1,7 @@
 import { db } from "@spice-world/server/lib/db";
 import { and, EmptyFilter, eq, sql } from "drizzle-orm";
 import { problem, status } from "elysia";
+
 import {
   attributeTable,
   attributeValueTable,
@@ -66,11 +67,15 @@ export const attributeService = {
           id: categoryTable.id,
           name: categoryTable.name,
           imageId: categoryTable.imageId,
+          createdAt: categoryTable.createdAt,
+          updatedAt: categoryTable.updatedAt,
         },
         values: sql<(typeof attributeValueTable.$inferSelect)[]>`(
           select coalesce(json_agg(row_to_json(${createdValues})), '[]'::json)
           from ${createdValues}
         )`,
+        createdAt: createdAttribute.createdAt,
+        updatedAt: createdAttribute.updatedAt,
       })
       .from(createdAttribute)
       .innerJoin(
@@ -103,6 +108,8 @@ export const attributeService = {
           id: categoryTable.id,
           name: categoryTable.name,
           imageId: categoryTable.imageId,
+          createdAt: categoryTable.createdAt,
+          updatedAt: categoryTable.updatedAt,
         },
         values: sql<(typeof attributeValueTable.$inferSelect)[]>`(
             select coalesce(
@@ -112,9 +119,22 @@ export const attributeService = {
             from ${attributeValueTable}
             where ${attributeValueTable.attributeId} = ${attributeTable.id}
           )`,
+        createdAt: attributeTable.createdAt,
+        updatedAt: attributeTable.updatedAt,
       });
 
-    return attribute ?? this.attributeNotFound;
+    if (!attribute) {
+      return this.attributeNotFound;
+    }
+
+    return {
+      ...attribute,
+      values: attribute.values.map((value) => ({
+        ...value,
+        createdAt: new Date(value.createdAt),
+        updatedAt: new Date(value.updatedAt),
+      })),
+    };
   },
 
   async delete({ id }: uuidGuard) {

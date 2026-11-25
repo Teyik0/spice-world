@@ -1,10 +1,12 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
+
 import { treaty } from "@elysia/eden";
-import type { collectionRouter } from "@spice-world/server/modules/collections";
-import type { productsRouter } from "@spice-world/server/modules/products";
+import { collectionRouter } from "@spice-world/server/modules/collections";
+import { productsRouter } from "@spice-world/server/modules/products";
 import { eq, inArray } from "drizzle-orm";
+
 import { collectionTable, productTable } from "../drizzle/schema";
-import { createTestDatabase } from "./utils/db-manager";
+import { testDb } from "./setup";
 import {
   createSessionCookie,
   createTestProducts,
@@ -13,32 +15,14 @@ import {
   randomLowerString,
 } from "./utils/helper";
 
+await mockUtapi();
+const headers = { cookie: await createSessionCookie(testDb) };
+const api = treaty(collectionRouter, { headers });
+const productsApi = treaty(productsRouter, { headers });
+
 describe.concurrent("Collection routes test", () => {
-  let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
-  let api: ReturnType<typeof treaty<typeof collectionRouter>>;
-  let productsApi: ReturnType<typeof treaty<typeof productsRouter>>;
   const missingId = "00000000-0000-4000-8000-000000000000";
   const handle = () => `test-${randomLowerString(10)}`;
-
-  beforeAll(async () => {
-    expect(Bun.env.NODE_ENV).not.toBe("production");
-    testDb = await createTestDatabase("collection.test.ts");
-    await mockUtapi();
-    const [{ collectionRouter: router }, { productsRouter: products }] =
-      await Promise.all([
-        import("@spice-world/server/modules/collections"),
-        import("@spice-world/server/modules/products"),
-      ]);
-    const headers = { cookie: await createSessionCookie(testDb) };
-    api = treaty(router, { headers });
-    productsApi = treaty(products, { headers });
-  });
-
-  afterAll(async () => {
-    const { db } = await import("@spice-world/server/lib/db");
-    await db.$client.close();
-    await testDb.destroy();
-  });
 
   describe("collection POST", () => {
     test("returns the ordered collection, the same object as getById", async () => {
@@ -132,9 +116,7 @@ describe.concurrent("Collection routes test", () => {
 
   describe("collection GET", () => {
     test("returns 404 for an unknown collection", async () => {
-      const { status, error } = await api
-        .collections({ id: missingId })
-        .get();
+      const { status, error } = await api.collections({ id: missingId }).get();
       expect(status).toBe(404);
       expect(error?.value).toMatchObject({ code: "COLLECTION_NOT_FOUND" });
     });
@@ -217,7 +199,10 @@ describe.concurrent("Collection routes test", () => {
       expectDefined(created.data);
       const { data } = await api
         .collections({ id: created.data.id })
-        .patch({ name: "After" }, { headers: { "x-version": created.data.version } });
+        .patch(
+          { name: "After" },
+          { headers: { "x-version": created.data.version } },
+        );
       expect(data).toMatchObject({ name: "After", productIds: [a.id] });
     });
 
@@ -234,13 +219,19 @@ describe.concurrent("Collection routes test", () => {
       const { version } = created.data;
 
       const results = await Promise.all([
-        collection.patch({ name: "A", productIds: [a.id] }, { headers: { "x-version": version } }),
-        collection.patch({ name: "B", productIds: [b.id] }, { headers: { "x-version": version } }),
+        collection.patch(
+          { name: "A", productIds: [a.id] },
+          { headers: { "x-version": version } },
+        ),
+        collection.patch(
+          { name: "B", productIds: [b.id] },
+          { headers: { "x-version": version } },
+        ),
       ]);
       expect(results.map(({ status }) => status).sort()).toEqual([200, 409]);
-      expect(
-        results.find(({ status }) => status === 409)?.error,
-      ).toMatchObject({ value: { code: "VERSION_CONFLICT" } });
+      expect(results.find(({ status }) => status === 409)?.error).toMatchObject(
+        { value: { code: "VERSION_CONFLICT" } },
+      );
       const winner = results.find(({ status }) => status === 200)?.data;
       expect(winner).toMatchObject({ version: 2 });
       expect((await collection.get()).data).toEqual(winner ?? null);
@@ -349,11 +340,13 @@ describe.concurrent("Collection routes test", () => {
         productIds: ids,
       });
       expectDefined(created.data);
-      const { status } = await api.collections({ id: created.data.id }).delete();
+      const { status } = await api
+        .collections({ id: created.data.id })
+        .delete();
       expect(status).toBe(200);
-      expect((await api.collections({ id: created.data.id }).get()).status).toBe(
-        404,
-      );
+      expect(
+        (await api.collections({ id: created.data.id }).get()).status,
+      ).toBe(404);
       const rows = await testDb.db
         .select({ id: productTable.id })
         .from(productTable)
@@ -417,8 +410,13 @@ describe.concurrent("Collection routes test", () => {
       expect(before.data?.map(({ id }) => id)).toEqual([a.id, b.id]);
       await api
         .collections({ id: created.data.id })
-        .patch({ productIds: [b.id] }, { headers: { "x-version": created.data.version } });
-      const after = await productsApi.products.get({ query: { collection: h } });
+        .patch(
+          { productIds: [b.id] },
+          { headers: { "x-version": created.data.version } },
+        );
+      const after = await productsApi.products.get({
+        query: { collection: h },
+      });
       expect(after.data?.map(({ id }) => id)).toEqual([b.id]);
     });
   });

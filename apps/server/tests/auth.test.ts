@@ -1,23 +1,24 @@
 import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
+
 import { treaty } from "@elysia/eden";
+import { ordersRouter } from "@spice-world/server/modules/orders";
 import {
   auth,
   betterAuthPlugin,
 } from "@spice-world/server/plugins/auth.plugin";
 import Elysia from "elysia";
-import { createTestDatabase } from "./utils/db-manager";
+
+import { testDb } from "./setup";
 import { expectDefined, mockStripe, randomLowerString } from "./utils/helper";
 
 describe.concurrent("BetterAuth Plugin Tests", () => {
   let adminUser: Awaited<ReturnType<typeof auth.api.createUser>>;
   let normalUser: Awaited<ReturnType<typeof auth.api.createUser>>;
-  let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
   let stripe: Awaited<ReturnType<typeof mockStripe>>;
 
   beforeAll(async () => {
     expect(Bun.env.NODE_ENV).not.toBe("production");
     expect(Bun.env.DATABASE_URL).toBeTruthy();
-    testDb = await createTestDatabase("auth.test.ts");
     stripe = await mockStripe();
 
     [normalUser, adminUser] = await Promise.all([
@@ -58,9 +59,8 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
     ]);
   });
 
-  afterAll(async () => {
+  afterAll(() => {
     stripe.restore();
-    await testDb.destroy();
   });
 
   describe("Initialization", () => {
@@ -255,9 +255,7 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
     });
   });
 
-  describe("Admin Routes Access Control", async () => {
-    const { ordersRouter } = await import("@spice-world/server/modules/orders");
-
+  describe("Admin Routes Access Control", () => {
     let ordersApi: ReturnType<typeof treaty<typeof ordersRouter>>;
     let normalUserCookie: string;
     let adminUserCookie: string;

@@ -1,5 +1,7 @@
-import { status, t, type UnwrapSchema } from "elysia";
-import type { UploadFileResult } from "uploadthing/types";
+import type { UnwrapSchema } from "elysia";
+import { problem, t } from "elysia";
+
+import type { UploadError } from "../lib/images";
 
 type HttpStatus =
   | "Bad Request"
@@ -104,31 +106,55 @@ export type uuid = UnwrapSchema<typeof uuid>;
 
 export const uuidGuard = t.Object({ id: uuid });
 export type uuidGuard = UnwrapSchema<typeof uuidGuard>;
+
+/** The `version` the client last read, to reject stale writes. */
+export const versionHeaders = t.Object({
+  "x-version": t.Integer({ minimum: 1, maximum: 2_147_483_647 }),
+});
+export interface ExpectedVersion {
+  expectedVersion: number;
+}
+
 export const imageKey = t.String({ minLength: 1 });
 export const imageUrl = t.String({
   format: "url",
   pattern: "^https://",
 });
 
-export const uploadFileErrStatus = (
-  fileError: UploadFileResult["error"] | { message: string } | string | null,
-) => {
-  const message =
-    typeof fileError === "string"
-      ? fileError
-      : (fileError?.message ?? "Unknown error while uploading file(s)");
-  throw status("Bad Gateway", message);
-};
-
-export const imageResult = t.Object({
-  id: uuid,
-  altText: t.Nullable(t.String()),
-  isThumbnail: t.Boolean(),
-  keyThumb: imageKey,
-  keyMedium: imageKey,
-  keyLarge: imageKey,
-  urlThumb: imageUrl,
-  urlMedium: imageUrl,
-  urlLarge: imageUrl,
+export const invalidImage = t.Object({
+  code: t.Literal("INVALID_IMAGE"),
+  message: t.String(),
 });
+export const uploadFailed = t.Object({
+  code: t.Literal("UPLOAD_FAILED"),
+  message: t.String(),
+});
+
+export const uploadFileErrStatus = (error: UploadError | null) =>
+  error === "INVALID_IMAGE"
+    ? problem("Unprocessable Content", {
+        code: "INVALID_IMAGE",
+        message: "Image cannot be decoded",
+      })
+    : problem("Bad Gateway", {
+        code: "UPLOAD_FAILED",
+        message: "Image upload failed",
+      });
+
+export const imageResult = t.Object(
+  {
+    id: uuid,
+    altText: t.Nullable(t.String()),
+    isThumbnail: t.Boolean(),
+    keyThumb: imageKey,
+    keyMedium: imageKey,
+    keyLarge: imageKey,
+    urlThumb: imageUrl,
+    urlMedium: imageUrl,
+    urlLarge: imageUrl,
+    createdAt: t.Date(),
+    updatedAt: t.Date(),
+  },
+  { additionalProperties: false },
+);
 export type ImageResult = UnwrapSchema<typeof imageResult>;

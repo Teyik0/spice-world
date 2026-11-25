@@ -1,25 +1,28 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
+
 import { treaty } from "@elysia/eden";
-import type { db as database } from "@spice-world/server/lib/db";
-import type { attributeRouter } from "@spice-world/server/modules/attributes";
+import { db } from "@spice-world/server/lib/db";
+import { attributeRouter } from "@spice-world/server/modules/attributes";
+import { categoryRouter } from "@spice-world/server/modules/categories";
 import { eq } from "drizzle-orm";
+
 import type { categoryTable } from "../drizzle/schema";
 import { attributeTable, attributeValueTable } from "../drizzle/schema";
-import { createTestDatabase } from "./utils/db-manager";
+import { testDb } from "./setup";
 import {
   createSessionCookie,
   createTestCategory,
   expectDefined,
 } from "./utils/helper";
 
+const api = treaty(attributeRouter, {
+  headers: { cookie: await createSessionCookie(testDb) },
+});
+
 describe.concurrent("Attribute routes test", () => {
   let testCategory: typeof categoryTable.$inferSelect;
   let testAttributes: Awaited<ReturnType<typeof createAttribute>>[] = [];
   let testAttributeValues: (typeof attributeValueTable.$inferSelect)[] = [];
-  let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
-  let api: ReturnType<typeof treaty<typeof attributeRouter>>;
-
-  let db: typeof database;
 
   const createAttribute = (name: string, values: string[]) =>
     db.transaction(async (tx) => {
@@ -45,14 +48,6 @@ describe.concurrent("Attribute routes test", () => {
 
   // Setup - create test data
   beforeAll(async () => {
-    testDb = await createTestDatabase("attribute.test.ts");
-    ({ db } = await import("@spice-world/server/lib/db"));
-    const { attributeRouter: router } =
-      await import("@spice-world/server/modules/attributes");
-    api = treaty(router, {
-      headers: { cookie: await createSessionCookie(testDb) },
-    });
-
     testCategory = await createTestCategory({ testDb, name: "spice" });
     const attribute1 = await createAttribute("heat level", [
       "mild",
@@ -67,11 +62,6 @@ describe.concurrent("Attribute routes test", () => {
 
     testAttributes = [attribute1, attribute2];
     testAttributeValues = attribute1.values.concat(attribute2.values);
-  });
-
-  afterAll(async () => {
-    await db.$client.close();
-    await testDb.destroy();
   });
 
   describe("GET /attributes", () => {
@@ -521,8 +511,6 @@ describe.concurrent("Attribute routes test", () => {
       expectDefined(first);
       expectDefined(second);
 
-      const { categoryRouter } =
-        await import("@spice-world/server/modules/categories");
       const categoriesApi = treaty(categoryRouter, {
         headers: { cookie: await createSessionCookie(testDb) },
       });

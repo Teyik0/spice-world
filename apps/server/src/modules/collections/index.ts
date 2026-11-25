@@ -1,6 +1,8 @@
+import { betterAuthPlugin } from "@spice-world/server/plugins/auth.plugin";
 import { drizzleErrorPlugin } from "@spice-world/server/plugins/drizzle.plugin";
 import { Elysia, t } from "elysia";
-import { uuidGuard } from "../shared";
+
+import { uuidGuard, versionHeaders } from "../shared";
 import * as CollectionModel from "./model";
 import { collectionService } from "./service";
 
@@ -10,14 +12,19 @@ export const collectionRouter = new Elysia({
   tags: ["Collections"],
 })
   .use(drizzleErrorPlugin)
+  .use(betterAuthPlugin)
   .get(
     "/",
-    { response: { 200: t.Array(CollectionModel.collectionResult) } },
+    {
+      access: "optional",
+      response: { 200: t.Array(CollectionModel.collectionResult) },
+    },
     async () => await collectionService.get(),
   )
   .post(
     "/",
     {
+      access: "admin",
       body: CollectionModel.postBody,
       response: { 201: CollectionModel.collectionResult },
     },
@@ -27,6 +34,7 @@ export const collectionRouter = new Elysia({
   .get(
     "/:id",
     {
+      access: "optional",
       response: {
         200: CollectionModel.collectionResult,
         404: CollectionModel.collectionNotFound,
@@ -37,17 +45,27 @@ export const collectionRouter = new Elysia({
   .patch(
     "/:id",
     {
+      access: "admin",
       body: CollectionModel.patchBody,
+      headers: versionHeaders,
       response: {
         200: CollectionModel.collectionResult,
         404: CollectionModel.collectionNotFound,
+        409: CollectionModel.collectionConflict,
       },
     },
-    async ({ body, params }) =>
-      await collectionService.patch({ ...params, ...body }),
+    async ({ body, headers, params }) =>
+      await collectionService.patch({
+        ...params,
+        ...body,
+        expectedVersion: headers["x-version"],
+      }),
   )
   .delete(
     "/:id",
-    { response: { 404: CollectionModel.collectionNotFound } },
+    {
+      access: "admin",
+      response: { 404: CollectionModel.collectionNotFound },
+    },
     async ({ params }) => await collectionService.delete(params),
   );
