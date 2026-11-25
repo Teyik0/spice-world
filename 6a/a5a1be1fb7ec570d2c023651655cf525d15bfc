@@ -1,0 +1,19 @@
+.zed/settings.json
+  s_3146f7e9eeaeab::t_5ca8d8bb183a82 110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6aa5a1be1fb7ec570d2c023651655cf525d15bfc",
+  "prompts": {},
+  "sessions": {
+    "s_3146f7e9eeaeab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45fa0f51-259d-45ba-aca9-bf67fbf03330",
+        "model": "unknown"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
