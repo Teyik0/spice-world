@@ -1,0 +1,45 @@
+apps/server/src/lib/images.ts
+  s_9b332432da0824::t_9f7fde260b4484 2,78-83,136,148-149,217,243-248,251
+  s_9b332432da0824::t_c9b799d452e77b 8,12,20,142
+apps/server/drizzle/20261125085720_timestamptz/snapshot.json
+  s_e3670d2ea37ad1::t_c6dba3d4ea6b59 1-949
+apps/server/drizzle/20261125085720_timestamptz/migration.sql
+  s_e3670d2ea37ad1::t_d1bab60ddfba55 1-36
+apps/server/drizzle/schema.ts
+  s_e3670d2ea37ad1::t_d7f8c7c0ce6545 97-98,102-106,126,129,131,156,159,161,186,189,191,220-223,225,259-265,311-314,316,368-374,416-419,421,461-464,466,500,503,506-509,537,540-543,546,564-565,583,604,607,609,625,628
+  s_e3670d2ea37ad1::t_b3ed8b117f1282 566-568
+  s_e3670d2ea37ad1::t_2da7f0f110a01b 2,630
+apps/server/src/lib/prisma.ts
+  s_e3670d2ea37ad1::t_d7f8c7c0ce6545 14-15
+apps/server/src/plugins/auth.plugin.tsx
+  s_e3670d2ea37ad1::t_d30d92ddd1fe50 20
+  s_e3670d2ea37ad1::t_a6cf2ccbcf48e0 10,119-141,160-164,166-168,170-172,174-180
+  s_e3670d2ea37ad1::t_e6b9dccedb00bf 11
+apps/server/src/lib/env.ts
+  s_e3670d2ea37ad1::t_a6cf2ccbcf48e0 2
+  s_e3670d2ea37ad1::t_c6f4e982d57634 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7d159707d3793f240048eb4718d311d64e4ee24a",
+  "prompts": {},
+  "sessions": {
+    "s_9b332432da0824": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5b21e50-8d91-4fae-9ae5-058bec04f67c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_e3670d2ea37ad1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b67b932b-3bd3-47fb-88e1-05d9f267fe73",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
