@@ -1,0 +1,61 @@
+AGENTS.md
+  s_824a6a29ca2a1c::t_9414df716792c5 8
+  s_8057e77a8ee969::t_56b4e43a29d9ce 88
+  s_781aeb17736a4b::t_1b5d5c0c6a3961 87
+sst.config.ts
+  s_824a6a29ca2a1c::t_8b4a5087f5600c 78,84,90
+  s_824a6a29ca2a1c::t_640397eb18b7e9 24
+  s_824a6a29ca2a1c::t_97609083ad013b 14,111
+  s_824a6a29ca2a1c::t_bde3d250fc8281 60,71-77,79-83,85-89,91-93
+  s_824a6a29ca2a1c::t_ad5f4f2b1a78e8 45-57,59
+  s_824a6a29ca2a1c::t_6a2f5543405eae 12
+  s_824a6a29ca2a1c::t_08aeb36a9bf99e 58
+.github/workflows/ci.yaml
+  s_5d528c9859b1bf::t_cce592f82aa8e8 75
+bun.lock
+  s_824a6a29ca2a1c::t_940370cde09c51 26
+packages/emails/sst-env.d.ts
+  s_824a6a29ca2a1c::t_75ce7698ee99fb 5
+sst-env.d.ts
+  s_824a6a29ca2a1c::t_31fe5d6f5860f5 5,9-12,17-20,38-57,62-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b01dbbfa85801df413470fc1ab296f4d2fd02b6",
+  "prompts": {},
+  "sessions": {
+    "s_5d528c9859b1bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc0af7f0-04b1-47ce-90a8-2b2c927abe85",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_781aeb17736a4b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d8eed11-98d9-4f8c-b3e5-a08c5eb3f5f7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_8057e77a8ee969": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2c83e8d-05c5-48de-b814-278df0e6dde9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_824a6a29ca2a1c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16fe63b0-8ea4-468c-85f4-f2a4366b13af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
