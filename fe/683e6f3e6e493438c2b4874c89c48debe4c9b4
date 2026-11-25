@@ -1,0 +1,21 @@
+apps/server/src/modules/attributes/model.ts
+  s_ab49f0935feb76::t_0fae108a13fbc9 6-11,14-23,26-31,34-38,41-42,48-65
+apps/server/src/modules/attributes/value-model.ts
+  s_ab49f0935feb76::t_0fae108a13fbc9 6-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fe683e6f3e6e493438c2b4874c89c48debe4c9b4",
+  "prompts": {},
+  "sessions": {
+    "s_ab49f0935feb76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7cfdb31-ea40-413d-bb5f-4a4bdfa74f71",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
