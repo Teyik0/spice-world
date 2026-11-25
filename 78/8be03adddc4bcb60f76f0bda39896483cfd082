@@ -1,0 +1,21 @@
+apps/server/src/modules/categories/model.ts
+  s_ab49f0935feb76::t_0fae108a13fbc9 11-18,23-32,41-48,52-71,85-99,101-104,122-129
+  s_ab49f0935feb76::t_94d8b53110586c 3
+  s_ab49f0935feb76::t_7be95e01a948a6 1-2,147-148,153-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "788be03adddc4bcb60f76f0bda39896483cfd082",
+  "prompts": {},
+  "sessions": {
+    "s_ab49f0935feb76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7cfdb31-ea40-413d-bb5f-4a4bdfa74f71",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
