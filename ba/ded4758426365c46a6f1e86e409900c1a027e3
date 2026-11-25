@@ -1,0 +1,33 @@
+apps/server/src/plugins/openapi.plugin.ts
+  s_ab49f0935feb76::t_94d8b53110586c 2
+  s_ab49f0935feb76::t_9d538adda13f94 40,42-47,49
+  s_884ca8d1aa512d::t_992ceae54584c0 7
+  s_ab49f0935feb76::t_c799ff46b28461 6
+apps/server/src/plugins/auth.plugin.tsx
+  s_ab49f0935feb76::t_94d8b53110586c 15
+  s_884ca8d1aa512d::t_380037795d828e 166-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "baded4758426365c46a6f1e86e409900c1a027e3",
+  "prompts": {},
+  "sessions": {
+    "s_884ca8d1aa512d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6fc85604-2a28-491a-802d-611ee8938e1f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_ab49f0935feb76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7cfdb31-ea40-413d-bb5f-4a4bdfa74f71",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
