@@ -31,7 +31,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
       - run: bun install --frozen-lockfile
       # Neon branch first, so migrations run before the Vercel deployment builds against it.
-      - run: bunx sst deploy --stage $STAGE --target spice-world-db-pr-endpoint
+      - run: PR_DB_ONLY=1 bunx sst deploy --stage $STAGE
       - name: Migrate PR database
         working-directory: apps/server
         run: bunx sst shell --stage $STAGE -- sh -c 'DATABASE_URL=$(echo "$SST_RESOURCE_PrDatabase" | jq -r .url) bun run db:migrate'

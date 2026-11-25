@@ -38,6 +38,10 @@ export default $config({
         return url.toString();
       });
       new sst.Linkable("PrDatabase", { properties: { url: databaseUrl } });
+      // CI first pass: DB only, so migrations run before the build. Dropping the deployment here also forces a fresh one per push.
+      if (process.env.PR_DB_ONLY) {
+        return {};
+      }
       const deployment = new vercel.Deployment("spice-world-server-pr", {
         projectId: process.env.VERCEL_SERVER_PROJECT_ID as string,
         ref: process.env.PR_BRANCH as string,
