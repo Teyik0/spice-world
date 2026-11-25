@@ -8,6 +8,7 @@ import {
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
 } from "lucide-react";
+
 import { useSidebarExpanded } from "../../sidebar-provider";
 import { productPagesAtom } from "../store";
 import { BulkActionsBar } from "./bulk-menu";

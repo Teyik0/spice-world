@@ -1,5 +1,6 @@
 import "@spice-world/server/lib/evlog";
 import { AsyncLocalStorage } from "node:async_hooks";
+
 import { getCurrentSpan } from "@elysia/opentelemetry";
 import { env } from "@spice-world/server/lib/env";
 import { DrizzleQueryError } from "drizzle-orm";

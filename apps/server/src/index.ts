@@ -11,6 +11,7 @@ import { ordersRouter } from "@spice-world/server/modules/orders";
 import { productsRouter } from "@spice-world/server/modules/products";
 import { Elysia, setFileTypeDetector } from "elysia";
 import { fileTypeFromBlob } from "file-type";
+
 import { auth } from "./plugins/auth.plugin.tsx";
 import { loggerPlugin } from "./plugins/logger.plugin";
 import { openApiConfig, openApiLogin } from "./plugins/openapi.plugin.ts";

@@ -1,5 +1,6 @@
 import type { SearchParams } from "nuqs/server";
 import { createLoader, parseAsString } from "nuqs/server";
+
 import { ResetPasswordForm } from "./reset-password-form";
 
 const resetPasswordSearchParams = {

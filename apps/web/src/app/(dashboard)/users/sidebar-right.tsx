@@ -5,6 +5,7 @@ import { Input } from "@spice-world/web/components/ui/input";
 import { Skeleton } from "@spice-world/web/components/ui/skeleton";
 import { SearchIcon } from "lucide-react";
 import { Suspense } from "react";
+
 import type { UserItemProps } from "./store";
 import { AddUserButton, NewUserItem, UserItem } from "./user-item";
 

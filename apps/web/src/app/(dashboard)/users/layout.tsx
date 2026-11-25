@@ -13,6 +13,7 @@ import {
 } from "@spice-world/web/components/ui/sidebar";
 import { authClient } from "@spice-world/web/lib/utils";
 import { headers } from "next/headers";
+
 import { SidebarRight } from "./sidebar-right";
 
 export default async function LayoutUsers({

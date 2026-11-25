@@ -5,8 +5,9 @@ import { Checkbox } from "@spice-world/web/components/ui/checkbox";
 import { Input } from "@spice-world/web/components/ui/input";
 import { Label } from "@spice-world/web/components/ui/label";
 import { Loader2 } from "lucide-react";
-import Link from "next/link";
 import { useAction } from "next-safe-action/hooks";
+import Link from "next/link";
+
 import { signInAction } from "./actions";
 
 interface EmailSignInProps {

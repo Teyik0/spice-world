@@ -3,6 +3,7 @@ import { verifySession } from "@spice-world/web/lib/dal";
 import { Provider } from "jotai";
 import { redirect } from "next/navigation";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+
 import { AppSidebar } from "../sidebar-left";
 import { getSidebarExpanded } from "./cookies";
 import { SidebarRightProvider } from "./sidebar-provider";

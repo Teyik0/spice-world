@@ -2,6 +2,7 @@ import { env } from "@spice-world/server/lib/env";
 import { and, DrizzleQueryError, gt, inArray, sql } from "drizzle-orm";
 import { UTApi, UTFile } from "uploadthing/server";
 import type { UploadedFileData } from "uploadthing/types";
+
 import { imageDeletionTable } from "../../drizzle/schema";
 import { db } from "./db";
 

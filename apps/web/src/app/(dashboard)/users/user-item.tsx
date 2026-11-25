@@ -16,6 +16,7 @@ import {
 import { useAtom, useAtomValue } from "jotai";
 import { MinusIcon, PlusIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+
 import { currentUserAtom, newUserAtom, type UserItemProps } from "./store";
 
 function getInitials(name: string | null, email: string | null): string {

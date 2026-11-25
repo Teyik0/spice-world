@@ -11,8 +11,9 @@ import {
 import { Input } from "@spice-world/web/components/ui/input";
 import { Label } from "@spice-world/web/components/ui/label";
 import { Loader2 } from "lucide-react";
-import Link from "next/link";
 import { useAction } from "next-safe-action/hooks";
+import Link from "next/link";
+
 import { forgotPasswordAction } from "./actions";
 
 export default function ForgotPasswordPage() {

@@ -1,4 +1,5 @@
 import { drizzle } from "drizzle-orm/bun-sql";
+
 import { relations } from "../../drizzle/relations";
 import { env } from "./env";
 

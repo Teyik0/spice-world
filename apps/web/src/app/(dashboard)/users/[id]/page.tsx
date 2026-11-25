@@ -1,6 +1,7 @@
 import { authClient } from "@spice-world/web/lib/utils";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+
 import { UserForm } from "./form";
 
 export default async function UserDetailPage(props: {

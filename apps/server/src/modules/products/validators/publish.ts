@@ -1,4 +1,5 @@
 import type { ProductStatus } from "@spice-world/server/prisma/client";
+
 import type { ValidationResult } from "../../shared";
 import type * as ProductModel from "../model";
 

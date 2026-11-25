@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+
 import { SignUpFormSkeleton } from "../skeletons";
 import { SignUp } from "./signup";
 
