@@ -1,4 +1,4 @@
-import { render } from "@react-email/components";
+import { render } from "react-email";
 
 import ChangeEmailVerification from "./change-email-verification";
 import PasswordReset from "./password-reset";

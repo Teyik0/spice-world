@@ -16,14 +16,8 @@ import {
 import { Separator } from "@spice-world/web/components/ui/separator";
 import { cn } from "@spice-world/web/lib/utils";
 import { ChevronDown, Circle, CircleDot, XCircle, XIcon } from "lucide-react";
-import {
-  forwardRef,
-  Fragment,
-  type HTMLAttributes,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import type { HTMLAttributes } from "react";
+import { forwardRef, Fragment, useEffect, useMemo, useState } from "react";
 
 export interface AttributeGroup {
   attributeId: string;

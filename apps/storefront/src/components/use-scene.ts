@@ -1,5 +1,6 @@
 "use client";
-import { type RefObject, useEffect, useState } from "react";
+import type { RefObject } from "react";
+import { useEffect, useState } from "react";
 
 const idle = (fn: () => void) =>
   "requestIdleCallback" in window

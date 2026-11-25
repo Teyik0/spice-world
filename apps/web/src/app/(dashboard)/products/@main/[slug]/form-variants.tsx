@@ -2,10 +2,8 @@
 
 import type * as AttributeModel from "@spice-world/server/modules/attributes/model";
 import type * as ProductModel from "@spice-world/server/modules/products/model";
-import {
-  type AttributeGroup,
-  AttributeSelect,
-} from "@spice-world/web/components/ui/attribute-select";
+import type { AttributeGroup } from "@spice-world/web/components/ui/attribute-select";
+import { AttributeSelect } from "@spice-world/web/components/ui/attribute-select";
 import { Button } from "@spice-world/web/components/ui/button";
 import {
   Card,

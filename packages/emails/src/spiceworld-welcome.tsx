@@ -1,4 +1,3 @@
-/** @jsxImportSource react */
 import {
   Body,
   Container,
@@ -11,7 +10,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from "@react-email/components";
+} from "react-email";
 
 const baseUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -19,7 +18,7 @@ const baseUrl = process.env.VERCEL_URL
 
 function VerifyEmail({ verifyLink }: { verifyLink: string }) {
   return (
-    <Html>
+    <Html lang="fr">
       <Head />
       <Preview>Bienvenue sur notre site de vente d'épices en ligne !</Preview>
       <Tailwind
@@ -33,7 +32,7 @@ function VerifyEmail({ verifyLink }: { verifyLink: string }) {
           },
         }}
       >
-        <Body className="bg-[#f6f9fc] font-sans">
+        <Body className="bg-[#f6f9fc] font-sans" lang="fr">
           <Container className="mx-auto mb-16 bg-white py-5">
             <Section className="px-12">
               <Img
@@ -42,7 +41,7 @@ function VerifyEmail({ verifyLink }: { verifyLink: string }) {
                 src={`${baseUrl}/static/spice-world-logo-2.webp`}
                 width="100"
               />
-              <Hr className="my-5 border-[#e6ebf1]" />
+              <Hr className="my-5 border-t-[#e6ebf1]" />
               <Text className="text-left text-base leading-6 text-[#525f7f]">
                 Merci de vous être inscrit sur notre site de vente d'épices en
                 ligne. Nous sommes ravis de vous compter parmi nos clients !
@@ -57,7 +56,7 @@ function VerifyEmail({ verifyLink }: { verifyLink: string }) {
               >
                 Confirmer mon email
               </Link>
-              <Hr className="my-5 border-[#e6ebf1]" />
+              <Hr className="my-5 border-t-[#e6ebf1]" />
               <Text className="text-left text-base leading-6 text-[#525f7f]">
                 Si vous avez des questions, n'hésitez pas à nous contacter sur
                 notre{" "}
@@ -69,7 +68,7 @@ function VerifyEmail({ verifyLink }: { verifyLink: string }) {
               <Text className="text-left text-base leading-6 text-[#525f7f]">
                 — L'équipe de Spice World
               </Text>
-              <Hr className="my-5 border-[#e6ebf1]" />
+              <Hr className="my-5 border-t-[#e6ebf1]" />
               <Text className="text-xs leading-4 text-[#8898aa]">
                 Épices, 123 Rue des Saveurs, Paris, France
               </Text>

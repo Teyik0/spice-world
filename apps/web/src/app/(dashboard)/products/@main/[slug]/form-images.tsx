@@ -21,17 +21,12 @@ import { formatBytes } from "@spice-world/web/hooks/use-file-upload";
 import { useStore } from "@tanstack/react-form";
 import { ImageIcon, RefreshCw, Star, Trash2, Upload } from "lucide-react";
 import Image from "next/image";
-import {
-  type ChangeEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { type ProductForm, useProductSidebarSync } from "../../store";
+import type { ProductForm } from "../../store";
+import { useProductSidebarSync } from "../../store";
 
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE = 1024 * 1024 * 3;

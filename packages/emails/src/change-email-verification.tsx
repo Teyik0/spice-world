@@ -1,4 +1,3 @@
-/** @jsxImportSource react */
 import {
   Body,
   Container,
@@ -11,7 +10,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from "@react-email/components";
+} from "react-email";
 
 const baseUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -19,7 +18,7 @@ const baseUrl = process.env.VERCEL_URL
 
 function ChangeEmailVerification({ verifyLink }: { verifyLink: string }) {
   return (
-    <Html>
+    <Html lang="fr">
       <Head />
       <Preview>Confirmez votre nouvelle adresse email Spice World</Preview>
       <Tailwind
@@ -33,7 +32,7 @@ function ChangeEmailVerification({ verifyLink }: { verifyLink: string }) {
           },
         }}
       >
-        <Body className="bg-[#f6f9fc] font-sans">
+        <Body className="bg-[#f6f9fc] font-sans" lang="fr">
           <Container className="mx-auto mb-16 bg-white py-5">
             <Section className="px-12">
               <Img
@@ -42,7 +41,7 @@ function ChangeEmailVerification({ verifyLink }: { verifyLink: string }) {
                 src={"/static/spice-world-logo-2.webp"}
                 width="100"
               />
-              <Hr className="my-5 border-[#e6ebf1]" />
+              <Hr className="my-5 border-t-[#e6ebf1]" />
               <Text className="text-left text-base leading-6 text-[#525f7f]">
                 Vous avez demandé à modifier l'adresse email associée à votre
                 compte Spice World.
@@ -57,7 +56,7 @@ function ChangeEmailVerification({ verifyLink }: { verifyLink: string }) {
               >
                 Confirmer ma nouvelle adresse email
               </Link>
-              <Hr className="my-5 border-[#e6ebf1]" />
+              <Hr className="my-5 border-t-[#e6ebf1]" />
               <Text className="text-left text-base leading-6 text-[#525f7f]">
                 Si vous n'avez pas demandé ce changement, veuillez ignorer cet
                 email et contacter notre support immédiatement.
@@ -73,7 +72,7 @@ function ChangeEmailVerification({ verifyLink }: { verifyLink: string }) {
               <Text className="text-left text-base leading-6 text-[#525f7f]">
                 — L'équipe de Spice World
               </Text>
-              <Hr className="my-5 border-[#e6ebf1]" />
+              <Hr className="my-5 border-t-[#e6ebf1]" />
               <Text className="text-xs leading-4 text-[#8898aa]">
                 Épices, 123 Rue des Saveurs, Paris, France
               </Text>

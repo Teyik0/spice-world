@@ -68,6 +68,13 @@ async function runLoadTest(
 
 /** Merges parallel instances: RPS/counts summed, latency percentiles maxed (conservative). */
 function aggregateResults(parts: BombardierResult[]): BombardierResult {
+  const [first] = parts;
+  if (!first) {
+    throw new Error("aggregateResults: no results");
+  }
+  if (parts.length === 1) {
+    return first;
+  }
   const sum = (get: (r: BombardierResult) => number) =>
     parts.reduce((total, part) => total + get(part), 0);
   const max = (get: (r: BombardierResult) => number) =>
@@ -99,7 +106,7 @@ function aggregateResults(parts: BombardierResult[]): BombardierResult {
       req5xx: sum((r) => r.result.req5xx),
       others: sum((r) => r.result.others),
     },
-    spec: parts[0].spec,
+    spec: first.spec,
   };
 }
 
@@ -126,7 +133,7 @@ async function runLoadTestSuite(tc: LoadTestCase): Promise<{
   );
 
   return {
-    stats: results.length === 1 ? results[0] : aggregateResults(results),
+    stats: aggregateResults(results),
     connections,
     duration,
   };
@@ -209,12 +216,18 @@ describe("Load Testing", () => {
     },
   ];
 
-  beforeAll(() => {
+  beforeAll(async () => {
     if (Bun.env.NODE_ENV === "production") {
       throw new Error("You can't run tests in production");
     }
     if (!Bun.env.DATABASE_URL) {
       throw new Error("DATABASE_URL should be set");
+    }
+    const res = await fetch("http://localhost:3001/categories").catch(
+      () => null,
+    );
+    if (!res?.ok) {
+      throw new Error("Server not reachable on :3001 — run `bun dev` first");
     }
   });
 

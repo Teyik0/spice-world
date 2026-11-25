@@ -1,10 +1,10 @@
 "use client";
 
 import type * as CategoryModel from "@spice-world/server/modules/categories/model";
+import type { productResult } from "@spice-world/server/modules/products/model";
 import {
   patchBody,
   postBody,
-  type productResult,
 } from "@spice-world/server/modules/products/model";
 import { Form, useForm } from "@spice-world/web/components/tanstack-form";
 import { Badge } from "@spice-world/web/components/ui/badge";
@@ -28,11 +28,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import {
-  newProductAtom,
-  type ProductItemProps,
-  productPagesAtom,
-} from "../../store";
+import type { ProductItemProps } from "../../store";
+import { newProductAtom, productPagesAtom } from "../../store";
 import { revalidateProductPath } from "./action";
 import { ProductFormClassification } from "./form-classification";
 import { ProductFormDetails } from "./form-details";

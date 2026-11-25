@@ -1,4 +1,5 @@
-import { price, type ProductItem } from "../lib/spice";
+import type { ProductItem } from "../lib/spice";
+import { price } from "../lib/spice";
 
 const HERO = [800, 1280, 1920];
 const srcSet = (ext: string) =>

@@ -6,7 +6,7 @@ export default $config({
   app(input) {
     return {
       name: "spice-world",
-      home: "local",
+      home: "cloudflare",
       removal: input?.stage === "production" ? "retain" : "remove",
       providers: {
         neon: { version: "0.13.0", apiKey: process.env.NEON_API_KEY },
@@ -19,10 +19,38 @@ export default $config({
     };
   },
   async run() {
+    // PR stage (pr-<number>): a Neon branch forked from the seeded "preview" branch + a Vercel preview deployment of the PR branch.
+    if ($app.stage.startsWith("pr-")) {
+      const projectId = process.env.NEON_PROJECT_ID as string;
+      const prBranch = new neon.Branch("spice-world-db-pr", {
+        projectId,
+        name: $app.stage,
+        parentId: process.env.NEON_PREVIEW_BRANCH_ID as string,
+      });
+      const prEndpoint = new neon.Endpoint("spice-world-db-pr-endpoint", {
+        projectId,
+        branchId: prBranch.id,
+        type: "read_write",
+      });
+      const databaseUrl = prEndpoint.host.apply((host) => {
+        const url = new URL(process.env.PREVIEW_DATABASE_URL as string);
+        url.host = host;
+        return url.toString();
+      });
+      new sst.Linkable("PrDatabase", { properties: { url: databaseUrl } });
+      const deployment = new vercel.Deployment("spice-world-server-pr", {
+        projectId: process.env.VERCEL_SERVER_PROJECT_ID as string,
+        ref: process.env.PR_BRANCH as string,
+        production: false,
+        environment: { DATABASE_URL: databaseUrl },
+        deleteOnDestroy: true,
+      });
+      return { url: deployment.url };
+    }
     const neonProject = new neon.Project("spice-world-db", {
       name: "spice-world-db",
       pgVersion: 18,
-      regionId: "aws-us-east-1",
+      regionId: "aws-eu-central-1",
       orgId: "org-crimson-shadow-55928194",
       historyRetentionSeconds: 21_600, // 6 hours (free tier limit)
     });
@@ -36,10 +64,27 @@ export default $config({
       branchId: devBranch.id,
       type: "read_write",
     });
+    // Seeded parent of every PR branch (see apps/server/scripts/seed.ts).
+    const previewBranch = new neon.Branch("spice-world-db-preview", {
+      projectId: neonProject.id,
+      name: "preview",
+      parentId: neonProject.defaultBranchId,
+    });
+    const previewEndpoint = new neon.Endpoint(
+      "spice-world-db-preview-endpoint",
+      {
+        projectId: neonProject.id,
+        branchId: previewBranch.id,
+        type: "read_write",
+      },
+    );
+    const connectionString = (host: $util.Input<string>) =>
+      $interpolate`postgresql://${neonProject.databaseUser}:${neonProject.databasePassword}@${host}/${neonProject.databaseName}?sslmode=require`;
     const database = new sst.Linkable("Database", {
       properties: {
         prodConnectionString: neonProject.connectionUri,
-        devConnectionString: $interpolate`postgresql://${neonProject.databaseUser}:${neonProject.databasePassword}@${devEndpoint.host}/${neonProject.databaseName}?sslmode=require`,
+        devConnectionString: connectionString(devEndpoint.host),
+        previewConnectionString: connectionString(previewEndpoint.host),
       },
     });
     const serverSecrets = [
@@ -59,10 +104,8 @@ export default $config({
     ].map((name) => new sst.Secret(name));
     const spiceWorldServer = new vercel.Project("spice-world-server", {
       name: "spice-world-server",
-      framework: "elysia",
-      rootDirectory: "apps/server",
-      buildCommand: "bun run build",
-      installCommand: "bun install",
+      framework: "container", // builds Dockerfile.vercel from the repo root
+      resourceConfig: { functionDefaultRegions: ["fra1"] }, // same region as the Neon DB (Frankfurt)
       gitRepository: {
         type: "github",
         repo: "Teyik0/spice-world",
@@ -86,7 +129,13 @@ export default $config({
         {
           key: "DATABASE_URL",
           value: database.properties.devConnectionString,
-          targets: ["preview", "development"],
+          targets: ["development"],
+          sensitive: true,
+        },
+        {
+          key: "DATABASE_URL",
+          value: database.properties.previewConnectionString,
+          targets: ["preview"],
           sensitive: true,
         },
       ],
@@ -108,6 +157,14 @@ export default $config({
         title: "Next.js Web",
       },
     });
-    return { neonProjectId: neonProject.id };
+    // Values to copy into GitHub (vars/secrets) for the preview workflow.
+    return {
+      NEON_PROJECT_ID: neonProject.id,
+      NEON_PREVIEW_BRANCH_ID: previewBranch.id,
+      VERCEL_SERVER_PROJECT_ID: spiceWorldServer.id,
+      PREVIEW_DATABASE_URL: $util.secret(
+        database.properties.previewConnectionString,
+      ),
+    };
   },
 });

@@ -1,14 +1,8 @@
 "use client";
 
 import type React from "react";
-import {
-  type ChangeEvent,
-  type DragEvent,
-  type InputHTMLAttributes,
-  useCallback,
-  useRef,
-  useState,
-} from "react";
+import type { ChangeEvent, DragEvent, InputHTMLAttributes } from "react";
+import { useCallback, useRef, useState } from "react";
 
 export interface FileMetadata {
   id: string;

@@ -2,14 +2,12 @@
 
 import { Button } from "@spice-world/web/components/ui/button";
 import { cn } from "@spice-world/web/lib/utils";
-import useEmblaCarousel, {
-  type UseEmblaCarouselType,
-} from "embla-carousel-react";
+import useEmblaCarousel from "embla-carousel-react";
+import type { UseEmblaCarouselType } from "embla-carousel-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import type { ComponentProps, KeyboardEvent } from "react";
 import {
-  type ComponentProps,
   createContext,
-  type KeyboardEvent,
   useCallback,
   useContext,
   useEffect,

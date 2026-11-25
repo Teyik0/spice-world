@@ -5,12 +5,8 @@ import { ToggleGroup as ToggleGroupPrimitive } from "@base-ui/react/toggle-group
 import { toggleVariants } from "@spice-world/web/components/ui/toggle";
 import { cn } from "@spice-world/web/lib/utils";
 import type { VariantProps } from "class-variance-authority";
-import {
-  type ComponentProps,
-  createContext,
-  type CSSProperties,
-  useContext,
-} from "react";
+import type { ComponentProps, CSSProperties } from "react";
+import { createContext, useContext } from "react";
 
 const ToggleGroupContext = createContext<
   VariantProps<typeof toggleVariants> & {
@@ -36,7 +32,7 @@ function ToggleGroup({
   return (
     <ToggleGroupPrimitive
       className={cn(
-        "group/toggle-group flex w-fit items-center gap-[--spacing(var(--gap))] rounded-md data-[spacing=default]:data-[variant=outline]:shadow-xs",
+        "group/toggle-group gap-[--spacing(var(--gap))] flex w-fit items-center rounded-md data-[spacing=default]:data-[variant=outline]:shadow-xs",
         className,
       )}
       data-size={size}

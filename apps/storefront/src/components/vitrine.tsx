@@ -1,25 +1,12 @@
 "use client";
 import { clientModule } from "@teyik0/furin/client";
 import { Link, useNavigate, useRouter } from "@teyik0/furin/link";
-import {
-  type CSSProperties,
-  type MouseEvent,
-  type PointerEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import type { CSSProperties, MouseEvent, PointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { setHandoff } from "../lib/handoff";
-import {
-  fromPrice,
-  lookOf,
-  price,
-  type ProductItem,
-  stockOf,
-} from "../lib/spice";
+import type { ProductItem } from "../lib/spice";
+import { fromPrice, lookOf, price, stockOf } from "../lib/spice";
 import { setRootVar, useLazyScene } from "./use-scene";
 
 const scene3d = clientModule(() => import("../three/vitrine"));

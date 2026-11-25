@@ -290,7 +290,7 @@ export const createTestCategory = async ({
   const testId = randomLowerString(8);
   const categoryName = name ?? `test category ${testId}`;
 
-  if (attributeCount !== undefined && attributeCount > ATTRIBUTE_NAMES.length) {
+  if (attributeCount > ATTRIBUTE_NAMES.length) {
     throw new Error(
       `attributeCount cannot be greater than ${ATTRIBUTE_NAMES.length}`,
     );
@@ -319,12 +319,7 @@ export const createTestCategory = async ({
 
   // Support attributeCount: 0 for categories without attributes
   const selectedAttributes =
-    attributeCount === 0
-      ? []
-      : pick(
-          ATTRIBUTE_NAMES,
-          attributeCount ?? randomInt(1, ATTRIBUTE_NAMES.length),
-        );
+    attributeCount === 0 ? [] : pick(ATTRIBUTE_NAMES, attributeCount);
 
   return await testDb.db.transaction(async (tx) => {
     const categoryId = Bun.randomUUIDv7();

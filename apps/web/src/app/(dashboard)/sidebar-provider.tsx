@@ -2,13 +2,8 @@
 
 import { SidebarProvider } from "@spice-world/web/components/ui/sidebar";
 import { useMediaQuery } from "@spice-world/web/hooks/use-media-query";
-import {
-  createContext,
-  type CSSProperties,
-  type ReactNode,
-  useContext,
-  useState,
-} from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { createContext, useContext, useState } from "react";
 
 import { setSidebarExpanded } from "./cookies";
 

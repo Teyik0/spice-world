@@ -2,9 +2,8 @@
 import type * as ProductModel from "@spice-world/server/modules/products/model";
 import { clientModule } from "@teyik0/furin/client";
 import Lenis from "lenis";
+import type { ChangeEvent, CSSProperties } from "react";
 import {
-  type ChangeEvent,
-  type CSSProperties,
   Fragment,
   useCallback,
   useEffect,
@@ -14,6 +13,7 @@ import {
 } from "react";
 
 import { clearHandoff, peekHandoff } from "../lib/handoff";
+import type { ProductDetail } from "../lib/spice";
 import {
   exactVariant,
   lookOf,
@@ -21,7 +21,6 @@ import {
   perKilo,
   pickVariant,
   price,
-  type ProductDetail,
   stockOf,
 } from "../lib/spice";
 import { THEME } from "../lib/theme";

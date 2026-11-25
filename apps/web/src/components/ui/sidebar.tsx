@@ -21,12 +21,12 @@ import {
 } from "@spice-world/web/components/ui/tooltip";
 import { useIsMobile } from "@spice-world/web/hooks/use-mobile";
 import { cn } from "@spice-world/web/lib/utils";
-import { cva, type VariantProps } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
+import type { ComponentProps, CSSProperties } from "react";
 import {
-  type ComponentProps,
   createContext,
-  type CSSProperties,
   useCallback,
   useContext,
   useEffect,
@@ -247,7 +247,7 @@ function Sidebar({
             : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
           // Adjust the padding for floating and inset variants.
           variant === "floating" || variant === "inset"
-            ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
+            ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)] p-2"
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
           className,
         )}

@@ -2,7 +2,8 @@
 
 import { Toggle as TogglePrimitive } from "@base-ui/react/toggle";
 import { cn } from "@spice-world/web/lib/utils";
-import { cva, type VariantProps } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import type * as React from "react";
 
 const toggleVariants = cva(

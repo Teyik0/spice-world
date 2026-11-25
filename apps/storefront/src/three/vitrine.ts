@@ -5,13 +5,13 @@
 import * as THREE from "three";
 
 import type { Look } from "../lib/spice";
+import type { Jar } from "./core";
 import {
   buildJar,
   createStage,
   FOG_DAY,
   fontsReady,
   HANDOFF,
-  type Jar,
   loadTex,
   loop,
   makeHud,

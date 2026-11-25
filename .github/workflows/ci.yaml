@@ -118,9 +118,9 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-          STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+          # Dummies: tests/setup.ts overrides the Stripe secret keys, Axiom is disabled in test.
+          STRIPE_PUBLISHABLE_KEY: pk_test_dummy
+          AXIOM_TOKEN: dummy
           STRIPE_SUCCESS_URL: http://localhost:3000/orders/success
           STRIPE_CANCEL_URL: http://localhost:3000/cart
         run: bun run test
@@ -163,4 +163,6 @@ jobs:
 
       - name: Build ${{ matrix.app.name }}
         working-directory: ${{ matrix.app.path }}
+        env:
+          NEXT_PUBLIC_BETTER_AUTH_URL: http://localhost:3000
         run: bun run build

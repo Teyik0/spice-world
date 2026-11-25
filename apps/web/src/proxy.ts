@@ -1,5 +1,6 @@
 import { authClient } from "@spice-world/web/lib/utils";
-import { type NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 export default async function middleware(req: NextRequest) {
   const cookieName = "better-auth.session_token";
@@ -13,7 +14,7 @@ export default async function middleware(req: NextRequest) {
     },
   });
 
-  if (!session?.user || session.user.role !== "admin") {
+  if (session?.user?.role !== "admin") {
     return NextResponse.redirect(new URL("/signin", req.url));
   }
 

@@ -3,7 +3,8 @@ import { standardSchema } from "@spice-world/web/lib/schema";
 import { createEnv } from "@t3-oss/env-nextjs";
 import { createAuthClient } from "better-auth/client";
 import { adminClient, inferAdditionalFields } from "better-auth/client/plugins";
-import { type ClassValue, clsx } from "clsx";
+import type { ClassValue } from "clsx";
+import { clsx } from "clsx";
 import { t } from "elysia";
 import {
   createSafeActionClient,

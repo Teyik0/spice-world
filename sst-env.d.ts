@@ -20,6 +20,7 @@ declare module "sst" {
     }
     "Database": {
       "devConnectionString": string
+      "previewConnectionString": string
       "prodConnectionString": string
       "type": "sst.sst.Linkable"
     }

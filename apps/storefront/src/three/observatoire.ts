@@ -6,6 +6,7 @@ import * as THREE from "three";
 
 import type { Look } from "../lib/spice";
 import { THEME } from "../lib/theme";
+import type { Stage } from "./core";
 import {
   buildJar,
   createStage,
@@ -21,7 +22,6 @@ import {
   REDUCED,
   shiftView,
   smooth,
-  type Stage,
   tween,
 } from "./core";
 

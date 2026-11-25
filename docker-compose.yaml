@@ -19,7 +19,7 @@ services:
     container_name: spice-world-api
     build:
       context: .
-      dockerfile: ./apps/server/Dockerfile
+      dockerfile: ./Dockerfile.vercel
     ports:
       - "3001:3001"
     depends_on:

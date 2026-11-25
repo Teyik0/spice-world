@@ -2,7 +2,8 @@
 import { treaty } from "@elysia/eden";
 import type { App } from "@spice-world/server/index";
 
-import { env, type unknownError } from "./utils";
+import type { unknownError } from "./utils";
+import { env } from "./utils";
 
 // Browser twin (see elysia-server.ts for the RSC twin): cookies are attached
 // by credentials: "include" itself. Client-safe: never import next/headers here

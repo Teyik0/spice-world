@@ -1,4 +1,3 @@
-/** @jsxImportSource react */
 import {
   Body,
   Container,
@@ -11,7 +10,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from "@react-email/components";
+} from "react-email";
 
 const baseUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -19,7 +18,7 @@ const baseUrl = process.env.VERCEL_URL
 
 function PasswordReset() {
   return (
-    <Html>
+    <Html lang="fr">
       <Head />
       <Preview>Votre mot de passe Spice World a été réinitialisé</Preview>
       <Tailwind
@@ -33,7 +32,7 @@ function PasswordReset() {
           },
         }}
       >
-        <Body className="bg-[#f6f9fc] font-sans">
+        <Body className="bg-[#f6f9fc] font-sans" lang="fr">
           <Container className="mx-auto mb-16 bg-white py-5">
             <Section className="px-12">
               <Img
@@ -42,7 +41,7 @@ function PasswordReset() {
                 src={"/static/spice-world-logo-2.webp"}
                 width="100"
               />
-              <Hr className="my-5 border-[#e6ebf1]" />
+              <Hr className="my-5 border-t-[#e6ebf1]" />
               <Text className="text-left text-base leading-6 text-[#525f7f]">
                 Votre mot de passe a été réinitialisé avec succès.
               </Text>
@@ -56,7 +55,7 @@ function PasswordReset() {
               >
                 Se connecter
               </Link>
-              <Hr className="my-5 border-[#e6ebf1]" />
+              <Hr className="my-5 border-t-[#e6ebf1]" />
               <Text className="text-left text-base leading-6 text-[#525f7f]">
                 Si vous n'êtes pas à l'origine de ce changement, veuillez
                 contacter notre support immédiatement via notre{" "}
@@ -77,7 +76,7 @@ function PasswordReset() {
               <Text className="text-left text-base leading-6 text-[#525f7f]">
                 — L'équipe de Spice World
               </Text>
-              <Hr className="my-5 border-[#e6ebf1]" />
+              <Hr className="my-5 border-t-[#e6ebf1]" />
               <Text className="text-xs leading-4 text-[#8898aa]">
                 Épices, 123 Rue des Saveurs, Paris, France
               </Text>

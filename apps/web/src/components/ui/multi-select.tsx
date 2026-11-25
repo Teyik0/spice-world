@@ -15,15 +15,11 @@ import {
 } from "@spice-world/web/components/ui/popover";
 import { Separator } from "@spice-world/web/components/ui/separator";
 import { cn } from "@spice-world/web/lib/utils";
-import { cva, type VariantProps } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import { CheckIcon, ChevronDown, XCircle, XIcon } from "lucide-react";
-import {
-  forwardRef,
-  type HTMLAttributes,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import type { HTMLAttributes } from "react";
+import { forwardRef, useEffect, useMemo, useState } from "react";
 
 const multiSelectVariants = cva("m-1 transition-all duration-300 ease-in-out", {
   variants: {

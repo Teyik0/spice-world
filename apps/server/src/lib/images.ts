@@ -180,7 +180,7 @@ const uploadBatch = async (
 
   for (let i = 0; i < numImages; i += 1) {
     const data = resultsByIndex.get(i);
-    if (data?.thumb && data?.medium && data?.large) {
+    if (data?.thumb && data.medium && data.large) {
       uploadData.push(data as MultiSizeUploadData);
     }
   }

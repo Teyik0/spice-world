@@ -19,7 +19,8 @@ import {
 import { app } from "@spice-world/web/lib/elysia";
 import { useState } from "react";
 
-import { type ProductForm, useProductSidebarSync } from "../../store";
+import type { ProductForm } from "../../store";
+import { useProductSidebarSync } from "../../store";
 import { CategoryDialog } from "./category-dialog";
 
 interface ProductFormClassificationProps {

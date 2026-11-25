@@ -232,7 +232,7 @@ const productsData = [
   },
 ];
 
-export async function createDummyProducts({ db }: TestDatabase) {
+export async function createDummyProducts({ db }: Pick<TestDatabase, "db">) {
   const categories = categoriesData.map(({ image, ...category }) => ({
     ...category,
     imageId: Bun.randomUUIDv7(),

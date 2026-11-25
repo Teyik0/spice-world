@@ -1,0 +1,49 @@
+name: Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+concurrency:
+  group: preview-${{ github.event.number }}
+
+env:
+  BUN_VERSION: 1.4.5
+  STAGE: pr-${{ github.event.number }}
+  PR_BRANCH: ${{ github.head_ref }}
+  NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+  VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_DEFAULT_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_DEFAULT_ACCOUNT_ID }}
+  NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+  NEON_PREVIEW_BRANCH_ID: ${{ vars.NEON_PREVIEW_BRANCH_ID }}
+  VERCEL_SERVER_PROJECT_ID: ${{ vars.VERCEL_SERVER_PROJECT_ID }}
+  PREVIEW_DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
+
+jobs:
+  deploy:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      # Neon branch first, so migrations run before the Vercel deployment builds against it.
+      - run: bunx sst deploy --stage $STAGE --target spice-world-db-pr-endpoint
+      - name: Migrate PR database
+        working-directory: apps/server
+        run: bunx sst shell --stage $STAGE -- sh -c 'DATABASE_URL=$(echo "$SST_RESOURCE_PrDatabase" | jq -r .url) bun run db:migrate'
+      - run: bunx sst deploy --stage $STAGE
+
+  remove:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - run: bunx sst remove --stage $STAGE

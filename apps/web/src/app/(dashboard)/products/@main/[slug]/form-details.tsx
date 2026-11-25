@@ -12,7 +12,8 @@ import {
   FieldGroup,
 } from "@spice-world/web/components/ui/field";
 
-import { type ProductForm, useProductSidebarSync } from "../../store";
+import type { ProductForm } from "../../store";
+import { useProductSidebarSync } from "../../store";
 
 export const ProductFormDetails = ({
   form,

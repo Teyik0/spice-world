@@ -1,5 +1,5 @@
+import type { categoryResult } from "@spice-world/server/modules/categories/model";
 import {
-  type categoryResult,
   patchBody,
   postAttributes,
   postBody,
@@ -39,7 +39,8 @@ import { useFileUpload } from "@spice-world/web/hooks/use-file-upload";
 import { useIsMobile } from "@spice-world/web/hooks/use-mobile";
 import { app, elysiaErrorToString } from "@spice-world/web/lib/elysia";
 import { unknownError } from "@spice-world/web/lib/utils";
-import { t, type UnwrapSchema } from "elysia";
+import type { UnwrapSchema } from "elysia";
+import { t } from "elysia";
 import { Edit2, ImageIcon, Trash2Icon } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
