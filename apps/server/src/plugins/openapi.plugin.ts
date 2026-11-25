@@ -1,8 +1,10 @@
 import path from "node:path";
+
 import { fromTypes, openapi } from "@elysia/openapi";
 import { env } from "@spice-world/server/lib/env";
 import { Elysia, t } from "elysia";
-import { auth } from "./auth.plugin";
+
+import { auth, betterAuthPlugin } from "./auth.plugin";
 
 const projectRoot = path.join(import.meta.dir, "../..");
 const { authCookies } = await auth.$context;
@@ -35,12 +37,16 @@ export const openApiConfig = openapi({
   scalar: { authentication: { preferredSecurityScheme: "google" } },
 });
 
-export const openApiLogin = new Elysia().get(
+export const openApiLogin = new Elysia().use(betterAuthPlugin).get(
   "/openapi/login",
-  { detail: { hide: true }, query: t.Object({ state: t.String() }) },
-  async ({ query, request: { headers }, redirect, set }) => {
+  {
+    access: "optional",
+    detail: { hide: true },
+    query: t.Object({ state: t.String() }),
+  },
+  async ({ query, request: { headers }, redirect, set, user }) => {
     const state = encodeURIComponent(query.state);
-    if (await auth.api.getSession({ headers })) {
+    if (user) {
       return redirect(`/openapi#access_token=cookie&state=${state}`);
     }
     const { headers: authHeaders, response } = await auth.api.signInSocial({

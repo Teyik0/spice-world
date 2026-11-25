@@ -12,6 +12,7 @@ import type { MacroTypeLambda } from "elysia";
 import { Elysia, macroType } from "elysia";
 import { Resend } from "resend";
 import type Stripe from "stripe";
+
 import { orderService } from "../modules/orders/service";
 import { loggerPlugin } from "./logger.plugin";
 
@@ -162,9 +163,11 @@ export const betterAuthPlugin = new Elysia({
       $type: macroType<AccessContext>(),
       async derive({ log, request: { headers }, problem }) {
         const session = await auth.api.getSession({ headers });
-        if (session) {
-          log.set({ user: { id: session.user.id, role: session.user.role } });
-        }
+        log.set({
+          user: session
+            ? { id: session.user.id, role: session.user.role }
+            : { role: "anonymous" },
+        });
 
         if (!session && level !== "optional") {
           return problem("Unauthorized");
