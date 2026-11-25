@@ -132,7 +132,7 @@ export const uploadFailed = t.Object({
 
 export const uploadFileErrStatus = (error: UploadError | null) =>
   error === "INVALID_IMAGE"
-    ? problem("Unprocessable Content", {
+    ? problem("Bad Request", {
         code: "INVALID_IMAGE",
         message: "Image cannot be decoded",
       })

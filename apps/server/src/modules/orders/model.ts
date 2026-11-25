@@ -1,4 +1,6 @@
-import { t, type UnwrapSchema } from "elysia";
+import type { UnwrapSchema } from "elysia";
+import { t } from "elysia";
+
 import type { orderService } from "./service";
 
 export const OrderStatus = t.Union(
@@ -19,40 +21,58 @@ export const ShippingStatus = t.Union(
 );
 export type ShippingStatus = UnwrapSchema<typeof ShippingStatus>;
 
-export const checkoutBody = t.Object({
-  items: t.Array(
-    t.Object({
-      variantId: t.String(),
-      quantity: t.Number({ minimum: 1 }),
-    }),
-  ),
-  shippingAddress: t.Object({
-    name: t.String(),
-    line1: t.String(),
-    line2: t.Optional(t.String()),
-    city: t.String(),
-    postalCode: t.String(),
-    country: t.String({ minLength: 2, maxLength: 2 }),
-  }),
-});
+export const checkoutBody = t.Object(
+  {
+    items: t.Array(
+      t.Object(
+        {
+          variantId: t.String(),
+          quantity: t.Number({ minimum: 1 }),
+        },
+        { additionalProperties: false },
+      ),
+    ),
+    shippingAddress: t.Object(
+      {
+        name: t.String(),
+        line1: t.String(),
+        line2: t.Optional(t.String()),
+        city: t.String(),
+        postalCode: t.String(),
+        country: t.String({ minLength: 2, maxLength: 2 }),
+      },
+      { additionalProperties: false },
+    ),
+  },
+  { additionalProperties: false },
+);
 export type checkoutBody = UnwrapSchema<typeof checkoutBody>;
 
-export const getQuery = t.Object({
-  page: t.Number({ default: 1, minimum: 1 }),
-  limit: t.Number({ default: 10, minimum: 1, maximum: 100 }),
-  status: t.Optional(OrderStatus),
-});
+export const getQuery = t.Object(
+  {
+    page: t.Number({ default: 1, minimum: 1 }),
+    limit: t.Number({ default: 10, minimum: 1, maximum: 100 }),
+    status: t.Optional(OrderStatus),
+  },
+  { additionalProperties: false },
+);
 export type getQuery = UnwrapSchema<typeof getQuery>;
 
-export const getByIdParams = t.Object({
-  id: t.String({ format: "uuid" }),
-});
+export const getByIdParams = t.Object(
+  {
+    id: t.String({ format: "uuid" }),
+  },
+  { additionalProperties: false },
+);
 export type getByIdParams = UnwrapSchema<typeof getByIdParams>;
 
-export const updateStatusBody = t.Object({
-  status: OrderStatus,
-  trackingNumber: t.Optional(t.String()),
-});
+export const updateStatusBody = t.Object(
+  {
+    status: OrderStatus,
+    trackingNumber: t.Optional(t.String()),
+  },
+  { additionalProperties: false },
+);
 export type updateStatusBody = UnwrapSchema<typeof updateStatusBody>;
 
 export type getResult = Awaited<ReturnType<typeof orderService.get>>;

@@ -155,31 +155,47 @@ describe.concurrent("category POST", () => {
     expectDefined(category.data);
     expect(category.status).toBe(201);
 
-    const { error, status } = await api.categories.post({
+    const { error } = await api.categories.post({
       name: "other category",
       file: bunfile,
     });
 
-    expect(status).toBe(409);
-    expect(error).toMatchObject({ status });
+    expect(error).toMatchObject({
+      status: 409,
+      value: {
+        code: "CATEGORY_NAME_ALREADY_EXISTS",
+        message: "A category with this name already exists",
+      },
+    });
     expect(
       await db.query.image.findMany({ where: { altText: "other category" } }),
     ).toHaveLength(1);
-    const keys = uploads.uploadedFiles
-      .filter((uploaded) => uploaded.name.startsWith("other-category-"))
-      .map(({ customId }) => customId as string);
-    expect(keys).toHaveLength(6);
-    expect(await queuedImages(keys)).toEqual(
-      keys
-        .slice(3)
-        .sort()
-        .map((fileKey) => ({ fileKey, attempts: 0 })),
+    expect(
+      uploads.uploadedFiles.filter(({ name }) =>
+        name.startsWith("other-category-"),
+      ),
+    ).toHaveLength(3);
+  });
+
+  test("should create a name once under concurrency", async () => {
+    const name = "raced category";
+    const results = await Promise.all(
+      [1, 2].map(() => api.categories.post({ name, file: file(filePath1) })),
     );
-    for (const key of keys) {
-      expect(uploads.deleteFiles).not.toHaveBeenCalledWith(
-        expect.arrayContaining([key]),
+    expect(results.map(({ status }) => status).sort()).toEqual([201, 409]);
+
+    const image = results.find(({ data }) => data)?.data?.image;
+    expectDefined(image);
+    const orphans = uploads.uploadedFiles
+      .filter((uploaded) => uploaded.name.startsWith("raced-category-"))
+      .map(({ customId }) => customId as string)
+      .filter(
+        (key) =>
+          ![image.keyThumb, image.keyMedium, image.keyLarge].includes(key),
       );
-    }
+    expect(await queuedImages(orphans)).toEqual(
+      orphans.sort().map((fileKey) => ({ fileKey, attempts: 0 })),
+    );
   });
 
   test("should error if name start with a uppercase letter", async () => {

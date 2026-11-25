@@ -2,12 +2,13 @@ import type {
   ProductStatus,
   ProductVariant,
 } from "@spice-world/server/prisma/client";
-import type * as CategoryModel from "../../categories/model";
+
 import type * as ProductModel from "../model";
 import {
   determinePublishStatus,
   determineStatusAfterCategoryChange,
 } from "./publish";
+import type { VariantCategory } from "./variants";
 
 /**
  * Consolidates all variant operation analysis into a single function.
@@ -108,13 +109,13 @@ export function determineStatus(
     variants: ProductModel.variantOperations | undefined;
   },
   currentProduct: {
-    category: Pick<CategoryModel.categoryResult, "attributes">;
+    category: VariantCategory;
     variants: Array<
       ProductVariant & { attributeValues: Array<{ id: string }> }
     >;
     status: ProductStatus;
   },
-  requestedCategory: CategoryModel.categoryResult | null,
+  requestedCategory: VariantCategory | null,
   analysis: VariantAnalysis,
 ): {
   finalStatus: ProductStatus;

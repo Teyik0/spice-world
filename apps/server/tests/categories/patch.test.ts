@@ -3,7 +3,11 @@ import { describe, expect, test } from "bun:test";
 import { db } from "@spice-world/server/lib/db";
 import { eq, inArray } from "drizzle-orm";
 
-import { attributeValueTable, imageDeletionTable } from "../../drizzle/schema";
+import {
+  attributeValueTable,
+  imageDeletionTable,
+  imageTable,
+} from "../../drizzle/schema";
 import type * as CategoryModel from "../../src/modules/categories/model";
 import { testDb } from "../setup";
 import {
@@ -11,6 +15,7 @@ import {
   createTestCategory,
   expectDefined,
   file,
+  runBlocked,
 } from "../utils/helper";
 import {
   api,
@@ -22,6 +27,75 @@ import {
 } from "./setup";
 
 describe.concurrent("category PATCH", () => {
+  test("should return a value renamed while the patch is running", async () => {
+    const category = await createTestCategory({
+      testDb,
+      attributeCount: 1,
+      attributeValueCount: 1,
+    });
+    const value = category.attributes[0]?.values[0];
+    expectDefined(value);
+    const route = api.categories({ id: category.id });
+    const { data } = await runBlocked(
+      testDb,
+      (tx) =>
+        tx
+          .select()
+          .from(imageTable)
+          .where(eq(imageTable.id, category.imageId))
+          .for("update"),
+      () => route.patch({ name: "renamed while running" }),
+      () =>
+        db
+          .update(attributeValueTable)
+          .set({ value: "renamed" })
+          .where(eq(attributeValueTable.id, value.id)),
+    );
+    expectDefined(data);
+    expect(data.attributes[0]?.values[0]?.value).toBe("renamed");
+    expect((await route.get()).data).toEqual(data);
+  });
+
+  test("should swap attribute names and value labels", async () => {
+    const category = await createTestCategory({
+      testDb,
+      attributeCount: 2,
+      attributeValueCount: 2,
+    });
+    const [a, b] = category.attributes;
+    expectDefined(a?.values[0]);
+    expectDefined(a.values[1]);
+    expectDefined(b);
+    const [first, second] = a.values;
+    const { data, error } = await api.categories({ id: category.id }).patch({
+      attributes: {
+        update: [
+          {
+            id: a.id,
+            name: b.name,
+            values: {
+              update: [
+                { id: first.id, value: second.value },
+                { id: second.id, value: first.value },
+              ],
+            },
+          },
+          { id: b.id, name: a.name },
+        ],
+      },
+    });
+    expect(error).toBeNull();
+    const swapped = data?.attributes.find(({ id }) => id === a.id);
+    expect(data?.attributes.find(({ id }) => id === b.id)?.name).toBe(a.name);
+    expect(swapped).toMatchObject({
+      name: b.name,
+      values: expect.arrayContaining([
+        expect.objectContaining({ id: first.id, value: second.value }),
+        expect.objectContaining({ id: second.id, value: first.value }),
+      ]),
+    });
+  });
+
   test.each(["update", "delete"] as const)(
     "should reject foreign value during %s without writing",
     async (operation) => {

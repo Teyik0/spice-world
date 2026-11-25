@@ -32,7 +32,8 @@ export const categoryRouter = new Elysia({
       body: CategoryModel.postBody,
       response: {
         201: CategoryModel.categoryResult,
-        422: invalidImage,
+        400: invalidImage,
+        409: CategoryModel.nameConflict,
         502: uploadFailed,
       },
       imageCleanup: true,
@@ -71,9 +72,9 @@ export const categoryRouter = new Elysia({
       body: CategoryModel.patchBody,
       response: {
         200: CategoryModel.categoryResult,
-        400: CategoryModel.patchValueError,
+        400: t.Union([CategoryModel.patchValueError, invalidImage]),
         404: CategoryModel.patchNotFound,
-        422: invalidImage,
+        409: CategoryModel.patchConflict,
         502: uploadFailed,
       },
       imageCleanup: true,

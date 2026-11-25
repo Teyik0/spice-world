@@ -1,12 +1,8 @@
 import { db } from "@spice-world/server/lib/db";
-import { and, EmptyFilter, eq, sql } from "drizzle-orm";
+import { EmptyFilter, eq } from "drizzle-orm";
 import { problem, status } from "elysia";
 
-import {
-  attributeTable,
-  attributeValueTable,
-  categoryTable,
-} from "../../../drizzle/schema";
+import { attributeTable, attributeValueTable } from "../../../drizzle/schema";
 import type { uuidGuard } from "../shared";
 import type * as AttributeModel from "./model";
 import type * as AttributeValueModel from "./value-model";
@@ -17,74 +13,50 @@ export const attributeService = {
     message: "Attribute not found",
   }),
 
-  async get({ categoryId }: AttributeModel.getQuery) {
+  findOptions: {
+    columns: { categoryId: false as const },
+    with: {
+      values: { orderBy: { id: "asc" as const } },
+      category: true as const,
+    },
+  },
+
+  async get({ categoryId, skip, take }: AttributeModel.getQuery) {
     return await db.query.attribute.findMany({
       where: categoryId ? { categoryId } : EmptyFilter,
-      columns: { categoryId: false },
+      offset: skip,
+      limit: take,
       orderBy: { id: "asc" },
-      with: { values: { orderBy: { id: "asc" } }, category: true },
+      ...this.findOptions,
     });
   },
 
   async getById({ id }: uuidGuard) {
     const attribute = await db.query.attribute.findFirst({
       where: { id },
-      columns: { categoryId: false },
-      with: { values: { orderBy: { id: "asc" } }, category: true },
+      ...this.findOptions,
     });
 
     return attribute ?? this.attributeNotFound;
   },
 
   async post({ name, categoryId, values }: AttributeModel.postBody) {
-    const attributeId = Bun.randomUUIDv7();
-    const createdAttribute = db
-      .$with("created_attribute")
-      .as(
-        db
-          .insert(attributeTable)
-          .values({ id: attributeId, name, categoryId })
-          .returning(),
+    return await db.transaction(async (tx) => {
+      const id = Bun.randomUUIDv7();
+      await tx.insert(attributeTable).values({ id, name, categoryId });
+      await tx.insert(attributeValueTable).values(
+        values.map((value) => ({
+          id: Bun.randomUUIDv7(),
+          attributeId: id,
+          value,
+        })),
       );
-    const createdValues = db.$with("created_values").as(
-      db
-        .insert(attributeValueTable)
-        .values(
-          values.map((value) => ({
-            id: Bun.randomUUIDv7(),
-            attributeId,
-            value,
-          })),
-        )
-        .returning(),
-    );
-
-    const [attribute] = await db
-      .with(createdAttribute, createdValues)
-      .select({
-        id: createdAttribute.id,
-        name: createdAttribute.name,
-        category: {
-          id: categoryTable.id,
-          name: categoryTable.name,
-          imageId: categoryTable.imageId,
-          createdAt: categoryTable.createdAt,
-          updatedAt: categoryTable.updatedAt,
-        },
-        values: sql<(typeof attributeValueTable.$inferSelect)[]>`(
-          select coalesce(json_agg(row_to_json(${createdValues})), '[]'::json)
-          from ${createdValues}
-        )`,
-        createdAt: createdAttribute.createdAt,
-        updatedAt: createdAttribute.updatedAt,
-      })
-      .from(createdAttribute)
-      .innerJoin(
-        categoryTable,
-        eq(categoryTable.id, createdAttribute.categoryId),
-      );
-
-    return status("Created", attribute as NonNullable<typeof attribute>);
+      const attribute = await tx.query.attribute.findFirst({
+        where: { id },
+        ...this.findOptions,
+      });
+      return status("Created", attribute as NonNullable<typeof attribute>);
+    });
   },
 
   async count() {
@@ -92,50 +64,21 @@ export const attributeService = {
   },
 
   async patch({ id, name }: AttributeModel.patchBody & uuidGuard) {
-    const [attribute] = await db
-      .update(attributeTable)
-      .set({ name })
-      .from(categoryTable)
-      .where(
-        and(
-          eq(attributeTable.id, id),
-          eq(categoryTable.id, attributeTable.categoryId),
-        ),
-      )
-      .returning({
-        id: attributeTable.id,
-        name: attributeTable.name,
-        category: {
-          id: categoryTable.id,
-          name: categoryTable.name,
-          imageId: categoryTable.imageId,
-          createdAt: categoryTable.createdAt,
-          updatedAt: categoryTable.updatedAt,
-        },
-        values: sql<(typeof attributeValueTable.$inferSelect)[]>`(
-            select coalesce(
-              json_agg(row_to_json(${attributeValueTable}) order by ${attributeValueTable.id}),
-              '[]'::json
-            )
-            from ${attributeValueTable}
-            where ${attributeValueTable.attributeId} = ${attributeTable.id}
-          )`,
-        createdAt: attributeTable.createdAt,
-        updatedAt: attributeTable.updatedAt,
-      });
-
-    if (!attribute) {
-      return this.attributeNotFound;
-    }
-
-    return {
-      ...attribute,
-      values: attribute.values.map((value) => ({
-        ...value,
-        createdAt: new Date(value.createdAt),
-        updatedAt: new Date(value.updatedAt),
-      })),
-    };
+    return await db.transaction(
+      async (tx) => {
+        await tx
+          .update(attributeTable)
+          .set({ name })
+          .where(eq(attributeTable.id, id));
+        // Separate statement: RETURNING would read values as of before the lock wait.
+        const attribute = await tx.query.attribute.findFirst({
+          where: { id },
+          ...this.findOptions,
+        });
+        return attribute ?? this.attributeNotFound;
+      },
+      { isolationLevel: "read committed" },
+    );
   },
 
   async delete({ id }: uuidGuard) {

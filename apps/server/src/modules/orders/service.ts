@@ -1,8 +1,10 @@
 import { env } from "@spice-world/server/lib/env";
 import { prisma } from "@spice-world/server/lib/prisma";
 import type { OrderStatus } from "@spice-world/server/prisma/client";
+import { problem } from "elysia";
 import { Resend } from "resend";
-import { createStripeCheckout } from "../stripe-checkout";
+
+import { closeStripeCheckout, createStripeCheckout } from "../stripe-checkout";
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
@@ -84,7 +86,7 @@ export const orderService = {
         (sum, item) => sum + item.price * item.quantity,
         0,
       );
-      const shipping = subtotal > 50 ? 0 : 5;
+      const shipping = subtotal > 5000 ? 0 : 500; // Free above €50, else €5
 
       // Create order with temporary stripe session id
       // All monetary values stored as cents (Int)
@@ -93,9 +95,9 @@ export const orderService = {
           userId,
           status: "PENDING",
           stripeSessionId: "temp",
-          subtotalAmount: Math.round(subtotal * 100),
-          shippingAmount: Math.round(shipping * 100),
-          totalAmount: Math.round((subtotal + shipping) * 100),
+          subtotalAmount: subtotal,
+          shippingAmount: shipping,
+          totalAmount: subtotal + shipping,
           shippingAddress: toJsonValue(shippingAddress),
           items: {
             create: enrichedItems.map((item) => ({
@@ -104,9 +106,9 @@ export const orderService = {
               variantId: item.variantId,
               variantName: item.variantName,
               variantSku: item.variantSku,
-              unitPrice: Math.round(item.price * 100),
+              unitPrice: item.price,
               quantity: item.quantity,
-              totalPrice: Math.round(item.price * item.quantity * 100),
+              totalPrice: item.price * item.quantity,
             })),
           },
         },
@@ -114,12 +116,24 @@ export const orderService = {
       });
 
       const checkout = await createStripeCheckout({
-        items: enrichedItems.map((item) => ({
-          name: item.productName,
-          price: item.price,
-          currency: "EUR", // Default to EUR, can be made dynamic
-          quantity: item.quantity,
-        })),
+        items: [
+          ...enrichedItems.map((item) => ({
+            name: item.productName,
+            price: item.price,
+            currency: "EUR", // Default to EUR, can be made dynamic
+            quantity: item.quantity,
+          })),
+          ...(shipping
+            ? [
+                {
+                  name: "Livraison",
+                  price: shipping,
+                  currency: "EUR",
+                  quantity: 1,
+                },
+              ]
+            : []),
+        ],
         metadata: { orderId: order.id },
       });
 
@@ -154,13 +168,39 @@ export const orderService = {
 
       // Stock is already reserved in createCheckout via atomic decrement
       // No need to decrement again here
-      const order = await tx.order.update({
-        where: { stripeSessionId },
+      // Stripe may deliver an event more than once: only PENDING can become PAID
+      await tx.order.updateMany({
+        where: { stripeSessionId, status: "PENDING" },
         data: { status: "PAID", stripePaymentIntentId },
-        include: { items: true, user: true },
       });
 
-      return order;
+      return await tx.order.findUniqueOrThrow({
+        where: { stripeSessionId },
+        include: { items: true, user: true },
+      });
+    });
+  },
+
+  async cancelPending(stripeSessionId: string, id: string) {
+    await prisma.$transaction(async (tx) => {
+      const { count } = await tx.order.updateMany({
+        where: { id, stripeSessionId, status: "PENDING" },
+        data: { status: "CANCELLED" },
+      });
+      if (!count) {
+        return;
+      }
+      const items = await tx.orderItem.findMany({
+        where: { orderId: id, variantId: { not: null } },
+        orderBy: { variantId: "asc" }, // Stable lock order
+      });
+      for (const { variantId, quantity } of items) {
+        // biome-ignore lint/performance/noAwaitInLoops: Lock variants one by one in a stable order.
+        await tx.productVariant.updateMany({
+          where: { id: variantId as string },
+          data: { stock: { increment: quantity } },
+        });
+      }
     });
   },
 
@@ -212,6 +252,28 @@ export const orderService = {
     status: OrderStatus,
     trackingNumber?: string,
   ) {
+    if (status === "CANCELLED") {
+      const current = await prisma.order.findUniqueOrThrow({
+        where: { id: orderId },
+        select: { status: true, stripeSessionId: true },
+      });
+      if (current.status === "PAID" || current.status === "FULFILLED") {
+        return problem("Conflict", {
+          code: "ORDER_REQUIRES_REFUND",
+          message: "A paid order must be refunded, not cancelled",
+        });
+      }
+      if (current.status === "PENDING") {
+        if (!(await closeStripeCheckout(current.stripeSessionId))) {
+          return problem("Conflict", {
+            code: "ORDER_ALREADY_PAID",
+            message: "The checkout session is already completed",
+          });
+        }
+        await this.cancelPending(current.stripeSessionId, orderId);
+      }
+    }
+
     const data: Record<string, unknown> = { status };
 
     if (trackingNumber) {

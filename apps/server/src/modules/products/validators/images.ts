@@ -1,4 +1,5 @@
-import { ProductValidationError, type ValidationError } from "../../shared";
+import type { ValidationError } from "../../shared";
+import { ProductValidationError } from "../../shared";
 import type * as ProductModel from "../model";
 
 /**

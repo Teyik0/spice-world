@@ -10,7 +10,9 @@ import {
 
 export const getQuery = t.Object(
   {
-    categoryId: t.Optional(t.String({ format: "uuid" })),
+    categoryId: t.Optional(uuid),
+    skip: t.Optional(t.Integer({ default: 0, minimum: 0, maximum: 100_000 })),
+    take: t.Optional(t.Integer({ default: 100, minimum: 1, maximum: 100 })),
   },
   { additionalProperties: false },
 );

@@ -1,11 +1,13 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+
 import { orderService } from "@spice-world/server/modules/orders/service";
 import { auth } from "@spice-world/server/plugins/auth.plugin";
-import { createTestDatabase } from "./utils/db-manager";
-import { expectDefined, randomLowerString } from "./utils/helper";
+
+import { testDb } from "../setup";
+import { expectDefined, mockStripe, randomLowerString } from "../utils/helper";
 
 describe("Order Service - Stock Validation & Reservation", () => {
-  let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
+  let stripe: Awaited<ReturnType<typeof mockStripe>>;
   let normalUser: Awaited<ReturnType<typeof auth.api.createUser>>;
   let testCategory: {
     id: string;
@@ -13,13 +15,9 @@ describe("Order Service - Stock Validation & Reservation", () => {
   };
 
   beforeAll(async () => {
-    if (Bun.env.NODE_ENV === "production") {
-      throw new Error("You can't run tests in production");
-    }
-    if (!Bun.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL should be set");
-    }
-    testDb = await createTestDatabase("orders.stock.test.ts");
+    expect(Bun.env.NODE_ENV).not.toBe("production");
+    expect(Bun.env.DATABASE_URL).toBeTruthy();
+    stripe = await mockStripe();
 
     normalUser = await auth.api.createUser({
       body: {
@@ -62,8 +60,8 @@ describe("Order Service - Stock Validation & Reservation", () => {
     });
   });
 
-  afterAll(async () => {
-    await testDb.destroy();
+  afterAll(() => {
+    stripe.restore();
   });
 
   describe("createCheckout stock reservation", () => {

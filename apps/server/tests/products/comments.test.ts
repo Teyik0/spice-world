@@ -1,9 +1,13 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { describe, expect, it } from "bun:test";
+
 import { treaty } from "@elysia/eden";
-import type { productsRouter } from "@spice-world/server/modules/products";
+import { db } from "@spice-world/server/lib/db";
+import { productsRouter } from "@spice-world/server/modules/products";
+
 import { commentTable, userTable } from "../../drizzle/schema";
-import { createTestDatabase } from "../utils/db-manager";
+import { testDb } from "../setup";
 import {
+  createSessionCookie,
   createSetupProduct,
   expectDefined,
   file,
@@ -11,11 +15,12 @@ import {
   randomLowerString,
 } from "../utils/helper";
 
-describe.concurrent("GET /products/:id/comments", () => {
-  let db: typeof import("@spice-world/server/lib/db").db;
-  let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
-  let api: ReturnType<typeof treaty<typeof productsRouter>>;
+await mockUtapi();
+const api = treaty(productsRouter, {
+  headers: { cookie: await createSessionCookie(testDb) },
+});
 
+describe.concurrent("GET /products/:id/comments", () => {
   /** A product with `count` comments, the i-th one written i minutes after the epoch. */
   const productWithComments = async (count: number) => {
     const { product } = await createSetupProduct(
@@ -64,20 +69,6 @@ describe.concurrent("GET /products/:id/comments", () => {
     }
     return product;
   };
-
-  beforeAll(async () => {
-    testDb = await createTestDatabase("comments.test.ts");
-    ({ db } = await import("@spice-world/server/lib/db"));
-    await mockUtapi();
-    const { productsRouter: router } =
-      await import("@spice-world/server/modules/products");
-    api = treaty(router);
-  });
-
-  afterAll(async () => {
-    await db.$client.close();
-    await testDb.destroy();
-  });
 
   it("returns the 15 newest comments first, with the total", async () => {
     const product = await productWithComments(20);

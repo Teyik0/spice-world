@@ -1,28 +1,29 @@
 import { db } from "@spice-world/server/lib/db";
+import type { MultiSizeUploadData } from "@spice-world/server/lib/images";
 import {
   deleteUploads,
-  type MultiSizeUploadData,
   uploadFiles,
   utapi,
 } from "@spice-world/server/lib/images";
 import { prisma } from "@spice-world/server/lib/prisma";
 import type { Product } from "@spice-world/server/prisma/client";
-import { type SQL, sql } from "bun";
+import type { SQL } from "bun";
+import { sql } from "bun";
 import { eq } from "drizzle-orm";
 import { status } from "elysia";
 import { LRUCache } from "lru-cache";
+
 import { commentTable } from "../../../drizzle/schema";
 import { categoryService } from "../categories/service";
-import { uploadFileErrStatus, type uuidGuard } from "../shared";
+import type { ExpectedVersion, uuidGuard } from "../shared";
+import { uploadFileErrStatus } from "../shared";
 import type * as ProductModel from "./model";
-import { setFinalStatus, type ValidationResults } from "./operations/status";
+import type { ValidationResults } from "./operations/status";
+import { setFinalStatus } from "./operations/status";
 import { hasProductChanges } from "./validators/has-changes";
 import { validateImages } from "./validators/images";
-import {
-  analyzeVariantOperations,
-  determineStatus,
-  type VariantAnalysis,
-} from "./validators/patch";
+import type { VariantAnalysis } from "./validators/patch";
+import { analyzeVariantOperations, determineStatus } from "./validators/patch";
 import {
   validatePublishAttributeRequirements,
   validatePublishHasPositivePrice,
@@ -82,65 +83,11 @@ const localCache = new LRUCache<string, any>({
   updateAgeOnGet: true,
 });
 
-/**
- * Invalidate product listing cache entries by pattern matching.
- * Cache key format: products:{sortBy}:{sortDir}:{skip}:{take}:{name}:{status}:{categories}:{collection}
- *
- * @param options - Filter options for surgical invalidation
- * @param options.categoryIds - Invalidate entries containing these category IDs
- * @param options.statuses - Invalidate entries with these statuses
- *
- * If no options provided, clears entire cache (fallback for complex operations)
- */
-export function invalidateProductListings(options?: {
-  categoryIds?: string[];
-  statuses?: string[];
-}) {
-  if (!(options && (options.categoryIds?.length || options.statuses?.length))) {
-    localCache.clear();
-    return;
-  }
+let listingGeneration = 0;
 
-  // Get all cache keys
-  const keysToDelete: string[] = [];
-
-  for (const key of localCache.keys()) {
-    if (!key.startsWith("products:")) {
-      continue;
-    }
-
-    // Key format: products:{sortBy}:{sortDir}:{skip}:{take}:{name}:{status}:{categories}:{collection}
-    const parts = key.split(":");
-    const keyStatus = parts[6] ?? "";
-    const keyCategories = parts[7] ?? "";
-
-    let shouldInvalidate = false;
-
-    // Invalidate if status matches or key has no status filter (affects all)
-    if (
-      options.statuses?.length &&
-      (keyStatus === "" || options.statuses.includes(keyStatus))
-    ) {
-      shouldInvalidate = true;
-    }
-
-    // Invalidate if category matches or key has no category filter
-    if (
-      options.categoryIds?.length &&
-      (keyCategories === "" ||
-        options.categoryIds.some((catId) => keyCategories.includes(catId)))
-    ) {
-      shouldInvalidate = true;
-    }
-
-    if (shouldInvalidate) {
-      keysToDelete.push(key);
-    }
-  }
-
-  for (const key of keysToDelete) {
-    localCache.delete(key);
-  }
+export function invalidateProductListings() {
+  listingGeneration += 1;
+  localCache.clear();
 }
 
 /** A collection is listed in its curated order unless a sort is requested. */
@@ -160,28 +107,19 @@ function collectionClauses(
 }
 
 export const productService = {
-  async get({
-    name,
-    skip,
-    take,
-    status: productStatus,
-    categories,
-    collection,
-    sortBy,
-    sortDir,
-  }: ProductModel.getQuery) {
-    let categoriesArray: string[] | undefined;
-
-    if (Array.isArray(categories)) {
-      categoriesArray = categories;
-    } else if (categories) {
-      categoriesArray = [categories];
-    }
-
-    const cacheKey =
-      `products:${sortBy ?? "default"}:${sortDir}:${skip}:${take}:` +
-      `${name ?? ""}:${productStatus ?? ""}:${categoriesArray?.join(",") ?? ""}:` +
-      `${collection ?? ""}`;
+  async get(query: ProductModel.getQuery) {
+    const {
+      name,
+      skip,
+      take,
+      status: productStatus,
+      categories,
+      collection,
+      sortBy,
+      sortDir,
+    } = query;
+    const cacheKey = JSON.stringify(query);
+    const generation = listingGeneration;
 
     type getProduct = Product & {
       img: string | null;
@@ -206,9 +144,9 @@ export const productService = {
         sql`to_tsvector('french', p.name) @@ plainto_tsquery('french', ${name})`,
       );
     }
-    if (categoriesArray?.length) {
+    if (categories?.length) {
       conditions.push(
-        sql`p."categoryId" IN (SELECT id FROM "Category" WHERE name IN ${sql(categoriesArray)})`,
+        sql`p."categoryId" IN (SELECT id FROM "Category" WHERE name IN ${sql(categories)})`,
       );
     }
 
@@ -252,9 +190,12 @@ export const productService = {
 			WHERE "productId" = p.id
 		) v_agg ON true
 		${whereClause}
-		ORDER BY ${byCollection.orderBy} ${orderDirection} ${nullsClause} ${limitClause} ${offsetClause}`;
+		ORDER BY ${byCollection.orderBy} ${orderDirection} ${nullsClause}, p.id ${limitClause} ${offsetClause}`;
 
-    localCache.set(cacheKey, [...products]);
+    // Read before an invalidation: possibly stale, do not cache it.
+    if (generation === listingGeneration) {
+      localCache.set(cacheKey, [...products]);
+    }
     return [...products];
   },
 
@@ -278,9 +219,12 @@ export const productService = {
     return { comments, total };
   },
 
-  async getById({ id }: uuidGuard) {
+  async getById({
+    id,
+    status: productStatus,
+  }: uuidGuard & ProductModel.countQuery) {
     return await prisma.product.findUniqueOrThrow({
-      where: { id },
+      where: { id, status: productStatus },
       include: {
         category: {
           include: { attributes: { include: { values: true } } },
@@ -297,9 +241,12 @@ export const productService = {
     });
   },
 
-  async getBySlug({ slug }: { slug: string }) {
+  async getBySlug({
+    slug,
+    status: productStatus,
+  }: { slug: string } & ProductModel.countQuery) {
     return await prisma.product.findUniqueOrThrow({
-      where: { slug },
+      where: { slug, status: productStatus },
       include: {
         category: {
           include: { attributes: { include: { values: true } } },
@@ -366,7 +313,7 @@ export const productService = {
       iOps.create.map((img) => img.file),
     );
     if (uploadError || !uploadMap) {
-      return uploadFileErrStatus(uploadError ?? "Unknown upload error");
+      return uploadFileErrStatus(uploadError);
     }
 
     try {
@@ -429,10 +376,7 @@ export const productService = {
         };
       });
 
-      invalidateProductListings({
-        categoryIds: [categoryId],
-        statuses: [finalStatus],
-      });
+      invalidateProductListings();
 
       return status("Created", newProduct);
     } catch (err: unknown) {
@@ -452,13 +396,13 @@ export const productService = {
     categoryId,
     images: iOps,
     variants: vOps,
-    _version,
-  }: ProductModel.patchBody & uuidGuard) {
+    expectedVersion,
+  }: ProductModel.patchBody & uuidGuard & ExpectedVersion) {
     const currentProduct = await this.getById({ id });
 
-    if (_version !== undefined && _version !== currentProduct.version) {
+    if (expectedVersion !== currentProduct.version) {
       throw status("Conflict", {
-        message: `Product modified. Expected version ${_version}, current is ${currentProduct.version}`,
+        message: `Product modified. Expected version ${expectedVersion}, current is ${currentProduct.version}`,
         code: "VERSION_CONFLICT",
       });
     }
@@ -550,11 +494,11 @@ export const productService = {
       if (allSuccessful.length > 0) {
         await deleteUploads(allSuccessful);
       }
-      return uploadFileErrStatus({
-        message: [createUploads.error, updateUploads.error]
-          .filter(Boolean)
-          .join(", "),
-      });
+      return uploadFileErrStatus(
+        [createUploads.error, updateUploads.error].find(
+          (error) => error === "INVALID_IMAGE",
+        ) ?? "UPLOAD_FAILED",
+      );
     }
 
     const updateOpsWithFiles = iOps?.update?.filter((op) => op.file) ?? [];
@@ -582,11 +526,10 @@ export const productService = {
           },
         });
 
-        // The product update locks the row; reject image operations validated against a stale version.
-        if (iOps && updatedProduct.version !== currentProduct.version + 1) {
+        // The product update locks the row; reject changes validated against a stale version.
+        if (updatedProduct.version !== expectedVersion + 1) {
           throw status("Conflict", {
-            message:
-              "Product modified while updating images. Reload and retry.",
+            message: "Product modified. Reload and retry.",
             code: "VERSION_CONFLICT",
           });
         }
@@ -834,10 +777,7 @@ export const productService = {
         await utapi.deleteFiles(oldKeysToDelete);
       }
 
-      invalidateProductListings({
-        categoryIds: [product.categoryId],
-        statuses: [product.status],
-      });
+      invalidateProductListings();
 
       // Refetch product to include all updates
       const updatedProduct = await prisma.product.findUnique({
@@ -874,8 +814,6 @@ export const productService = {
     status: requestedStatus,
     categoryId,
   }: ProductModel.bulkPatchBody) {
-    localCache.clear();
-
     // If requesting PUBLISHED, validate each product first
     if (requestedStatus === "PUBLISHED") {
       const products = await prisma.product.findMany({
@@ -925,7 +863,7 @@ export const productService = {
       }
     }
 
-    return prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx) => {
       const result = await tx.product.updateMany({
         where: { id: { in: ids } },
         data: {
@@ -952,6 +890,10 @@ export const productService = {
 
       return result;
     });
+
+    invalidateProductListings();
+
+    return updated;
   },
 
   async delete({ id }: uuidGuard) {
@@ -960,10 +902,7 @@ export const productService = {
       include: { images: true },
     });
 
-    invalidateProductListings({
-      categoryIds: [deletedProduct.categoryId],
-      statuses: [deletedProduct.status],
-    });
+    invalidateProductListings();
 
     return deletedProduct;
   },

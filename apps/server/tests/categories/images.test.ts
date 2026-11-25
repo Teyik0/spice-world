@@ -158,7 +158,10 @@ describe.concurrent("category images", () => {
         `corrupted ${operation}`,
         new File([bytes], "corrupted.webp", { type: "image/webp" }),
       );
-      expect(error).toMatchObject({ status: 422 });
+      expect(error).toMatchObject({
+        status: 400,
+        value: { code: "INVALID_IMAGE" },
+      });
     },
   );
 

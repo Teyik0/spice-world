@@ -16,7 +16,7 @@ export const collectionRouter = new Elysia({
   .get(
     "/",
     {
-      access: "optional",
+      access: "admin",
       response: { 200: t.Array(CollectionModel.collectionResult) },
     },
     async () => await collectionService.get(),
@@ -34,7 +34,7 @@ export const collectionRouter = new Elysia({
   .get(
     "/:id",
     {
-      access: "optional",
+      access: "admin",
       response: {
         200: CollectionModel.collectionResult,
         404: CollectionModel.collectionNotFound,

@@ -1,5 +1,7 @@
 import type { Product } from "@spice-world/server/prisma/client";
-import { type ElysiaStatus, t, type UnwrapSchema } from "elysia";
+import type { ElysiaStatus, UnwrapSchema } from "elysia";
+import { t } from "elysia";
+
 import {
   imageResult,
   nameLowerPattern,
@@ -18,24 +20,27 @@ export const productStatus = t.Union(
 );
 export type productStatus = UnwrapSchema<typeof productStatus>;
 
-export const getQuery = t.Object({
-  name: t.Optional(t.String()),
-  skip: t.Optional(t.Number({ default: 0, minimum: 0 })),
-  take: t.Optional(t.Number({ default: 25, minimum: 1, maximum: 100 })),
-  status: t.Optional(productStatus),
-  categories: t.Optional(t.Array(t.String())),
-  collection: t.Optional(t.String()),
-  sortBy: t.Optional(
-    t.Union([
-      t.Literal("name"),
-      t.Literal("createdAt"),
-      t.Literal("updatedAt"),
-      t.Literal("priceMin"),
-      t.Literal("priceMax"),
-    ]),
-  ),
-  sortDir: t.Optional(t.Union([t.Literal("asc"), t.Literal("desc")])),
-});
+export const getQuery = t.Object(
+  {
+    name: t.Optional(t.String()),
+    skip: t.Optional(t.Number({ default: 0, minimum: 0 })),
+    take: t.Optional(t.Number({ default: 25, minimum: 1, maximum: 100 })),
+    status: t.Optional(productStatus),
+    categories: t.Optional(t.Array(t.String())),
+    collection: t.Optional(t.String()),
+    sortBy: t.Optional(
+      t.Union([
+        t.Literal("name"),
+        t.Literal("createdAt"),
+        t.Literal("updatedAt"),
+        t.Literal("priceMin"),
+        t.Literal("priceMax"),
+      ]),
+    ),
+    sortDir: t.Optional(t.Union([t.Literal("asc"), t.Literal("desc")])),
+  },
+  { additionalProperties: false },
+);
 export type getQuery = UnwrapSchema<typeof getQuery>;
 export type getResult = Awaited<ReturnType<typeof productService.get>>;
 export type getByIdResult = Exclude<
@@ -44,117 +49,161 @@ export type getByIdResult = Exclude<
   ElysiaStatus<any>
 >;
 
-export const commentsQuery = t.Object({
-  skip: t.Optional(t.Number({ default: 0, minimum: 0 })),
-  take: t.Optional(t.Number({ default: 15, minimum: 1, maximum: 50 })),
-});
+export const commentsQuery = t.Object(
+  {
+    skip: t.Optional(t.Number({ default: 0, minimum: 0 })),
+    take: t.Optional(t.Number({ default: 15, minimum: 1, maximum: 50 })),
+  },
+  { additionalProperties: false },
+);
 export type commentsQuery = UnwrapSchema<typeof commentsQuery>;
 export type commentsResult = Awaited<
   ReturnType<typeof productService.getComments>
 >;
 
-export const countQuery = t.Object({
-  status: t.Optional(productStatus),
-});
+export const countQuery = t.Object(
+  {
+    status: t.Optional(productStatus),
+  },
+  { additionalProperties: false },
+);
 export type countQuery = UnwrapSchema<typeof countQuery>;
 
-export const imageCreate = t.Object({
-  file: t.File({ type: "image/*", maxSize: "7m" }),
-  altText: t.Optional(t.String()),
-  isThumbnail: t.Boolean(),
-});
+export const imageCreate = t.Object(
+  {
+    file: t.File({ type: "image/*", maxSize: "7m" }),
+    altText: t.Optional(t.String()),
+    isThumbnail: t.Boolean(),
+  },
+  { additionalProperties: false },
+);
 
-export const imageOperations = t.Object({
-  create: t.Optional(
-    t.Array(imageCreate, { maxItems: MAX_IMAGES_PER_PRODUCT }),
-  ),
-  update: t.Optional(
-    t.Array(
-      t.Object({
-        id: uuid,
-        file: t.Optional(t.File({ type: "image/*", maxSize: "7m" })),
-        altText: t.Optional(t.String()),
-        isThumbnail: t.Optional(t.Boolean()),
-      }),
-      { maxItems: MAX_IMAGES_PER_PRODUCT },
+export const imageOperations = t.Object(
+  {
+    create: t.Optional(
+      t.Array(imageCreate, { maxItems: MAX_IMAGES_PER_PRODUCT }),
     ),
-  ),
-  delete: t.Optional(t.Array(uuid)),
-});
+    update: t.Optional(
+      t.Array(
+        t.Object(
+          {
+            id: uuid,
+            file: t.Optional(t.File({ type: "image/*", maxSize: "7m" })),
+            altText: t.Optional(t.String()),
+            isThumbnail: t.Optional(t.Boolean()),
+          },
+          { additionalProperties: false },
+        ),
+        { maxItems: MAX_IMAGES_PER_PRODUCT },
+      ),
+    ),
+    delete: t.Optional(t.Array(uuid)),
+  },
+  { additionalProperties: false },
+);
 export type imageOperations = UnwrapSchema<typeof imageOperations>;
 
-export const variantCreate = t.Object({
-  price: t.Integer({ minimum: 0 }),
-  sku: t.Optional(t.String({ minLength: 3 })),
-  stock: t.Optional(t.Integer({ minimum: 0, default: 0 })),
-  currency: t.Optional(t.String({ default: "EUR" })),
-  attributeValueIds: t.Array(uuid),
-});
+export const variantCreate = t.Object(
+  {
+    price: t.Integer({ minimum: 0 }),
+    sku: t.Optional(t.String({ minLength: 3 })),
+    stock: t.Optional(t.Integer({ minimum: 0, default: 0 })),
+    currency: t.Optional(t.String({ default: "EUR" })),
+    attributeValueIds: t.Array(uuid),
+  },
+  { additionalProperties: false },
+);
 
-const variantUpdate = t.Object({
-  id: uuid,
-  price: t.Optional(t.Integer({ minimum: 0 })),
-  sku: t.Optional(t.String({ minLength: 3 })),
-  stock: t.Optional(t.Integer({ minimum: 0 })),
-  currency: t.Optional(t.String()),
-  attributeValueIds: t.Optional(t.Array(uuid)),
-});
+const variantUpdate = t.Object(
+  {
+    id: uuid,
+    price: t.Optional(t.Integer({ minimum: 0 })),
+    sku: t.Optional(t.String({ minLength: 3 })),
+    stock: t.Optional(t.Integer({ minimum: 0 })),
+    currency: t.Optional(t.String()),
+    attributeValueIds: t.Optional(t.Array(uuid)),
+  },
+  { additionalProperties: false },
+);
 
-export const variantOperations = t.Object({
-  create: t.Optional(t.Array(variantCreate)),
-  update: t.Optional(t.Array(variantUpdate)),
-  delete: t.Optional(t.Array(uuid)),
-});
+export const variantOperations = t.Object(
+  {
+    create: t.Optional(t.Array(variantCreate)),
+    update: t.Optional(t.Array(variantUpdate)),
+    delete: t.Optional(t.Array(uuid)),
+  },
+  { additionalProperties: false },
+);
 export type variantOperations = UnwrapSchema<typeof variantOperations>;
 
-export const postBody = t.Object({
-  name: nameLowerPattern,
-  description: t.String({ minLength: 1 }),
-  status: productStatus,
-  categoryId: uuid,
-  variants: t.Object({ create: t.Array(variantCreate, { minItems: 1 }) }),
-  images: t.Object({
-    create: t.Array(imageCreate, {
-      minItems: 1,
-      maxItems: MAX_IMAGES_PER_PRODUCT,
-    }),
-  }),
-});
+export const postBody = t.Object(
+  {
+    name: nameLowerPattern,
+    description: t.String({ minLength: 1 }),
+    status: productStatus,
+    categoryId: uuid,
+    variants: t.Object(
+      { create: t.Array(variantCreate, { minItems: 1 }) },
+      { additionalProperties: false },
+    ),
+    images: t.Object(
+      {
+        create: t.Array(imageCreate, {
+          minItems: 1,
+          maxItems: MAX_IMAGES_PER_PRODUCT,
+        }),
+      },
+      { additionalProperties: false },
+    ),
+  },
+  { additionalProperties: false },
+);
 export type postBody = UnwrapSchema<typeof postBody>;
 export type postResult = Awaited<
   ReturnType<typeof productService.post>
 >["response"];
 
-export const patchBody = t.Object({
-  name: t.Optional(nameLowerPattern),
-  description: t.Optional(t.String()),
-  status: t.Optional(productStatus),
-  categoryId: t.Optional(uuid),
-  images: t.Optional(imageOperations),
-  variants: t.Optional(variantOperations),
-  _version: t.Optional(t.Numeric()),
-});
+export const patchBody = t.Object(
+  {
+    name: t.Optional(nameLowerPattern),
+    description: t.Optional(t.String()),
+    status: t.Optional(productStatus),
+    categoryId: t.Optional(uuid),
+    images: t.Optional(imageOperations),
+    variants: t.Optional(variantOperations),
+  },
+  { additionalProperties: false },
+);
 export type patchBody = UnwrapSchema<typeof patchBody>;
 export type patchResult = Awaited<ReturnType<typeof productService.patch>>;
 
-export const bulkPatchBody = t.Object({
-  ids: t.Array(uuid, { minItems: 1 }),
-  status: t.Optional(productStatus),
-  categoryId: t.Optional(uuid),
-});
+export const bulkPatchBody = t.Object(
+  {
+    ids: t.Array(uuid, { minItems: 1 }),
+    status: t.Optional(productStatus),
+    categoryId: t.Optional(uuid),
+  },
+  { additionalProperties: false },
+);
 export type bulkPatchBody = UnwrapSchema<typeof bulkPatchBody>;
 
-export const bulkPatchResponse = t.Object({
-  successes: t.Array(t.String()),
-  failed: t.Array(
-    t.Object({
-      id: t.String(),
-      name: t.String(),
-      code: t.String(),
-      error: t.String(),
-    }),
-  ),
-});
+export const bulkPatchResponse = t.Object(
+  {
+    successes: t.Array(t.String()),
+    failed: t.Array(
+      t.Object(
+        {
+          id: t.String(),
+          name: t.String(),
+          code: t.String(),
+          error: t.String(),
+        },
+        { additionalProperties: false },
+      ),
+    ),
+  },
+  { additionalProperties: false },
+);
 export type bulkPatchResponse = UnwrapSchema<typeof bulkPatchResponse>;
 
 export type bulkPatchResult = Awaited<

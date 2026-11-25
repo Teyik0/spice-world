@@ -14,6 +14,7 @@ import {
   createSessionCookie,
   createTestCategory,
   expectDefined,
+  runBlocked,
 } from "./utils/helper";
 
 const api = treaty(attributeRouter, {
@@ -188,6 +189,48 @@ describe.concurrent("Attribute routes test", () => {
       }
     });
 
+    test("should paginate attributes in a stable order", async () => {
+      const category = await createTestCategory({ testDb, attributeCount: 3 });
+      const query = { categoryId: category.id };
+      const [all, first, second] = await Promise.all([
+        api.attributes.get({ query }),
+        api.attributes.get({ query: { ...query, take: 2 } }),
+        api.attributes.get({ query: { ...query, take: 2, skip: 2 } }),
+      ]);
+      expect(all.data).toHaveLength(3);
+      expect(first.data).toEqual(all.data?.slice(0, 2) ?? null);
+      expect(second.data).toEqual(all.data?.slice(2) ?? null);
+    });
+
+    test("should return at most 100 attributes by default", async () => {
+      const category = await createTestCategory({ testDb });
+      const rows = Array.from({ length: 101 }, (_, i) => ({
+        id: Bun.randomUUIDv7(),
+        name: `attr ${String.fromCharCode(97 + Math.floor(i / 26), 97 + (i % 26))}`,
+        categoryId: category.id,
+      }));
+      await db.insert(attributeTable).values(rows);
+      await db.insert(attributeValueTable).values(
+        rows.map(({ id }) => ({
+          id: Bun.randomUUIDv7(),
+          attributeId: id,
+          value: "abc",
+        })),
+      );
+      const { data } = await api.attributes.get({
+        query: { categoryId: category.id },
+      });
+      expect(data).toHaveLength(100);
+    });
+
+    test.each([{ take: 0 }, { take: 101 }, { take: 1.5 }, { skip: -1 }])(
+      "should reject out of bounds pagination %j",
+      async (query) => {
+        const { error } = await api.attributes.get({ query });
+        expect(error).toMatchObject({ status: 422 });
+      },
+    );
+
     test("should filter attributes by categoryId", async () => {
       const { data: attributes, status } = await api.attributes.get({
         query: {
@@ -250,6 +293,40 @@ describe.concurrent("Attribute routes test", () => {
   });
 
   describe("POST /attributes", () => {
+    test("should return the same JSON as getById", async () => {
+      const category = await createTestCategory({ testDb });
+      const headers = {
+        "content-type": "application/json",
+        cookie: await createSessionCookie(testDb),
+      };
+      // raw responses: Eden would parse both date formats into the same Date
+      const created = await attributeRouter.handle(
+        new Request("http://localhost/attributes", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            name: "origin",
+            categoryId: category.id,
+            values: ["france", "india"],
+          }),
+        }),
+      );
+      expect(created.status).toBe(201);
+      const body = (await created.json()) as { id: string };
+      const url = `http://localhost/attributes/${body.id}`;
+      const stored = await attributeRouter.handle(new Request(url));
+      expect(await stored.json()).toEqual(body);
+      const patched = await attributeRouter.handle(
+        new Request(url, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({ name: "renamed" }),
+        }),
+      );
+      const afterPatch = await attributeRouter.handle(new Request(url));
+      expect(await patched.json()).toEqual(await afterPatch.json());
+    });
+
     test("should create a new attribute with values", async () => {
       const newAttrData = {
         name: "form",
@@ -366,6 +443,36 @@ describe.concurrent("Attribute routes test", () => {
   });
 
   describe("PATCH /attributes/:id", () => {
+    test("should return values committed while waiting for the attribute lock", async () => {
+      const category = await createTestCategory({
+        testDb,
+        attributeCount: 1,
+        attributeValueCount: 1,
+      });
+      const [attribute] = category.attributes;
+      expectDefined(attribute);
+      const route = api.attributes({ id: attribute.id });
+      const { data } = await runBlocked(
+        testDb,
+        (tx) =>
+          tx
+            .select()
+            .from(attributeTable)
+            .where(eq(attributeTable.id, attribute.id))
+            .for("update"),
+        () => route.patch({ name: "renamed" }),
+        (tx) =>
+          tx.insert(attributeValueTable).values({
+            id: Bun.randomUUIDv7(),
+            attributeId: attribute.id,
+            value: "brand new",
+          }),
+      );
+      expectDefined(data);
+      expect(data.values).toHaveLength(2);
+      expect((await route.get()).data).toEqual(data);
+    });
+
     test("should preserve category and values when renaming an attribute", async () => {
       const attribute = await createAttribute("aroma", ["smoky"]);
 

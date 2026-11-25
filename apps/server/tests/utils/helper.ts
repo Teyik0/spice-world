@@ -4,15 +4,18 @@ import { basename } from "node:path";
 import type { treaty } from "@elysia/eden";
 import type { productsRouter } from "@spice-world/server/modules/products";
 import type * as ProductModel from "@spice-world/server/modules/products/model";
+import { sql } from "drizzle-orm";
 import type { UnwrapSchema } from "elysia";
 import type { UploadedFileData, UploadFileResult } from "uploadthing/types";
 
 import {
   attributeTable,
   attributeValueTable,
+  attributeValueToProductVariantTable,
   categoryTable,
   imageTable,
   productTable,
+  productVariantTable,
 } from "../../drizzle/schema";
 import type { createTestDatabase, TestDatabase } from "./db-manager";
 
@@ -37,21 +40,21 @@ export const waitFor = async (
   }
 };
 
-const createUploadedFileData = (uploadedFile: File): UploadedFileData => ({
-  key: `mock-key-${Date.now()}-${crypto.randomUUID()}`,
-  url: "https://mock-uploadthing.com/image.webp",
-  appUrl: "https://mock-uploadthing.com/image.webp",
-  ufsUrl: "https://mock-uploadthing.com/image.webp",
-  name: uploadedFile.name,
-  size: uploadedFile.size,
-  customId: (uploadedFile as File & { customId?: string }).customId ?? null,
-  type: "image/webp",
-  fileHash: "mock-hash",
-});
-
 export const mockUtapi = async () => {
   const imagesModule = await import("@spice-world/server/lib/images");
   const uploadedFiles: UploadedFileData[] = [];
+
+  const createUploadedFileData = (uploadedFile: File): UploadedFileData => ({
+    key: `mock-key-${Date.now()}-${crypto.randomUUID()}`,
+    url: "https://mock-uploadthing.com/image.webp",
+    appUrl: "https://mock-uploadthing.com/image.webp",
+    ufsUrl: "https://mock-uploadthing.com/image.webp",
+    name: uploadedFile.name,
+    size: uploadedFile.size,
+    customId: (uploadedFile as File & { customId?: string }).customId ?? null,
+    type: "image/webp",
+    fileHash: "mock-hash",
+  });
 
   const createResult = (uploadedFile: File): UploadFileResult => {
     const data = createUploadedFileData(uploadedFile);
@@ -95,10 +98,11 @@ export const mockUtapi = async () => {
   const deleteFiles = spyOn(
     imagesModule.utapi,
     "deleteFiles",
-  ).mockImplementation((async () => ({
-    success: true,
-    deletedCount: 1,
-  })) as typeof imagesModule.utapi.deleteFiles);
+  ).mockImplementation(((keys: string | string[]) =>
+    Promise.resolve({
+      success: true,
+      deletedCount: [keys].flat().length,
+    })) as typeof imagesModule.utapi.deleteFiles);
 
   return { uploadedFiles, uploadFiles, deleteFiles, failNextUpload };
 };
@@ -359,11 +363,37 @@ export const createTestCategory = async ({
   });
 };
 
+/** Inserts a product with one variant using the given attribute values. */
+export const createProductUsingValues = async (
+  testDb: TestDatabase,
+  categoryId: string,
+  valueIds: string[],
+) => {
+  const id = Bun.randomUUIDv7();
+  const variantId = Bun.randomUUIDv7();
+  await testDb.db.transaction(async (tx) => {
+    await tx.insert(productTable).values({
+      id,
+      name: `product ${randomLowerString()}`,
+      slug: id,
+      description: "uses attribute values",
+      categoryId,
+    });
+    await tx
+      .insert(productVariantTable)
+      .values({ id: variantId, productId: id, price: 100 });
+    await tx
+      .insert(attributeValueToProductVariantTable)
+      .values(valueIds.map((a) => ({ a, b: variantId })));
+  });
+  return id;
+};
+
 /** Inserts bare products (no variants, no images) in a fresh category. */
 export const createTestProducts = async (
   testDb: TestDatabase,
   count: number,
-  status: "DRAFT" | "PUBLISHED" = "PUBLISHED",
+  status: ProductModel.productStatus = "PUBLISHED",
 ) => {
   const category = await createTestCategory({ testDb });
   return await testDb.db
@@ -452,3 +482,31 @@ export function file(path: string): File {
   const blob = Bun.file(path);
   return new File([blob], basename(path), { type: blob.type });
 }
+
+type TestTx = Parameters<Parameters<TestDatabase["db"]["transaction"]>[0]>[0];
+
+/** Starts `request` while `lock` is held, then runs `meanwhile` once the lock blocks it. */
+export const runBlocked = async <T>(
+  { db }: TestDatabase,
+  lock: (tx: TestTx) => PromiseLike<unknown>,
+  request: () => PromiseLike<T>,
+  meanwhile: (tx: TestTx) => PromiseLike<unknown>,
+) => {
+  // wrapped: an async callback would await the request before releasing the lock
+  const { response } = await db.transaction(async (tx) => {
+    await lock(tx);
+    const [session] = await tx.execute<{ pid: number }>(
+      sql`select pg_backend_pid() as pid`,
+    );
+    const running = { response: Promise.resolve(request()) };
+    await waitFor(async () => {
+      const blocked = await db.execute(
+        sql`select 1 from pg_stat_activity where ${session?.pid}::int = any(pg_blocking_pids(pid))`,
+      );
+      expect(blocked.length).toBeGreaterThan(0);
+    });
+    await meanwhile(tx);
+    return running;
+  });
+  return await response;
+};

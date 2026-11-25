@@ -1,10 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
+
 import { treaty } from "@elysia/eden";
-import type { ordersRouter } from "@spice-world/server/modules/orders";
-import type { productsRouter } from "@spice-world/server/modules/products";
+import { ordersRouter } from "@spice-world/server/modules/orders";
+import { productsRouter } from "@spice-world/server/modules/products";
 import * as stripeCheckoutModule from "@spice-world/server/modules/stripe-checkout";
-import { createTestDatabase } from "../utils/db-manager";
+import { auth } from "@spice-world/server/plugins/auth.plugin";
+
+import { testDb } from "../setup";
 import {
+  createSessionCookie,
   createSetupProduct,
   expectDefined,
   file,
@@ -13,19 +17,17 @@ import {
 
 const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
 
+await mockUtapi();
+const productsApi = treaty(productsRouter, {
+  headers: { cookie: await createSessionCookie(testDb) },
+});
+const ordersApi = treaty(ordersRouter);
+
 describe("Stripe Checkout", () => {
-  let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
-  let productsApi: ReturnType<typeof treaty<typeof productsRouter>>;
-  let ordersApi: ReturnType<typeof treaty<typeof ordersRouter>>;
   let userCookie: string;
   let createStripeCheckoutMock: ReturnType<typeof spyOn>;
 
   beforeAll(async () => {
-    // Mock uploadthing BEFORE importing the router
-    await mockUtapi();
-
-    testDb = await createTestDatabase("stripe-checkout.test.ts");
-
     // Mock Stripe Checkout function
     createStripeCheckoutMock = spyOn(
       stripeCheckoutModule,
@@ -38,9 +40,6 @@ describe("Stripe Checkout", () => {
         status: "open" as const,
       });
     });
-
-    // Import auth after setting up mocks but before using it
-    const { auth } = await import("@spice-world/server/plugins/auth.plugin");
 
     // Create test user for authenticated requests
     const testUser = await auth.api.createUser({
@@ -66,22 +65,12 @@ describe("Stripe Checkout", () => {
     });
     const setCookie = signInResp.headers.get("set-cookie");
     userCookie = setCookie?.split(";")[0] || "";
-
-    const { productsRouter: authenticatedProductsRouter } =
-      await import("@spice-world/server/modules/products");
-    const { ordersRouter: authenticatedOrdersRouter } =
-      await import("@spice-world/server/modules/orders");
-
-    productsApi = treaty(authenticatedProductsRouter);
-    ordersApi = treaty(authenticatedOrdersRouter);
   });
 
-  afterAll(async () => {
+  afterAll(() => {
     // Restore Stripe Checkout mock if it was created
     createStripeCheckoutMock?.mockRestore();
-
-    await testDb.destroy();
-  }, 10_000);
+  });
 
   describe("POST /orders/checkout", () => {
     it("should succeed checkout validation without polarProductId requirement", async () => {

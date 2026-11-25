@@ -1,5 +1,5 @@
-import type * as CategoryModel from "../../categories/model";
-import { ProductValidationError, type ValidationError } from "../../shared";
+import type { ValidationError } from "../../shared";
+import { ProductValidationError } from "../../shared";
 import type * as ProductModel from "../model";
 
 export interface AllowedAttributeValue {
@@ -7,8 +7,13 @@ export interface AllowedAttributeValue {
   id: string;
 }
 
+/** Minimal shape shared by the Drizzle and Prisma categories. */
+export interface VariantCategory {
+  attributes: { id: string; values: { id: string }[] }[];
+}
+
 interface ValidateVariants {
-  category: Pick<CategoryModel.categoryResult, "attributes">;
+  category: VariantCategory;
   currVariants?: {
     id: string;
     attributeValueIds: string[];
@@ -207,7 +212,7 @@ function validateVA3({
   category,
 }: {
   variantCount: number;
-  category: Pick<CategoryModel.categoryResult, "attributes">;
+  category: VariantCategory;
 }): ValidationError | null {
   if (variantCount < 1) {
     return {

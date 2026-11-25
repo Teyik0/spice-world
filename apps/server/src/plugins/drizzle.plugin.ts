@@ -48,6 +48,11 @@ export const drizzleErrorPlugin = new Elysia({
         code: "DATABASE_WRITE_UNAVAILABLE",
         message: "Database operation temporarily unavailable",
       });
+    case "22021": // character_not_in_repertoire: Postgres rejects \0
+      return problem("Bad Request", {
+        code: "INVALID_TEXT",
+        message: "Invalid text value",
+      });
     default:
       return problem("Internal Server Error", {
         code: "UNKNOWN",

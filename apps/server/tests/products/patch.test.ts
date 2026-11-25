@@ -1,49 +1,42 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { describe, expect, it } from "bun:test";
+
 import { treaty } from "@elysia/eden";
-import type { productsRouter } from "@spice-world/server/modules/products";
-import { createTestDatabase } from "../utils/db-manager";
+import { productsRouter } from "@spice-world/server/modules/products";
+
+import { testDb } from "../setup";
 import {
+  createSessionCookie,
   createSetupProduct,
   createTestCategory,
+  createTestProducts,
   expectDefined,
   file,
   mockUtapi,
   randomLowerString,
 } from "../utils/helper";
 
-let api: ReturnType<typeof treaty<typeof productsRouter>>;
+await mockUtapi();
+const api = treaty(productsRouter, {
+  headers: { cookie: await createSessionCookie(testDb) },
+});
+const setupProduct = createSetupProduct(testDb, api);
 
 describe.concurrent("PATCH /products/:id - Integration Tests", () => {
-  let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
-  let setupProduct: ReturnType<typeof createSetupProduct>;
-
   const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
   const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
-
-  beforeAll(async () => {
-    testDb = await createTestDatabase("patch.test.ts");
-    // Mock uploadthing BEFORE importing the router
-    await mockUtapi();
-    const { productsRouter: router } =
-      await import("@spice-world/server/modules/products");
-
-    api = treaty(router);
-    setupProduct = createSetupProduct(testDb, api);
-  });
-
-  afterAll(async () => {
-    await testDb.destroy();
-  }, 10_000);
 
   describe("PATCH /products - Business Logic Validations", () => {
     it("should return an error if the product ID does not exist", async () => {
       const { status, error } = await api
         .products({ id: crypto.randomUUID() })
-        .patch({
-          name: "non existent product",
-          description: "this product does not exist",
-          status: "DRAFT" as const,
-        });
+        .patch(
+          {
+            name: "non existent product",
+            description: "this product does not exist",
+            status: "DRAFT" as const,
+          },
+          { headers: { "x-version": 1 } },
+        );
 
       expect(status).toBe(404);
       expectDefined(error);
@@ -98,10 +91,13 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       expectDefined(product1);
       expectDefined(product2);
 
-      const { status, error } = await api.products({ id: product1.id }).patch({
-        name: product2.name,
-        status: "DRAFT",
-      });
+      const { status, error } = await api.products({ id: product1.id }).patch(
+        {
+          name: product2.name,
+          status: "DRAFT",
+        },
+        { headers: { "x-version": product1.version } },
+      );
 
       expect(status).toBe(409);
       expectDefined(error);
@@ -118,26 +114,32 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       // Add a second variant with different attribute values
       const { data: patchedData } = await api
         .products({ id: product.id })
-        .patch({
-          variants: {
-            create: [
-              {
-                price: 1500,
-                stock: 15,
-                attributeValueIds: [
-                  category.attributes[0]?.values[0]?.id as string,
-                ],
-              },
-            ],
+        .patch(
+          {
+            variants: {
+              create: [
+                {
+                  price: 1500,
+                  stock: 15,
+                  attributeValueIds: [
+                    category.attributes[0]?.values[0]?.id as string,
+                  ],
+                },
+              ],
+            },
           },
-        });
+          { headers: { "x-version": product.version } },
+        );
       expectDefined(patchedData);
 
       const allVariantIds = patchedData.variants.map((v) => v.id);
 
-      const { error } = await api.products({ id: product.id }).patch({
-        variants: { delete: allVariantIds },
-      });
+      const { error } = await api.products({ id: product.id }).patch(
+        {
+          variants: { delete: allVariantIds },
+        },
+        { headers: { "x-version": patchedData.version } },
+      );
 
       expectDefined(error);
       expect(error.status).toBe(400);
@@ -169,12 +171,38 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
       });
 
-      const { status } = await api.products({ id: product.id }).patch({
-        name: "should fail version check",
-        _version: 999,
-      });
+      const { status } = await api.products({ id: product.id }).patch(
+        {
+          name: "should fail version check",
+        },
+        { headers: { "x-version": 999 } },
+      );
 
       expect(status).toBe(409);
+    });
+
+    it("should let only one of two concurrent patches on the same version succeed", async () => {
+      const [product] = await createTestProducts(testDb, 1);
+      expectDefined(product);
+      const { version } = product;
+
+      const results = await Promise.all(
+        ["first", "second"].map((description) =>
+          api
+            .products({ id: product.id })
+            .patch(
+              { description },
+              { headers: { "x-version": product.version } },
+            ),
+        ),
+      );
+
+      expect(results.map(({ status }) => status).sort()).toEqual([200, 409]);
+      expect(results.find(({ status }) => status === 409)?.error).toMatchObject(
+        { value: { code: "VERSION_CONFLICT" } },
+      );
+      const winner = results.find(({ status }) => status === 200)?.data;
+      expect(winner).toMatchObject({ version: version + 1 });
     });
   });
 
@@ -221,18 +249,23 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       expect(createStatus).toBe(201);
       expectDefined(createdProduct);
 
-      const { error } = await api.products({ id: createdProduct.id }).patch({
-        variants: {
-          create: [
-            {
-              price: 1500,
-              sku: "INVALID-VARIANT",
-              stock: 20,
-              attributeValueIds: [herbsAttributes[0]?.values[0]?.id as string],
-            },
-          ],
+      const { error } = await api.products({ id: createdProduct.id }).patch(
+        {
+          variants: {
+            create: [
+              {
+                price: 1500,
+                sku: "INVALID-VARIANT",
+                stock: 20,
+                attributeValueIds: [
+                  herbsAttributes[0]?.values[0]?.id as string,
+                ],
+              },
+            ],
+          },
         },
-      });
+        { headers: { "x-version": createdProduct.version } },
+      );
 
       expectDefined(error);
       expect(error.status).toBe(400);
@@ -291,16 +324,21 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       const existingVariantId = createdProduct.variants[0]?.id;
       expectDefined(existingVariantId);
 
-      const { error } = await api.products({ id: createdProduct.id }).patch({
-        variants: {
-          update: [
-            {
-              id: existingVariantId,
-              attributeValueIds: [herbsAttributes[0]?.values[0]?.id as string],
-            },
-          ],
+      const { error } = await api.products({ id: createdProduct.id }).patch(
+        {
+          variants: {
+            update: [
+              {
+                id: existingVariantId,
+                attributeValueIds: [
+                  herbsAttributes[0]?.values[0]?.id as string,
+                ],
+              },
+            ],
+          },
         },
-      });
+        { headers: { "x-version": createdProduct.version } },
+      );
 
       expectDefined(error);
       expect(error.status).toBe(400);
@@ -365,9 +403,12 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 
       const { data, status } = await api
         .products({ id: createdProduct.id })
-        .patch({
-          categoryId: herbsCategory.id,
-        });
+        .patch(
+          {
+            categoryId: herbsCategory.id,
+          },
+          { headers: { "x-version": createdProduct.version } },
+        );
 
       expect(status).toBe(200);
       expect(data).toMatchObject({
@@ -419,22 +460,25 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 
       const { data, status } = await api
         .products({ id: createdProduct.id })
-        .patch({
-          categoryId: herbsCategory.id,
-          variants: {
-            delete: [existingVariantId],
-            create: [
-              {
-                price: 1500,
-                sku: "CAT-ATOMIC-NEW",
-                stock: 20,
-                attributeValueIds: [
-                  herbsAttributes[0]?.values[0]?.id as string,
-                ],
-              },
-            ],
+        .patch(
+          {
+            categoryId: herbsCategory.id,
+            variants: {
+              delete: [existingVariantId],
+              create: [
+                {
+                  price: 1500,
+                  sku: "CAT-ATOMIC-NEW",
+                  stock: 20,
+                  attributeValueIds: [
+                    herbsAttributes[0]?.values[0]?.id as string,
+                  ],
+                },
+              ],
+            },
           },
-        });
+          { headers: { "x-version": createdProduct.version } },
+        );
 
       expect(status).toBe(200);
       expectDefined(data);
@@ -471,11 +515,16 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       const variantId = product.variants[0]?.id;
       expectDefined(variantId);
 
-      const { error } = await api.products({ id: product.id }).patch({
-        variants: {
-          update: [{ id: variantId, attributeValueIds: [valueId1, valueId2] }],
+      const { error } = await api.products({ id: product.id }).patch(
+        {
+          variants: {
+            update: [
+              { id: variantId, attributeValueIds: [valueId1, valueId2] },
+            ],
+          },
         },
-      });
+        { headers: { "x-version": product.version } },
+      );
 
       expectDefined(error);
       expect(error.status).toBe(400);
@@ -512,14 +561,17 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       const [variantToUpdate] = product.variants;
       expectDefined(variantToUpdate);
 
-      const { data, status } = await api.products({ id: product.id }).patch({
-        name: "updated spice",
-        description: "an updated description",
-        status: "DRAFT",
-        variants: {
-          update: [{ id: variantToUpdate.id, price: 1299, stock: 524 }],
+      const { data, status } = await api.products({ id: product.id }).patch(
+        {
+          name: "updated spice",
+          description: "an updated description",
+          status: "DRAFT",
+          variants: {
+            update: [{ id: variantToUpdate.id, price: 1299, stock: 524 }],
+          },
         },
-      });
+        { headers: { "x-version": product.version } },
+      );
 
       expect(status).toBe(200);
       expectDefined(data);
@@ -556,14 +608,17 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 
       const initialImageCount = product.images.length;
 
-      const { data, status } = await api.products({ id: product.id }).patch({
-        images: {
-          create: [
-            { isThumbnail: false, file: file(filePath1) },
-            { isThumbnail: false, file: file(filePath2) },
-          ],
+      const { data, status } = await api.products({ id: product.id }).patch(
+        {
+          images: {
+            create: [
+              { isThumbnail: false, file: file(filePath1) },
+              { isThumbnail: false, file: file(filePath2) },
+            ],
+          },
         },
-      });
+        { headers: { "x-version": product.version } },
+      );
 
       expect(status).toBe(200);
       expectDefined(data);
@@ -597,12 +652,15 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       const replacement = product.images.find((img) => !img.isThumbnail);
       expectDefined(replacement);
 
-      const { data, status } = await api.products({ id: product.id }).patch({
-        images: {
-          delete: thumbnails,
-          update: [{ id: replacement.id, isThumbnail: true }],
+      const { data, status } = await api.products({ id: product.id }).patch(
+        {
+          images: {
+            delete: thumbnails,
+            update: [{ id: replacement.id, isThumbnail: true }],
+          },
         },
-      });
+        { headers: { "x-version": product.version } },
+      );
       expect(status).toBe(200);
       expectDefined(data);
       const thumbnails2 = data.images.filter((img) => img.isThumbnail);
@@ -627,16 +685,19 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       const imageId = product.images[0]?.id;
       expectDefined(imageId);
 
-      const { data, status } = await api.products({ id: product.id }).patch({
-        images: {
-          update: [
-            {
-              id: imageId,
-              altText: "Updated alt text for test",
-            },
-          ],
+      const { data, status } = await api.products({ id: product.id }).patch(
+        {
+          images: {
+            update: [
+              {
+                id: imageId,
+                altText: "Updated alt text for test",
+              },
+            ],
+          },
         },
-      });
+        { headers: { "x-version": product.version } },
+      );
 
       expect(status).toBe(200);
       expectDefined(data);
@@ -659,28 +720,31 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 
       const initialVariantCount = product.variants.length;
 
-      const { data, status } = await api.products({ id: product.id }).patch({
-        variants: {
-          create: [
-            {
-              price: 1500,
-              sku: "NEW-VARIANT-1",
-              stock: 20,
-              attributeValueIds: [
-                category.attributes[2]?.values[0]?.id as string,
-              ],
-            },
-            {
-              price: 20,
-              sku: "NEW-VARIANT-2",
-              stock: 25,
-              attributeValueIds: [
-                category.attributes[3]?.values[0]?.id as string,
-              ],
-            },
-          ],
+      const { data, status } = await api.products({ id: product.id }).patch(
+        {
+          variants: {
+            create: [
+              {
+                price: 1500,
+                sku: "NEW-VARIANT-1",
+                stock: 20,
+                attributeValueIds: [
+                  category.attributes[2]?.values[0]?.id as string,
+                ],
+              },
+              {
+                price: 20,
+                sku: "NEW-VARIANT-2",
+                stock: 25,
+                attributeValueIds: [
+                  category.attributes[3]?.values[0]?.id as string,
+                ],
+              },
+            ],
+          },
         },
-      });
+        { headers: { "x-version": product.version } },
+      );
 
       expect(status).toBe(200);
       expectDefined(data);
@@ -705,27 +769,33 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       // Add a second variant with different attribute values
       const { data: patchedData } = await api
         .products({ id: product.id })
-        .patch({
-          variants: {
-            create: [
-              {
-                price: 1500,
-                stock: 15,
-                attributeValueIds: [
-                  category.attributes[0]?.values[0]?.id as string,
-                ],
-              },
-            ],
+        .patch(
+          {
+            variants: {
+              create: [
+                {
+                  price: 1500,
+                  stock: 15,
+                  attributeValueIds: [
+                    category.attributes[0]?.values[0]?.id as string,
+                  ],
+                },
+              ],
+            },
           },
-        });
+          { headers: { "x-version": product.version } },
+        );
       expectDefined(patchedData);
 
       const allVariantIds = patchedData.variants.map((v) => v.id);
       const variantToDelete = allVariantIds[0] as string;
 
-      const { data, status } = await api.products({ id: product.id }).patch({
-        variants: { delete: [variantToDelete] },
-      });
+      const { data, status } = await api.products({ id: product.id }).patch(
+        {
+          variants: { delete: [variantToDelete] },
+        },
+        { headers: { "x-version": patchedData.version } },
+      );
 
       expect(status).toBe(200);
       expectDefined(data);
@@ -749,11 +819,14 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       const [existingImage] = product.images;
       expectDefined(existingImage);
 
-      const { data, status } = await api.products({ id: product.id }).patch({
-        images: {
-          update: [{ id: existingImage.id, file: file(filePath1) }],
+      const { data, status } = await api.products({ id: product.id }).patch(
+        {
+          images: {
+            update: [{ id: existingImage.id, file: file(filePath1) }],
+          },
         },
-      });
+        { headers: { "x-version": product.version } },
+      );
 
       expect(status).toBe(200);
       expectDefined(data);
@@ -776,10 +849,13 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
 
       const { data: patched, status: patchStatus } = await api
         .products({ id: product.id })
-        .patch({
-          name: product.name,
-          description: product.description,
-        });
+        .patch(
+          {
+            name: product.name,
+            description: product.description,
+          },
+          { headers: { "x-version": product.version } },
+        );
 
       expect(patchStatus).toBe(200);
       expectDefined(patched);

@@ -1,6 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { beforeAll, describe, expect, it } from "bun:test";
+
 import { treaty } from "@elysia/eden";
-import type { productsRouter } from "@spice-world/server/modules/products";
+import { productsRouter } from "@spice-world/server/modules/products";
 import type * as ProductModel from "@spice-world/server/modules/products/model";
 import type {
   Category,
@@ -8,11 +9,22 @@ import type {
   Product,
   ProductVariant,
 } from "@spice-world/server/prisma/client";
-import { createTestDatabase } from "../utils/db-manager";
-import { createDummyProducts } from "../utils/dummy-products";
-import { expectDefined, mockUtapi } from "../utils/helper";
 
-let api: ReturnType<typeof treaty<typeof productsRouter>>;
+import { testDb } from "../setup";
+import { createDummyProducts } from "../utils/dummy-products";
+import {
+  createSessionCookie,
+  createTestProducts,
+  expectDefined,
+  mockUtapi,
+} from "../utils/helper";
+
+await mockUtapi();
+const api = treaty(productsRouter, {
+  headers: { cookie: await createSessionCookie(testDb) },
+});
+
+const userCookie = await createSessionCookie(testDb, "user");
 
 describe.concurrent("GET /products - Integration Tests", () => {
   let testCategories: Category[];
@@ -20,26 +32,12 @@ describe.concurrent("GET /products - Integration Tests", () => {
     variants: ProductVariant[];
     images: Image[];
   })[];
-  let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
 
   beforeAll(async () => {
-    // Mock uploadthing BEFORE importing the router
-    await mockUtapi();
-
-    testDb = await createTestDatabase("get.test.ts");
-
-    const { productsRouter: router } =
-      await import("@spice-world/server/modules/products");
-    api = treaty(router);
-
     const { categories, products } = await createDummyProducts(testDb.client);
     testCategories = categories;
     testProducts = products;
   });
-
-  afterAll(async () => {
-    await testDb.destroy();
-  }, 10_000);
 
   describe("GET /products", () => {
     it("should return a list of products sorted by name", async () => {
@@ -178,5 +176,148 @@ describe.concurrent("GET /products - Integration Tests", () => {
       expect(data.name).toBe(product.name);
       expect(data.description).toBe(product.description);
     });
+  });
+
+  describe("visibility", () => {
+    const visitors = {
+      anonymous: treaty(productsRouter),
+      user: treaty(productsRouter, { headers: { cookie: userCookie } }),
+    };
+
+    for (const [role, visitor] of Object.entries(visitors)) {
+      it(`hides unpublished products from ${role}`, async () => {
+        const [[published], [draft], [archived]] = await Promise.all([
+          createTestProducts(testDb, 1),
+          createTestProducts(testDb, 1, "DRAFT"),
+          createTestProducts(testDb, 1, "ARCHIVED"),
+        ]);
+        expectDefined(published);
+        expectDefined(draft);
+        expectDefined(archived);
+        const categories = await testDb.client.category.findMany({
+          where: {
+            products: {
+              some: { id: { in: [published.id, draft.id, archived.id] } },
+            },
+          },
+        });
+        const names = categories.map(({ name }) => name);
+
+        const [all, drafts, adminDrafts] = await Promise.all([
+          visitor.products.get({ query: { categories: names } }),
+          visitor.products.get({
+            query: { categories: names, status: "DRAFT" },
+          }),
+          api.products.get({ query: { categories: names, status: "DRAFT" } }),
+        ]);
+        expect(all.data?.map(({ id }) => id)).toEqual([published.id]);
+        expect(drafts.data?.map(({ id }) => id)).toEqual([published.id]);
+        expect(adminDrafts.data?.map(({ id }) => id)).toEqual([draft.id]);
+
+        const hidden = await Promise.all(
+          [draft, archived].flatMap(({ id, slug }) => [
+            visitor.products({ id }).get(),
+            visitor.products.slug({ slug }).get(),
+            visitor.products({ id }).comments.get({ query: {} }),
+          ]),
+        );
+        expect(hidden.map(({ status }) => status)).toEqual([
+          404, 404, 404, 404, 404, 404,
+        ]);
+
+        const visible = await Promise.all([
+          visitor.products({ id: published.id }).get(),
+          visitor.products.slug({ slug: published.slug }).get(),
+          api.products({ id: draft.id }).get(),
+          api.products.slug({ slug: draft.slug }).get(),
+          visitor.products({ id: published.id }).comments.get({ query: {} }),
+          api.products({ id: draft.id }).comments.get({ query: {} }),
+        ]);
+        expect(visible.map(({ status }) => status)).toEqual([
+          200, 200, 200, 200, 200, 200,
+        ]);
+
+        const [drafted, total] = await Promise.all([
+          visitor.products.count.get({ query: { status: "DRAFT" } }),
+          api.products.count.get({ query: {} }),
+        ]);
+        expectDefined(drafted.data);
+        expectDefined(total.data);
+        // The draft and the archived product are never counted.
+        expect(drafted.data).toBeLessThanOrEqual(total.data - 2);
+      });
+    }
+  });
+
+  describe("cache", () => {
+    const listing = async (id: string) => {
+      const category = await testDb.client.category.findFirstOrThrow({
+        where: { products: { some: { id } } },
+      });
+      return async () => {
+        const { data } = await api.products.get({
+          query: { status: "PUBLISHED", categories: [category.name] },
+        });
+        return data?.map((product) => product.id);
+      };
+    };
+
+    it("drops a product from its old status listing after a patch", async () => {
+      const [product] = await createTestProducts(testDb, 1);
+      expectDefined(product);
+      await testDb.client.productVariant.create({
+        data: { productId: product.id, price: 1000, stock: 1 },
+      });
+      const list = await listing(product.id);
+      expect(await list()).toEqual([product.id]);
+
+      const { status } = await api
+        .products({ id: product.id })
+        .patch(
+          { status: "DRAFT" },
+          { headers: { "x-version": product.version } },
+        );
+      expect(status).toBe(200);
+      expect(await list()).toEqual([]);
+    });
+
+    it("drops a product from its old status listing after a bulk patch", async () => {
+      const [product] = await createTestProducts(testDb, 1);
+      expectDefined(product);
+      const list = await listing(product.id);
+      expect(await list()).toEqual([product.id]);
+
+      const { status } = await api.products.bulk.patch({
+        ids: [product.id],
+        status: "ARCHIVED",
+      });
+      expect(status).toBe(200);
+      expect(await list()).toEqual([]);
+    });
+  });
+
+  it("orders ties by id so pages never overlap", async () => {
+    const products = await createTestProducts(testDb, 6);
+    const [first] = products;
+    expectDefined(first);
+    const category = await testDb.client.category.findUniqueOrThrow({
+      where: { id: first.categoryId },
+    });
+    // No variant: every priceMin is null, so all of them tie.
+    const pages = await Promise.all(
+      [0, 2, 4].map((skip) =>
+        api.products.get({
+          query: {
+            categories: [category.name],
+            sortBy: "priceMin",
+            skip,
+            take: 2,
+          },
+        }),
+      ),
+    );
+    expect(pages.flatMap(({ data }) => data?.map(({ id }) => id))).toEqual(
+      products.map(({ id }) => id).sort(),
+    );
   });
 });

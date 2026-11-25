@@ -1,9 +1,12 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { describe, expect, it } from "bun:test";
+
 import { treaty } from "@elysia/eden";
-import type { productsRouter } from "@spice-world/server/modules/products";
+import { productsRouter } from "@spice-world/server/modules/products";
 import type * as ProductModel from "@spice-world/server/modules/products/model";
-import { createTestDatabase } from "../utils/db-manager";
+
+import { testDb } from "../setup";
 import {
+  createSessionCookie,
   createTestCategory,
   expectDefined,
   file,
@@ -11,26 +14,14 @@ import {
   randomLowerString,
 } from "../utils/helper";
 
-let api: ReturnType<typeof treaty<typeof productsRouter>>;
+await mockUtapi();
+const api = treaty(productsRouter, {
+  headers: { cookie: await createSessionCookie(testDb) },
+});
 
 describe.concurrent("POST /products - Integration Tests", () => {
-  let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
   const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
   const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
-
-  beforeAll(async () => {
-    testDb = await createTestDatabase("post-integration.test.ts");
-    // Mock uploadthing BEFORE importing the router
-    await mockUtapi();
-    const { productsRouter: router } =
-      await import("@spice-world/server/modules/products");
-
-    api = treaty(router);
-  });
-
-  afterAll(async () => {
-    await testDb.destroy();
-  }, 10_000);
 
   describe("POST /products - Business Logic Validations", () => {
     it("should create a new product successfully", async () => {
@@ -574,7 +565,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
       // Add one more variant with empty attributeValueIds to exceed capacity
       variants.push({
-        price: 99.99,
+        price: 9999,
         sku: `sku${testId}extra`,
         attributeValueIds: [],
       });
@@ -783,7 +774,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
       for (const attr1Val of attr1Values) {
         for (const attr2Val of attr2Values) {
           variants.push({
-            price: 9.99 + variants.length,
+            price: 999 + variants.length,
             sku: `sku${testId}${variants.length}`,
             attributeValueIds: [attr1Val.id, attr2Val.id],
           });
@@ -833,7 +824,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
       // Add variant with empty attributeValueIds to exceed capacity
       variants.push({
-        price: 99.99,
+        price: 9999,
         sku: `sku${testId}extra`,
         attributeValueIds: [],
       });

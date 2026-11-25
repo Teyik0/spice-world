@@ -1,36 +1,25 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { describe, expect, it } from "bun:test";
+
 import { treaty } from "@elysia/eden";
-import type { productsRouter } from "@spice-world/server/modules/products";
-import { createTestDatabase } from "../utils/db-manager";
+import { productsRouter } from "@spice-world/server/modules/products";
+
+import { testDb } from "../setup";
 import {
+  createSessionCookie,
   createTestCategory,
   expectDefined,
   file,
   mockUtapi,
 } from "../utils/helper";
 
-let api: ReturnType<typeof treaty<typeof productsRouter>>;
+await mockUtapi();
+const api = treaty(productsRouter, {
+  headers: { cookie: await createSessionCookie(testDb) },
+});
 
 describe.concurrent("DELETE /products/:id - Integration Tests", () => {
-  let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
-
   const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
   const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
-
-  beforeAll(async () => {
-    testDb = await createTestDatabase("delete.test.ts");
-
-    // Mock uploadthing BEFORE importing the router
-    await mockUtapi();
-
-    const { productsRouter: router } =
-      await import("@spice-world/server/modules/products");
-    api = treaty(router);
-  });
-
-  afterAll(async () => {
-    await testDb.destroy();
-  }, 10_000);
 
   it("should delete a product successfully", async () => {
     const category = await createTestCategory({ testDb, attributeCount: 1 });

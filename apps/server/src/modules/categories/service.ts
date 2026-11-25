@@ -18,13 +18,6 @@ import type { uuidGuard } from "../shared";
 import { uploadFileErrStatus } from "../shared";
 import type * as CategoryModel from "./model";
 
-const { productId: _productId, ...imageColumns } = getColumns(imageTable);
-const { imageId: _imageId, ...categoryColumns } = getColumns(categoryTable);
-const { categoryId: _categoryId, ...attributeColumns } =
-  getColumns(attributeTable);
-const { attributeId: _attributeId, ...valueColumns } =
-  getColumns(attributeValueTable);
-
 export const categoryService = {
   categoryNotFound: problem("Not Found", {
     code: "CATEGORY_NOT_FOUND",
@@ -78,6 +71,12 @@ export const categoryService = {
   },
 
   async post({ name, file, attributes }: CategoryModel.postBody) {
+    if (await db.$count(categoryTable, eq(categoryTable.name, name))) {
+      return problem("Conflict", {
+        code: "CATEGORY_NAME_ALREADY_EXISTS",
+        message: "A category with this name already exists",
+      });
+    }
     const { data: images, error: fileError } = await uploadFiles(name, file);
     if (fileError || images?.length !== 1) {
       return uploadFileErrStatus(fileError);
@@ -327,12 +326,10 @@ export const categoryService = {
           }
         }
 
-        const [updatedCategory] = await tx
+        await tx
           .update(categoryTable)
           .set({ name: name ?? current.name })
-          .where(eq(categoryTable.id, id))
-          .returning(categoryColumns);
-        let updatedImage: typeof current.image | undefined;
+          .where(eq(categoryTable.id, id));
 
         if (imageUpdate) {
           await claimUploads(tx, [newFile as MultiSizeUploadData]);
@@ -345,11 +342,10 @@ export const categoryService = {
 
         const renamed = name !== undefined && name !== current.name;
         if (imageUpdate || renamed) {
-          [updatedImage] = await tx
+          await tx
             .update(imageTable)
             .set({ ...imageUpdate, ...(renamed && { altText: name }) })
-            .where(eq(imageTable.id, current.image.id))
-            .returning(imageColumns);
+            .where(eq(imageTable.id, current.image.id));
         }
 
         if (deleteIds.length) {
@@ -373,10 +369,6 @@ export const categoryService = {
               ? []
               : [{ id: attributeId, name: attributeName }],
         );
-        let updatedAttributes: Omit<
-          (typeof current.attributes)[number],
-          "values"
-        >[] = [];
         if (attributeNameUpdates.length) {
           const cases = sql.join(
             attributeNameUpdates.map(
@@ -385,18 +377,21 @@ export const categoryService = {
             ),
             sql` `,
           );
-          updatedAttributes = await tx
+          const renamedIds = inArray(
+            attributeTable.id,
+            attributeNameUpdates.map(({ id: attributeId }) => attributeId),
+          );
+          // Unique indexes are checked row by row: free the names first, so they can be swapped.
+          await tx
+            .update(attributeTable)
+            .set({ name: sql`'~' || ${attributeTable.id}` })
+            .where(renamedIds);
+          await tx
             .update(attributeTable)
             .set({
               name: sql`case ${cases} else ${attributeTable.name} end`,
             })
-            .where(
-              inArray(
-                attributeTable.id,
-                attributeNameUpdates.map(({ id: attributeId }) => attributeId),
-              ),
-            )
-            .returning(attributeColumns);
+            .where(renamedIds);
         }
 
         const valueUpdates = updates.flatMap(
@@ -407,7 +402,6 @@ export const categoryService = {
               value,
             })) ?? [],
         );
-        let updatedValues: (typeof current.attributes)[number]["values"] = [];
         if (valueUpdates.length) {
           const cases = sql.join(
             valueUpdates.map(
@@ -416,36 +410,34 @@ export const categoryService = {
             ),
             sql` `,
           );
-          updatedValues = await tx
+          const renamedIds = inArray(
+            attributeValueTable.id,
+            valueUpdates.map(({ id: valueId }) => valueId),
+          );
+          await tx
+            .update(attributeValueTable)
+            .set({ value: sql`'~' || ${attributeValueTable.id}` })
+            .where(renamedIds);
+          await tx
             .update(attributeValueTable)
             .set({
               value: sql`case ${cases} else ${attributeValueTable.value} end`,
             })
-            .where(
-              inArray(
-                attributeValueTable.id,
-                valueUpdates.map(({ id: valueId }) => valueId),
-              ),
-            )
-            .returning(valueColumns);
+            .where(renamedIds);
         }
 
         const newAttributes = (attributes?.create ?? []).map((attribute) => ({
           ...attribute,
           id: Bun.randomUUIDv7(),
         }));
-        let createdAttributes: typeof updatedAttributes = [];
         if (newAttributes.length) {
-          createdAttributes = await tx
-            .insert(attributeTable)
-            .values(
-              newAttributes.map(({ id: attributeId, name: attrName }) => ({
-                id: attributeId,
-                name: attrName,
-                categoryId: id,
-              })),
-            )
-            .returning(attributeColumns);
+          await tx.insert(attributeTable).values(
+            newAttributes.map(({ id: attributeId, name: attrName }) => ({
+              id: attributeId,
+              name: attrName,
+              categoryId: id,
+            })),
+          );
         }
 
         const newValues = [
@@ -464,45 +456,15 @@ export const categoryService = {
             })),
           ),
         ];
-        const createdValues = newValues.length
-          ? await tx.insert(attributeValueTable).values(newValues).returning()
-          : [];
+        if (newValues.length) {
+          await tx.insert(attributeValueTable).values(newValues);
+        }
 
-        const deletedIds = new Set([...deleteIds, ...valueDeleteIds]);
-        const updatedAttributesById = new Map(
-          updatedAttributes.map((attribute) => [attribute.id, attribute]),
-        );
-        const updatedValuesById = new Map(
-          updatedValues.map((value) => [value.id, value]),
-        );
-        const createdValuesOf = (attributeId: string) =>
-          createdValues
-            .filter((value) => value.attributeId === attributeId)
-            .map(({ attributeId: _, ...value }) => value);
-
-        return {
-          ...current,
-          ...updatedCategory,
-          image: updatedImage ?? current.image,
-          attributes: [
-            ...current.attributes
-              .filter((attribute) => !deletedIds.has(attribute.id))
-              .map((attribute) => ({
-                ...attribute,
-                ...updatedAttributesById.get(attribute.id),
-                values: [
-                  ...attribute.values
-                    .filter((value) => !deletedIds.has(value.id))
-                    .map((value) => updatedValuesById.get(value.id) ?? value),
-                  ...createdValuesOf(attribute.id),
-                ],
-              })),
-            ...createdAttributes.map((attribute) => ({
-              ...attribute,
-              values: createdValuesOf(attribute.id),
-            })),
-          ],
-        };
+        const updated = await tx.query.category.findFirst({
+          where: { id },
+          ...this.findOptions,
+        });
+        return updated ?? this.categoryNotFound;
       },
       { isolationLevel: "read committed" },
     );

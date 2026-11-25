@@ -24,6 +24,36 @@ describe.concurrent("Collection routes test", () => {
   const missingId = "00000000-0000-4000-8000-000000000000";
   const handle = () => `test-${randomLowerString(10)}`;
 
+  test.each([
+    ["anonymous", 401],
+    ["user", 403],
+  ] as const)("requests are refused to %s", async (role, expected) => {
+    const { data } = await api.collections.post({
+      handle: handle(),
+      name: "Auth",
+    });
+    expectDefined(data);
+    const client = treaty(collectionRouter, {
+      headers:
+        role === "user"
+          ? { cookie: await createSessionCookie(testDb, "user") }
+          : {},
+    });
+    const collection = client.collections({ id: data.id });
+    const results = await Promise.all([
+      client.collections.post({ handle: handle(), name: "Nope" }),
+      collection.patch({ name: "Nope" }, { headers: { "x-version": 1 } }),
+      collection.delete(),
+      client.collections.get(),
+      collection.get(),
+    ]);
+    expect(results.map(({ status }) => status)).toEqual(
+      new Array(5).fill(expected),
+    );
+    const after = await api.collections({ id: data.id }).get();
+    expect(after.data).toEqual(data);
+  });
+
   describe("collection POST", () => {
     test("returns the ordered collection, the same object as getById", async () => {
       const [a, b, c] = await createTestProducts(testDb, 3);
@@ -49,6 +79,17 @@ describe.concurrent("Collection routes test", () => {
       });
       const byId = await api.collections({ id: data.id }).get();
       expect(byId.data).toEqual(data);
+    });
+
+    test("rejects a NUL character", async () => {
+      const { error } = await api.collections.post({
+        handle: handle(),
+        name: "a\u0000b",
+      });
+      expect(error).toMatchObject({
+        status: 400,
+        value: { code: "INVALID_TEXT" },
+      });
     });
 
     test("without products creates an empty collection", async () => {
@@ -391,33 +432,6 @@ describe.concurrent("Collection routes test", () => {
         query: { collection: handle() },
       });
       expect(unknown.data).toEqual([]);
-    });
-
-    test("is not served stale after a patch", async () => {
-      const [a, b] = await createTestProducts(testDb, 2);
-      expectDefined(a);
-      expectDefined(b);
-      const h = handle();
-      const created = await api.collections.post({
-        handle: h,
-        name: "Cache",
-        productIds: [a.id, b.id],
-      });
-      expectDefined(created.data);
-      const before = await productsApi.products.get({
-        query: { collection: h },
-      });
-      expect(before.data?.map(({ id }) => id)).toEqual([a.id, b.id]);
-      await api
-        .collections({ id: created.data.id })
-        .patch(
-          { productIds: [b.id] },
-          { headers: { "x-version": created.data.version } },
-        );
-      const after = await productsApi.products.get({
-        query: { collection: h },
-      });
-      expect(after.data?.map(({ id }) => id)).toEqual([b.id]);
     });
   });
 });

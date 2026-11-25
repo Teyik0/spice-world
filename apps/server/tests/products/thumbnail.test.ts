@@ -1,11 +1,14 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { describe, expect, it } from "bun:test";
+
 import { treaty } from "@elysia/eden";
-import type { productsRouter } from "@spice-world/server/modules/products";
+import { productsRouter } from "@spice-world/server/modules/products";
 import type * as ProductModel from "@spice-world/server/modules/products/model";
 import { validateSingleThumbnail } from "@spice-world/server/modules/products/validators/thumbnail";
 import type { Image } from "@spice-world/server/prisma/client";
-import { createTestDatabase } from "../utils/db-manager";
+
+import { testDb } from "../setup";
 import {
+  createSessionCookie,
   createSetupProduct,
   expectDefined,
   file,
@@ -13,27 +16,15 @@ import {
   randomLowerString,
 } from "../utils/helper";
 
-let api: ReturnType<typeof treaty<typeof productsRouter>>;
+await mockUtapi();
+const api = treaty(productsRouter, {
+  headers: { cookie: await createSessionCookie(testDb) },
+});
+const setupProduct = createSetupProduct(testDb, api);
 
 describe("Explicit thumbnail validation", () => {
-  let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
-  let setupProduct: ReturnType<typeof createSetupProduct>;
-
   const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
   const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
-
-  beforeAll(async () => {
-    await mockUtapi();
-    testDb = await createTestDatabase("thumbnail.test.ts");
-    const { productsRouter: router } =
-      await import("@spice-world/server/modules/products");
-    api = treaty(router);
-    setupProduct = createSetupProduct(testDb, api);
-  });
-
-  afterAll(async () => {
-    await testDb.destroy();
-  }, 10_000);
 
   async function setup() {
     const result = await setupProduct({
@@ -147,7 +138,10 @@ describe("Explicit thumbnail validation", () => {
     const { product, first } = await setup();
     const { status, data } = await api
       .products({ id: product.id })
-      .patch({ description: "Updated description" });
+      .patch(
+        { description: "Updated description" },
+        { headers: { "x-version": product.version } },
+      );
     expect(status).toBe(200);
     expectDefined(data);
     expect(data.images.filter((img) => img.isThumbnail)).toMatchObject([
@@ -157,14 +151,17 @@ describe("Explicit thumbnail validation", () => {
 
   it("preserves thumbnail flags when updating only metadata or a file", async () => {
     const { product, first, second } = await setup();
-    const { status, data } = await api.products({ id: product.id }).patch({
-      images: {
-        update: [
-          { id: first.id, altText: "Updated thumbnail" },
-          { id: second.id, file: file(filePath1) },
-        ],
+    const { status, data } = await api.products({ id: product.id }).patch(
+      {
+        images: {
+          update: [
+            { id: first.id, altText: "Updated thumbnail" },
+            { id: second.id, file: file(filePath1) },
+          ],
+        },
       },
-    });
+      { headers: { "x-version": product.version } },
+    );
     expect(status).toBe(200);
     expectDefined(data);
     expect(data.images.filter((img) => img.isThumbnail)).toMatchObject([
@@ -177,14 +174,17 @@ describe("Explicit thumbnail validation", () => {
 
   it("accepts an explicit switch that unsets the old thumbnail", async () => {
     const { product, first, second } = await setup();
-    const { status, data } = await api.products({ id: product.id }).patch({
-      images: {
-        update: [
-          { id: first.id, isThumbnail: false },
-          { id: second.id, isThumbnail: true },
-        ],
+    const { status, data } = await api.products({ id: product.id }).patch(
+      {
+        images: {
+          update: [
+            { id: first.id, isThumbnail: false },
+            { id: second.id, isThumbnail: true },
+          ],
+        },
       },
-    });
+      { headers: { "x-version": product.version } },
+    );
     expect(status).toBe(200);
     expectDefined(data);
     expect(data.images.filter((img) => img.isThumbnail)).toMatchObject([
@@ -194,10 +194,13 @@ describe("Explicit thumbnail validation", () => {
 
   it("rejects assigning another thumbnail without unsetting the current one", async () => {
     const { product, second } = await setup();
-    const { status, error } = await api.products({ id: product.id }).patch({
-      description: "Must not be saved",
-      images: { update: [{ id: second.id, isThumbnail: true }] },
-    });
+    const { status, error } = await api.products({ id: product.id }).patch(
+      {
+        description: "Must not be saved",
+        images: { update: [{ id: second.id, isThumbnail: true }] },
+      },
+      { headers: { "x-version": product.version } },
+    );
     expect(status).toBe(422);
     expect(error?.value).toMatchObject({ code: "MULTIPLE_THUMBNAILS" });
     await expectUnchanged(product);
@@ -205,19 +208,22 @@ describe("Explicit thumbnail validation", () => {
 
   it("rejects deleting the thumbnail without replacement and saves nothing", async () => {
     const { product, first, second } = await setup();
-    const { status, error } = await api.products({ id: product.id }).patch({
-      description: "Must not be saved",
-      images: {
-        delete: [first.id],
-        update: [
-          {
-            id: second.id,
-            altText: "Must not be saved",
-            file: file(filePath1),
-          },
-        ],
+    const { status, error } = await api.products({ id: product.id }).patch(
+      {
+        description: "Must not be saved",
+        images: {
+          delete: [first.id],
+          update: [
+            {
+              id: second.id,
+              altText: "Must not be saved",
+              file: file(filePath1),
+            },
+          ],
+        },
       },
-    });
+      { headers: { "x-version": product.version } },
+    );
     expect(status).toBe(422);
     expect(error?.value).toMatchObject({ code: "THUMBNAIL_REQUIRED" });
     await expectUnchanged(product);
@@ -225,14 +231,17 @@ describe("Explicit thumbnail validation", () => {
 
   it("rejects unsetting the thumbnail without replacement", async () => {
     const { product, first, second, third } = await setup();
-    const { status, error } = await api.products({ id: product.id }).patch({
-      images: {
-        update: [first, second, third].map(({ id }) => ({
-          id,
-          isThumbnail: false,
-        })),
+    const { status, error } = await api.products({ id: product.id }).patch(
+      {
+        images: {
+          update: [first, second, third].map(({ id }) => ({
+            id,
+            isThumbnail: false,
+          })),
+        },
       },
-    });
+      { headers: { "x-version": product.version } },
+    );
     expect(status).toBe(422);
     expect(error?.value).toMatchObject({ code: "THUMBNAIL_REQUIRED" });
     await expectUnchanged(product);
@@ -240,12 +249,15 @@ describe("Explicit thumbnail validation", () => {
 
   it("accepts deleting the thumbnail with an existing image explicitly replacing it", async () => {
     const { product, first, third } = await setup();
-    const { status, data } = await api.products({ id: product.id }).patch({
-      images: {
-        delete: [first.id],
-        update: [{ id: third.id, isThumbnail: true }],
+    const { status, data } = await api.products({ id: product.id }).patch(
+      {
+        images: {
+          delete: [first.id],
+          update: [{ id: third.id, isThumbnail: true }],
+        },
       },
-    });
+      { headers: { "x-version": product.version } },
+    );
     expect(status).toBe(200);
     expectDefined(data);
     expect(data.images).toHaveLength(2);
@@ -256,14 +268,21 @@ describe("Explicit thumbnail validation", () => {
 
   it("accepts deleting the thumbnail with a newly created explicit replacement", async () => {
     const { product, first } = await setup();
-    const { status, data } = await api.products({ id: product.id }).patch({
-      images: {
-        delete: [first.id],
-        create: [
-          { isThumbnail: true, altText: "Replacement", file: file(filePath2) },
-        ],
+    const { status, data } = await api.products({ id: product.id }).patch(
+      {
+        images: {
+          delete: [first.id],
+          create: [
+            {
+              isThumbnail: true,
+              altText: "Replacement",
+              file: file(filePath2),
+            },
+          ],
+        },
       },
-    });
+      { headers: { "x-version": product.version } },
+    );
     expect(status).toBe(200);
     expectDefined(data);
     expect(data.images).toHaveLength(3);
@@ -274,12 +293,15 @@ describe("Explicit thumbnail validation", () => {
 
   it("rejects deleting the thumbnail when new images are explicitly false", async () => {
     const { product, first } = await setup();
-    const { status, error } = await api.products({ id: product.id }).patch({
-      images: {
-        delete: [first.id],
-        create: [{ isThumbnail: false, file: file(filePath2) }],
+    const { status, error } = await api.products({ id: product.id }).patch(
+      {
+        images: {
+          delete: [first.id],
+          create: [{ isThumbnail: false, file: file(filePath2) }],
+        },
       },
-    });
+      { headers: { "x-version": product.version } },
+    );
     expect(status).toBe(422);
     expect(error?.value).toMatchObject({ code: "THUMBNAIL_REQUIRED" });
     await expectUnchanged(product);
@@ -287,13 +309,16 @@ describe("Explicit thumbnail validation", () => {
 
   it("rejects multiple replacements across create and update operations", async () => {
     const { product, first, second } = await setup();
-    const { status, error } = await api.products({ id: product.id }).patch({
-      images: {
-        delete: [first.id],
-        update: [{ id: second.id, isThumbnail: true }],
-        create: [{ isThumbnail: true, file: file(filePath2) }],
+    const { status, error } = await api.products({ id: product.id }).patch(
+      {
+        images: {
+          delete: [first.id],
+          update: [{ id: second.id, isThumbnail: true }],
+          create: [{ isThumbnail: true, file: file(filePath2) }],
+        },
       },
-    });
+      { headers: { "x-version": product.version } },
+    );
     expect(status).toBe(422);
     expect(error?.value).toMatchObject({ code: "MULTIPLE_THUMBNAILS" });
     await expectUnchanged(product);
@@ -301,12 +326,15 @@ describe("Explicit thumbnail validation", () => {
 
   it("preserves the thumbnail when deleting a non-thumbnail and adding a non-thumbnail", async () => {
     const { product, first, second } = await setup();
-    const { status, data } = await api.products({ id: product.id }).patch({
-      images: {
-        delete: [second.id],
-        create: [{ isThumbnail: false, file: file(filePath2) }],
+    const { status, data } = await api.products({ id: product.id }).patch(
+      {
+        images: {
+          delete: [second.id],
+          create: [{ isThumbnail: false, file: file(filePath2) }],
+        },
       },
-    });
+      { headers: { "x-version": product.version } },
+    );
     expect(status).toBe(200);
     expectDefined(data);
     expect(data.images.filter((img) => img.isThumbnail)).toMatchObject([
@@ -318,12 +346,18 @@ describe("Explicit thumbnail validation", () => {
     const { product } = await setup();
     const other = await setup();
     const results = await Promise.all([
-      api.products({ id: product.id }).patch({
-        images: { update: [{ id: other.second.id, isThumbnail: false }] },
-      }),
-      api.products({ id: product.id }).patch({
-        images: { delete: [other.second.id] },
-      }),
+      api.products({ id: product.id }).patch(
+        {
+          images: { update: [{ id: other.second.id, isThumbnail: false }] },
+        },
+        { headers: { "x-version": product.version } },
+      ),
+      api.products({ id: product.id }).patch(
+        {
+          images: { delete: [other.second.id] },
+        },
+        { headers: { "x-version": product.version } },
+      ),
     ]);
     for (const { status, error } of results) {
       expect(status).toBe(422);
@@ -335,14 +369,17 @@ describe("Explicit thumbnail validation", () => {
 
   it("rejects duplicate update IDs instead of depending on write order", async () => {
     const { product, second } = await setup();
-    const { status, error } = await api.products({ id: product.id }).patch({
-      images: {
-        update: [
-          { id: second.id, isThumbnail: true },
-          { id: second.id, isThumbnail: false },
-        ],
+    const { status, error } = await api.products({ id: product.id }).patch(
+      {
+        images: {
+          update: [
+            { id: second.id, isThumbnail: true },
+            { id: second.id, isThumbnail: false },
+          ],
+        },
       },
-    });
+      { headers: { "x-version": product.version } },
+    );
     expect(status).toBe(422);
     expect(error?.value).toMatchObject({ code: "INVALID_IMAGE_OPERATIONS" });
     await expectUnchanged(product);
@@ -365,14 +402,17 @@ describe("Explicit thumbnail validation", () => {
     const { product, first, second, third } = await setup();
     const results = await Promise.all(
       [second, third].map((replacement) =>
-        api.products({ id: product.id }).patch({
-          images: {
-            update: [
-              { id: first.id, isThumbnail: false },
-              { id: replacement.id, isThumbnail: true },
-            ],
+        api.products({ id: product.id }).patch(
+          {
+            images: {
+              update: [
+                { id: first.id, isThumbnail: false },
+                { id: replacement.id, isThumbnail: true },
+              ],
+            },
           },
-        }),
+          { headers: { "x-version": product.version } },
+        ),
       ),
     );
     expect(results.filter((result) => result.status === 200)).toHaveLength(1);
@@ -418,17 +458,20 @@ describe("Explicit thumbnail validation", () => {
         (img) => img.altText === "First image",
       ) as Image;
 
-      const { error } = await api.products({ id: product.id }).patch({
-        images: {
-          update: [
-            {
-              id: firstImage.id,
-              file: file(filePath2),
-            },
-          ],
-          delete: [firstImage.id],
+      const { error } = await api.products({ id: product.id }).patch(
+        {
+          images: {
+            update: [
+              {
+                id: firstImage.id,
+                file: file(filePath2),
+              },
+            ],
+            delete: [firstImage.id],
+          },
         },
-      });
+        { headers: { "x-version": product.version } },
+      );
 
       expectDefined(error);
       expect(error.status).toBe(400);
@@ -474,11 +517,14 @@ describe("Explicit thumbnail validation", () => {
         (img) => img.altText === "Second image",
       ) as Image;
 
-      const { error } = await api.products({ id: product.id }).patch({
-        images: {
-          delete: [firstImage.id, secondImage.id],
+      const { error } = await api.products({ id: product.id }).patch(
+        {
+          images: {
+            delete: [firstImage.id, secondImage.id],
+          },
         },
-      });
+        { headers: { "x-version": product.version } },
+      );
 
       expectDefined(error);
       expect(error.status).toBe(400);

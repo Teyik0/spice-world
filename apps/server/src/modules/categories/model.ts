@@ -191,8 +191,22 @@ export const categoryNotFound = t.Object({
   message: t.Literal("Category not found"),
 });
 
+export const nameConflict = t.Object({
+  code: t.Literal("CATEGORY_NAME_ALREADY_EXISTS"),
+  message: t.Literal("A category with this name already exists"),
+});
+
 export const patchValueError = t.Object({
   code: t.Literal("ATTRIBUTE_VALUE_LAST_VALUE"),
+  message: t.String(),
+});
+export const patchConflict = t.Object({
+  code: t.Union([
+    t.Literal("CATEGORY_NAME_ALREADY_EXISTS"),
+    t.Literal("ATTRIBUTE_NAME_ALREADY_EXISTS"),
+    t.Literal("ATTRIBUTE_VALUE_ALREADY_EXISTS"),
+    t.Literal("ATTRIBUTE_VALUE_IN_USE"),
+  ]),
   message: t.String(),
 });
 export const patchNotFound = t.Object({

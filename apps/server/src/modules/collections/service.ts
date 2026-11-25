@@ -1,10 +1,11 @@
 import { db } from "@spice-world/server/lib/db";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { problem, status } from "elysia";
 
 import {
   collectionProductTable,
   collectionTable,
+  productTable,
 } from "../../../drizzle/schema";
 import { invalidateProductListings } from "../products/service";
 import type { ExpectedVersion, uuidGuard } from "../shared";
@@ -28,6 +29,12 @@ async function find(id: string, tx: Tx | typeof db = db) {
 
 /** Replaces the whole ordered selection: array index = position. */
 async function setProducts(tx: Tx, collectionId: string, productIds: string[]) {
+  await tx
+    .select({ id: productTable.id })
+    .from(productTable)
+    .where(inArray(productTable.id, productIds))
+    .orderBy(productTable.id)
+    .for("key share");
   await tx
     .delete(collectionProductTable)
     .where(eq(collectionProductTable.collectionId, collectionId));
