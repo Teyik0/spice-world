@@ -1,0 +1,14 @@
+apps/storefront/package.json
+  h_a2cbd1b0e3ae6e 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c365ae7ee5096fd823caa6cc71f9ced9dc191520",
+  "prompts": {},
+  "humans": {
+    "h_a2cbd1b0e3ae6e": {
+      "author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
