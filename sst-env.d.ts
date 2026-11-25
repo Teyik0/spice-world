@@ -2,10 +2,19 @@
 /* tslint:disable */
 /* eslint-disable */
 /* deno-fmt-ignore-file */
+/* biome-ignore-all lint: auto-generated */
 
 declare module "sst" {
   export interface Resource {
+    "AXIOM_TOKEN": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "BETTER_AUTH_SECRET": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "BETTER_AUTH_URL": {
       "type": "sst.sst.Secret"
       "value": string
     }
@@ -26,13 +35,36 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
+    "STRIPE_CANCEL_URL": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "STRIPE_PUBLISHABLE_KEY": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "STRIPE_SECRET_KEY": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "STRIPE_SUCCESS_URL": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "STRIPE_WEBHOOK_SECRET": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "UPLOADTHING_TOKEN": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "WEB_ORIGINS": {
       "type": "sst.sst.Secret"
       "value": string
     }
   }
 }
-/// <reference path="sst-env.d.ts" />
 
 import "sst"
 export {}

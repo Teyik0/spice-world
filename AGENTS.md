@@ -5,7 +5,7 @@ Key features: product management, categories with dynamic attributes, user authe
 
 ## Structure
 
-**apps/server** (port 3000): Elysia API with Prisma, Better Auth, Stripe
+**apps/server** (port 3000): Elysia API with Drizzle, Better Auth, Stripe
 
 - `/src/modules`: Business logic (products, categories, orders)
 - `/drizzle/schema.ts`: Database models
@@ -84,7 +84,8 @@ bun check -p apps/storefront
 - MUST use expect().toMatchObject() when doing asserting api error call (to avoid type issue)
 - MUST check how others test are setup and follow the same pattern
 - MUST run the associated file(s) test when an endpoint is modified `bun run test tests/<test_file>`, don't rerun the whole tests suite on each pass
-- MUST ABSOLUTELY load and apply `elysia` skill for
+- MUST ABSOLUTELY load and apply `elysia` skill for any backend change
+- MUST reject any bad input, no magic behavior (no thumbnail auto assign, no input normalization on server side...)
 
 ## Task involving frontend end change (apps/web or apps/storefront)
 

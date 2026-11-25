@@ -9,20 +9,19 @@ export default $config({
       home: "local",
       removal: input?.stage === "production" ? "retain" : "remove",
       providers: {
-        neon: { version: "0.9.0", apiKey: process.env.NEON_API_KEY },
+        neon: { version: "0.13.0", apiKey: process.env.NEON_API_KEY },
         vercel: {
-          version: "3.15.1",
+          version: "5.27.0",
           apiToken: process.env.VERCEL_API_TOKEN,
           team: "team_jKy3xXivkDGmI01SAr9Bo9d1",
         },
-        aws: "7.15.0",
       },
     };
   },
   async run() {
     const neonProject = new neon.Project("spice-world-db", {
       name: "spice-world-db",
-      pgVersion: 17,
+      pgVersion: 18,
       regionId: "aws-us-east-1",
       orgId: "org-crimson-shadow-55928194",
       historyRetentionSeconds: 21_600, // 6 hours (free tier limit)
@@ -43,14 +42,22 @@ export default $config({
         devConnectionString: $interpolate`postgresql://${neonProject.databaseUser}:${neonProject.databasePassword}@${devEndpoint.host}/${neonProject.databaseName}?sslmode=require`,
       },
     });
-    const serverSecrets = Object.values({
-      uploadthingToken: new sst.Secret("UPLOADTHING_TOKEN"),
-      betterAuthSecret: new sst.Secret("BETTER_AUTH_SECRET"),
-      googleClientId: new sst.Secret("GOOGLE_CLIENT_ID"),
-      googleClientSecret: new sst.Secret("GOOGLE_CLIENT_SECRET"),
-      resendApiKey: new sst.Secret("RESEND_API_KEY"),
-    });
-    new vercel.Project("spice-world-server", {
+    const serverSecrets = [
+      "UPLOADTHING_TOKEN",
+      "BETTER_AUTH_SECRET",
+      "BETTER_AUTH_URL",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "RESEND_API_KEY",
+      "AXIOM_TOKEN",
+      "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_SECRET",
+      "STRIPE_PUBLISHABLE_KEY",
+      "STRIPE_SUCCESS_URL",
+      "STRIPE_CANCEL_URL",
+      "WEB_ORIGINS",
+    ].map((name) => new sst.Secret(name));
+    const spiceWorldServer = new vercel.Project("spice-world-server", {
       name: "spice-world-server",
       framework: "elysia",
       rootDirectory: "apps/server",
@@ -61,27 +68,29 @@ export default $config({
         repo: "Teyik0/spice-world",
       },
     });
-    // Buggy - vercel provider bugs - set once and then commented
-    // new vercel.ProjectEnvironmentVariables("spice-world-server-env", {
-    //   projectId: spiceWorldServer.id,
-    //   variables: [
-    //     ...serverSecrets.map((secret) => ({
-    //       key: secret.name,
-    //       value: secret.value,
-    //       targets: ["production", "preview", "development"],
-    //     })),
-    //     {
-    //       key: "DATABASE_URL",
-    //       value: database.properties.prodConnectionString,
-    //       targets: ["production"],
-    //     },
-    //     {
-    //       key: "DATABASE_URL",
-    //       value: database.properties.devConnectionString,
-    //       targets: ["preview", "development"],
-    //     },
-    //   ],
-    // });
+    new vercel.ProjectEnvironmentVariables("spice-world-server-env", {
+      projectId: spiceWorldServer.id,
+      variables: [
+        ...serverSecrets.map((secret) => ({
+          key: secret.name,
+          value: secret.value,
+          targets: ["production", "preview", "development"],
+          sensitive: true,
+        })),
+        {
+          key: "DATABASE_URL",
+          value: database.properties.prodConnectionString,
+          targets: ["production"],
+          sensitive: true,
+        },
+        {
+          key: "DATABASE_URL",
+          value: database.properties.devConnectionString,
+          targets: ["preview", "development"],
+          sensitive: true,
+        },
+      ],
+    });
     // Auto-start dev servers
     new sst.x.DevCommand("Server", {
       dev: {
@@ -99,9 +108,6 @@ export default $config({
         title: "Next.js Web",
       },
     });
-    return {
-      database,
-      secrets: serverSecrets,
-    };
+    return { neonProjectId: neonProject.id };
   },
 });
