@@ -13,8 +13,9 @@
     "start": "NODE_ENV=production PORT=3001 ./dist/server"
   },
   "dependencies": {
-    "@better-auth/stripe": "^1.7.27",
+    "@better-auth/stripe": "^1.7.28",
     "@elysia/cors": "rc",
+    "@elysia/openapi": "rc",
     "@elysia/opentelemetry": "rc",
     "@opentelemetry/exporter-trace-otlp-proto": "^0.301.2",
     "@opentelemetry/sdk-trace-node": "^2.12.1",
@@ -22,7 +23,7 @@
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "@spice-world/emails": "workspace:*",
-    "better-auth": "^1.7.27",
+    "better-auth": "^1.7.28",
     "drizzle-orm": "^1.0.0-rc.5",
     "elysia": "catalog:",
     "file-type": "^22.3.0",

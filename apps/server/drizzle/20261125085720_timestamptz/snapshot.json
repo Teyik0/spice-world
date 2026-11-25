@@ -3,9 +3,7 @@
   "version": "9",
   "dialect": "postgres",
   "id": "f6a12a73-b857-465d-b5b5-e13fb288f8d0",
-  "prevIds": [
-    "6d038bb8-ef22-4d60-9419-304a78fcdc74"
-  ],
+  "prevIds": ["6d038bb8-ef22-4d60-9419-304a78fcdc74"],
   "footprints": [
     {
       "statementType": "alter_column",
@@ -47,12 +45,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "account",
-        "createdAt"
-      ],
+      "statementTarget": ["column", "public", "account", "createdAt"],
       "writes": [
         "s|colprop|public.account.createdAt.type",
         "s|colprop|public.account.createdAt.default"
@@ -66,12 +59,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "account",
-        "updatedAt"
-      ],
+      "statementTarget": ["column", "public", "account", "updatedAt"],
       "writes": [
         "s|colprop|public.account.updatedAt.type",
         "s|colprop|public.account.updatedAt.default"
@@ -85,12 +73,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "Comment",
-        "createdAt"
-      ],
+      "statementTarget": ["column", "public", "Comment", "createdAt"],
       "writes": [
         "s|colprop|public.Comment.createdAt.type",
         "s|colprop|public.Comment.createdAt.default"
@@ -104,12 +87,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "Comment",
-        "updatedAt"
-      ],
+      "statementTarget": ["column", "public", "Comment", "updatedAt"],
       "writes": [
         "s|colprop|public.Comment.updatedAt.type",
         "s|colprop|public.Comment.updatedAt.default"
@@ -123,12 +101,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "Order",
-        "createdAt"
-      ],
+      "statementTarget": ["column", "public", "Order", "createdAt"],
       "writes": [
         "s|colprop|public.Order.createdAt.type",
         "s|colprop|public.Order.createdAt.default"
@@ -142,12 +115,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "Order",
-        "updatedAt"
-      ],
+      "statementTarget": ["column", "public", "Order", "updatedAt"],
       "writes": [
         "s|colprop|public.Order.updatedAt.type",
         "s|colprop|public.Order.updatedAt.default"
@@ -161,12 +129,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "Product",
-        "createdAt"
-      ],
+      "statementTarget": ["column", "public", "Product", "createdAt"],
       "writes": [
         "s|colprop|public.Product.createdAt.type",
         "s|colprop|public.Product.createdAt.default"
@@ -180,12 +143,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "Product",
-        "updatedAt"
-      ],
+      "statementTarget": ["column", "public", "Product", "updatedAt"],
       "writes": [
         "s|colprop|public.Product.updatedAt.type",
         "s|colprop|public.Product.updatedAt.default"
@@ -199,12 +157,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "ProductVariant",
-        "createdAt"
-      ],
+      "statementTarget": ["column", "public", "ProductVariant", "createdAt"],
       "writes": [
         "s|colprop|public.ProductVariant.createdAt.type",
         "s|colprop|public.ProductVariant.createdAt.default"
@@ -218,12 +171,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "ProductVariant",
-        "updatedAt"
-      ],
+      "statementTarget": ["column", "public", "ProductVariant", "updatedAt"],
       "writes": [
         "s|colprop|public.ProductVariant.updatedAt.type",
         "s|colprop|public.ProductVariant.updatedAt.default"
@@ -237,12 +185,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "session",
-        "expiresAt"
-      ],
+      "statementTarget": ["column", "public", "session", "expiresAt"],
       "writes": [
         "s|colprop|public.session.expiresAt.type",
         "s|colprop|public.session.expiresAt.default"
@@ -256,12 +199,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "session",
-        "createdAt"
-      ],
+      "statementTarget": ["column", "public", "session", "createdAt"],
       "writes": [
         "s|colprop|public.session.createdAt.type",
         "s|colprop|public.session.createdAt.default"
@@ -275,12 +213,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "session",
-        "updatedAt"
-      ],
+      "statementTarget": ["column", "public", "session", "updatedAt"],
       "writes": [
         "s|colprop|public.session.updatedAt.type",
         "s|colprop|public.session.updatedAt.default"
@@ -294,12 +227,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "user",
-        "createdAt"
-      ],
+      "statementTarget": ["column", "public", "user", "createdAt"],
       "writes": [
         "s|colprop|public.user.createdAt.type",
         "s|colprop|public.user.createdAt.default"
@@ -313,12 +241,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "user",
-        "updatedAt"
-      ],
+      "statementTarget": ["column", "public", "user", "updatedAt"],
       "writes": [
         "s|colprop|public.user.updatedAt.type",
         "s|colprop|public.user.updatedAt.default"
@@ -332,12 +255,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "user",
-        "banExpires"
-      ],
+      "statementTarget": ["column", "public", "user", "banExpires"],
       "writes": [
         "s|colprop|public.user.banExpires.type",
         "s|colprop|public.user.banExpires.default"
@@ -351,12 +269,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "verification",
-        "expiresAt"
-      ],
+      "statementTarget": ["column", "public", "verification", "expiresAt"],
       "writes": [
         "s|colprop|public.verification.expiresAt.type",
         "s|colprop|public.verification.expiresAt.default"
@@ -370,12 +283,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "verification",
-        "createdAt"
-      ],
+      "statementTarget": ["column", "public", "verification", "createdAt"],
       "writes": [
         "s|colprop|public.verification.createdAt.type",
         "s|colprop|public.verification.createdAt.default"
@@ -389,12 +297,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "verification",
-        "updatedAt"
-      ],
+      "statementTarget": ["column", "public", "verification", "updatedAt"],
       "writes": [
         "s|colprop|public.verification.updatedAt.type",
         "s|colprop|public.verification.updatedAt.default"
@@ -408,12 +311,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "VerificationToken",
-        "expires"
-      ],
+      "statementTarget": ["column", "public", "VerificationToken", "expires"],
       "writes": [
         "s|colprop|public.VerificationToken.expires.type",
         "s|colprop|public.VerificationToken.expires.default"
@@ -427,12 +325,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "Category",
-        "createdAt"
-      ],
+      "statementTarget": ["column", "public", "Category", "createdAt"],
       "writes": [
         "s|colprop|public.Category.createdAt.type",
         "s|colprop|public.Category.createdAt.default"
@@ -446,12 +339,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "Category",
-        "updatedAt"
-      ],
+      "statementTarget": ["column", "public", "Category", "updatedAt"],
       "writes": [
         "s|colprop|public.Category.updatedAt.type",
         "s|colprop|public.Category.updatedAt.default"
@@ -465,12 +353,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "Attribute",
-        "createdAt"
-      ],
+      "statementTarget": ["column", "public", "Attribute", "createdAt"],
       "writes": [
         "s|colprop|public.Attribute.createdAt.type",
         "s|colprop|public.Attribute.createdAt.default"
@@ -484,12 +367,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "Attribute",
-        "updatedAt"
-      ],
+      "statementTarget": ["column", "public", "Attribute", "updatedAt"],
       "writes": [
         "s|colprop|public.Attribute.updatedAt.type",
         "s|colprop|public.Attribute.updatedAt.default"
@@ -503,12 +381,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "AttributeValue",
-        "createdAt"
-      ],
+      "statementTarget": ["column", "public", "AttributeValue", "createdAt"],
       "writes": [
         "s|colprop|public.AttributeValue.createdAt.type",
         "s|colprop|public.AttributeValue.createdAt.default"
@@ -522,12 +395,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "AttributeValue",
-        "updatedAt"
-      ],
+      "statementTarget": ["column", "public", "AttributeValue", "updatedAt"],
       "writes": [
         "s|colprop|public.AttributeValue.updatedAt.type",
         "s|colprop|public.AttributeValue.updatedAt.default"
@@ -541,12 +409,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "CollectionProduct",
-        "createdAt"
-      ],
+      "statementTarget": ["column", "public", "CollectionProduct", "createdAt"],
       "writes": [
         "s|colprop|public.CollectionProduct.createdAt.type",
         "s|colprop|public.CollectionProduct.createdAt.default"
@@ -560,12 +423,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "CollectionProduct",
-        "updatedAt"
-      ],
+      "statementTarget": ["column", "public", "CollectionProduct", "updatedAt"],
       "writes": [
         "s|colprop|public.CollectionProduct.updatedAt.type",
         "s|colprop|public.CollectionProduct.updatedAt.default"
@@ -579,12 +437,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "Collection",
-        "createdAt"
-      ],
+      "statementTarget": ["column", "public", "Collection", "createdAt"],
       "writes": [
         "s|colprop|public.Collection.createdAt.type",
         "s|colprop|public.Collection.createdAt.default"
@@ -598,12 +451,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "Collection",
-        "updatedAt"
-      ],
+      "statementTarget": ["column", "public", "Collection", "updatedAt"],
       "writes": [
         "s|colprop|public.Collection.updatedAt.type",
         "s|colprop|public.Collection.updatedAt.default"
@@ -617,12 +465,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "Image",
-        "createdAt"
-      ],
+      "statementTarget": ["column", "public", "Image", "createdAt"],
       "writes": [
         "s|colprop|public.Image.createdAt.type",
         "s|colprop|public.Image.createdAt.default"
@@ -636,12 +479,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "Image",
-        "updatedAt"
-      ],
+      "statementTarget": ["column", "public", "Image", "updatedAt"],
       "writes": [
         "s|colprop|public.Image.updatedAt.type",
         "s|colprop|public.Image.updatedAt.default"
@@ -655,12 +493,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "OrderItem",
-        "createdAt"
-      ],
+      "statementTarget": ["column", "public", "OrderItem", "createdAt"],
       "writes": [
         "s|colprop|public.OrderItem.createdAt.type",
         "s|colprop|public.OrderItem.createdAt.default"
@@ -674,12 +507,7 @@
     },
     {
       "statementType": "alter_column",
-      "statementTarget": [
-        "column",
-        "public",
-        "OrderItem",
-        "updatedAt"
-      ],
+      "statementTarget": ["column", "public", "OrderItem", "updatedAt"],
       "writes": [
         "s|colprop|public.OrderItem.updatedAt.type",
         "s|colprop|public.OrderItem.updatedAt.default"

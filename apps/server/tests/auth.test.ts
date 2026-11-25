@@ -6,21 +6,19 @@ import {
 } from "@spice-world/server/plugins/auth.plugin";
 import Elysia from "elysia";
 import { createTestDatabase } from "./utils/db-manager";
-import { expectDefined, randomLowerString } from "./utils/helper";
+import { expectDefined, mockStripe, randomLowerString } from "./utils/helper";
 
 describe.concurrent("BetterAuth Plugin Tests", () => {
   let adminUser: Awaited<ReturnType<typeof auth.api.createUser>>;
   let normalUser: Awaited<ReturnType<typeof auth.api.createUser>>;
   let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
+  let stripe: Awaited<ReturnType<typeof mockStripe>>;
 
   beforeAll(async () => {
-    if (Bun.env.NODE_ENV === "production") {
-      throw new Error("You can't run tests in production");
-    }
-    if (!Bun.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL should be set");
-    }
+    expect(Bun.env.NODE_ENV).not.toBe("production");
+    expect(Bun.env.DATABASE_URL).toBeTruthy();
     testDb = await createTestDatabase("auth.test.ts");
+    stripe = await mockStripe();
 
     [normalUser, adminUser] = await Promise.all([
       auth.api.createUser({
@@ -61,6 +59,7 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
   });
 
   afterAll(async () => {
+    stripe.restore();
     await testDb.destroy();
   });
 

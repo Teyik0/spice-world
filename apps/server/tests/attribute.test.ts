@@ -3,13 +3,14 @@ import { treaty } from "@elysia/eden";
 import type { db as database } from "@spice-world/server/lib/db";
 import type { attributeRouter } from "@spice-world/server/modules/attributes";
 import { eq } from "drizzle-orm";
-import {
-  attributeTable,
-  attributeValueTable,
-  type categoryTable,
-} from "../drizzle/schema";
+import type { categoryTable } from "../drizzle/schema";
+import { attributeTable, attributeValueTable } from "../drizzle/schema";
 import { createTestDatabase } from "./utils/db-manager";
-import { createTestCategory, expectDefined } from "./utils/helper";
+import {
+  createSessionCookie,
+  createTestCategory,
+  expectDefined,
+} from "./utils/helper";
 
 describe.concurrent("Attribute routes test", () => {
   let testCategory: typeof categoryTable.$inferSelect;
@@ -48,7 +49,9 @@ describe.concurrent("Attribute routes test", () => {
     ({ db } = await import("@spice-world/server/lib/db"));
     const { attributeRouter: router } =
       await import("@spice-world/server/modules/attributes");
-    api = treaty(router);
+    api = treaty(router, {
+      headers: { cookie: await createSessionCookie(testDb) },
+    });
 
     testCategory = await createTestCategory({ testDb, name: "spice" });
     const attribute1 = await createAttribute("heat level", [
@@ -239,7 +242,11 @@ describe.concurrent("Attribute routes test", () => {
 
       expect(status).toBe(200);
       expectDefined(data);
-      expect(data).toMatchObject({ ...attribute, name: "fragrance" });
+      expect(data).toMatchObject({
+        ...attribute,
+        name: "fragrance",
+        updatedAt: data.updatedAt,
+      });
       expect(
         await db.query.attribute.findFirst({
           where: { id: attribute.id },
@@ -509,12 +516,16 @@ describe.concurrent("Attribute routes test", () => {
       });
       const [attribute] = category.attributes;
       expectDefined(attribute);
+
       const [first, second] = attribute.values;
       expectDefined(first);
       expectDefined(second);
+
       const { categoryRouter } =
         await import("@spice-world/server/modules/categories");
-      const categoriesApi = treaty(categoryRouter);
+      const categoriesApi = treaty(categoryRouter, {
+        headers: { cookie: await createSessionCookie(testDb) },
+      });
 
       const results = await Promise.all([
         api.attributes.values({ id: first.id }).delete(),
@@ -526,6 +537,12 @@ describe.concurrent("Attribute routes test", () => {
         }),
       ]);
       expect(results.map((result) => result.status).sort()).toEqual([200, 400]);
+      expect(
+        results.find((result) => result.status === 400)?.error,
+      ).toMatchObject({
+        status: 400,
+        value: { code: "ATTRIBUTE_VALUE_LAST_VALUE" },
+      });
       expect(
         await db.$count(
           attributeValueTable,
