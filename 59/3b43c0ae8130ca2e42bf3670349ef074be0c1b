@@ -1,0 +1,145 @@
+apps/server/tests/auth.test.ts
+  s_8ae668486b1f57::t_e2e98ced062656 4,62,258
+  s_ab49f0935feb76::t_94d8b53110586c 2,10
+  s_ab49f0935feb76::t_eff0c78cb73ab6 11
+apps/server/src/modules/attributes/value-model.ts
+  s_ab49f0935feb76::t_94d8b53110586c 1-3,19-20
+apps/server/src/modules/collections/service.ts
+  s_8efbb934c42335::t_c69c48c5feb90e 82,92
+  s_8efbb934c42335::t_523d4d7fb07208 10,84,98
+  s_ab49f0935feb76::t_94d8b53110586c 4
+  s_8efbb934c42335::t_51e1291eb98333 2,85,88-91,93-94,97,99-102,107,110
+apps/server/src/modules/attributes/service.ts
+  s_e3670d2ea37ad1::t_d7f8c7c0ce6545 134-135
+  s_ab49f0935feb76::t_94d8b53110586c 4
+  s_ab49f0935feb76::t_c328d88260df99 70-71,77-78,111-112,122-123,126-133,136-137
+apps/server/src/modules/collections/model.ts
+  s_8efbb934c42335::t_523d4d7fb07208 50-53
+  s_ab49f0935feb76::t_94d8b53110586c 3
+  s_8efbb934c42335::t_51e1291eb98333 48-49,54
+  s_ab49f0935feb76::t_c4c89f5ff57bdd 14-21,24-27,30-41,55
+  s_ab49f0935feb76::t_4ad8a877639d3f 1-2
+apps/server/src/modules/attributes/model.ts
+  s_ab49f0935feb76::t_94d8b53110586c 1-3,33-34,44-45,51-52
+apps/server/tests/collection.test.ts
+  s_ab49f0935feb76::t_94d8b53110586c 2,7
+  s_ab49f0935feb76::t_c4c89f5ff57bdd 119,202-205,222-229,232-234,343-345,347-349,413-419
+  s_8ae668486b1f57::t_6e3976a6775131 1,4-5,9,18-21
+  s_ab49f0935feb76::t_8e6d813b2d4800 22
+apps/server/tests/setup.ts
+  s_ab49f0935feb76::t_c4c89f5ff57bdd 16
+  s_ab49f0935feb76::t_94d8b53110586c 3
+  s_ab49f0935feb76::t_4be83c46eaf888 20
+  s_8ae668486b1f57::t_6e3976a6775131 1-2,7-8,13-15,17-19,21-23
+apps/server/tests/utils/db-manager.ts
+  s_e3670d2ea37ad1::t_d7f8c7c0ce6545 106-109
+  s_ab49f0935feb76::t_94d8b53110586c 2,7
+apps/server/src/modules/collections/index.ts
+  s_884ca8d1aa512d::t_992ceae54584c0 18
+  s_8efbb934c42335::t_51e1291eb98333 1,15,27,66
+  s_ab49f0935feb76::t_94d8b53110586c 4
+  s_8efbb934c42335::t_523d4d7fb07208 5,58
+  s_8efbb934c42335::t_c69c48c5feb90e 54,57,59
+  s_884ca8d1aa512d::t_fda7e7e68b1a99 19-21,37,48,50,60-62,67-69
+apps/server/tests/utils/helper.ts
+  s_f3fe2137c976d5::t_f206cda57c9c77 24-26,28-39,104,129
+  s_ab49f0935feb76::t_c4c89f5ff57bdd 27,64,74,78-89,109,146-162
+  s_9d64777bc8ba15::t_22ea440ce82ac1 133
+  s_9b332432da0824::t_1e6b5d8241e142 111
+  s_ab49f0935feb76::t_94d8b53110586c 3,9
+  s_9b332432da0824::t_1468c294d72ff3 62-63
+  s_5f5816f020a10a::t_1d0f0b2482c189 56-60,65-66,68-73,75-77,90-93,102-103,181
+  s_5f5816f020a10a::t_dbd68ffcfd2ba9 8
+  s_ab49f0935feb76::t_fa9934416d9fc0 105-108,110,112-128,130-132,134-145,163-180
+apps/server/tests/attribute.test.ts
+  s_8ae668486b1f57::t_e2e98ced062656 6
+  s_8ae668486b1f57::t_6e3976a6775131 1,4-5,11,18-21
+  s_ab49f0935feb76::t_94d8b53110586c 2,8
+apps/server/src/modules/shared.ts
+  s_8efbb934c42335::t_a984c3f2dca435 112
+  s_8efbb934c42335::t_523d4d7fb07208 109-111,113-117
+  s_9b332432da0824::t_9f7fde260b4484 4,124-130,132-142
+  s_ab49f0935feb76::t_7872f781dea02b 1-3,143-159
+apps/server/src/modules/attributes/index.ts
+  s_ab49f0935feb76::t_94d8b53110586c 1,4,16,20,31,37-41,46,57,67-71,75,88,100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "593b43c0ae8130ca2e42bf3670349ef074be0c1b",
+  "prompts": {},
+  "sessions": {
+    "s_5f5816f020a10a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3a8e201-1f70-4347-b611-aadc8943569a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_884ca8d1aa512d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6fc85604-2a28-491a-802d-611ee8938e1f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_8ae668486b1f57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c813eae-df1a-4887-99b1-825ce08e6cfd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_8efbb934c42335": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ffb45207-5f0c-47ae-8076-7c77d131aa88",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_9b332432da0824": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5b21e50-8d91-4fae-9ae5-058bec04f67c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_9d64777bc8ba15": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10301856-842a-45eb-b65f-bcd20172ba63",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_ab49f0935feb76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7cfdb31-ea40-413d-bb5f-4a4bdfa74f71",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_e3670d2ea37ad1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b67b932b-3bd3-47fb-88e1-05d9f267fe73",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_f3fe2137c976d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eead8099-d006-42f4-baca-6284dae749c2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
