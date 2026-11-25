@@ -1,0 +1,216 @@
+apps/web/src/components/ui/toggle.tsx
+  s_27edd262a31dfa::t_dde1552e6b3ca5 6
+  s_68a2e5820311ea::t_11a05242879797 5
+packages/emails/src/spiceworld-welcome.tsx
+  s_a3aed64beedfa4::t_62eedbc2d02596 13
+  s_a3aed64beedfa4::t_79eca21fe6b57f 21,35,44,59,71
+apps/storefront/src/components/observatoire.tsx
+  s_27edd262a31dfa::t_dde1552e6b3ca5 5,16
+apps/web/src/components/ui/multi-select.tsx
+  s_68a2e5820311ea::t_11a05242879797 18
+  s_27edd262a31dfa::t_dde1552e6b3ca5 19,21-22
+sst.config.ts
+  s_27edd262a31dfa::t_ebac1e32054957 22-39,41-47,49,53,67-74,80-82,86-87,108,132-138,160-164,168
+  s_27edd262a31dfa::t_532ca9c282ff2c 9
+  s_824a6a29ca2a1c::t_0cec48186c0637 107
+  s_27edd262a31dfa::t_dde1552e6b3ca5 40,48,75-79,165-167
+apps/web/src/app/(dashboard)/products/@main/[slug]/category-dialog.tsx
+  s_27edd262a31dfa::t_dde1552e6b3ca5 1,43
+  s_68a2e5820311ea::t_11a05242879797 42
+apps/storefront/src/three/observatoire.ts
+  s_27edd262a31dfa::t_dde1552e6b3ca5 9
+apps/web/src/components/ui/toggle-group.tsx
+  s_a3aed64beedfa4::t_3c94d2a34cefe7 35
+  s_27edd262a31dfa::t_dde1552e6b3ca5 8-9
+apps/storefront/src/three/vitrine.ts
+  s_27edd262a31dfa::t_dde1552e6b3ca5 8
+apps/storefront/public/favicon.svg
+  s_68a2e5820311ea::t_11a05242879797 1,5-9,12-21
+  s_68a2e5820311ea::t_a99f4627221498 2
+apps/web/src/app/(dashboard)/products/@main/[slug]/form-images.tsx
+  s_27edd262a31dfa::t_dde1552e6b3ca5 24-25,28
+  s_68a2e5820311ea::t_11a05242879797 29
+apps/web/src/app/(dashboard)/users/user-item.tsx
+  s_68a2e5820311ea::t_11a05242879797 20
+  s_27edd262a31dfa::t_dde1552e6b3ca5 21
+apps/web/src/hooks/use-file-upload.ts
+  s_27edd262a31dfa::t_dde1552e6b3ca5 4-5
+packages/emails/src/password-reset.tsx
+  s_a3aed64beedfa4::t_62eedbc2d02596 13
+  s_a3aed64beedfa4::t_fbcda3b1de884d 21,35,44,58,79
+apps/storefront/src/components/use-scene.ts
+  s_27edd262a31dfa::t_dde1552e6b3ca5 2
+  s_68a2e5820311ea::t_11a05242879797 3
+apps/web/src/components/ui/attribute-select.tsx
+  s_27edd262a31dfa::t_dde1552e6b3ca5 19-20
+apps/web/src/app/(dashboard)/products/@sidebar/product-item.tsx
+  s_68a2e5820311ea::t_11a05242879797 17
+  s_27edd262a31dfa::t_dde1552e6b3ca5 18
+packages/emails/package.json
+  s_824a6a29ca2a1c::t_4ca17a2a40fffb 7,9,20
+  s_a3aed64beedfa4::t_62eedbc2d02596 17
+  s_a3aed64beedfa4::t_dc13f5ce2f1911 12,14
+apps/server/tests/utils/helper.ts
+  s_a3aed64beedfa4::t_3c94d2a34cefe7 293,322
+apps/web/src/app/(dashboard)/sidebar-provider.tsx
+  s_27edd262a31dfa::t_dde1552e6b3ca5 5-6
+apps/web/src/app/(dashboard)/products/@main/[slug]/form-classification.tsx
+  s_68a2e5820311ea::t_11a05242879797 23
+  s_27edd262a31dfa::t_dde1552e6b3ca5 22
+apps/server/package.json
+  s_e7a40a9d651879::t_c75a4ec7ef2197 13-15
+  s_68a2e5820311ea::t_794ed38bbf0450 27,33
+packages/emails/src/reset-password.tsx
+  s_a3aed64beedfa4::t_62eedbc2d02596 13
+  s_a3aed64beedfa4::t_d624ae2e4bebeb 21,35,44,59,75
+apps/web/src/components/ui/sonner.tsx
+  s_68a2e5820311ea::t_11a05242879797 11
+  s_27edd262a31dfa::t_dde1552e6b3ca5 12
+package.json
+  s_68a2e5820311ea::t_794ed38bbf0450 20,29,34
+  s_68a2e5820311ea::t_d69695e186ee9d 42
+apps/server/scripts/seed.ts
+  s_27edd262a31dfa::t_dde1552e6b3ca5 6-9
+  s_e7a40a9d651879::t_c75a4ec7ef2197 1-5,10-11
+apps/storefront/package.json
+  s_68a2e5820311ea::t_794ed38bbf0450 15-17
+docker-compose.yaml
+  s_824a6a29ca2a1c::t_0cec48186c0637 22
+apps/storefront/src/components/vitrine.tsx
+  s_27edd262a31dfa::t_dde1552e6b3ca5 4-5,8-9
+apps/web/src/lib/utils.ts
+  s_27edd262a31dfa::t_dde1552e6b3ca5 6
+  s_68a2e5820311ea::t_11a05242879797 7
+apps/server/vercel.json
+  s_68a2e5820311ea::t_c3eea122373571 1,4
+  s_e7a40a9d651879::t_c75a4ec7ef2197 2-3
+apps/web/src/components/ui/item.tsx
+  s_68a2e5820311ea::t_11a05242879797 5
+  s_27edd262a31dfa::t_dde1552e6b3ca5 6
+apps/web/src/app/(dashboard)/products/@main/[slug]/form-variants.tsx
+  s_27edd262a31dfa::t_dde1552e6b3ca5 5-6
+apps/storefront/src/components/landing.tsx
+  s_68a2e5820311ea::t_11a05242879797 1
+  s_27edd262a31dfa::t_dde1552e6b3ca5 2
+apps/web/src/components/ui/input-group.tsx
+  s_68a2e5820311ea::t_11a05242879797 7
+  s_27edd262a31dfa::t_dde1552e6b3ca5 8
+.github/workflows/ci.yaml
+  s_68a2e5820311ea::t_cd57ce43dd1e86 121-123
+  s_68a2e5820311ea::t_8e6b2508d7a09f 166-167
+apps/web/src/app/(dashboard)/products/@main/[slug]/form-details.tsx
+  s_68a2e5820311ea::t_11a05242879797 16
+  s_27edd262a31dfa::t_dde1552e6b3ca5 15
+apps/web/src/components/ui/button-group.tsx
+  s_27edd262a31dfa::t_dde1552e6b3ca5 6
+  s_68a2e5820311ea::t_11a05242879797 5
+apps/web/src/app/(dashboard)/products/@main/[slug]/form.tsx
+  s_27edd262a31dfa::t_dde1552e6b3ca5 4,31-32
+lefthook.yml
+  s_68a2e5820311ea::t_ab792da91bb0be 16-19
+apps/web/src/lib/elysia.ts
+  s_27edd262a31dfa::t_dde1552e6b3ca5 6
+  s_68a2e5820311ea::t_11a05242879797 5
+packages/emails/src/index.tsx
+  s_a3aed64beedfa4::t_62eedbc2d02596 1
+apps/web/src/components/ui/badge.tsx
+  s_68a2e5820311ea::t_11a05242879797 6
+  s_27edd262a31dfa::t_dde1552e6b3ca5 7
+apps/web/src/app/icon.svg
+  s_68a2e5820311ea::t_a99f4627221498 2
+  s_68a2e5820311ea::t_11a05242879797 1,5-9,12-21
+apps/web/src/proxy.ts
+  s_27edd262a31dfa::t_dde1552e6b3ca5 2
+  s_68a2e5820311ea::t_a99f4627221498 17
+  s_68a2e5820311ea::t_11a05242879797 3
+Dockerfile.vercel
+  s_824a6a29ca2a1c::t_0cec48186c0637 1-40
+apps/server/load/load.test.ts
+  s_e7a40a9d651879::t_684ee94690a9a0 219,226-230
+  s_1e2e425fbf516a::t_3a5c6bc61940cc 72-77
+  s_1e2e425fbf516a::t_403c90c059fb61 71
+  s_e7a40a9d651879::t_795d623ded5970 231
+apps/web/src/components/ui/button.tsx
+  s_68a2e5820311ea::t_11a05242879797 5
+  s_27edd262a31dfa::t_dde1552e6b3ca5 6
+apps/web/src/components/ui/carousel.tsx
+  s_27edd262a31dfa::t_dde1552e6b3ca5 6,8
+  s_68a2e5820311ea::t_11a05242879797 5
+.github/workflows/preview.yaml
+  s_e7a40a9d651879::t_c75a4ec7ef2197 1-36,38-49
+  s_27edd262a31dfa::t_dde1552e6b3ca5 37
+apps/web/src/components/ui/field.tsx
+  s_27edd262a31dfa::t_dde1552e6b3ca5 7
+  s_68a2e5820311ea::t_11a05242879797 6
+packages/emails/src/change-email-verification.tsx
+  s_a3aed64beedfa4::t_62eedbc2d02596 13
+  s_a3aed64beedfa4::t_5f179fc9a141ef 21,35,44,59,75
+apps/web/src/components/ui/sidebar.tsx
+  s_27edd262a31dfa::t_dde1552e6b3ca5 25,27
+  s_a3aed64beedfa4::t_3c94d2a34cefe7 250
+  s_68a2e5820311ea::t_11a05242879797 24
+apps/web/package.json
+  s_68a2e5820311ea::t_794ed38bbf0450 18,26,28,42
+apps/server/src/lib/images.ts
+  s_a3aed64beedfa4::t_3c94d2a34cefe7 183
+apps/server/tests/utils/dummy-products.ts
+  s_e7a40a9d651879::t_c75a4ec7ef2197 235
+sst-env.d.ts
+  s_27edd262a31dfa::t_31c5f2178302e5 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "53e5b18d506927028288a81c35b04900940b9957",
+  "prompts": {},
+  "sessions": {
+    "s_1e2e425fbf516a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "de9d201b-c126-4147-8816-7b667aed812e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_27edd262a31dfa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9484b7bf-517d-4986-847e-e154aab130dd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_68a2e5820311ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b81068ce-5442-420f-a7ea-7af9c95a7eb3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_824a6a29ca2a1c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16fe63b0-8ea4-468c-85f4-f2a4366b13af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_a3aed64beedfa4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96a8f5ef-11f1-4132-b883-3800371610e8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_e7a40a9d651879": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "22fb4e91-efe6-4186-8ff6-3b0acef68f56",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
