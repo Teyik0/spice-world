@@ -2,10 +2,21 @@
   "root": true,
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "extends": ["ultracite/biome/core"],
+  "formatter": {
+    "enabled": false,
+  },
+  "json": {
+    "formatter": {
+      "enabled": false,
+    },
+  },
   "javascript": {
     "globals": ["Bun"],
   },
   "css": {
+    "formatter": {
+      "enabled": false,
+    },
     "parser": {
       "tailwindDirectives": true,
     },
@@ -29,6 +40,7 @@
   "assist": {
     "actions": {
       "source": {
+        "organizeImports": "off",
         "useSortedPackageJson": "off",
         "useSortedKeys": "off",
       },
