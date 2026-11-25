@@ -1,4 +1,6 @@
-import { t, type UnwrapSchema } from "elysia";
+import type { UnwrapSchema } from "elysia";
+import { t } from "elysia";
+
 import {
   imageResult,
   nameLowerPattern,
@@ -6,22 +8,28 @@ import {
   uuid,
 } from "../shared";
 
-export const getQuery = t.Object({
-  skip: t.Optional(t.Number({ default: 0, minimum: 0 })),
-  take: t.Optional(t.Number({ default: 25, minimum: 1, maximum: 100 })),
-  name: t.Optional(t.String()),
-});
+export const getQuery = t.Object(
+  {
+    skip: t.Optional(t.Number({ default: 0, minimum: 0 })),
+    take: t.Optional(t.Number({ default: 25, minimum: 1, maximum: 100 })),
+    name: t.Optional(t.String()),
+  },
+  { additionalProperties: false },
+);
 export type getQuery = UnwrapSchema<typeof getQuery>;
 
 export const postAttributes = t.Refine(
   t.Array(
-    t.Object({
-      name: nameLowerPattern,
-      values: t.Array(nameLowerPatternWithNumber, {
-        minItems: 1,
-        uniqueItems: true,
-      }),
-    }),
+    t.Object(
+      {
+        name: nameLowerPattern,
+        values: t.Array(nameLowerPatternWithNumber, {
+          minItems: 1,
+          uniqueItems: true,
+        }),
+      },
+      { additionalProperties: false },
+    ),
     { minItems: 1 },
   ),
   (attributes) =>
@@ -30,25 +38,37 @@ export const postAttributes = t.Refine(
 );
 export type postAttribute = UnwrapSchema<typeof postAttributes>;
 
-export const postBody = t.Object({
-  name: nameLowerPattern,
-  file: t.File({ type: "image/*" }),
-  attributes: t.Optional(postAttributes),
-});
+export const postBody = t.Object(
+  {
+    name: nameLowerPattern,
+    file: t.File({ type: "image/*", maxSize: "7m" }),
+    attributes: t.Optional(postAttributes),
+  },
+  { additionalProperties: false },
+);
 export type postBody = UnwrapSchema<typeof postBody>;
 
 export const attributeValueOperations = t.Refine(
-  t.Object({
-    create: t.Optional(
-      t.Array(nameLowerPatternWithNumber, { minItems: 1, uniqueItems: true }),
-    ),
-    update: t.Optional(
-      t.Array(t.Object({ id: uuid, value: nameLowerPatternWithNumber }), {
-        minItems: 1,
-      }),
-    ),
-    delete: t.Optional(t.Array(uuid, { minItems: 1, uniqueItems: true })),
-  }),
+  t.Object(
+    {
+      create: t.Optional(
+        t.Array(nameLowerPatternWithNumber, { minItems: 1, uniqueItems: true }),
+      ),
+      update: t.Optional(
+        t.Array(
+          t.Object(
+            { id: uuid, value: nameLowerPatternWithNumber },
+            { additionalProperties: false },
+          ),
+          {
+            minItems: 1,
+          },
+        ),
+      ),
+      delete: t.Optional(t.Array(uuid, { minItems: 1, uniqueItems: true })),
+    },
+    { additionalProperties: false },
+  ),
   ({ create = [], update = [], delete: toDelete = [] }) =>
     new Set(update.map(({ id }) => id)).size === update.length &&
     !update.some(({ id }) => toDelete.includes(id)) &&
@@ -62,20 +82,26 @@ export type attributeValueOperations = UnwrapSchema<
 >;
 
 export const attributeOperations = t.Refine(
-  t.Object({
-    create: t.Optional(postAttributes),
-    update: t.Optional(
-      t.Array(
-        t.Object({
-          id: t.String({ format: "uuid" }),
-          name: t.Optional(nameLowerPattern),
-          values: t.Optional(attributeValueOperations),
-        }),
-        { minItems: 1 },
+  t.Object(
+    {
+      create: t.Optional(postAttributes),
+      update: t.Optional(
+        t.Array(
+          t.Object(
+            {
+              id: t.String({ format: "uuid" }),
+              name: t.Optional(nameLowerPattern),
+              values: t.Optional(attributeValueOperations),
+            },
+            { additionalProperties: false },
+          ),
+          { minItems: 1 },
+        ),
       ),
-    ),
-    delete: t.Optional(t.Array(uuid, { minItems: 1, uniqueItems: true })),
-  }),
+      delete: t.Optional(t.Array(uuid, { minItems: 1, uniqueItems: true })),
+    },
+    { additionalProperties: false },
+  ),
   ({ create = [], update = [], delete: deleted = [] }) => {
     const names = [
       ...create.map(({ name }) => name),
@@ -93,11 +119,14 @@ export const attributeOperations = t.Refine(
 );
 export type attributeOperations = UnwrapSchema<typeof attributeOperations>;
 
-export const patchBody = t.Object({
-  name: nameLowerPattern,
-  file: t.Optional(t.File({ type: "image/*" })),
-  attributes: t.Optional(attributeOperations),
-});
+export const patchBody = t.Object(
+  {
+    name: t.Optional(nameLowerPattern),
+    file: t.Optional(t.File({ type: "image/*", maxSize: "7m" })),
+    attributes: t.Optional(attributeOperations),
+  },
+  { additionalProperties: false },
+);
 export type patchBody = UnwrapSchema<typeof patchBody>;
 
 export const categoryResult = t.Object(
@@ -115,10 +144,14 @@ export const categoryResult = t.Object(
               {
                 id: uuid,
                 value: nameLowerPatternWithNumber,
+                createdAt: t.Date(),
+                updatedAt: t.Date(),
               },
               { additionalProperties: false },
             ),
           ),
+          createdAt: t.Date(),
+          updatedAt: t.Date(),
         },
         { additionalProperties: false },
       ),
@@ -144,9 +177,5 @@ export const patchNotFound = t.Object({
     t.Literal("CATEGORY_ATTRIBUTE_NOT_FOUND"),
     t.Literal("CATEGORY_ATTRIBUTE_VALUE_NOT_FOUND"),
   ]),
-  message: t.String(),
-});
-export const patchFailure = t.Object({
-  code: t.Literal("CATEGORY_PATCH_FAILED"),
   message: t.String(),
 });
