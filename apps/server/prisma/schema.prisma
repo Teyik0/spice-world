@@ -168,7 +168,7 @@ model Product {
   name        String @unique // Product name (e.g., "Poivre")
   slug        String @unique // URL-friendly name (e.g., "poivre")
   description String
-  version     Int    @default(0)
+  version     Int    @default(1)
 
   status   ProductStatus @default(DRAFT)
   images   Image[]
