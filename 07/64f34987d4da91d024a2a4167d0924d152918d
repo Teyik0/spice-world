@@ -1,0 +1,28 @@
+apps/server/drizzle/20261125154338_attribute_value_restrict/snapshot.json
+  s_5d528c9859b1bf::t_e8125114e31325 1-44
+apps/server/drizzle/schema.ts
+  s_5d528c9859b1bf::t_e8125114e31325 23,69,72
+apps/server/load/seed.data.ts
+  s_5d528c9859b1bf::t_a9e7f7e26d38fc 40-41,111-115
+apps/server/drizzle/20261125154338_attribute_value_restrict/migration.sql
+  s_5d528c9859b1bf::t_e8125114e31325 1
+apps/server/src/modules/shared.ts
+  s_5d528c9859b1bf::t_43a0d16333799a 83-85,88,90,93,95,97,100-102
+  s_5d528c9859b1bf::t_f70a67b8d5d25e 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0764f34987d4da91d024a2a4167d0924d152918d",
+  "prompts": {},
+  "sessions": {
+    "s_5d528c9859b1bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc0af7f0-04b1-47ce-90a8-2b2c927abe85",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
