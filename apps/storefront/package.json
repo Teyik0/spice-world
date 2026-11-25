@@ -5,8 +5,7 @@
   "scripts": {
     "dev": "bun --hot src/server.ts",
     "build": "furin build --target bun",
-    "start": "NODE_ENV=production bun .furin/build/bun/server.js",
-    "test": "bun test tests/"
+    "start": "NODE_ENV=production bun .furin/build/bun/server.js"
   },
   "dependencies": {
     "@spice-world/server": "workspace:*",
