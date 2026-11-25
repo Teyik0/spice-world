@@ -84,12 +84,11 @@ describe.concurrent("category DELETE", () => {
     expect(status).toBe(200);
     expectDefined(data);
     expect(data).toBe("OK");
-    const keys = [
+    await expectDeleted([
       oldCategory.image.keyThumb,
       oldCategory.image.keyMedium,
       oldCategory.image.keyLarge,
-    ];
-    await expectDeleted(keys);
+    ]);
 
     // Check image is well deleted
     const image = await db.query.image.findFirst({
