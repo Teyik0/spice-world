@@ -1,0 +1,25 @@
+biome.jsonc
+  s_ab49f0935feb76::t_aef44b875e655e 5-7
+  s_ab49f0935feb76::t_673e06f7ea0183 17-19
+  s_ab49f0935feb76::t_1da0d36387ea89 8-12
+  s_ab49f0935feb76::t_f998c1f380acbc 43
+bunfig.toml
+  s_ab49f0935feb76::t_eed56fe62784c4 9
+  s_ab49f0935feb76::t_dcf14b0e519e3e 6-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8fb6ef6a5e3f07c1d003c35cf86040d08049f1d6",
+  "prompts": {},
+  "sessions": {
+    "s_ab49f0935feb76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7cfdb31-ea40-413d-bb5f-4a4bdfa74f71",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
