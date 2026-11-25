@@ -37,8 +37,8 @@ const CATEGORY_NAMES = [
   "automotive",
   "office supplies",
 ];
-const ADJECTIVES = ["Rustic", "Smoked", "Organic", "Sleek", "Vintage", "Wild"];
-const NOUNS = ["Paprika", "Pepper", "Saffron", "Lamp", "Chair", "Bottle"];
+const ADJECTIVES = ["rustic", "smoked", "organic", "sleek", "vintage", "wild"];
+const NOUNS = ["paprika", "pepper", "saffron", "lamp", "chair", "bottle"];
 
 const imageUrls = (size: number) =>
   Array.from(
@@ -108,7 +108,11 @@ function seedProductBatch(
         name: f.valuesFromArray({
           values: Array.from({ length: count }, (_, j) => {
             const i = offset + j;
-            return `${ADJECTIVES[i % ADJECTIVES.length]} ${NOUNS[Math.floor(i / ADJECTIVES.length) % NOUNS.length]} ${i.toString(36)}`;
+            // Letters only, as nameLowerPattern requires
+            const suffix = i
+              .toString(16)
+              .replace(/\d/gu, (digit) => "ghijklmnop".charAt(Number(digit)));
+            return `${ADJECTIVES[i % ADJECTIVES.length]} ${NOUNS[Math.floor(i / ADJECTIVES.length) % NOUNS.length]} ${suffix}`;
           }),
           isUnique: true,
         }),

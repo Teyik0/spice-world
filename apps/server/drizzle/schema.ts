@@ -20,6 +20,7 @@ export const attributeConstraintNames = {
   valuePerAttribute: "AttributeValue_attributeId_value_key",
   categoryReference: "Attribute_categoryId_fkey",
   attributeReference: "AttributeValue_attributeId_fkey",
+  variantValueReference: "_AttributeValueToProductVariant_A_fkey",
 } as const;
 
 const createdAt = () =>
@@ -65,10 +66,10 @@ export const attributeValueToProductVariantTable = pgTable(
     foreignKey({
       columns: [table.a],
       foreignColumns: [attributeValueTable.id],
-      name: "_AttributeValueToProductVariant_A_fkey",
+      name: attributeConstraintNames.variantValueReference,
     })
       .onUpdate("cascade")
-      .onDelete("cascade"),
+      .onDelete("restrict"),
     foreignKey({
       columns: [table.b],
       foreignColumns: [productVariantTable.id],

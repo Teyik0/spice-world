@@ -80,26 +80,26 @@ export function assertValidWithData<T>(
 }
 
 /*
-Regex explanation:
-^[a-zà-ÿ]        : string must start with a lowercase letter with latin char with accent (i.e éè)
-[a-zà-ÿ ]*       : followed by zero or more lowercase letters with latin char with accent (i.e éè) or spaces
-$                : end of string
+[a-zà-öø-ÿœ]+        : lowercase latin letters with accents (÷ is excluded)
+(?: [a-zà-öø-ÿœ]+)*  : words separated by single spaces, without trailing space
+maxLength            : keeps values under the Postgres btree index row limit
 */
 export const nameLowerPattern = t.String({
-  pattern: "^[a-zà-ÿ][a-zà-ÿ ]*$",
+  pattern: "^[a-zà-öø-ÿœ]+(?: [a-zà-öø-ÿœ]+)*$",
   minLength: 3,
+  maxLength: 100,
 });
 
-/*
-Regex explanation:
-^[a-zà-ÿ0-9]     : string must start with a lowercase letter with latin char with accent (i.e éè) or number
-[a-zà-ÿ0-9 ]*    : followed by zero or more lowercase letters with latin char with accent (i.e éè), numbers or spaces
-$                : end of string
-*/
+/** Same as nameLowerPattern, digits allowed. */
 export const nameLowerPatternWithNumber = t.String({
-  pattern: "^[a-zà-ÿ0-9][a-zà-ÿ0-9 ]*$",
+  pattern: "^[a-zà-öø-ÿœ0-9]+(?: [a-zà-öø-ÿœ0-9]+)*$",
   minLength: 3,
+  maxLength: 100,
 });
+
+/** Bounds for array inputs: keeps bulk inserts under the Postgres parameter limit. */
+export const MAX_ATTRIBUTES = 50;
+export const MAX_ATTRIBUTE_VALUES = 100;
 
 export const uuid = t.String({ format: "uuid" });
 export type uuid = UnwrapSchema<typeof uuid>;
