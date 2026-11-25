@@ -1,0 +1,239 @@
+apps/server/tests/products/post.test.ts
+  s_e3670d2ea37ad1::t_d30d92ddd1fe50 568,777,827
+  s_ab49f0935feb76::t_94d8b53110586c 2,6
+  s_8ae668486b1f57::t_6e3976a6775131 1,4,7,9,17-20
+apps/server/src/plugins/drizzle.plugin.ts
+  s_781aeb17736a4b::t_5f18c7eec05b19 51-55
+apps/server/tests/products/stripe-checkout.test.ts
+  s_ab49f0935feb76::t_94d8b53110586c 2,8
+  s_8ae668486b1f57::t_6e3976a6775131 4-5,7,9,11,20-25
+  s_8ae668486b1f57::t_e2e98ced062656 70,73
+apps/server/tests/orders/stock.test.ts
+  s_8ae668486b1f57::t_e2e98ced062656 63
+  s_9b332432da0824::t_5e72f33fd4a8e0 7,10,18-20,64
+  s_ab49f0935feb76::t_94d8b53110586c 2,5
+  s_ab49f0935feb76::t_b61f4869216ac5 6
+apps/server/src/modules/products/validators/patch.ts
+  s_9b332432da0824::t_a8c30ca8a67d2e 112,118
+  s_ab49f0935feb76::t_94d8b53110586c 5,11
+apps/server/tests/products/patch.test.ts
+  s_8ae668486b1f57::t_6e3976a6775131 1,4,6,18-22
+  s_ab49f0935feb76::t_c4c89f5ff57bdd 32-39,94-100,117-129,131-132,137-142,174-179,191-196,201-203,252-265,267-268,327-338,340-341,406-411,463-478,480-481,518-524,526-527,564-571,573-574,611-618,620-621,655-660,662-663,688-697,699-700,723-744,746-747,772-784,786-787,793-798,822-826,828-829,852-858
+  s_ab49f0935feb76::t_94d8b53110586c 2,5
+  s_8efbb934c42335::t_a21a2578d7592d 11
+  s_8efbb934c42335::t_523d4d7fb07208 187,205
+  s_8efbb934c42335::t_d7ec4f124afaf5 8,183-186,188-190,197-200,204
+  s_ab49f0935feb76::t_98682c4c0c4c9d 206
+apps/server/src/modules/collections/service.ts
+  s_1e4bb078317318::t_658a60d9676d4d 2,8,32-37
+apps/server/src/modules/shared.ts
+  s_d222567ebe01c3::t_02c84860d82bcb 135
+apps/server/src/modules/products/service.ts
+  s_8efbb934c42335::t_d7ec4f124afaf5 529,532
+  s_ab49f0935feb76::t_94d8b53110586c 15
+  s_f1836da28a00b0::t_7bd003defcba68 88,90,110-121,147,149,193,222-225,227,244-247,249,379,780,866,893-896,905
+  s_9b332432da0824::t_9f7fde260b4484 316,497-501
+  s_1e4bb078317318::t_658a60d9676d4d 86,89,122,195-198
+  s_8efbb934c42335::t_523d4d7fb07208 18,399-400,403,405,530
+  s_1e4bb078317318::t_79c35fade6a39e 2,10-11,19,21-22,25-26
+apps/server/src/modules/categories/model.ts
+  s_d222567ebe01c3::t_02c84860d82bcb 194-198,203-209,211
+  s_d222567ebe01c3::t_715cee4fd16a35 210
+apps/server/src/modules/attributes/model.ts
+  s_781aeb17736a4b::t_691a706649b9a1 13-15
+apps/server/tests/products/delete.test.ts
+  s_ab49f0935feb76::t_94d8b53110586c 2,5
+  s_8ae668486b1f57::t_6e3976a6775131 1,4,6,8,15-18
+apps/server/tests/products/thumbnail.test.ts
+  s_8ae668486b1f57::t_6e3976a6775131 1,4,9,19-23
+  s_ab49f0935feb76::t_c4c89f5ff57bdd 141-144,154-161,163-164,177-184,186-187,197-203,211-223,225-226,234-241,243-244,252-257,259-260,271-282,284-285,296-301,303-304,312-318,320-321,329-334,336-337,349-360,372-379,381-382,405-412,414-415,461-471,473-474,520-524,526-527
+  s_ab49f0935feb76::t_94d8b53110586c 2,8
+  s_8efbb934c42335::t_523d4d7fb07208 11
+apps/server/src/modules/orders/service.ts
+  s_e3670d2ea37ad1::t_a6cf2ccbcf48e0 171-173,175-178,181-182,184
+  s_e3670d2ea37ad1::t_aa7194c602c243 256-274
+  s_e3670d2ea37ad1::t_2899e8c63f33d7 89,98-100,109,111,119-136,185-203
+  s_ab49f0935feb76::t_78817c2d61b324 4,6-7,255,275-276
+apps/server/tests/attribute.test.ts
+  s_781aeb17736a4b::t_f6d7d94f2f598b 456
+  s_781aeb17736a4b::t_691a706649b9a1 207-214,216-217
+  s_781aeb17736a4b::t_006cbf6c6a0f00 192-206,215,218-233
+  s_781aeb17736a4b::t_4ceb9662860344 17,296-314,316-329,446-455,457-475
+  s_781aeb17736a4b::t_0778dd08364d19 315
+apps/server/src/modules/categories/service.ts
+  s_781aeb17736a4b::t_5f18c7eec05b19 329,332,345,348,380-389,394,413-421,426,434-440,459-461,463-467
+  s_781aeb17736a4b::t_22050fa18dd585 74-79
+apps/server/tests/categories/images.test.ts
+  s_d222567ebe01c3::t_02c84860d82bcb 161-164
+apps/server/tests/categories/patch.test.ts
+  s_781aeb17736a4b::t_0778dd08364d19 45
+  s_781aeb17736a4b::t_1b5d5c0c6a3961 40
+  s_781aeb17736a4b::t_4ceb9662860344 6-10,18,30-39,41-44,46-98
+apps/server/tests/collection.test.ts
+  s_781aeb17736a4b::t_b30bb9492c8651 51
+  s_781aeb17736a4b::t_4ceb9662860344 84-94
+  s_1e4bb078317318::t_658a60d9676d4d 27-29,31-46,49,53-56
+  s_781aeb17736a4b::t_22050fa18dd585 30,47-48,50,52
+apps/server/tests/products/bulk.test.ts
+  s_8ae668486b1f57::t_6e3976a6775131 1,4,6,8,15-18
+  s_ab49f0935feb76::t_94d8b53110586c 2,5
+apps/server/src/modules/collections/index.ts
+  s_781aeb17736a4b::t_22050fa18dd585 19,37
+apps/server/tests/categories/post.test.ts
+  s_781aeb17736a4b::t_22050fa18dd585 173-183,185-194,196-198
+  s_d222567ebe01c3::t_02c84860d82bcb 158,163-169
+apps/server/tests/orders/checkout.test.ts
+  s_9b332432da0824::t_5e72f33fd4a8e0 1,4,7-25,27-157,183
+  s_8ae668486b1f57::t_e2e98ced062656 26
+  s_ab49f0935feb76::t_94d8b53110586c 2,5
+  s_e3670d2ea37ad1::t_1f41abe59e8952 158-182
+  s_ab49f0935feb76::t_8cdf4970e2e249 3,6
+apps/server/tests/utils/helper.ts
+  s_781aeb17736a4b::t_f6d7d94f2f598b 7,486-488,490-491,493,495-496,511
+  s_f1836da28a00b0::t_7bd003defcba68 396
+  s_bcf9df1202e724::t_371209ad6d46c7 101-105
+  s_781aeb17736a4b::t_4ceb9662860344 57,390,485,489,492,494,497-510,512
+  s_5d528c9859b1bf::t_e8125114e31325 14,18,366-389
+  s_781aeb17736a4b::t_4b6f249c71f90d 47-56,58,391
+apps/server/src/modules/categories/index.ts
+  s_d222567ebe01c3::t_02c84860d82bcb 35-36,75,77
+apps/server/tests/products/comments.test.ts
+  s_8ae668486b1f57::t_6e3976a6775131 1,4-5,8,10,18-21,23
+  s_ab49f0935feb76::t_94d8b53110586c 2,6
+apps/server/src/modules/products/validators/variants.ts
+  s_9b332432da0824::t_a8c30ca8a67d2e 10-14,16,215
+  s_9b332432da0824::t_907fc5e966145a 1-2
+apps/server/src/modules/attributes/service.ts
+  s_781aeb17736a4b::t_691a706649b9a1 24,27-28
+  s_781aeb17736a4b::t_1b5d5c0c6a3961 2
+  s_781aeb17736a4b::t_5f18c7eec05b19 5,16-23,30,37,44-52,54-59,67-81
+apps/server/src/modules/products/model.ts
+  s_8efbb934c42335::t_523d4d7fb07208 2-3
+  s_ab49f0935feb76::t_94d8b53110586c 4
+  s_ab49f0935feb76::t_0fae108a13fbc9 23-43,52-58,64-69,72-84,86-103,106-136,139-160,166-176,180-187,190-206
+apps/server/tests/products/get.test.ts
+  s_ab49f0935feb76::t_94d8b53110586c 2
+  s_f1836da28a00b0::t_881f5c805c2c85 221,225,233-234,237
+  s_8ae668486b1f57::t_6e3976a6775131 1,4,12-13,22
+  s_f1836da28a00b0::t_7bd003defcba68 15-20,23-27,180-220,222-224,226-232,235-236,238-322
+apps/server/src/modules/orders/model.ts
+  s_ab49f0935feb76::t_0fae108a13fbc9 24-48,51-58,61-66,69-75
+  s_ab49f0935feb76::t_94d8b53110586c 1-3
+apps/server/tests/orders/webhook.test.ts
+  s_ab49f0935feb76::t_c4c89f5ff57bdd 54-57
+  s_9b332432da0824::t_5e72f33fd4a8e0 5,8-53,58-149
+  s_ab49f0935feb76::t_94d8b53110586c 2,6
+  s_ab49f0935feb76::t_430f9412759f80 1,3-4,7
+apps/server/src/modules/products/index.ts
+  s_f1836da28a00b0::t_7bd003defcba68 24-26,43-44,52-53,74-75,78-83
+  s_9b332432da0824::t_9f7fde260b4484 3,33
+  s_f1836da28a00b0::t_881f5c805c2c85 87-90
+  s_8efbb934c42335::t_523d4d7fb07208 7,97,99,103
+  s_884ca8d1aa512d::t_992ceae54584c0 40,49,73,86
+  s_ab49f0935feb76::t_94d8b53110586c 6
+  s_f1836da28a00b0::t_c6ebf1013081fb 2,27,36,58,66,95,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ace0b9942bde2d7688ad0914fe09836e3f327a1",
+  "prompts": {},
+  "sessions": {
+    "s_1e4bb078317318": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "67ed59b6-7249-4aca-aa7c-e29c2ddc29f6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_5d528c9859b1bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc0af7f0-04b1-47ce-90a8-2b2c927abe85",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_781aeb17736a4b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d8eed11-98d9-4f8c-b3e5-a08c5eb3f5f7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_884ca8d1aa512d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6fc85604-2a28-491a-802d-611ee8938e1f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_8ae668486b1f57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c813eae-df1a-4887-99b1-825ce08e6cfd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_8efbb934c42335": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ffb45207-5f0c-47ae-8076-7c77d131aa88",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_9b332432da0824": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5b21e50-8d91-4fae-9ae5-058bec04f67c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_ab49f0935feb76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7cfdb31-ea40-413d-bb5f-4a4bdfa74f71",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_bcf9df1202e724": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e8d8d15-9f1a-4da4-9a18-397a46dba397",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_d222567ebe01c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14c8c152-3d90-4777-b68f-855a097e0523",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_e3670d2ea37ad1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b67b932b-3bd3-47fb-88e1-05d9f267fe73",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_f1836da28a00b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58096ed0-8a06-49ac-80d3-7f1434619198",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
