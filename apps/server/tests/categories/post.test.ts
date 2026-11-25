@@ -340,6 +340,38 @@ describe.concurrent("category POST", () => {
     expect(error).toMatchObject({ status });
   });
 
+  test.each([
+    ["name", { name: "a".repeat(101) }],
+    [
+      "attributes",
+      {
+        attributes: Array.from({ length: 51 }, (_, i) => ({
+          name: `attr ${"a".repeat(i + 1)}`,
+          values: ["abc"],
+        })),
+      },
+    ],
+    [
+      "values",
+      {
+        attributes: [
+          {
+            name: "couleur",
+            values: Array.from({ length: 101 }, (_, i) => `value ${i}`),
+          },
+        ],
+      },
+    ],
+  ])("should reject out of bounds %s", async (_, body) => {
+    const { error } = await api.categories.post({
+      name: "out of bounds",
+      file: file(filePath1),
+      ...body,
+    });
+
+    expect(error).toMatchObject({ status: 422 });
+  });
+
   test("should accept attribute values with numbers", async () => {
     const bunfile = file(filePath1);
 

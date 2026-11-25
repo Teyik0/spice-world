@@ -6,7 +6,12 @@ import { eq, inArray } from "drizzle-orm";
 import { attributeValueTable, imageDeletionTable } from "../../drizzle/schema";
 import type * as CategoryModel from "../../src/modules/categories/model";
 import { testDb } from "../setup";
-import { createTestCategory, expectDefined, file } from "../utils/helper";
+import {
+  createProductUsingValues,
+  createTestCategory,
+  expectDefined,
+  file,
+} from "../utils/helper";
 import {
   api,
   expectDeleted,
@@ -129,6 +134,67 @@ describe.concurrent("category PATCH", () => {
       expect((await api.categories({ id: category.id }).get()).data).toEqual(
         before.data,
       );
+    },
+  );
+
+  test.each([
+    ["create", { create: Array.from({ length: 101 }, (_, i) => `value ${i}`) }],
+    [
+      "update",
+      {
+        update: Array.from({ length: 101 }, (_, i) => ({
+          id: Bun.randomUUIDv7(),
+          value: `value ${i}`,
+        })),
+      },
+    ],
+    [
+      "delete",
+      { delete: Array.from({ length: 101 }, () => Bun.randomUUIDv7()) },
+    ],
+  ] satisfies [string, CategoryModel.attributeValueOperations][])(
+    "should reject too many values to %s",
+    async (_, values) => {
+      const category = await createTestCategory({ testDb });
+      const { error } = await api.categories({ id: category.id }).patch({
+        attributes: { update: [{ id: Bun.randomUUIDv7(), values }] },
+      });
+
+      expect(error).toMatchObject({ status: 422 });
+    },
+  );
+
+  test.each(["attribute", "value"] as const)(
+    "should refuse to delete an %s used by variants and roll back",
+    async (target) => {
+      const category = await createTestCategory({
+        testDb,
+        attributeCount: 1,
+        attributeValueCount: 2,
+      });
+      const [attribute] = category.attributes;
+      const [value] = attribute?.values ?? [];
+      expectDefined(attribute);
+      expectDefined(value);
+      await createProductUsingValues(testDb, category.id, [value.id]);
+      const before = await api.categories({ id: category.id }).get();
+
+      const { error } = await api.categories({ id: category.id }).patch({
+        name: `${category.name} renamed`,
+        attributes:
+          target === "attribute"
+            ? { delete: [attribute.id] }
+            : {
+                update: [{ id: attribute.id, values: { delete: [value.id] } }],
+              },
+      });
+
+      expect(error).toMatchObject({
+        status: 409,
+        value: { code: "ATTRIBUTE_VALUE_IN_USE" },
+      });
+      const after = await api.categories({ id: category.id }).get();
+      expect(after.data).toEqual(before.data);
     },
   );
 

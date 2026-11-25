@@ -1,20 +1,29 @@
 import { db } from "@spice-world/server/lib/db";
+import type { MultiSizeUploadData } from "@spice-world/server/lib/images";
 import {
   claimUploads,
   enqueueImageCheck,
-  type MultiSizeUploadData,
   uploadFiles,
 } from "@spice-world/server/lib/images";
 import { EmptyFilter, eq, getColumns, inArray, sql } from "drizzle-orm";
 import { problem, status } from "elysia";
+
 import {
   attributeTable,
   attributeValueTable,
   categoryTable,
   imageTable,
 } from "../../../drizzle/schema";
-import { uploadFileErrStatus, type uuidGuard } from "../shared";
+import type { uuidGuard } from "../shared";
+import { uploadFileErrStatus } from "../shared";
 import type * as CategoryModel from "./model";
+
+const { productId: _productId, ...imageColumns } = getColumns(imageTable);
+const { imageId: _imageId, ...categoryColumns } = getColumns(categoryTable);
+const { categoryId: _categoryId, ...attributeColumns } =
+  getColumns(attributeTable);
+const { attributeId: _attributeId, ...valueColumns } =
+  getColumns(attributeValueTable);
 
 export const categoryService = {
   categoryNotFound: problem("Not Found", {
@@ -34,9 +43,11 @@ export const categoryService = {
       },
       attributes: {
         columns: { categoryId: false as const },
+        orderBy: { id: "asc" as const },
         with: {
           values: {
             columns: { attributeId: false as const },
+            orderBy: { id: "asc" as const },
           },
         },
       },
@@ -47,7 +58,10 @@ export const categoryService = {
     const categories = await db.query.category.findMany({
       offset: skip,
       limit: take,
-      where: name ? { name: { ilike: `%${name}%` } } : EmptyFilter,
+      where: name
+        ? { name: { ilike: `%${name.replace(/[\\%_]/gu, "\\$&")}%` } }
+        : EmptyFilter,
+      orderBy: { name: "asc" }, // unique
       ...this.findOptions,
     });
 
@@ -105,19 +119,16 @@ export const categoryService = {
         ...attribute,
       }));
 
-      type AttributeWithValues =
-        CategoryModel.categoryResult["attributes"][number];
       const { productId, ...categoryImageColumns } = getColumns(createdImage);
+      const { imageId, ...createdCategoryColumns } =
+        getColumns(createdCategory);
 
       if (!newAttributes.length) {
         const [category] = await tx
           .with(createdImage, createdCategory)
           .select({
-            id: createdCategory.id,
-            name: createdCategory.name,
+            ...createdCategoryColumns,
             image: categoryImageColumns,
-            createdAt: createdCategory.createdAt,
-            updatedAt: createdCategory.updatedAt,
           })
           .from(createdCategory)
           .innerJoin(
@@ -127,7 +138,7 @@ export const categoryService = {
 
         return status("Created", {
           ...(category as NonNullable<typeof category>),
-          attributes: [] as AttributeWithValues[],
+          attributes: [] as CategoryModel.categoryResult["attributes"],
         });
       }
 
@@ -158,7 +169,13 @@ export const categoryService = {
           .returning(),
       );
 
-      const [category] = await tx
+      const { categoryId, ...createdAttributeColumns } =
+        getColumns(createdAttributes);
+      const { attributeId, ...createdValueColumns } = getColumns(
+        createdAttributesValues,
+      );
+
+      const rows = await tx
         .with(
           createdImage,
           createdCategory,
@@ -166,42 +183,34 @@ export const categoryService = {
           createdAttributesValues,
         )
         .select({
-          id: createdCategory.id,
-          name: createdCategory.name,
+          category: createdCategoryColumns,
           image: categoryImageColumns,
-          attributes: sql<AttributeWithValues[]>`
-            coalesce(
-              (
-                select jsonb_agg(
-                  jsonb_build_object(
-                    'id', a.id,
-                    'name', a.name,
-                    'values',
-                    coalesce(
-                      (
-                        select jsonb_agg(
-                          jsonb_build_object('id', v.id, 'value', v.value)
-                        )
-                        from ${createdAttributesValues} as v
-                        where v."attributeId" = a.id
-                      ),
-                      '[]'::jsonb
-                    )
-                  )
-                )
-                from ${createdAttributes} as a
-                where a."categoryId" = ${createdCategory.id}
-              ),
-              '[]'::jsonb
-            )
-          `.as("attributes"),
-          createdAt: createdCategory.createdAt,
-          updatedAt: createdCategory.updatedAt,
+          attribute: createdAttributeColumns,
+          value: createdValueColumns,
         })
         .from(createdCategory)
-        .innerJoin(createdImage, eq(createdImage.id, createdCategory.imageId));
+        .innerJoin(createdImage, eq(createdImage.id, createdCategory.imageId))
+        .innerJoin(
+          createdAttributes,
+          eq(createdAttributes.categoryId, createdCategory.id),
+        )
+        .innerJoin(
+          createdAttributesValues,
+          eq(createdAttributesValues.attributeId, createdAttributes.id),
+        );
+      const { category, image } = rows[0] as NonNullable<(typeof rows)[number]>;
 
-      return status("Created", category as NonNullable<typeof category>);
+      return status("Created", {
+        ...category,
+        image,
+        attributes: newAttributes.flatMap(({ id }) => {
+          const attributeRows = rows.filter((row) => row.attribute.id === id);
+          return attributeRows.slice(0, 1).map(({ attribute }) => ({
+            ...attribute,
+            values: attributeRows.map(({ value }) => value),
+          }));
+        }),
+      });
     });
   },
 
@@ -214,7 +223,17 @@ export const categoryService = {
     let newFile: MultiSizeUploadData | null = null;
 
     if (file) {
-      const { data: images, error: fileError } = await uploadFiles(name, file);
+      const existing = await db.query.category.findFirst({
+        where: { id },
+        columns: { name: true },
+      });
+      if (!existing) {
+        return this.categoryNotFound;
+      }
+      const { data: images, error: fileError } = await uploadFiles(
+        name ?? existing.name,
+        file,
+      );
       if (fileError || images?.length !== 1) {
         return uploadFileErrStatus(fileError);
       }
@@ -234,10 +253,6 @@ export const categoryService = {
 
     const updates = attributes?.update ?? [];
     const deleteIds = attributes?.delete ?? [];
-    const hasAttributeOperations = Boolean(
-      attributes?.create?.length || updates.length || deleteIds.length,
-    );
-
     const outcome = await db.transaction(
       // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Keep validation and ordered writes together in this atomic operation.
       async (tx) => {
@@ -255,27 +270,6 @@ export const categoryService = {
           .where(eq(attributeTable.categoryId, id))
           .orderBy(attributeTable.id)
           .for("update");
-
-        if (!(hasAttributeOperations || imageUpdate)) {
-          const [updated] = await tx
-            .update(categoryTable)
-            .set({ name })
-            .where(eq(categoryTable.id, id))
-            .returning({ id: categoryTable.id });
-          if (!updated) {
-            return this.categoryNotFound;
-          }
-          const category = await tx.query.category.findFirst({
-            where: { id },
-            ...this.findOptions,
-          });
-          return category
-            ? { category, oldImage: null }
-            : problem("Internal Server Error", {
-                code: "CATEGORY_PATCH_FAILED",
-                message: "Updated category is missing after patch",
-              });
-        }
 
         const current = await tx.query.category.findFirst({
           where: { id },
@@ -333,17 +327,15 @@ export const categoryService = {
           }
         }
 
-        await tx
+        const [updatedCategory] = await tx
           .update(categoryTable)
-          .set({ name })
-          .where(eq(categoryTable.id, id));
+          .set({ name: name ?? current.name })
+          .where(eq(categoryTable.id, id))
+          .returning(categoryColumns);
+        let updatedImage: typeof current.image | undefined;
 
         if (imageUpdate) {
           await claimUploads(tx, [newFile as MultiSizeUploadData]);
-          await tx
-            .update(imageTable)
-            .set(imageUpdate)
-            .where(eq(imageTable.id, current.image.id));
           await enqueueImageCheck(tx, [
             current.image.keyThumb,
             current.image.keyMedium,
@@ -351,15 +343,13 @@ export const categoryService = {
           ]);
         }
 
-        if (!hasAttributeOperations) {
-          return {
-            category: {
-              ...current,
-              name,
-              image: { ...current.image, ...imageUpdate },
-            },
-            oldImage: current.image,
-          };
+        const renamed = name !== undefined && name !== current.name;
+        if (imageUpdate || renamed) {
+          [updatedImage] = await tx
+            .update(imageTable)
+            .set({ ...imageUpdate, ...(renamed && { altText: name }) })
+            .where(eq(imageTable.id, current.image.id))
+            .returning(imageColumns);
         }
 
         if (deleteIds.length) {
@@ -383,6 +373,10 @@ export const categoryService = {
               ? []
               : [{ id: attributeId, name: attributeName }],
         );
+        let updatedAttributes: Omit<
+          (typeof current.attributes)[number],
+          "values"
+        >[] = [];
         if (attributeNameUpdates.length) {
           const cases = sql.join(
             attributeNameUpdates.map(
@@ -391,7 +385,7 @@ export const categoryService = {
             ),
             sql` `,
           );
-          await tx
+          updatedAttributes = await tx
             .update(attributeTable)
             .set({
               name: sql`case ${cases} else ${attributeTable.name} end`,
@@ -401,7 +395,8 @@ export const categoryService = {
                 attributeTable.id,
                 attributeNameUpdates.map(({ id: attributeId }) => attributeId),
               ),
-            );
+            )
+            .returning(attributeColumns);
         }
 
         const valueUpdates = updates.flatMap(
@@ -412,6 +407,7 @@ export const categoryService = {
               value,
             })) ?? [],
         );
+        let updatedValues: (typeof current.attributes)[number]["values"] = [];
         if (valueUpdates.length) {
           const cases = sql.join(
             valueUpdates.map(
@@ -420,7 +416,7 @@ export const categoryService = {
             ),
             sql` `,
           );
-          await tx
+          updatedValues = await tx
             .update(attributeValueTable)
             .set({
               value: sql`case ${cases} else ${attributeValueTable.value} end`,
@@ -430,24 +426,30 @@ export const categoryService = {
                 attributeValueTable.id,
                 valueUpdates.map(({ id: valueId }) => valueId),
               ),
-            );
+            )
+            .returning(valueColumns);
         }
 
-        const createdAttributes = (attributes?.create ?? []).map(
-          (attribute) => ({ ...attribute, id: Bun.randomUUIDv7() }),
-        );
-        if (createdAttributes.length) {
-          await tx.insert(attributeTable).values(
-            createdAttributes.map(({ id: attributeId, name: attrName }) => ({
-              id: attributeId,
-              name: attrName,
-              categoryId: id,
-            })),
-          );
+        const newAttributes = (attributes?.create ?? []).map((attribute) => ({
+          ...attribute,
+          id: Bun.randomUUIDv7(),
+        }));
+        let createdAttributes: typeof updatedAttributes = [];
+        if (newAttributes.length) {
+          createdAttributes = await tx
+            .insert(attributeTable)
+            .values(
+              newAttributes.map(({ id: attributeId, name: attrName }) => ({
+                id: attributeId,
+                name: attrName,
+                categoryId: id,
+              })),
+            )
+            .returning(attributeColumns);
         }
 
-        const createdValues = [
-          ...createdAttributes.flatMap((attribute) =>
+        const newValues = [
+          ...newAttributes.flatMap((attribute) =>
             attribute.values.map((value) => ({
               id: Bun.randomUUIDv7(),
               attributeId: attribute.id,
@@ -462,71 +464,44 @@ export const categoryService = {
             })),
           ),
         ];
-        if (createdValues.length) {
-          await tx.insert(attributeValueTable).values(createdValues);
-        }
+        const createdValues = newValues.length
+          ? await tx.insert(attributeValueTable).values(newValues).returning()
+          : [];
 
-        const createdValuesByAttribute = new Map<
-          string,
-          { id: string; value: string }[]
-        >();
-        for (const { id: valueId, attributeId, value } of createdValues) {
-          const values = createdValuesByAttribute.get(attributeId) ?? [];
-          values.push({ id: valueId, value });
-          createdValuesByAttribute.set(attributeId, values);
-        }
-        const updatesById = new Map(
-          updates.map((update) => [update.id, update]),
+        const deletedIds = new Set([...deleteIds, ...valueDeleteIds]);
+        const updatedAttributesById = new Map(
+          updatedAttributes.map((attribute) => [attribute.id, attribute]),
         );
-        const deletedAttributeIds = new Set(deleteIds);
-        const finalAttributes = current.attributes.flatMap((attribute) => {
-          if (deletedAttributeIds.has(attribute.id)) {
-            return [];
-          }
-          const update = updatesById.get(attribute.id);
-          const deletedValueIds = new Set(update?.values?.delete ?? []);
-          const valueUpdatesById = new Map(
-            update?.values?.update?.map(({ id: valueId, value }) => [
-              valueId,
-              value,
-            ]) ?? [],
-          );
-          return [
-            {
-              id: attribute.id,
-              name: update?.name ?? attribute.name,
-              values: [
-                ...attribute.values.flatMap(({ id: valueId, value }) =>
-                  deletedValueIds.has(valueId)
-                    ? []
-                    : [
-                        {
-                          id: valueId,
-                          value: valueUpdatesById.get(valueId) ?? value,
-                        },
-                      ],
-                ),
-                ...(createdValuesByAttribute.get(attribute.id) ?? []),
-              ],
-            },
-          ];
-        });
-        finalAttributes.push(
-          ...createdAttributes.map((attribute) => ({
-            id: attribute.id,
-            name: attribute.name,
-            values: createdValuesByAttribute.get(attribute.id) ?? [],
-          })),
+        const updatedValuesById = new Map(
+          updatedValues.map((value) => [value.id, value]),
         );
+        const createdValuesOf = (attributeId: string) =>
+          createdValues
+            .filter((value) => value.attributeId === attributeId)
+            .map(({ attributeId: _, ...value }) => value);
 
         return {
-          category: {
-            ...current,
-            name,
-            image: { ...current.image, ...imageUpdate },
-            attributes: finalAttributes,
-          },
-          oldImage: imageUpdate ? current.image : null,
+          ...current,
+          ...updatedCategory,
+          image: updatedImage ?? current.image,
+          attributes: [
+            ...current.attributes
+              .filter((attribute) => !deletedIds.has(attribute.id))
+              .map((attribute) => ({
+                ...attribute,
+                ...updatedAttributesById.get(attribute.id),
+                values: [
+                  ...attribute.values
+                    .filter((value) => !deletedIds.has(value.id))
+                    .map((value) => updatedValuesById.get(value.id) ?? value),
+                  ...createdValuesOf(attribute.id),
+                ],
+              })),
+            ...createdAttributes.map((attribute) => ({
+              ...attribute,
+              values: createdValuesOf(attribute.id),
+            })),
+          ],
         };
       },
       { isolationLevel: "read committed" },
@@ -540,20 +515,26 @@ export const categoryService = {
         .delete(categoryTable)
         .where(eq(categoryTable.id, id))
         .returning();
+
       if (!deletedCategory) {
         return this.categoryNotFound;
       }
-      const [image] = await tx
+
+      const deletedImages = await tx
         .delete(imageTable)
         .where(eq(imageTable.id, deletedCategory.imageId))
         .returning();
-      const deletedImage = image as NonNullable<typeof image>;
-      await enqueueImageCheck(tx, [
-        deletedImage.keyThumb,
-        deletedImage.keyMedium,
-        deletedImage.keyLarge,
-      ]);
-      return { deletedCategory, deletedImage };
+
+      await enqueueImageCheck(
+        tx,
+        deletedImages.flatMap((image) => [
+          image.keyThumb,
+          image.keyMedium,
+          image.keyLarge,
+        ]),
+      );
+
+      return { deletedCategory };
     });
   },
 

@@ -1,7 +1,12 @@
 import type { UnwrapSchema } from "elysia";
 import { t } from "elysia";
 
-import { nameLowerPattern, nameLowerPatternWithNumber, uuid } from "../shared";
+import {
+  MAX_ATTRIBUTE_VALUES,
+  nameLowerPattern,
+  nameLowerPatternWithNumber,
+  uuid,
+} from "../shared";
 
 export const getQuery = t.Object(
   {
@@ -17,6 +22,8 @@ export const postBody = t.Object(
     categoryId: t.String({ format: "uuid" }),
     values: t.Array(nameLowerPatternWithNumber, {
       minItems: 1,
+      maxItems: MAX_ATTRIBUTE_VALUES,
+      uniqueItems: true,
     }),
   },
   { additionalProperties: false },

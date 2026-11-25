@@ -3,6 +3,8 @@ import { t } from "elysia";
 
 import {
   imageResult,
+  MAX_ATTRIBUTE_VALUES,
+  MAX_ATTRIBUTES,
   nameLowerPattern,
   nameLowerPatternWithNumber,
   uuid,
@@ -10,9 +12,9 @@ import {
 
 export const getQuery = t.Object(
   {
-    skip: t.Optional(t.Number({ default: 0, minimum: 0 })),
-    take: t.Optional(t.Number({ default: 25, minimum: 1, maximum: 100 })),
-    name: t.Optional(t.String()),
+    skip: t.Optional(t.Integer({ default: 0, minimum: 0, maximum: 100_000 })),
+    take: t.Optional(t.Integer({ default: 25, minimum: 1, maximum: 100 })),
+    name: t.Optional(t.String({ maxLength: 100, pattern: "^[^\\u0000]*$" })), // Postgres rejects \0
   },
   { additionalProperties: false },
 );
@@ -25,12 +27,13 @@ export const postAttributes = t.Refine(
         name: nameLowerPattern,
         values: t.Array(nameLowerPatternWithNumber, {
           minItems: 1,
+          maxItems: MAX_ATTRIBUTE_VALUES,
           uniqueItems: true,
         }),
       },
       { additionalProperties: false },
     ),
-    { minItems: 1 },
+    { minItems: 1, maxItems: MAX_ATTRIBUTES },
   ),
   (attributes) =>
     new Set(attributes.map(({ name }) => name)).size === attributes.length,
@@ -52,7 +55,11 @@ export const attributeValueOperations = t.Refine(
   t.Object(
     {
       create: t.Optional(
-        t.Array(nameLowerPatternWithNumber, { minItems: 1, uniqueItems: true }),
+        t.Array(nameLowerPatternWithNumber, {
+          minItems: 1,
+          maxItems: MAX_ATTRIBUTE_VALUES,
+          uniqueItems: true,
+        }),
       ),
       update: t.Optional(
         t.Array(
@@ -62,18 +69,29 @@ export const attributeValueOperations = t.Refine(
           ),
           {
             minItems: 1,
+            maxItems: MAX_ATTRIBUTE_VALUES,
           },
         ),
       ),
-      delete: t.Optional(t.Array(uuid, { minItems: 1, uniqueItems: true })),
+      delete: t.Optional(
+        t.Array(uuid, {
+          minItems: 1,
+          maxItems: MAX_ATTRIBUTE_VALUES,
+          uniqueItems: true,
+        }),
+      ),
     },
     { additionalProperties: false },
   ),
-  ({ create = [], update = [], delete: toDelete = [] }) =>
-    new Set(update.map(({ id }) => id)).size === update.length &&
-    !update.some(({ id }) => toDelete.includes(id)) &&
-    new Set([...create, ...update.map(({ value }) => value)]).size ===
-      create.length + update.length,
+  ({ create = [], update = [], delete: deleted = [] }) => {
+    const deletedIds = new Set(deleted);
+    return (
+      new Set(update.map(({ id }) => id)).size === update.length &&
+      !update.some(({ id }) => deletedIds.has(id)) &&
+      new Set([...create, ...update.map(({ value }) => value)]).size ===
+        create.length + update.length
+    );
+  },
   () =>
     "Attribute values must be unique and can only be updated or deleted once per request",
 );
@@ -95,10 +113,16 @@ export const attributeOperations = t.Refine(
             },
             { additionalProperties: false },
           ),
-          { minItems: 1 },
+          { minItems: 1, maxItems: MAX_ATTRIBUTES },
         ),
       ),
-      delete: t.Optional(t.Array(uuid, { minItems: 1, uniqueItems: true })),
+      delete: t.Optional(
+        t.Array(uuid, {
+          minItems: 1,
+          maxItems: MAX_ATTRIBUTES,
+          uniqueItems: true,
+        }),
+      ),
     },
     { additionalProperties: false },
   ),

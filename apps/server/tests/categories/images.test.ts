@@ -33,7 +33,7 @@ describe.concurrent("category images", () => {
     );
     const [thumb, medium, large] = ids.map((key) => ({ key }));
     // Due rows may be swept by a concurrent cleanup at any time: only the refusal is deterministic.
-    await expect(
+    expect(
       db.transaction((tx) =>
         claimUploads(tx, [{ thumb, medium, large } as MultiSizeUploadData]),
       ),
@@ -53,7 +53,6 @@ describe.concurrent("category images", () => {
         notBefore: sql`statement_timestamp()`,
       })),
     );
-    await api.categories({ id: Bun.randomUUIDv7() }).delete();
     await expectDequeued([image.keyThumb, orphan]);
     expect(uploads.deleteFiles).toHaveBeenCalledWith(
       expect.arrayContaining([orphan]),
@@ -242,7 +241,6 @@ describe.concurrent("category images", () => {
       await db
         .insert(imageDeletionTable)
         .values({ fileKey: key, notBefore: sql`statement_timestamp()` });
-      const sweep = () => api.categories({ id: Bun.randomUUIDv7() }).delete();
       const succeed = uploads.deleteFiles.getMockImplementation();
       expectDefined(succeed);
       uploads.deleteFiles.mockImplementation(() =>
@@ -251,16 +249,115 @@ describe.concurrent("category images", () => {
           : Promise.resolve({ success: false, deletedCount: 0 }),
       );
       try {
-        await sweep();
         await waitFor(async () => {
+          await api.categories({ id: Bun.randomUUIDv7() }).delete();
           const [row] = await queuedImages([key]);
           expect(row?.attempts).toBeGreaterThan(0);
         });
       } finally {
         uploads.deleteFiles.mockImplementation(succeed);
       }
-      await sweep();
       await expectDequeued([key]);
+    },
+  );
+
+  test.serial(
+    "should delete the category and keep its keys queued when UploadThing is down",
+    async () => {
+      const category = await createTestCategory({ testDb });
+      const image = await db.query.image.findFirst({
+        where: { id: category.imageId },
+      });
+      expectDefined(image);
+      const keys = [image.keyThumb, image.keyMedium, image.keyLarge];
+      const succeed = uploads.deleteFiles.getMockImplementation();
+      expectDefined(succeed);
+      uploads.deleteFiles.mockImplementation(() =>
+        Promise.reject(new Error("UploadThing down")),
+      );
+      const { status } = await api.categories({ id: category.id }).delete();
+      expect(status).toBe(200);
+      await waitFor(async () => {
+        await api.categories({ id: Bun.randomUUIDv7() }).delete();
+        const rows = await queuedImages(keys);
+        expect(rows.map(({ fileKey }) => fileKey)).toEqual([...keys].sort());
+        expect(rows.every(({ attempts }) => attempts > 0)).toBe(true);
+      });
+      expect(
+        await db.query.category.findFirst({ where: { id: category.id } }),
+      ).toBeUndefined();
+
+      uploads.deleteFiles.mockImplementation(succeed);
+      await expectDequeued(keys);
+    },
+  );
+
+  test.serial(
+    "should run one cleanup at a time and release the lock",
+    async () => {
+      const keys = Array.from(
+        { length: 30 }, // three batches
+        () => `locked-${Bun.randomUUIDv7()}`,
+      );
+      const succeed = uploads.deleteFiles.getMockImplementation();
+      expectDefined(succeed);
+      const gate = Promise.withResolvers<void>();
+      let active = 0;
+      let peak = 0;
+      uploads.deleteFiles.mockImplementation(async (fileKeys) => {
+        active += 1;
+        peak = Math.max(peak, active);
+        await gate.promise;
+        active -= 1;
+        return succeed(fileKeys);
+      });
+      try {
+        await db.insert(imageDeletionTable).values(
+          keys.map((fileKey) => ({
+            fileKey,
+            notBefore: sql`statement_timestamp()`,
+          })),
+        );
+        await waitFor(async () => {
+          await api.categories({ id: Bun.randomUUIDv7() }).delete();
+          expect(active).toBe(1);
+        });
+        await Promise.all(
+          Array.from({ length: 12 }, () =>
+            api.categories({ id: Bun.randomUUIDv7() }).delete(),
+          ),
+        );
+        await Bun.sleep(200); // lets a faulty second cleanup reach UploadThing
+        expect(peak).toBe(1);
+      } finally {
+        gate.resolve();
+        uploads.deleteFiles.mockImplementation(succeed);
+      }
+      await expectDequeued(keys);
+    },
+  );
+
+  test.serial(
+    "should dequeue keys when UploadThing deletes fewer files than requested",
+    async () => {
+      const keys = Array.from(
+        { length: 2 },
+        () => `partial-${Bun.randomUUIDv7()}`,
+      );
+      const succeed = uploads.deleteFiles.getMockImplementation();
+      expectDefined(succeed);
+      // A missing file is not counted: retrying it would never succeed.
+      uploads.deleteFiles.mockImplementation(() =>
+        Promise.resolve({ success: true, deletedCount: 1 }),
+      );
+      await db.insert(imageDeletionTable).values(
+        keys.map((fileKey) => ({
+          fileKey,
+          notBefore: sql`statement_timestamp()`,
+        })),
+      );
+      await expectDequeued(keys);
+      uploads.deleteFiles.mockImplementation(succeed);
     },
   );
 });

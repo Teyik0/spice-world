@@ -21,7 +21,8 @@ export const attributeService = {
     return await db.query.attribute.findMany({
       where: categoryId ? { categoryId } : EmptyFilter,
       columns: { categoryId: false },
-      with: { values: true, category: true },
+      orderBy: { id: "asc" },
+      with: { values: { orderBy: { id: "asc" } }, category: true },
     });
   },
 
@@ -29,7 +30,7 @@ export const attributeService = {
     const attribute = await db.query.attribute.findFirst({
       where: { id },
       columns: { categoryId: false },
-      with: { values: true, category: true },
+      with: { values: { orderBy: { id: "asc" } }, category: true },
     });
 
     return attribute ?? this.attributeNotFound;
@@ -113,7 +114,7 @@ export const attributeService = {
         },
         values: sql<(typeof attributeValueTable.$inferSelect)[]>`(
             select coalesce(
-              json_agg(row_to_json(${attributeValueTable})),
+              json_agg(row_to_json(${attributeValueTable}) order by ${attributeValueTable.id}),
               '[]'::json
             )
             from ${attributeValueTable}

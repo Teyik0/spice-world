@@ -1,7 +1,14 @@
 import { describe, expect, test } from "bun:test";
 
+import { categoryRouter } from "@spice-world/server/modules/categories";
+
 import { testDb } from "../setup";
-import { createTestCategory, expectDefined, file } from "../utils/helper";
+import {
+  createTestCategory,
+  expectDefined,
+  file,
+  randomLowerString,
+} from "../utils/helper";
 import { api, filePath1 } from "./setup";
 
 describe.concurrent("category GET", () => {
@@ -30,6 +37,48 @@ describe.concurrent("category GET", () => {
     });
     expect(next.status).toBe(200);
     expect(next.data).toEqual([]);
+  });
+
+  test("should keep pages stable after a patch", async () => {
+    const prefix = `page ${randomLowerString()}`;
+    const names = ["d", "b", "a", "c"].map((suffix) => `${prefix} ${suffix}`);
+    await Promise.all(
+      names.map((name) => createTestCategory({ testDb, name })),
+    );
+    const first = await api.categories.get({
+      query: { name: prefix, take: 2 },
+    });
+    expectDefined(first.data?.[0]);
+    const patched = await api
+      .categories({ id: first.data[0].id })
+      .patch({ attributes: { create: [{ name: "origin", values: ["abc"] }] } });
+    expect(patched.status).toBe(200);
+    const second = await api.categories.get({
+      query: { name: prefix, take: 2, skip: 2 },
+    });
+    expect(
+      [...first.data, ...(second.data ?? [])].map(({ name }) => name),
+    ).toEqual(names.toSorted());
+  });
+
+  test.each(["%", "_", "\\"])("should search %p literally", async (name) => {
+    await createTestCategory({ testDb });
+    const { data, status } = await api.categories.get({ query: { name } });
+    expect(status).toBe(200);
+    expect(data).toEqual([]);
+  });
+
+  test.each([
+    "name=%00",
+    `name=${"a".repeat(101)}`,
+    "skip=99999999999999999999",
+    "skip=-1",
+    "take=1.5",
+    "take=0",
+    "take=101",
+  ])("should reject the query %s", async (query) => {
+    const { status } = await categoryRouter.handle(`/categories?${query}`);
+    expect(status).toBe(422);
   });
 
   test("should return 404 for a non-existent category", async () => {
@@ -66,5 +115,22 @@ describe.concurrent("category GET", () => {
     expect(data).toHaveProperty("name", createdCategory.name);
     expect(data).not.toHaveProperty("imageId");
     expect(data.image.id).toBe(createdCategory.image.id);
+  });
+
+  test("should return the product count", async () => {
+    const { data: createdCategory, status: postStatus } =
+      await api.categories.post({
+        name: "created category to count",
+        file: file(filePath1),
+      });
+
+    expect(postStatus).toBe(201);
+    expectDefined(createdCategory);
+
+    const { data, status } = await api.categories.count.get();
+
+    expect(status).toBe(200);
+    expectDefined(data);
+    expect(data).toBeGreaterThanOrEqual(1);
   });
 });

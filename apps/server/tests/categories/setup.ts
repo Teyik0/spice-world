@@ -27,8 +27,12 @@ export const queuedImages = (keys: string[]) =>
     .where(inArray(imageDeletionTable.fileKey, keys))
     .orderBy(imageDeletionTable.fileKey);
 
+/** Each try sends a request to trigger the cleanup: it is skipped while another one runs. */
 export const expectDequeued = (keys: string[]) =>
-  waitFor(async () => expect(await queuedImages(keys)).toEqual([]));
+  waitFor(async () => {
+    await api.categories({ id: Bun.randomUUIDv7() }).delete();
+    expect(await queuedImages(keys)).toEqual([]);
+  });
 
 export const expectDeleted = async (keys: string[]) => {
   await expectDequeued(keys);

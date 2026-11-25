@@ -34,4 +34,12 @@ export const attributeConstraintFailures = new Map<string, ConstraintFailure>([
       message: "The selected attribute does not exist",
     },
   ],
+  [
+    `23001:${attributeConstraintNames.variantValueReference}`,
+    {
+      status: 409,
+      code: "ATTRIBUTE_VALUE_IN_USE",
+      message: "Attribute values used by product variants cannot be deleted",
+    },
+  ],
 ]);

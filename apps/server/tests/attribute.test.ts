@@ -10,6 +10,7 @@ import type { categoryTable } from "../drizzle/schema";
 import { attributeTable, attributeValueTable } from "../drizzle/schema";
 import { testDb } from "./setup";
 import {
+  createProductUsingValues,
   createSessionCookie,
   createTestCategory,
   expectDefined,
@@ -20,6 +21,48 @@ const api = treaty(attributeRouter, {
 });
 
 describe.concurrent("Attribute routes test", () => {
+  test.each([
+    ["anonymous", 401],
+    ["user", 403],
+  ] as const)("should refuse writes to %s", async (role, expected) => {
+    const category = await createTestCategory({
+      testDb,
+      attributeCount: 1,
+      attributeValueCount: 2,
+    });
+    const [attribute] = category.attributes;
+    expectDefined(attribute?.values[0]);
+    const client = treaty(attributeRouter, {
+      headers:
+        role === "user"
+          ? { cookie: await createSessionCookie(testDb, "user") }
+          : {},
+    });
+    const before = await api.attributes({ id: attribute.id }).get();
+    const own = client.attributes({ id: attribute.id });
+    const value = client.attributes.values({ id: attribute.values[0].id });
+    const results = await Promise.all([
+      client.attributes.post({
+        name: "forbidden",
+        categoryId: category.id,
+        values: ["abc"],
+      }),
+      own.patch({ name: "forbidden" }),
+      own.delete(),
+      own.values.post({ name: "forbidden" }),
+      value.patch({ name: "forbidden" }),
+      value.delete(),
+    ]);
+    for (const { status } of results) {
+      expect(status).toBe(expected);
+    }
+    const after = await api.attributes.get({
+      query: { categoryId: category.id },
+    });
+    expectDefined(before.data);
+    expect(after.data).toEqual([before.data]);
+  });
+
   let testCategory: typeof categoryTable.$inferSelect;
   let testAttributes: Awaited<ReturnType<typeof createAttribute>>[] = [];
   let testAttributeValues: (typeof attributeValueTable.$inferSelect)[] = [];
@@ -64,7 +107,71 @@ describe.concurrent("Attribute routes test", () => {
     testAttributeValues = attribute1.values.concat(attribute2.values);
   });
 
+  test("should refuse to delete values used by variants", async () => {
+    const category = await createTestCategory({
+      testDb,
+      attributeCount: 1,
+      attributeValueCount: 2,
+    });
+    const [attribute] = category.attributes;
+    const [used, unused] = attribute?.values ?? [];
+    expectDefined(attribute);
+    expectDefined(used);
+    expectDefined(unused);
+    const productId = await createProductUsingValues(testDb, category.id, [
+      used.id,
+    ]);
+    const inUse = { status: 409, value: { code: "ATTRIBUTE_VALUE_IN_USE" } };
+
+    const byValue = await api.attributes.values({ id: used.id }).delete();
+    expect(byValue.error).toMatchObject(inUse);
+    const byAttribute = await api.attributes({ id: attribute.id }).delete();
+    expect(byAttribute.error).toMatchObject(inUse);
+
+    const { status } = await api.attributes.values({ id: unused.id }).delete();
+    expect(status).toBe(200);
+
+    // Deleting the product frees the values
+    await testDb.client.product.delete({ where: { id: productId } });
+    const freed = await api.attributes({ id: attribute.id }).delete();
+    expect(freed.status).toBe(200);
+  });
+
   describe("GET /attributes", () => {
+    test("should keep the order of attributes and values after updates", async () => {
+      const category = await createTestCategory({
+        testDb,
+        attributeCount: 2,
+        attributeValueCount: 3,
+      });
+      const before = await api.attributes.get({
+        query: { categoryId: category.id },
+      });
+      const [first] = before.data ?? [];
+      expectDefined(first);
+      expectDefined(first.values[0]);
+      const ids = before.data?.map(({ id }) => id);
+      const valueIds = first.values.map(({ id }) => id);
+      expect(ids).toEqual(ids?.toSorted());
+      expect(valueIds).toEqual(valueIds.toSorted());
+
+      await api.attributes
+        .values({ id: first.values[0].id })
+        .patch({ name: "renamed value" });
+      const attribute = api.attributes({ id: first.id });
+      const patched = await attribute.patch({ name: "renamed attribute" });
+      expect(patched.status).toBe(200);
+      const after = await api.attributes.get({
+        query: { categoryId: category.id },
+      });
+      const byId = await attribute.get();
+
+      expect(after.data?.map(({ id }) => id)).toEqual(ids);
+      for (const result of [patched.data, byId.data, after.data?.[0]]) {
+        expect(result?.values.map(({ id }) => id)).toEqual(valueIds);
+      }
+    });
+
     test("should return all attributes", async () => {
       const { data, status } = await api.attributes.get();
       expect(status).toBe(200);
@@ -204,6 +311,44 @@ describe.concurrent("Attribute routes test", () => {
 
       expect(status).toBe(422);
       expect(error).toMatchObject({ status });
+    });
+
+    test.each([
+      ["long name", { name: "a".repeat(101), values: ["abc"] }],
+      ["long value", { name: "form", values: ["a".repeat(101)] }],
+      [
+        "too many values",
+        {
+          name: "form",
+          values: Array.from({ length: 101 }, (_, i) => `value ${i}`),
+        },
+      ],
+      ["duplicate values", { name: "form", values: ["abc", "abc"] }],
+      ["trailing space", { name: "form", values: ["abc "] }],
+      ["double space", { name: "form", values: ["abc  def"] }],
+      ["division sign", { name: "÷÷÷", values: ["abc"] }],
+    ])("should reject out of bounds input: %s", async (_, body) => {
+      const { error } = await api.attributes.post({
+        ...body,
+        categoryId: testCategory.id,
+      });
+
+      expect(error).toMatchObject({ status: 422 });
+    });
+
+    test("should accept values at the bounds", async () => {
+      const category = await createTestCategory({ testDb });
+      const values = Array.from({ length: 100 }, (_, i) => `cœur ${i}`);
+      const { data, status } = await api.attributes.post({
+        name: "œ".repeat(100),
+        categoryId: category.id,
+        values,
+      });
+
+      expect(status).toBe(201);
+      expect(data?.values.map(({ value }) => value).sort()).toEqual(
+        values.sort(),
+      );
     });
 
     test("should reject non-existent category ID", async () => {

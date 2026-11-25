@@ -19,9 +19,14 @@ export const imageCleanupPlugin = new Elysia({
   name: "image-cleanup",
 })
   .use(loggerPlugin)
+  .decorate("imageCleanupLock", { running: false })
   .macro({
     imageCleanup: {
-      async afterResponse({ log }) {
+      async afterResponse({ log, imageCleanupLock }) {
+        if (imageCleanupLock.running) {
+          return;
+        }
+        imageCleanupLock.running = true;
         try {
           await db.transaction(
             async (tx) => {
@@ -90,6 +95,8 @@ export const imageCleanupPlugin = new Elysia({
           log.error(cause instanceof Error ? cause : String(cause), {
             action: "image-cleanup",
           });
+        } finally {
+          imageCleanupLock.running = false;
         }
       },
     },
