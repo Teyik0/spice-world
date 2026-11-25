@@ -1,0 +1,29 @@
+AGENTS.md
+  s_3146f7e9eeaeab::t_cf63eb67ba9725 3,9-11,14-17,20-23,30,45-46,62,68-69,71-72,86
+bun.lock
+  s_9b332432da0824::t_7434fcc0bbf728 26,28,36,206,208,210,212,214,216,218,220,306-307,988,1980
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1efadbb2978a2ea859dbb399b57e6e5c424e149d",
+  "prompts": {},
+  "sessions": {
+    "s_3146f7e9eeaeab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45fa0f51-259d-45ba-aca9-bf67fbf03330",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_9b332432da0824": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5b21e50-8d91-4fae-9ae5-058bec04f67c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
