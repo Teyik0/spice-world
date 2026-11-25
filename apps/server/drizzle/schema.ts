@@ -1,11 +1,11 @@
 import { sql } from "drizzle-orm";
+import type { PgTableExtraConfigValue } from "drizzle-orm/pg-core";
 import {
   boolean,
   foreignKey,
   index,
   integer,
   jsonb,
-  type PgTableExtraConfigValue,
   pgEnum,
   pgTable,
   primaryKey,
@@ -94,13 +94,16 @@ export const accountTable = pgTable(
     providerId: text().notNull(),
     accessToken: text(),
     refreshToken: text(),
-    accessTokenExpiresAt: timestamp({ precision: 3 }),
-    refreshTokenExpiresAt: timestamp({ precision: 3 }),
+    accessTokenExpiresAt: timestamp({ precision: 3, withTimezone: true }),
+    refreshTokenExpiresAt: timestamp({ precision: 3, withTimezone: true }),
     scope: text(),
     idToken: text(),
     password: text(),
-    createdAt: timestamp({ precision: 3 }).notNull(),
-    updatedAt: timestamp({ precision: 3 }).notNull(),
+    createdAt: timestamp({ precision: 3, withTimezone: true }).notNull(),
+    updatedAt: timestamp({ precision: 3, withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => new Date())
+      .notNull(),
   },
   (table) => [
     foreignKey({
@@ -120,11 +123,12 @@ export const attributeTable = pgTable(
     id: text().primaryKey(),
     name: text().notNull(),
     categoryId: text().notNull(),
-    createdAt: timestamp({ precision: 3 })
+    createdAt: timestamp({ precision: 3, withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: timestamp({ precision: 3 })
+    updatedAt: timestamp({ precision: 3, withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => new Date())
       .notNull(),
   },
   (table) => [
@@ -149,11 +153,12 @@ export const attributeValueTable = pgTable(
     id: text().primaryKey(),
     value: text().notNull(),
     attributeId: text().notNull(),
-    createdAt: timestamp({ precision: 3 })
+    createdAt: timestamp({ precision: 3, withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: timestamp({ precision: 3 })
+    updatedAt: timestamp({ precision: 3, withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => new Date())
       .notNull(),
   },
   (table) => [
@@ -178,11 +183,12 @@ export const categoryTable = pgTable(
     id: text().primaryKey(),
     name: text().notNull(),
     imageId: text().notNull(),
-    createdAt: timestamp({ precision: 3 })
+    createdAt: timestamp({ precision: 3, withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: timestamp({ precision: 3 })
+    updatedAt: timestamp({ precision: 3, withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => new Date())
       .notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
@@ -211,10 +217,13 @@ export const commentTable = pgTable(
     text: text().notNull(),
     productId: text().notNull(),
     userId: text().notNull(),
-    createdAt: timestamp({ precision: 3 })
+    createdAt: timestamp({ precision: 3, withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: timestamp({ precision: 3 }).notNull(),
+    updatedAt: timestamp({ precision: 3, withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => new Date())
+      .notNull(),
   },
   (table) => [
     foreignKey({
@@ -247,6 +256,13 @@ export const imageTable = pgTable(
     urlThumb: text().notNull(),
     urlMedium: text().notNull(),
     urlLarge: text().notNull(),
+    createdAt: timestamp({ precision: 3, withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3, withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => new Date())
+      .notNull(),
   },
   (table) => [
     foreignKey({
@@ -292,10 +308,13 @@ export const orderTable = pgTable(
     id: text().primaryKey(),
     status: orderStatus().default("PENDING").notNull(),
     userId: text().notNull(),
-    createdAt: timestamp({ precision: 3 })
+    createdAt: timestamp({ precision: 3, withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: timestamp({ precision: 3 }).notNull(),
+    updatedAt: timestamp({ precision: 3, withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => new Date())
+      .notNull(),
     metadata: jsonb(),
     stripeSessionId: text().notNull(),
     stripePaymentIntentId: text(),
@@ -346,6 +365,13 @@ export const orderItemTable = pgTable(
     unitPrice: integer().notNull(),
     quantity: integer().notNull(),
     totalPrice: integer().notNull(),
+    createdAt: timestamp({ precision: 3, withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3, withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => new Date())
+      .notNull(),
   },
   (table) => [
     foreignKey({
@@ -387,10 +413,13 @@ export const productTable = pgTable(
     version: integer().default(0).notNull(),
     status: productStatus().default("DRAFT").notNull(),
     categoryId: text().notNull(),
-    createdAt: timestamp({ precision: 3 })
+    createdAt: timestamp({ precision: 3, withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: timestamp({ precision: 3 }).notNull(),
+    updatedAt: timestamp({ precision: 3, withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => new Date())
+      .notNull(),
   },
   (table) => [
     foreignKey({
@@ -429,10 +458,13 @@ export const productVariantTable = pgTable(
     price: integer().notNull(),
     currency: text().default("EUR").notNull(),
     stock: integer().default(0).notNull(),
-    createdAt: timestamp({ precision: 3 })
+    createdAt: timestamp({ precision: 3, withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: timestamp({ precision: 3 }).notNull(),
+    updatedAt: timestamp({ precision: 3, withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => new Date())
+      .notNull(),
   },
   (table) => [
     foreignKey({
@@ -465,13 +497,16 @@ export const sessionTable = pgTable(
     id: text().primaryKey(),
     userId: text().notNull(),
     token: text().notNull(),
-    expiresAt: timestamp({ precision: 3 }).notNull(),
+    expiresAt: timestamp({ precision: 3, withTimezone: true }).notNull(),
     ipAddress: text(),
     userAgent: text(),
-    createdAt: timestamp({ precision: 3 })
+    createdAt: timestamp({ precision: 3, withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: timestamp({ precision: 3 }).notNull(),
+    updatedAt: timestamp({ precision: 3, withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => new Date())
+      .notNull(),
     impersonatedBy: text(),
   },
   (table) => [
@@ -499,13 +534,16 @@ export const userTable = pgTable(
     emailVerified: boolean().default(false).notNull(),
     image: text(),
     role: text().default("user").notNull(),
-    createdAt: timestamp({ precision: 3 })
+    createdAt: timestamp({ precision: 3, withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: timestamp({ precision: 3 }).notNull(),
+    updatedAt: timestamp({ precision: 3, withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => new Date())
+      .notNull(),
     banned: boolean(),
     banReason: text(),
-    banExpires: timestamp({ precision: 3 }),
+    banExpires: timestamp({ precision: 3, withTimezone: true }),
     stripeCustomerId: text(),
   },
   (table) => [
@@ -523,9 +561,11 @@ export const verificationTable = pgTable(
     id: text().primaryKey(),
     identifier: text().notNull(),
     value: text().notNull(),
-    expiresAt: timestamp({ precision: 3 }).notNull(),
-    createdAt: timestamp({ precision: 3 }),
-    updatedAt: timestamp({ precision: 3 }),
+    expiresAt: timestamp({ precision: 3, withTimezone: true }).notNull(),
+    createdAt: timestamp({ precision: 3, withTimezone: true }),
+    updatedAt: timestamp({ precision: 3, withTimezone: true }).$onUpdate(
+      () => new Date(),
+    ),
   },
   (table) => [
     index("verification_identifier_idx").using(
@@ -540,7 +580,7 @@ export const verificationTokenTable = pgTable(
   {
     identifier: text().notNull(),
     token: text().notNull(),
-    expires: timestamp({ precision: 3 }).notNull(),
+    expires: timestamp({ precision: 3, withTimezone: true }).notNull(),
   },
   (table) => [
     uniqueIndex("VerificationToken_identifier_token_key").using(
@@ -561,11 +601,12 @@ export const collectionTable = pgTable(
     id: text().primaryKey(),
     handle: text().notNull(),
     name: text().notNull(),
-    createdAt: timestamp({ precision: 3 })
+    createdAt: timestamp({ precision: 3, withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: timestamp({ precision: 3 })
+    updatedAt: timestamp({ precision: 3, withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => new Date())
       .notNull(),
   },
   (table) => [uniqueIndex("Collection_handle_key").on(table.handle)],
@@ -581,11 +622,12 @@ export const collectionProductTable = pgTable(
       .notNull()
       .references(() => productTable.id, { onDelete: "cascade" }),
     position: integer().notNull(),
-    createdAt: timestamp({ precision: 3 })
+    createdAt: timestamp({ precision: 3, withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: timestamp({ precision: 3 })
+    updatedAt: timestamp({ precision: 3, withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => new Date())
       .notNull(),
   },
   (table) => [

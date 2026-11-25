@@ -7,7 +7,8 @@ import { prisma } from "@spice-world/server/lib/prisma";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { betterAuth } from "better-auth/minimal";
 import { admin, openAPI } from "better-auth/plugins";
-import { Elysia, type MacroTypeLambda, macroType } from "elysia";
+import type { MacroTypeLambda } from "elysia";
+import { Elysia, macroType } from "elysia";
 import { Resend } from "resend";
 import Stripe from "stripe";
 import { orderService } from "../modules/orders/service";
@@ -16,7 +17,7 @@ const resend = new Resend(env.RESEND_API_KEY);
 const from = "Spice World <noreply@teyik0.dev>";
 
 export const stripeClient = new Stripe(env.STRIPE_SECRET_KEY, {
-  apiVersion: "2026-02-25.clover",
+  apiVersion: "2026-11-18.endive",
 });
 
 export const auth = betterAuth({
@@ -115,25 +116,29 @@ export const auth = betterAuth({
       stripeClient,
       stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
       createCustomerOnSignUp: true,
-      onCheckoutSessionCompleted: async (session: Stripe.Checkout.Session) => {
-        const orderId = session.metadata?.orderId;
-        if (orderId && session.id) {
-          // payment_intent can be string, PaymentIntent object, or null
-          const paymentIntentId =
-            typeof session.payment_intent === "string"
-              ? session.payment_intent
-              : null;
-          await orderService.handleOrderPaid(
-            session.id,
-            orderId,
-            paymentIntentId,
-          );
-        }
-      },
-      onPaymentFailed: async (session: Stripe.Checkout.Session) => {
-        const orderId = session.metadata?.orderId;
-        if (orderId) {
-          await orderService.updateStatus(orderId, "CANCELLED");
+      onEvent: async (event: Stripe.Event) => {
+        switch (event.type) {
+          case "checkout.session.completed": {
+            const { id, metadata, payment_intent, payment_status } =
+              event.data.object;
+            if (payment_status !== "unpaid" && metadata?.orderId) {
+              await orderService.handleOrderPaid(
+                id,
+                metadata.orderId,
+                typeof payment_intent === "string" ? payment_intent : null,
+              );
+            }
+            break;
+          }
+          case "checkout.session.async_payment_failed":
+          case "checkout.session.expired": {
+            const { id, metadata } = event.data.object;
+            if (metadata?.orderId) {
+              await orderService.cancelPending(id, metadata.orderId);
+            }
+            break;
+          }
+          default:
         }
       },
     }),
@@ -152,26 +157,24 @@ interface AccessContext extends MacroTypeLambda {
 export const betterAuthPlugin = new Elysia({
   name: "better-auth",
   tags: ["Auth"],
-})
-  .mount(auth.handler)
-  .macro({
-    access: (level: "optional" | "login" | "admin") => ({
-      $type: macroType<AccessContext>(),
-      async derive({ request: { headers }, problem }) {
-        const session = await auth.api.getSession({ headers });
+}).macro({
+  access: (level: "optional" | "login" | "admin") => ({
+    $type: macroType<AccessContext>(),
+    async derive({ request: { headers }, problem }) {
+      const session = await auth.api.getSession({ headers });
 
-        if (!session && level !== "optional") {
-          return problem("Unauthorized");
-        }
+      if (!session && level !== "optional") {
+        return problem("Unauthorized");
+      }
 
-        if (level === "admin" && session && session.user.role !== "admin") {
-          return problem("Forbidden");
-        }
+      if (level === "admin" && session && session.user.role !== "admin") {
+        return problem("Forbidden");
+      }
 
-        return {
-          user: session?.user ?? null,
-          session: session?.session ?? null,
-        };
-      },
-    }),
-  });
+      return {
+        user: session?.user ?? null,
+        session: session?.session ?? null,
+      };
+    },
+  }),
+});

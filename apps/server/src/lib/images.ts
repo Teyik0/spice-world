@@ -1,14 +1,15 @@
 import { env } from "@spice-world/server/lib/env";
-import { and, gt, inArray, sql } from "drizzle-orm";
+import { and, DrizzleQueryError, gt, inArray, sql } from "drizzle-orm";
 import { UTApi, UTFile } from "uploadthing/server";
 import type { UploadedFileData } from "uploadthing/types";
 import { imageDeletionTable } from "../../drizzle/schema";
 import { db } from "./db";
 
-/** Queue keys to be checked in 15 min: deleted from UploadThing unless still referenced by "Image". */
+/** Queue keys to be checked after the delay: deleted from UploadThing unless still referenced by "Image". */
 export const enqueueImageCheck = (
   exec: Pick<typeof db, "insert">,
   keys: string[],
+  delayMinutes = 0,
 ) =>
   keys.length > 0
     ? exec
@@ -16,7 +17,7 @@ export const enqueueImageCheck = (
         .values(
           keys.map((fileKey) => ({
             fileKey,
-            notBefore: sql`statement_timestamp() + interval '15 minutes'`,
+            notBefore: sql`statement_timestamp() + ${delayMinutes}::int * interval '1 minute'`,
           })),
         )
         .onConflictDoUpdate({
@@ -74,6 +75,12 @@ const IMAGE_SIZES = {
 
 type ImageSize = keyof typeof IMAGE_SIZES;
 
+export type UploadError = "INVALID_IMAGE" | "UPLOAD_FAILED";
+
+type UploadResult =
+  | { data: MultiSizeUploadData[]; error: null }
+  | { data: null; error: UploadError };
+
 export interface MultiSizeUploadData {
   large: UploadedFileData;
   medium: UploadedFileData;
@@ -126,21 +133,20 @@ const transformImage = (
  */
 const uploadBatch = async (
   allVariants: ImageVariant[],
-): Promise<{ data: MultiSizeUploadData[] | null; error: string | null }> => {
+): Promise<UploadResult> => {
   const filesToUpload = allVariants.map((variant) => variant.file);
   // Orphan by default, queued before upload: only a claim by a committed transaction keeps a file.
   await enqueueImageCheck(
     db,
     filesToUpload.map((f) => f.customId),
+    15, // longer than any upload, so the cleanup cannot delete files before their claim
   );
   const results = await utapi.uploadFiles(filesToUpload);
 
   const errors = results.filter((r) => r.error);
   if (errors.length > 0) {
-    return {
-      data: null,
-      error: errors.map((e) => e.error?.message || "Upload failed").join(", "),
-    };
+    console.error("Image upload failed", errors);
+    return { data: null, error: "UPLOAD_FAILED" };
   }
 
   // Group results back by original image index
@@ -208,7 +214,7 @@ export const deleteUploads = async (
 export const uploadFiles = async (
   filename: string,
   files: File[] | File,
-): Promise<{ data: MultiSizeUploadData[] | null; error: string | null }> => {
+): Promise<UploadResult> => {
   try {
     // Transform all images to all sizes in parallel
     const transformPromises = Array.isArray(files)
@@ -234,9 +240,15 @@ export const uploadFiles = async (
 
     return result;
   } catch (error) {
+    // Not an upload failure: leave it to drizzleErrorPlugin, which hides the SQL.
+    if (error instanceof DrizzleQueryError) {
+      throw error;
+    }
+    console.error("Image upload failed", error);
+    const { code } = error as { code?: string };
     return {
       data: null,
-      error: error instanceof Error ? error.message : "Upload failed",
+      error: code?.startsWith("ERR_IMAGE_") ? "INVALID_IMAGE" : "UPLOAD_FAILED",
     };
   }
 };

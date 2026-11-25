@@ -1,4 +1,5 @@
-import { t, type UnwrapSchema } from "elysia";
+import type { UnwrapSchema } from "elysia";
+import { t } from "elysia";
 import { Value } from "typebox/value";
 
 const envSchema = t.Object({

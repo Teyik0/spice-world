@@ -11,7 +11,8 @@ const prismaClientSingleton = () => {
     ? new PrismaNeon({
         connectionString,
       })
-    : new PrismaPg({ connectionString });
+    : // PrismaPg sends UTC dates without an offset, so the session must be in UTC
+      new PrismaPg({ connectionString, options: "-c timezone=UTC" });
 
   return new PrismaClient({
     adapter,
