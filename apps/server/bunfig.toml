@@ -11,5 +11,6 @@ coveragePathIgnorePatterns = [
   "**/*.test.ts",
   "**/*.spec.ts",
   "tests/utils/**",
+  "tests/**/setup.ts",
   "src/modules/shared.ts",
 ]

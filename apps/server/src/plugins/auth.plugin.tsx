@@ -4,21 +4,19 @@ import ResetPassword from "@spice-world/emails/src/reset-password";
 import VerifyEmail from "@spice-world/emails/src/spiceworld-welcome";
 import { env } from "@spice-world/server/lib/env";
 import { prisma } from "@spice-world/server/lib/prisma";
+import { stripeClient } from "@spice-world/server/lib/stripe";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { betterAuth } from "better-auth/minimal";
 import { admin, openAPI } from "better-auth/plugins";
 import type { MacroTypeLambda } from "elysia";
 import { Elysia, macroType } from "elysia";
 import { Resend } from "resend";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import { orderService } from "../modules/orders/service";
+import { loggerPlugin } from "./logger.plugin";
 
 const resend = new Resend(env.RESEND_API_KEY);
 const from = "Spice World <noreply@teyik0.dev>";
-
-export const stripeClient = new Stripe(env.STRIPE_SECRET_KEY, {
-  apiVersion: "2026-11-18.endive",
-});
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -157,24 +155,29 @@ interface AccessContext extends MacroTypeLambda {
 export const betterAuthPlugin = new Elysia({
   name: "better-auth",
   tags: ["Auth"],
-}).macro({
-  access: (level: "optional" | "login" | "admin") => ({
-    $type: macroType<AccessContext>(),
-    async derive({ request: { headers }, problem }) {
-      const session = await auth.api.getSession({ headers });
+})
+  .use(loggerPlugin)
+  .macro({
+    access: (level: "optional" | "login" | "admin") => ({
+      $type: macroType<AccessContext>(),
+      async derive({ log, request: { headers }, problem }) {
+        const session = await auth.api.getSession({ headers });
+        if (session) {
+          log.set({ user: { id: session.user.id, role: session.user.role } });
+        }
 
-      if (!session && level !== "optional") {
-        return problem("Unauthorized");
-      }
+        if (!session && level !== "optional") {
+          return problem("Unauthorized");
+        }
 
-      if (level === "admin" && session && session.user.role !== "admin") {
-        return problem("Forbidden");
-      }
+        if (level === "admin" && session && session.user.role !== "admin") {
+          return problem("Forbidden");
+        }
 
-      return {
-        user: session?.user ?? null,
-        session: session?.session ?? null,
-      };
-    },
-  }),
-});
+        return {
+          user: session?.user ?? null,
+          session: session?.session ?? null,
+        };
+      },
+    }),
+  });

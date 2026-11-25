@@ -1,5 +1,5 @@
 import { env } from "../lib/env";
-import { stripeClient } from "../plugins/auth.plugin";
+import { stripeClient } from "../lib/stripe";
 
 export interface CheckoutItem {
   currency: string;
@@ -54,7 +54,8 @@ export async function createStripeCheckout({
     }));
 
     const session = await stripeClient.checkout.sessions.create({
-      payment_method_types: ["card"],
+      // Orders are marked PAID on completion: no delayed payment methods
+      allowed_payment_method_types: ["card"],
       line_items: lineItems,
       mode: "payment",
       success_url: env.STRIPE_SUCCESS_URL,
@@ -74,4 +75,13 @@ export async function createStripeCheckout({
       { cause: error },
     );
   }
+}
+
+/** Returns false when the session is already completed: the order is paid. */
+export async function closeStripeCheckout(sessionId: string) {
+  const { status } = await stripeClient.checkout.sessions.retrieve(sessionId);
+  if (status === "open") {
+    await stripeClient.checkout.sessions.expire(sessionId);
+  }
+  return status !== "complete";
 }

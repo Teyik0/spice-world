@@ -11,22 +11,11 @@ import { ordersRouter } from "@spice-world/server/modules/orders";
 import { productsRouter } from "@spice-world/server/modules/products";
 import { Elysia, setFileTypeDetector } from "elysia";
 import { fileTypeFromBlob } from "file-type";
-import { betterAuthPlugin } from "./plugins/auth.plugin.tsx";
+import { auth } from "./plugins/auth.plugin.tsx";
+import { loggerPlugin } from "./plugins/logger.plugin";
+import { openApiConfig, openApiLogin } from "./plugins/openapi.plugin.ts";
 
 setFileTypeDetector(fileTypeFromBlob);
-
-const formattedDate = () =>
-  new Date().toLocaleString("en-US", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
-
-const requestStart = new WeakMap<Request, number>();
 
 const app = new Elysia()
   .use(
@@ -44,43 +33,18 @@ const app = new Elysia()
       ],
     }),
   )
+  .use(loggerPlugin)
   .use(
     cors({
       origin: ["http://localhost:3000", "http://localhost:3001"],
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       credentials: true,
-      allowedHeaders: ["Content-Type", "Authorization"],
+      allowedHeaders: ["Content-Type", "Authorization", "X-Version"],
     }),
   )
-  .onRequest(({ request }) => {
-    requestStart.set(request, performance.now());
-  })
-  .onTransform(({ body, params, path, request: { method } }) => {
-    console.log(`${formattedDate()} - ${method} ${path}`, {
-      body,
-      params,
-    });
-  })
-  .use(betterAuthPlugin)
-  .guard({
-    access: "optional",
-  })
-  .onAfterResponse(({ user, path, request, set }) => {
-    console.log(`${formattedDate()} - RESPONSE ${path}`, {
-      performance: `${(
-        performance.now() - (requestStart.get(request) ?? performance.now())
-      ).toFixed(2)} ms`,
-      status: set.status,
-      user: user ? user.id : "anonymous",
-    });
-  })
-  .onBeforeHandle(({ request, user, problem }) => {
-    if (request.method !== "GET" && user?.role !== "admin") {
-      return problem("Unauthorized", {
-        detail: "You need to be admin to perform this action",
-      });
-    }
-  })
+  .mount(auth.handler)
+  .use(openApiConfig)
+  .use(openApiLogin)
   .use(categoryRouter)
   .use(collectionRouter)
   .use(attributeRouter)

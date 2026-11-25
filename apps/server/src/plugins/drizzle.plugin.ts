@@ -48,8 +48,6 @@ export const drizzleErrorPlugin = new Elysia({
         message: "Database operation temporarily unavailable",
       });
     default:
-      console.error("Database operation failed", error);
-
       return problem("Internal Server Error", {
         code: "UNKNOWN",
         message: "An unexpected database error occurred",

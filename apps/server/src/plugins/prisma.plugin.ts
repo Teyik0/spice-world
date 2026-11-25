@@ -18,7 +18,6 @@ export const prismaErrorPlugin = (entity: Entity) =>
     name: "prisma-error-handler",
   }).onError("plugin", ({ error, problem }) => {
     if (error instanceof PrismaClientUnknownRequestError) {
-      console.error("PrismaClientUnknownRequestError ->", error);
       return problem("Internal Server Error", {
         message: "An unknown PrismaClientUnknownRequestError error occurred",
         code: "UNKNOWN",
@@ -71,7 +70,6 @@ export const prismaErrorPlugin = (entity: Entity) =>
         });
 
       default: // Unhandled error
-        console.error(error);
         return problem("Internal Server Error", {
           message: error.message,
           code: error.code,
