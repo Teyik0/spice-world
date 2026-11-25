@@ -1,0 +1,77 @@
+apps/server/src/plugins/image.plugin.ts
+  s_ab49f0935feb76::t_94d8b53110586c 3
+apps/server/src/client.ts
+  s_ab49f0935feb76::t_94d8b53110586c 2
+apps/server/src/index.ts
+  s_ab49f0935feb76::t_94d8b53110586c 14
+apps/web/src/app/(login)/reset-password/page.tsx
+  s_ab49f0935feb76::t_94d8b53110586c 3
+apps/server/drizzle/relations.ts
+  s_ab49f0935feb76::t_94d8b53110586c 2
+apps/web/src/app/(login)/forgot-password/page.tsx
+  s_ab49f0935feb76::t_94d8b53110586c 15-16
+apps/web/src/app/(login)/signup/page.tsx
+  s_ab49f0935feb76::t_94d8b53110586c 2
+apps/server/src/plugins/logger.plugin.ts
+  s_ab49f0935feb76::t_94d8b53110586c 3
+apps/web/src/app/(dashboard)/products/@main/[slug]/form-details.tsx
+  s_ab49f0935feb76::t_94d8b53110586c 14
+apps/server/src/lib/stripe.ts
+  s_ab49f0935feb76::t_94d8b53110586c 2
+apps/web/src/app/(dashboard)/products/@sidebar/product-item.tsx
+  s_ab49f0935feb76::t_94d8b53110586c 16
+apps/web/src/app/(dashboard)/users/sidebar-right.tsx
+  s_ab49f0935feb76::t_94d8b53110586c 8
+apps/web/src/app/(dashboard)/users/layout.tsx
+  s_ab49f0935feb76::t_94d8b53110586c 16
+apps/web/src/app/(dashboard)/users/user-item.tsx
+  s_ab49f0935feb76::t_94d8b53110586c 19
+apps/web/src/app/(dashboard)/products/@sidebar/products-sidebar.tsx
+  s_ab49f0935feb76::t_94d8b53110586c 11
+apps/server/src/lib/images.ts
+  s_ab49f0935feb76::t_94d8b53110586c 5
+apps/web/src/app/(login)/signin/email-signin.tsx
+  s_ab49f0935feb76::t_94d8b53110586c 9-10
+apps/server/src/plugins/prisma.plugin.ts
+  s_ab49f0935feb76::t_94d8b53110586c 2
+apps/server/src/modules/orders/index.ts
+  s_ab49f0935feb76::t_94d8b53110586c 4
+apps/web/src/app/(dashboard)/layout.tsx
+  s_ab49f0935feb76::t_94d8b53110586c 6
+packages/emails/src/index.tsx
+  s_ab49f0935feb76::t_94d8b53110586c 2
+apps/web/src/app/(dashboard)/users/[id]/page.tsx
+  s_ab49f0935feb76::t_94d8b53110586c 4
+apps/server/src/lib/db.ts
+  s_ab49f0935feb76::t_94d8b53110586c 2
+apps/server/src/modules/products/validators/publish.ts
+  s_ab49f0935feb76::t_94d8b53110586c 2
+apps/server/load/seed.data.ts
+  s_ab49f0935feb76::t_94d8b53110586c 3
+apps/server/load/load.test.ts
+  s_ab49f0935feb76::t_94d8b53110586c 2
+apps/web/src/app/(login)/signin/page.tsx
+  s_ab49f0935feb76::t_94d8b53110586c 10
+apps/server/src/lib/prisma.ts
+  s_ab49f0935feb76::t_94d8b53110586c 3
+apps/server/src/plugins/drizzle.plugin.ts
+  s_ab49f0935feb76::t_94d8b53110586c 4
+apps/web/src/components/theme-provider.tsx
+  s_ab49f0935feb76::t_94d8b53110586c 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f8a70e356af764d7eec426a7c33267dc5258f548",
+  "prompts": {},
+  "sessions": {
+    "s_ab49f0935feb76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7cfdb31-ea40-413d-bb5f-4a4bdfa74f71",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
