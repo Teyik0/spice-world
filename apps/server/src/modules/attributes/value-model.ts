@@ -3,9 +3,12 @@ import { t } from "elysia";
 
 import { nameLowerPatternWithNumber, uuid } from "../shared";
 
-export const postBody = t.Object({
-  name: nameLowerPatternWithNumber,
-});
+export const postBody = t.Object(
+  {
+    name: nameLowerPatternWithNumber,
+  },
+  { additionalProperties: false },
+);
 export type postBody = UnwrapSchema<typeof postBody>;
 
 export const patchBody = postBody;
