@@ -1,4 +1,4 @@
 {
   "root": false,
-  "extends": ["../../biome.jsonc", "ultracite/biome/react"]
+  "extends": ["../../biome.jsonc", "ultracite/biome/react"],
 }

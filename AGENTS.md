@@ -1,29 +1,33 @@
 # Project
 
-A full-stack e-commerce platform. 
+A full-stack e-commerce platform.
 Key features: product management, categories with dynamic attributes, user authentication, order processing.
 
 ## Structure
 
 **apps/server** (port 3000): Elysia API with Prisma, Better Auth, Stripe
-  - `/src/modules`: Business logic (products, categories, orders)
-  - `/drizzle/schema.ts`: Database models
+
+- `/src/modules`: Business logic (products, categories, orders)
+- `/drizzle/schema.ts`: Database models
 
 **apps/web** (port 5173): React/Next.js admin dashboard
-  - Uses Eden Treaty for type-safe API calls
-  - TanStack Form for form management
-  - shadcn/ui components
+
+- Uses Eden Treaty for type-safe API calls
+- TanStack Form for form management
+- shadcn/ui components
 
 **apps/storefront** (port 3002): React/Furin admin dashboard
-  - Uses Eden Treaty for type-safe API calls
-  - TanStack Form for form management
-  - shadcn/ui components
+
+- Uses Eden Treaty for type-safe API calls
+- TanStack Form for form management
+- shadcn/ui components
 
 **packages/emails**: React Email templates
 
 # Relevant code sample
 
 using @elysia/eden in the frontend to fetch data from the elysia backend
+
 ```ts
 api.<route>(<params>).<method>(<body>)
 // example:
@@ -38,8 +42,8 @@ const { data, status, error } = await api.attributes.post(newAttrData);
 - MUST always use Bun, not npm/node/pnpm
 - MUST reuse backend models in frontend, no type duplication
 - MUST ABSOLUTELY propose YOUR recommendations (considering production-grade / industry standard apps) AND alternatives, regardless of what the user prompts
-- MUST check for type error after diff: bun run tsc <file_path> --noEmit
-- MUST check for lint error after diff: bun run biome check <file_path>
+- MUST check for type error after diff: `bun check <file_path>`
+- MUST check for lint error after diff: `bun run biome check <file_path>`
 - MUST create test without any mock, the only exception is third party such as the image upload (utapi)
 
 ## Required code examples in responses
@@ -55,14 +59,17 @@ const { data, status, error } = await api.attributes.post(newAttrData);
 ## Running the project
 
 **Start development environment**
+
 ```sh
 cd apps/server && bun dev
 cd apps/web && bun dev
 ```
 
-**Linting, formatting and typechecking**
+**Formatting, linting and typechecking**
+
 ```sh
-bun run format # Lint, auto-fix and format with Biome (ultracite)
+bun fmt
+bun run biome check
 bun check -p apps/server
 bun check -p apps/web
 bun check -p apps/storefront
@@ -76,7 +83,7 @@ bun check -p apps/storefront
 - MUST use tests/utils/helper.ts pattern when needed
 - MUST use expect().toMatchObject() when doing asserting api error call (to avoid type issue)
 - MUST check how others test are setup and follow the same pattern
-- MUST run the associated file(s) test when an endpoint is modified `bun test tests/<test_file>`, don't rerun the whole tests suite on each pass
+- MUST run the associated file(s) test when an endpoint is modified `bun run test tests/<test_file>`, don't rerun the whole tests suite on each pass
 - MUST ABSOLUTELY load and apply `elysia` skill for
 
 ## Task involving frontend end change (apps/web or apps/storefront)
