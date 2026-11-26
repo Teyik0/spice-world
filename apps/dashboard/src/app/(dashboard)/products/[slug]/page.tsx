@@ -7,9 +7,9 @@ import { api } from "../../../../lib/api";
 export const route = defineRoute("/(dashboard)/products/$slug/")
   .config({ mode: "ssr", params: t.Object({ slug: t.String() }) })
   .loader(async ({ headers, params }) => {
-    const { data, error } = await api(headers.cookie)
-      .products.slug(params)
-      .get();
+    const { data, error } = await api.products
+      .slug(params)
+      .get({ headers: { cookie: headers.cookie } });
 
     if (error) {
       if (error.status === 404) {

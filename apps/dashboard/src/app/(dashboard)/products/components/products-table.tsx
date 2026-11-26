@@ -1,6 +1,18 @@
 import type * as ProductModel from "@spice-world/server/modules/products/model";
+import { LOW_STOCK_THRESHOLD } from "@spice-world/server/modules/products/model";
 import { Badge } from "@spice-world/ui/components/badge";
+import { Button } from "@spice-world/ui/components/button";
 import { Checkbox } from "@spice-world/ui/components/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@spice-world/ui/components/dropdown-menu";
 import {
   Empty,
   EmptyDescription,
@@ -17,76 +29,217 @@ import {
   TableHeader,
   TableRow,
 } from "@spice-world/ui/components/table";
+import { useInfiniteQuery } from "@teyik0/furin/client";
 import { Link } from "@teyik0/furin/link";
-import { useEffect, useRef, useState, useTransition } from "react";
-import { toast } from "sonner";
+import { ArrowDownIcon, ArrowUpIcon, ChevronDownIcon } from "lucide-react";
+import type { ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { api } from "../../../../lib/api";
-import { formatPrice } from "../../../../lib/format";
+import { formatAgo, formatCount, formatPrice } from "../../../../lib/format";
 import { BulkActions } from "./bulk-actions";
 import type { ProductsQuery } from "./products-query";
+import { label, STATUSES, useUpdateQuery } from "./products-query";
+import {
+  CategoryFilter,
+  FilterGroup,
+  MENU_CONTENT,
+  MENU_ITEM,
+  MENU_LABEL,
+  MenuCount,
+} from "./products-toolbar";
 
 export const PAGE_SIZE = 25;
 
-const STATUS_VARIANT = {
-  PUBLISHED: "default",
-  DRAFT: "secondary",
-  ARCHIVED: "outline",
+const STATUS_BADGE = {
+  PUBLISHED: "bg-success/10 text-success dark:bg-success/20",
+  DRAFT: "bg-warning/10 text-warning dark:bg-warning/20",
+  ARCHIVED: "bg-muted text-muted-foreground",
 } as const;
 
-const price = ({ priceMin, priceMax }: ProductModel.productListItem) => {
+function Price({ priceMin, priceMax }: ProductModel.productListItem) {
   if (priceMin === null || priceMax === null) {
-    return "—";
+    return <span className="text-muted-foreground">—</span>;
   }
-  return priceMin === priceMax
-    ? formatPrice(priceMin)
-    : `${formatPrice(priceMin)} – ${formatPrice(priceMax)}`;
-};
+  return (
+    <>
+      {formatPrice(priceMin)}
+      {priceMin === priceMax ? null : (
+        <span className="text-muted-foreground text-xs">
+          {" "}
+          – {formatPrice(priceMax)}
+        </span>
+      )}
+    </>
+  );
+}
+
+const STOCK_ALERT = {
+  out: ["text-destructive", "Out"],
+  low: ["text-warning", "Low"],
+} as const;
+
+function Stock({ totalStock }: ProductModel.productListItem) {
+  const alert =
+    totalStock === 0
+      ? STOCK_ALERT.out
+      : totalStock < LOW_STOCK_THRESHOLD && STOCK_ALERT.low;
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 ${alert ? alert[0] : ""}`}
+    >
+      {alert ? (
+        <span className="rounded bg-current/12 px-1.5 text-[11px] leading-5 font-medium">
+          {alert[1]}
+        </span>
+      ) : null}
+      {totalStock}
+    </span>
+  );
+}
+
+type SortOption = readonly [
+  NonNullable<ProductsQuery["sortBy"]>,
+  "asc" | "desc",
+  string,
+];
+const NAME_SORTS: SortOption[] = [
+  ["name", "asc", "A → Z"],
+  ["name", "desc", "Z → A"],
+];
+const PRICE_SORTS: SortOption[] = [
+  ["priceMin", "asc", "Lowest First"],
+  ["priceMax", "desc", "Highest First"],
+];
+const UPDATED_SORTS: SortOption[] = [
+  ["updatedAt", "desc", "Newest First"],
+  ["updatedAt", "asc", "Oldest First"],
+];
+const STOCK_SORTS: SortOption[] = [
+  ["totalStock", "asc", "Lowest First"],
+  ["totalStock", "desc", "Highest First"],
+];
+
+/** A column title that opens its sort and filter options. */
+function ColumnHeader({
+  align = "start",
+  children,
+  filtered = false,
+  query,
+  sorts = [],
+  title,
+}: {
+  align?: "start" | "end";
+  children?: ReactNode;
+  filtered?: boolean;
+  query: ProductsQuery;
+  sorts?: SortOption[];
+  title: string;
+}) {
+  const update = useUpdateQuery(query);
+  const sortBy = query.sortBy ?? "name";
+  const sortDir = query.sortDir ?? "asc";
+  const sorted = sorts.some(([by]) => by === sortBy);
+  const SortIcon = sortDir === "asc" ? ArrowUpIcon : ArrowDownIcon;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            className={`group -mx-2.5 h-7 px-2.5 ${filtered || sorted ? "" : "text-muted-foreground"}`}
+            size="sm"
+            variant="ghost"
+          />
+        }
+      >
+        {title}
+        {filtered ? (
+          <span
+            aria-label="Filtered"
+            className="bg-primary size-1.5 rounded-full"
+            role="img"
+          />
+        ) : null}
+        {sorted ? (
+          <SortIcon
+            aria-label={`Sorted ${sortDir === "asc" ? "ascending" : "descending"}`}
+          />
+        ) : (
+          <ChevronDownIcon className="opacity-0 transition-opacity group-hover:opacity-50 group-focus-visible:opacity-50 group-data-popup-open:opacity-50" />
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align={align} className={MENU_CONTENT}>
+        {sorts.length > 0 ? (
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className={MENU_LABEL}>Sort</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              onValueChange={(value) => {
+                const pick = sorts.find(
+                  ([by, dir]) => `${by}:${dir}` === value,
+                );
+                if (pick) {
+                  update({ sortBy: pick[0], sortDir: pick[1] });
+                }
+              }}
+              value={`${sortBy}:${sortDir}`}
+            >
+              {sorts.map(([by, dir, text]) => (
+                <DropdownMenuRadioItem
+                  className={MENU_ITEM}
+                  key={text}
+                  value={`${by}:${dir}`}
+                >
+                  {text}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuGroup>
+        ) : null}
+        {sorts.length > 0 && children ? <DropdownMenuSeparator /> : null}
+        {children}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export function ProductsTable({
   categories,
-  initialData,
+  facets,
   query,
 }: {
   categories: { id: string; name: string }[];
-  initialData: ProductModel.productListItem[];
+  facets: ProductModel.facets;
   query: ProductsQuery;
 }) {
-  const [products, setProducts] = useState(initialData);
-  const [hasMore, setHasMore] = useState(initialData.length === PAGE_SIZE);
-  const [loading, startTransition] = useTransition();
+  const total = facets.status[query.status ?? "ALL"];
+  const update = useUpdateQuery(query);
+  const { pages, fetchNext, hasNext, isFetching, error } = useInfiniteQuery(
+    (index) =>
+      api.products.get.live({
+        query: { ...query, skip: index * PAGE_SIZE, take: PAGE_SIZE },
+      }),
+    { next: (last) => last.length === PAGE_SIZE },
+  );
+  const products = pages.flat();
   const [selected, setSelected] = useState(new Set<string>());
   const sentinel = useRef<HTMLDivElement>(null);
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
 
-  // Infinite scroll: the next page loads when the sentinel under the table shows.
   useEffect(() => {
     const node = sentinel.current;
-    if (!(node && hasMore) || loading) {
+    if (!(node && hasNext) || isFetching) {
       return;
     }
     const observer = new IntersectionObserver(([entry]) => {
-      if (!entry?.isIntersecting) {
-        return;
+      if (entry?.isIntersecting) {
+        observer.disconnect();
+        fetchNext();
       }
-      observer.disconnect();
-      startTransition(async () => {
-        const { data, error } = await api().products.get({
-          query: { ...query, skip: products.length, take: PAGE_SIZE },
-        });
-        if (error) {
-          toast.error(
-            `Couldn’t load more products. ${error.value.detail ?? error.value.title}`,
-          );
-          return;
-        }
-        setProducts((prev) => [...prev, ...data]);
-        setHasMore(data.length === PAGE_SIZE);
-      });
     });
     observer.observe(node);
     return () => observer.disconnect();
-  }, [hasMore, loading, products.length, query]);
+  }, [fetchNext, hasNext, isFetching]);
 
   if (products.length === 0) {
     return (
@@ -111,11 +264,11 @@ export function ProductsTable({
           onDone={() => setSelected(new Set())}
         />
       ) : null}
-      <div className="overflow-hidden rounded-lg border">
+      <div className="bg-card overflow-hidden rounded-xl border">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-10">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-10 pl-3">
                 <Checkbox
                   aria-label="Select all products"
                   checked={allSelected}
@@ -127,21 +280,113 @@ export function ProductsTable({
                   }
                 />
               </TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="hidden md:table-cell">Category</TableHead>
-              <TableHead className="text-right">Price</TableHead>
-              <TableHead className="text-right">Stock</TableHead>
+              <TableHead>
+                <ColumnHeader
+                  query={query}
+                  sorts={NAME_SORTS}
+                  title="Product"
+                />
+              </TableHead>
+              <TableHead>
+                <ColumnHeader
+                  filtered={Boolean(query.status)}
+                  query={query}
+                  title="Status"
+                >
+                  <FilterGroup>
+                    <DropdownMenuRadioGroup
+                      onValueChange={(value) =>
+                        update({ status: STATUSES.find((s) => s === value) })
+                      }
+                      value={query.status ?? "ALL"}
+                    >
+                      {(["ALL", ...STATUSES] as const).map((status) => (
+                        <DropdownMenuRadioItem
+                          className={MENU_ITEM}
+                          key={status}
+                          value={status}
+                        >
+                          {label(status)}
+                          <MenuCount value={facets.status[status]} />
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </FilterGroup>
+                </ColumnHeader>
+              </TableHead>
+              <TableHead className="hidden md:table-cell">
+                <ColumnHeader
+                  filtered={Boolean(query.categories)}
+                  query={query}
+                  title="Category"
+                >
+                  <CategoryFilter
+                    categories={categories}
+                    counts={facets.category}
+                    query={query}
+                  />
+                </ColumnHeader>
+              </TableHead>
+              <TableHead className="text-right">
+                <ColumnHeader
+                  align="end"
+                  query={query}
+                  sorts={PRICE_SORTS}
+                  title="Price"
+                />
+              </TableHead>
+              <TableHead className="text-right">
+                <ColumnHeader
+                  align="end"
+                  filtered={Boolean(query.stock)}
+                  query={query}
+                  sorts={STOCK_SORTS}
+                  title="Stock"
+                >
+                  <FilterGroup>
+                    <DropdownMenuRadioGroup
+                      onValueChange={(value) =>
+                        update({
+                          stock:
+                            value === "low" || value === "out"
+                              ? value
+                              : undefined,
+                        })
+                      }
+                      value={query.stock ?? "any"}
+                    >
+                      <DropdownMenuRadioItem className={MENU_ITEM} value="any">
+                        Any Stock
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem className={MENU_ITEM} value="low">
+                        Low, Under {LOW_STOCK_THRESHOLD}
+                        <MenuCount value={facets.stock.low} />
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem className={MENU_ITEM} value="out">
+                        Out of Stock
+                        <MenuCount value={facets.stock.out} />
+                      </DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </FilterGroup>
+                </ColumnHeader>
+              </TableHead>
+              <TableHead className="hidden pr-4 lg:table-cell">
+                <ColumnHeader
+                  query={query}
+                  sorts={UPDATED_SORTS}
+                  title="Updated"
+                />
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {products.map((product) => (
               <TableRow
-                className="relative"
+                className="data-[state=selected]:bg-primary/10 relative"
                 data-state={selected.has(product.id) ? "selected" : undefined}
                 key={product.id}
               >
-                <TableCell>
+                <TableCell className="pl-3">
                   <Checkbox
                     aria-label={`Select ${product.name}`}
                     checked={selected.has(product.id)}
@@ -157,53 +402,74 @@ export function ProductsTable({
                     }}
                   />
                 </TableCell>
-                <TableCell className="max-w-0 min-w-48">
+                <TableCell className="max-w-0 min-w-56 py-3">
                   <div className="flex items-center gap-3">
                     {product.img ? (
                       <img
                         alt=""
-                        className="size-10 shrink-0 rounded-md object-cover"
+                        className="size-10 shrink-0 rounded-lg object-cover"
                         height={40}
                         loading="lazy"
                         src={product.img}
                         width={40}
                       />
                     ) : (
-                      <div className="bg-muted size-10 shrink-0 rounded-md" />
+                      <div className="bg-muted size-10 shrink-0 rounded-lg" />
                     )}
-                    <Link
-                      className="truncate font-medium after:absolute after:inset-0 hover:underline focus-visible:underline focus-visible:outline-none"
-                      params={{ slug: product.slug }}
-                      to="/products/:slug"
-                    >
-                      {product.name}
-                    </Link>
+                    <div className="grid min-w-0">
+                      <Link
+                        className="truncate font-medium after:absolute after:inset-0 hover:underline focus-visible:underline focus-visible:outline-none"
+                        params={{ slug: product.slug }}
+                        to="/products/:slug"
+                      >
+                        {product.name}
+                      </Link>
+                      <span className="text-muted-foreground text-xs">
+                        {product.variantCount === 1
+                          ? "1 variant"
+                          : `${product.variantCount || "No"} variants`}
+                      </span>
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={STATUS_VARIANT[product.status]}>
-                    {product.status.charAt(0) +
-                      product.status.slice(1).toLowerCase()}
+                  <Badge className={STATUS_BADGE[product.status]}>
+                    {label(product.status)}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground hidden md:table-cell">
                   {categoryName.get(product.categoryId) ?? "—"}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {price(product)}
+                  <Price {...product} />
                 </TableCell>
-                <TableCell
-                  className={`text-right tabular-nums ${product.totalStock === 0 ? "text-destructive" : ""}`}
-                >
-                  {product.totalStock}
+                <TableCell className="text-right tabular-nums">
+                  <Stock {...product} />
+                </TableCell>
+                <TableCell className="text-muted-foreground hidden pr-4 text-sm lg:table-cell">
+                  <time
+                    dateTime={new Date(product.updatedAt).toISOString()}
+                    suppressHydrationWarning
+                  >
+                    {formatAgo(product.updatedAt)}
+                  </time>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
-      <div className="flex h-8 items-center justify-center" ref={sentinel}>
-        {loading ? <Spinner /> : null}
+      <div
+        className="text-muted-foreground flex h-8 items-center justify-center gap-2 text-xs tabular-nums"
+        ref={sentinel}
+      >
+        {isFetching ? <Spinner /> : null}
+        Showing {formatCount(products.length)} of {formatCount(total)}
+        {error ? (
+          <Button onClick={fetchNext} size="xs" variant="outline">
+            Couldn’t load more. Retry
+          </Button>
+        ) : null}
       </div>
     </div>
   );

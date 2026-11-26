@@ -1,7 +1,6 @@
 // "La Vitrine en apesanteur" (proposals-refs/_src/d3.html): floating jars on an
 // arc toward the lens, sharp centre jar, blurred neighbours, a colour world and
 // curved type per product, HUD chips. Scroll drives the arc; React owns the DOM.
-// biome-ignore lint/performance/noNamespaceImport: three is namespace-oriented; Bun tree-shakes ESM namespaces
 import * as THREE from "three";
 
 import type { Look } from "../lib/spice";

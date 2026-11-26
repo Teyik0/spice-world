@@ -16,18 +16,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@spice-world/ui/components/dropdown-menu";
-import { useRouter } from "@teyik0/furin/link";
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon, XIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { api } from "../../../../lib/api";
 import type { ProductsQuery } from "./products-query";
-import { STATUSES } from "./products-query";
+import { label, STATUSES } from "./products-query";
+
+// Ghost buttons on the inverted bar.
+const ON_DARK =
+  "text-background hover:bg-background/15 hover:text-background dark:hover:bg-background/15 aria-expanded:bg-background/15 aria-expanded:text-background";
 
 type Change =
   | { label: string; status: NonNullable<ProductsQuery["status"]> }
-  | { label: string; categoryId: string };
+  | { label: string; categoryId: string; status: "DRAFT" };
 
 export function BulkActions({
   categories,
@@ -38,8 +41,7 @@ export function BulkActions({
   ids: string[];
   onDone: () => void;
 }) {
-  const router = useRouter();
-  const [change, setChange] = useState<Change | undefined>(undefined);
+  const [change, setChange] = useState<Change | null>(null);
   const [pending, startTransition] = useTransition();
 
   const apply = () =>
@@ -47,12 +49,12 @@ export function BulkActions({
       if (!change) {
         return;
       }
-      const { label, ...patch } = change;
-      const { data, error } = await api().products.bulk.patch({
+      const { label: _, ...patch } = change;
+      const { data, error } = await api.products.bulk.patch({
         ids,
         ...patch,
       });
-      setChange(undefined);
+      setChange(null);
       if (error) {
         const { value } = error;
         toast.error(
@@ -62,14 +64,21 @@ export function BulkActions({
       }
       toast.success(`${data.count} products updated.`);
       onDone();
-      await router.refresh();
     });
 
   return (
-    <div className="bg-muted/50 flex flex-wrap items-center gap-2 rounded-lg border p-2">
-      <span className="px-2 text-sm tabular-nums">{ids.length} selected</span>
+    <div
+      aria-label="Bulk actions"
+      className="bg-foreground text-background fixed inset-x-0 bottom-6 z-20 mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-1 overflow-x-auto rounded-xl p-1.5 pl-4 shadow-lg"
+      role="toolbar"
+    >
+      <span className="mr-2 text-sm font-medium whitespace-nowrap tabular-nums">
+        {ids.length} selected
+      </span>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button size="sm" variant="outline" />}>
+        <DropdownMenuTrigger
+          render={<Button className={ON_DARK} size="sm" variant="ghost" />}
+        >
           Set Status
           <ChevronDownIcon data-icon="inline-end" />
         </DropdownMenuTrigger>
@@ -85,14 +94,16 @@ export function BulkActions({
                   })
                 }
               >
-                {status.charAt(0) + status.slice(1).toLowerCase()}
+                {label(status)}
               </DropdownMenuItem>
             ))}
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button size="sm" variant="outline" />}>
+        <DropdownMenuTrigger
+          render={<Button className={ON_DARK} size="sm" variant="ghost" />}
+        >
           Move to Category
           <ChevronDownIcon data-icon="inline-end" />
         </DropdownMenuTrigger>
@@ -102,7 +113,11 @@ export function BulkActions({
               <DropdownMenuItem
                 key={id}
                 onClick={() =>
-                  setChange({ label: `Category → ${name}`, categoryId: id })
+                  setChange({
+                    label: `Category → ${name}, status → draft. Variant attribute values are cleared`,
+                    categoryId: id,
+                    status: "DRAFT",
+                  })
                 }
               >
                 {name}
@@ -111,11 +126,18 @@ export function BulkActions({
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Button className="ml-auto" onClick={onDone} size="sm" variant="ghost">
-        Clear Selection
+      <span className="bg-background/25 mx-1 h-5 w-px" />
+      <Button
+        aria-label="Clear selection"
+        className={ON_DARK}
+        onClick={onDone}
+        size="icon-sm"
+        variant="ghost"
+      >
+        <XIcon />
       </Button>
       <AlertDialog
-        onOpenChange={(open) => (open ? null : setChange(undefined))}
+        onOpenChange={(open) => (open ? null : setChange(null))}
         open={Boolean(change)}
       >
         <AlertDialogContent>
