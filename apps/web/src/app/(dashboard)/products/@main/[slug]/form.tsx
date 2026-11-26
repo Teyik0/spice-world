@@ -21,12 +21,14 @@ import {
 } from "@spice-world/web/components/ui/dialog";
 import { app, elysiaErrorToString } from "@spice-world/web/lib/elysia";
 import { unknownError } from "@spice-world/web/lib/utils";
+import { useStore } from "@tanstack/react-form";
 import { useSetAtom } from "jotai";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { Compile } from "typebox/compile";
 
 import type { ProductItemProps } from "../../store";
 import { newProductAtom, productPagesAtom } from "../../store";
@@ -247,9 +249,14 @@ export const ProductForm = ({
       }
       await executeSubmit();
     },
-    onSubmitInvalid({ formApi }) {
-      console.error(formApi);
-      toast.error("Invalid submit");
+    onSubmitInvalid({ value }) {
+      const errors = Compile(isNew ? postBody : patchBody).Errors(value);
+      toast.error("Invalid submit", {
+        classNames: { description: "whitespace-pre-line" },
+        description: errors
+          .map((e) => `${e.instancePath || "/"}: ${e.message}`)
+          .join("\n"),
+      });
     },
   });
 
@@ -344,7 +351,12 @@ export const ProductForm = ({
     });
   };
 
-  const hasStock = product.variants.some((variant) => variant.stock > 0);
+  const hasStock = useStore(form.store, ({ values: { variants } }) =>
+    [
+      ...(variants?.create ?? []),
+      ...(variants && "update" in variants ? (variants.update ?? []) : []),
+    ].some((v) => (v.stock ?? 0) > 0),
+  );
   return (
     <section className="@container w-full p-6">
       <Form className="mx-auto flex max-w-260 flex-col" form={form}>
