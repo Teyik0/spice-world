@@ -3,100 +3,72 @@
 import { app } from "@spice-world/web/lib/elysia";
 import { useAtom } from "jotai";
 import { useQueryStates } from "nuqs";
-import {
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-	useTransition,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useTransition } from "react";
 import { useInView } from "react-intersection-observer";
-import { INITIAL_PAGE_SIZE, productsSearchParams } from "../search-params";
+
+import {
+  INITIAL_PAGE_SIZE,
+  productsSearchParams,
+  toProductsQuery,
+} from "../search-params";
 import { productPagesAtom } from "../store";
 
 export function useProductsInfinite() {
-	const scrollRef = useRef<HTMLDivElement>(null);
-	const [ref, inView] = useInView({ threshold: 0 });
-	const setRef = useCallback(
-		(node: HTMLDivElement | null) => {
-			ref(node);
-			scrollRef.current = node;
-		},
-		[ref],
-	);
-	const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [ref, inView] = useInView({ threshold: 0 });
+  const setRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      ref(node);
+      scrollRef.current = node;
+    },
+    [ref],
+  );
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-	const [params] = useQueryStates(productsSearchParams);
-	const paramsKey = useMemo(() => JSON.stringify(params), [params]);
-	const refParams = useRef(paramsKey);
+  const [params] = useQueryStates(productsSearchParams);
+  const paramsKey = useMemo(() => JSON.stringify(params), [params]);
 
-	const [pages, setPages] = useAtom(productPagesAtom);
-	const [hasNextPage, setHasNextPage] = useState(
-		pages[0] ? pages[0]?.length >= INITIAL_PAGE_SIZE : false,
-	);
+  const [pages, setPages] = useAtom(productPagesAtom);
 
-	useEffect(() => {
-		const paramsUnchanged = refParams.current === paramsKey;
-		if (paramsUnchanged) return;
-		app.products
-			.get({
-				query: {
-					name: params.name || undefined,
-					skip: 0,
-					take: INITIAL_PAGE_SIZE,
-					status: params.status ?? undefined,
-					categories: params.categories ?? undefined,
-					sortBy: params.sortBy,
-					sortDir: params.sortDir,
-				},
-			})
-			.then(({ data }) => {
-				setPages([data ?? []]);
-				setHasNextPage(data ? data.length >= INITIAL_PAGE_SIZE : false);
-				scrollContainerRef?.current?.scrollTo({ top: 0, behavior: "smooth" });
-			});
+  // Page 0 comes from the server (default.tsx -> ProductsHydrator re-hydrates
+  // this atom on every searchParams change). hasNextPage derives from the last
+  // page so it stays correct across server re-hydrations.
+  const hasNextPage = (pages.at(-1)?.length ?? 0) >= INITIAL_PAGE_SIZE;
 
-		refParams.current = paramsKey;
-	}, [paramsKey, params, setPages]);
+  // Filter changes are server-driven: nuqs updates the URL, the RSC slot
+  // refetches and re-hydrates the atom. The client only resets the scroll.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: paramsKey is the change trigger, not a value read
+  useEffect(() => {
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [paramsKey]);
 
-	const [isFetchingNextPage, startTransition] = useTransition();
-	const fetchNextPage = useCallback(async () => {
-		if (isFetchingNextPage || !hasNextPage) return;
-		startTransition(async () => {
-			const skip = pages.length * INITIAL_PAGE_SIZE;
-			const { data } = await app.products.get({
-				query: {
-					name: params.name || undefined,
-					skip,
-					take: INITIAL_PAGE_SIZE,
-					status: params.status ?? undefined,
-					categories: params.categories ?? undefined,
-					sortBy: params.sortBy,
-					sortDir: params.sortDir,
-				},
-			});
+  // The only client fetch left: pages after the first one (infinite scroll).
+  const [isFetchingNextPage, startTransition] = useTransition();
+  const fetchNextPage = useCallback(() => {
+    if (isFetchingNextPage || !hasNextPage) {
+      return;
+    }
+    startTransition(async () => {
+      const { data } = await app.products.get({
+        query: toProductsQuery(params, pages.length * INITIAL_PAGE_SIZE),
+      });
 
-			const newPage = data ?? [];
-			setPages((prev) => [...prev, newPage]);
-			setHasNextPage((prev) =>
-				prev === newPage.length >= INITIAL_PAGE_SIZE
-					? prev
-					: newPage.length >= INITIAL_PAGE_SIZE,
-			);
-		});
-	}, [isFetchingNextPage, hasNextPage, pages.length, params, setPages]);
+      setPages((prev) => [...prev, data ?? []]);
+    });
+  }, [isFetchingNextPage, hasNextPage, pages.length, params, setPages]);
 
-	useEffect(() => {
-		if (inView && hasNextPage) fetchNextPage();
-	}, [inView, hasNextPage, fetchNextPage]);
+  useEffect(() => {
+    if (inView && hasNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, fetchNextPage]);
 
-	const products = useMemo(() => pages.flat(), [pages]);
+  const products = useMemo(() => pages.flat(), [pages]);
 
-	return {
-		products,
-		isFetching: isFetchingNextPage,
-		ref: setRef,
-		containerRef: scrollContainerRef,
-	};
+  return {
+    products,
+    isFetching: isFetchingNextPage,
+    ref: setRef,
+    containerRef: scrollContainerRef,
+  };
 }

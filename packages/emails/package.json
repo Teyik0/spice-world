@@ -1,22 +1,22 @@
 {
-	"name": "@spice-world/emails",
-	"version": "0.1.0",
-	"private": true,
-	"type": "module",
-	"scripts": {
-		"build": "email build",
-		"dev": "email dev -p 3005 --dir src",
-		"export": "email export"
-	},
-	"dependencies": {
-		"@react-email/components": "^1.0.7",
-		"react-dom": "catalog:",
-		"react": "catalog:"
-	},
-	"devDependencies": {
-		"@react-email/preview-server": "5.2.7",
-		"@types/react": "catalog:",
-		"@types/react-dom": "catalog:",
-		"react-email": "^5.2.7"
-	}
+  "name": "@spice-world/emails",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "email build --dir src",
+    "dev": "email dev -p 3005 --dir src",
+    "export": "email export --dir src"
+  },
+  "dependencies": {
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-email": "^6.11.16"
+  },
+  "devDependencies": {
+    "@react-email/ui": "6.11.16",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "css-tree": "3.2.1"
+  }
 }

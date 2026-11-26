@@ -1,0 +1,85 @@
+name: Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+concurrency:
+  group: preview-${{ github.event.number }}
+
+env:
+  BUN_VERSION: 1.4.5
+  STAGE: pr-${{ github.event.number }}
+  PR_SHA: ${{ github.event.pull_request.head.sha }}
+  NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+  NEON_API: https://console.neon.tech/api/v2/projects/${{ vars.NEON_PROJECT_ID }}
+  VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_DEFAULT_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_DEFAULT_ACCOUNT_ID }}
+  VERCEL_SERVER_PROJECT_ID: ${{ vars.VERCEL_SERVER_PROJECT_ID }}
+  VERCEL_WEB_PROJECT_ID: ${{ vars.VERCEL_WEB_PROJECT_ID }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Pulumi plugin downloads hit the GitHub API rate limit otherwise
+
+jobs:
+  deploy:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - run: bun install --frozen-lockfile
+
+      - name: Create anonymized PR database
+        shell: bash # -eo pipefail: fail on the first Neon API error instead of polling blindly
+        run: |
+          neon() { curl -sSf -H "Authorization: Bearer $NEON_API_KEY" -H 'Content-Type: application/json' "$@"; }
+          id=$(neon "$NEON_API/branches" | jq -r --arg n "$STAGE" '.branches[] | select(.name == $n) | .id')
+          if [ -z "$id" ]; then
+            id=$(jq --arg n "$STAGE" '{ branch_create: { branch: { name: $n } }, start_anonymization: true,
+                   masking_rules: map({ database_name: "neondb", schema_name: "public" } + .) }' .github/neon/masking-rules.json \
+              | neon -X POST "$NEON_API/branch_anonymized" -d @- | jq -r .branch.id)
+          fi
+          for _ in $(seq 60); do
+            state=$(neon "$NEON_API/branches/$id/anonymized_status" | jq -r .state)
+            case $state in
+              anonymized) break ;;
+              error|initialization_error) echo "Anonymization failed"; exit 1 ;;
+            esac
+            sleep 10
+          done
+          test "$state" = anonymized || { echo "Anonymization timed out ($state)"; exit 1; }
+          # Anonymized branches get their own role password: ask Neon for the URI.
+          url=$(neon "$NEON_API/connection_uri?branch_id=$id&database_name=neondb&role_name=neondb_owner" | jq -r .uri)
+          echo "::add-mask::$url"
+          echo "PR_DATABASE_URL=$url" >> "$GITHUB_ENV"
+
+      # Before the Vercel deployment builds against it.
+      - name: Migrate PR database
+        working-directory: apps/server
+        run: DATABASE_URL=$PR_DATABASE_URL bun run db:migrate
+
+      - run: bunx sst deploy --stage $STAGE --print-logs
+
+  remove:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - run: bun install --frozen-lockfile
+
+      - run: bunx sst remove --stage $STAGE
+
+      - name: Delete PR database
+        run: |
+          neon() { curl -sSf -H "Authorization: Bearer $NEON_API_KEY" "$@"; }
+          neon "$NEON_API/branches" | jq -r --arg n "$STAGE" '.branches[] | select(.name == $n) | .id' \
+            | xargs -r -I{} curl -sSf -X DELETE -H "Authorization: Bearer $NEON_API_KEY" "$NEON_API/branches/{}" > /dev/null

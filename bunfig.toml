@@ -3,3 +3,7 @@ bun = true
 
 [install]
 linker = "isolated"
+
+[fmt]
+sortImports = true
+ignorePatterns = ["apps/server/drizzle/**/snapshot.json"]

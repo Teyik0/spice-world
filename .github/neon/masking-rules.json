@@ -1,0 +1,85 @@
+[
+  {
+    "table_name": "user",
+    "column_name": "email",
+    "masking_function": "pg_catalog.concat(anon.dummy_uuidv4(), '@example.com')"
+  },
+  {
+    "table_name": "user",
+    "column_name": "name",
+    "masking_function": "anon.dummy_first_name()"
+  },
+  { "table_name": "user", "column_name": "image", "masking_value": "NULL" },
+  {
+    "table_name": "user",
+    "column_name": "stripeCustomerId",
+    "masking_value": "NULL"
+  },
+  { "table_name": "user", "column_name": "banReason", "masking_value": "NULL" },
+  {
+    "table_name": "session",
+    "column_name": "token",
+    "masking_function": "anon.dummy_uuidv4()"
+  },
+  {
+    "table_name": "session",
+    "column_name": "ipAddress",
+    "masking_value": "NULL"
+  },
+  {
+    "table_name": "session",
+    "column_name": "userAgent",
+    "masking_value": "NULL"
+  },
+  {
+    "table_name": "account",
+    "column_name": "accessToken",
+    "masking_value": "NULL"
+  },
+  {
+    "table_name": "account",
+    "column_name": "refreshToken",
+    "masking_value": "NULL"
+  },
+  {
+    "table_name": "account",
+    "column_name": "idToken",
+    "masking_value": "NULL"
+  },
+  {
+    "table_name": "account",
+    "column_name": "password",
+    "masking_value": "NULL"
+  },
+  {
+    "table_name": "Order",
+    "column_name": "shippingAddress",
+    "masking_value": "NULL"
+  },
+  { "table_name": "Order", "column_name": "metadata", "masking_value": "NULL" },
+  {
+    "table_name": "Order",
+    "column_name": "stripeSessionId",
+    "masking_function": "anon.dummy_uuidv4()"
+  },
+  {
+    "table_name": "Order",
+    "column_name": "stripePaymentIntentId",
+    "masking_value": "NULL"
+  },
+  {
+    "table_name": "Order",
+    "column_name": "trackingNumber",
+    "masking_value": "NULL"
+  },
+  {
+    "table_name": "verification",
+    "column_name": "value",
+    "masking_function": "anon.dummy_uuidv4()"
+  },
+  {
+    "table_name": "VerificationToken",
+    "column_name": "token",
+    "masking_function": "anon.dummy_uuidv4()"
+  }
+]

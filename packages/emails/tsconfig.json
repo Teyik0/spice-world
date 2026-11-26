@@ -1,11 +1,11 @@
 {
-	"extends": "../../tsconfig.base.json",
-	"compilerOptions": {
-		"lib": ["ESNext", "DOM"],
-		"jsx": "react-jsx",
-		"composite": false,
-		"strictNullChecks": true
-	},
-	"include": ["**/*.ts", "**/*.tsx"],
-	"exclude": ["node_modules", "dist", ".react-email"]
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "jsx": "react-jsx",
+    "composite": false,
+    "strictNullChecks": true
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules", "dist", ".react-email"]
 }

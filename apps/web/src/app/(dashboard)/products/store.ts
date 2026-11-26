@@ -1,5 +1,4 @@
-import type { ProductModel } from "@spice-world/server/modules/products/model";
-import type { ProductStatus } from "@spice-world/server/prisma/enums";
+import type * as ProductModel from "@spice-world/server/modules/products/model";
 import type { useForm } from "@spice-world/web/components/tanstack-form";
 import { atom, useSetAtom } from "jotai";
 import { useCallback } from "react";
@@ -9,27 +8,27 @@ import { useCallback } from "react";
  * Handles both POST (create) and PATCH (update) operations
  */
 export type ProductForm = ReturnType<
-	typeof useForm<typeof ProductModel.postBody | typeof ProductModel.patchBody>
+  typeof useForm<typeof ProductModel.postBody | typeof ProductModel.patchBody>
 >;
 
 /**
  * Product item data structure used for sidebar display
- * Matches the shape returned by ProductModel.getResult items
+ * Matches the shape returned by ProductModel.productListItem
  */
 export interface ProductItemProps {
-	id: string;
-	name: string;
-	description: string;
-	status: ProductStatus;
-	img: string | null;
-	categoryId: string;
-	slug: string;
-	createdAt: Date;
-	updatedAt: Date;
-	version: number;
-	priceMin: number;
-	priceMax: number;
-	totalStock: number;
+  categoryId: string;
+  createdAt: Date;
+  description: string;
+  id: string;
+  img: string | null;
+  name: string;
+  priceMax: number | null;
+  priceMin: number | null;
+  slug: string;
+  status: ProductModel.productStatus;
+  totalStock: number;
+  updatedAt: Date;
+  version: number;
 }
 
 /**
@@ -47,7 +46,7 @@ export const selectedProductIdsAtom = atom<Set<string>>(new Set<string>());
 export const productsRefreshKeyAtom = atom<number>(0);
 
 /* Atome for infinite products scroll */
-export const productPagesAtom = atom<ProductModel.getResult[]>([]);
+export const productPagesAtom = atom<ProductModel.productListItem[][]>([]);
 export const productsAtom = atom((get) => get(productPagesAtom).flat());
 
 /**
@@ -55,24 +54,24 @@ export const productsAtom = atom((get) => get(productPagesAtom).flat());
  * Centralizes the logic for updating both new products and existing products in the list
  */
 export function useProductSidebarSync(isNew: boolean, slug: string) {
-	const setNewProduct = useSetAtom(newProductAtom);
-	const setPages = useSetAtom(productPagesAtom);
+  const setNewProduct = useSetAtom(newProductAtom);
+  const setPages = useSetAtom(productPagesAtom);
 
-	return useCallback(
-		<K extends keyof ProductItemProps>(
-			field: K,
-			value: ProductItemProps[K],
-		) => {
-			if (isNew) {
-				setNewProduct((prev) => (prev ? { ...prev, [field]: value } : prev));
-			} else {
-				setPages((pages) =>
-					pages.map((page) =>
-						page.map((p) => (p.slug === slug ? { ...p, [field]: value } : p)),
-					),
-				);
-			}
-		},
-		[isNew, slug, setNewProduct, setPages],
-	);
+  return useCallback(
+    <K extends keyof ProductItemProps>(
+      field: K,
+      value: ProductItemProps[K],
+    ) => {
+      if (isNew) {
+        setNewProduct((prev) => (prev ? { ...prev, [field]: value } : prev));
+      } else {
+        setPages((pages) =>
+          pages.map((page) =>
+            page.map((p) => (p.slug === slug ? { ...p, [field]: value } : p)),
+          ),
+        );
+      }
+    },
+    [isNew, slug, setNewProduct, setPages],
+  );
 }

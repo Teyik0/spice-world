@@ -2,13 +2,9 @@
 
 import { SidebarProvider } from "@spice-world/web/components/ui/sidebar";
 import { useMediaQuery } from "@spice-world/web/hooks/use-media-query";
-import {
-	type CSSProperties,
-	createContext,
-	type ReactNode,
-	useContext,
-	useState,
-} from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { createContext, useContext, useState } from "react";
+
 import { setSidebarExpanded } from "./cookies";
 
 const SIDEBAR_WIDTH_COLLAPSED = "350px";
@@ -16,59 +12,58 @@ const SIDEBAR_WIDTH_EXPANDED = "600px";
 const SIDEBAR_WIDTH_EXPANDED_2XL = "800px";
 
 interface SidebarContextValue {
-	expanded: boolean;
-	setExpanded: (value: boolean) => void;
+  expanded: boolean;
+  setExpanded: (value: boolean) => void;
 }
 
 const SidebarContext = createContext<SidebarContextValue | null>(null);
 
 export function useSidebarExpanded() {
-	const context = useContext(SidebarContext);
-	if (!context) {
-		throw new Error(
-			"useSidebarExpanded must be used within SidebarRightProvider",
-		);
-	}
-	return [context.expanded, context.setExpanded] as const;
+  const context = useContext(SidebarContext);
+  if (!context) {
+    throw new Error(
+      "useSidebarExpanded must be used within SidebarRightProvider",
+    );
+  }
+  return [context.expanded, context.setExpanded] as const;
 }
 
 export function SidebarRightProvider({
-	children,
-	initialExpanded,
+  children,
+  initialExpanded,
 }: {
-	children: ReactNode;
-	initialExpanded: boolean;
+  children: ReactNode;
+  initialExpanded: boolean;
 }) {
-	const [expanded, setExpandedState] = useState(initialExpanded);
-	const is2xl = useMediaQuery("(min-width: 1536px)"); // Tailwind's '2xl' breakpoint
+  const [expanded, setExpandedState] = useState(initialExpanded);
+  const is2xl = useMediaQuery("(min-width: 1536px)"); // Tailwind's '2xl' breakpoint
 
-	const setExpanded = (value: boolean) => {
-		setExpandedState(value);
-		void setSidebarExpanded(value);
-	};
+  const setExpanded = (value: boolean) => {
+    setExpandedState(value);
+    setSidebarExpanded(value);
+  };
 
-	const sidebarWidth = expanded
-		? is2xl
-			? SIDEBAR_WIDTH_EXPANDED_2XL
-			: SIDEBAR_WIDTH_EXPANDED
-		: SIDEBAR_WIDTH_COLLAPSED;
+  const expandedWidth = is2xl
+    ? SIDEBAR_WIDTH_EXPANDED_2XL
+    : SIDEBAR_WIDTH_EXPANDED;
+  const sidebarWidth = expanded ? expandedWidth : SIDEBAR_WIDTH_COLLAPSED;
 
-	return (
-		<SidebarContext.Provider
-			value={{
-				expanded,
-				setExpanded,
-			}}
-		>
-			<SidebarProvider
-				style={
-					{
-						"--sidebar-width": sidebarWidth,
-					} as CSSProperties
-				}
-			>
-				{children}
-			</SidebarProvider>
-		</SidebarContext.Provider>
-	);
+  return (
+    <SidebarContext.Provider
+      value={{
+        expanded,
+        setExpanded,
+      }}
+    >
+      <SidebarProvider
+        style={
+          {
+            "--sidebar-width": sidebarWidth,
+          } as CSSProperties
+        }
+      >
+        {children}
+      </SidebarProvider>
+    </SidebarContext.Provider>
+  );
 }
