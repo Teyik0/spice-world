@@ -11,25 +11,8 @@ export type ProductForm = ReturnType<
   typeof useForm<typeof ProductModel.postBody | typeof ProductModel.patchBody>
 >;
 
-/**
- * Product item data structure used for sidebar display
- * Matches the shape returned by ProductModel.productListItem
- */
-export interface ProductItemProps {
-  categoryId: string;
-  createdAt: Date;
-  description: string;
-  id: string;
-  img: string | null;
-  name: string;
-  priceMax: number | null;
-  priceMin: number | null;
-  slug: string;
-  status: ProductModel.productStatus;
-  totalStock: number;
-  updatedAt: Date;
-  version: number;
-}
+/** Product item data structure used for sidebar display. */
+export type ProductItemProps = ProductModel.productListItem;
 
 /**
  * Atom for storing the new product being created in the sidebar

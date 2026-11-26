@@ -157,6 +157,7 @@ export const ProductForm = ({
           data.variants[0]?.price ?? 0,
         ), // Stored in cents, converted to decimal by formatPrice
         totalStock: data.variants.reduce((sum, v) => sum + v.stock, 0),
+        variantCount: data.variants.length,
       });
 
       setPages((pages) => {

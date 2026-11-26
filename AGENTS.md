@@ -36,6 +36,8 @@ const { data, status, error } = await api.attributes({ id: testAttr.id }).get();
 const { data, status, error } = await api.attributes.post(newAttrData);
 ```
 
+- MUST NOT wrap Eden calls in helpers (`unwrap`, etc.): destructure `{ data, error }` and handle the error inline, right where the call is made (loader, action...)
+
 # Code rules
 
 - GUIDELINE correctness > completeness > speed. each phase must be thorough before proceeding
