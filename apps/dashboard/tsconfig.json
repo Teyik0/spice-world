@@ -9,5 +9,5 @@
       "@spice-world/server/*": ["../server/src/*"]
     }
   },
-  "include": ["src", "furin.config.ts", "furin-env.d.ts"]
+  "include": ["src", "tests", "furin.config.ts", "furin-env.d.ts"]
 }

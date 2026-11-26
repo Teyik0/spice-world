@@ -5,19 +5,23 @@
   "scripts": {
     "dev": "bun --hot src/server.ts",
     "build": "furin build --target bun",
-    "start": "NODE_ENV=production bun .furin/build/bun/server.js"
+    "start": "NODE_ENV=production bun .furin/build/bun/server.js",
+    "test": "bun --env-file=../server/.env test --concurrent --timeout=20000"
   },
   "dependencies": {
+    "@elysia/eden": "catalog:",
     "@spice-world/ui": "workspace:*",
     "@teyik0/furin": "0.9.0-alpha.2",
+    "better-auth": "catalog:",
     "elysia": "catalog:",
-    "evlog": "2.37.1",
+    "evlog": "catalog:",
     "exact-mirror": "1.2.8",
     "react": "catalog:",
     "react-dom": "catalog:",
     "typebox": "catalog:"
   },
   "devDependencies": {
+    "@spice-world/server": "workspace:*",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "bun-plugin-tailwind": "^0.1.2"

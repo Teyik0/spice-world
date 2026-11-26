@@ -10,7 +10,7 @@ import { collectionRouter } from "@spice-world/server/modules/collections";
 import { orderService } from "@spice-world/server/modules/orders/service";
 import { productsRouter } from "@spice-world/server/modules/products";
 import { corsPlugin } from "@spice-world/server/plugins/cors.plugin";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { Elysia } from "elysia";
 
 import { imageDeletionTable, imageTable } from "../drizzle/schema";
@@ -172,12 +172,14 @@ describe.concurrent("CDN cache", () => {
   test("repeats each purge once the reads started before the commit are done", async () => {
     const [product] = await createTestProducts(testDb, 1);
     expectDefined(product);
-    const { stale, all } = await recordPurges(() =>
+    const { result, stale, all } = await recordPurges(() =>
       products({ id: product.id }).patch(
         { description: "repeated purge" },
         { headers: { ...admin.headers, "x-version": product.version } },
       ),
     );
+    expect(result.status).toBe(200);
+    expect(stale).toEqual([`product:${product.id}`, "products"]);
     await Bun.sleep(5500);
     expect(all().stale).toEqual([...stale, ...stale].toSorted());
   });
@@ -196,10 +198,19 @@ describe.concurrent("CDN cache", () => {
     const queued = await db
       .select({ notBefore: imageDeletionTable.notBefore })
       .from(imageDeletionTable)
-      .where(eq(imageDeletionTable.fileKey, old.keyThumb));
-    expect(queued[0]?.notBefore.getTime()).toBeGreaterThan(
-      Date.now() + (MAX_CDN_AGE_MINUTES - 1) * 60_000,
-    );
+      .where(
+        inArray(imageDeletionTable.fileKey, [
+          old.keyThumb,
+          old.keyMedium,
+          old.keyLarge,
+        ]),
+      );
+    expect(queued).toHaveLength(3);
+    for (const { notBefore } of queued) {
+      expect(notBefore.getTime()).toBeGreaterThan(
+        Date.now() + (MAX_CDN_AGE_MINUTES - 1) * 60_000,
+      );
+    }
   });
 
   describe("purges after a product write", () => {

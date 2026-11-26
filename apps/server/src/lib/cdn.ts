@@ -31,6 +31,7 @@ export const MAX_CDN_AGE_MINUTES = (FRESH_SECONDS + STALE_SECONDS) / 60;
 const TAGS_PER_CALL = 16; // the documented cap of the REST API
 const ATTEMPTS = 3; // a rejected purge (429) leaves the cache unchanged: retry it
 const REPURGE_MS = 5000; // longer than a read that started before the commit
+const TIMEOUT_MS = 5000; // the write already committed: a stalled API must not hold its response
 
 const { VERCEL_PURGE_TOKEN, VERCEL_PROJECT_ID, VERCEL_TEAM_ID } = env;
 const configured = VERCEL_PURGE_TOKEN && VERCEL_PROJECT_ID && VERCEL_TEAM_ID;
@@ -63,7 +64,12 @@ async function send(
         authorization: `Bearer ${VERCEL_PURGE_TOKEN}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify({ tags }),
+      // A preview write must not purge production copies, and the other way round.
+      body: JSON.stringify({
+        tags,
+        target: env.NODE_ENV === "preview" ? "preview" : "production",
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     },
   ).catch((error: unknown) => error);
   if (response instanceof Response && response.ok) {
@@ -79,7 +85,7 @@ async function send(
     tags,
     error:
       response instanceof Response
-        ? `${response.status} ${await response.text()}`
+        ? `${response.status} ${await response.text().catch(() => "")}`
         : String(response),
   });
 }

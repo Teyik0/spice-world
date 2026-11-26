@@ -109,8 +109,8 @@ describe.concurrent("Stripe webhook", () => {
       send("checkout.session.expired", sessionOf(order)),
     );
     expect(result).toBe(200);
-    expect(stale).toHaveLength(2); // the listings and the ordered product page
-    expect(stale).toContain("products");
+    // the ordered product page and the listings
+    expect(stale).toEqual([expect.stringContaining("product:"), "products"]);
   });
 
   test("a duplicate completed event does not revert a refund", async () => {

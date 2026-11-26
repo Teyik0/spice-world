@@ -46,7 +46,7 @@ jobs:
             id=$(jq --arg n "$STAGE" --arg admin "$ADMIN_EMAIL" --arg q "'" '{ branch_create: { branch: { name: $n } }, start_anonymization: true,
                    masking_rules: map({ database_name: "neondb", schema_name: "public" } + .
                      | if .table_name == "user" and .column_name == "email" and $admin != ""
-                       then .masking_function = "CASE WHEN email = \($q)\($admin)\($q) THEN email ELSE \(.masking_function) END"
+                       then .masking_function = "CASE WHEN email = \($q)\($admin | gsub($q; $q + $q))\($q) THEN email ELSE \(.masking_function) END"
                        else . end) }' .github/neon/masking-rules.json \
               | neon -X POST "$NEON_API/branch_anonymized" -d @- | jq -r .branch.id)
           fi

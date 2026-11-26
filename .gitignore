@@ -62,3 +62,7 @@ yarn.lock
 **/tsconfig.tsbuildinfo
 # next-agents-md
 .next-docs/
+
+# Furin
+**/.furin/
+**/furin-env.d.ts

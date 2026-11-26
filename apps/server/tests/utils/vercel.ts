@@ -18,8 +18,25 @@ globalThis.fetch = Object.assign(
     if (!url.startsWith(EDGE_CACHE)) {
       return realFetch(input, init);
     }
+    // Rejects what the real API would reject, so a malformed call fails the tests.
+    const { searchParams } = new URL(url);
+    const auth = new Headers(init?.headers).get("authorization");
+    const { tags, target } = JSON.parse(String(init?.body)) as {
+      tags: string[];
+      target: string;
+    };
+    if (
+      init?.method !== "POST" ||
+      auth !== `Bearer ${Bun.env.VERCEL_PURGE_TOKEN}` ||
+      searchParams.get("projectIdOrName") !== Bun.env.VERCEL_PROJECT_ID ||
+      searchParams.get("teamId") !== Bun.env.VERCEL_TEAM_ID ||
+      !["production", "preview"].includes(target) ||
+      tags.length === 0 ||
+      tags.length > 16
+    ) {
+      return Promise.resolve(new Response(null, { status: 400 }));
+    }
     const store = purges.getStore();
-    const { tags } = JSON.parse(String(init?.body)) as { tags: string[] };
     if (store) {
       (url.includes("dangerously-delete") ? store.gone : store.stale).push(
         ...tags,

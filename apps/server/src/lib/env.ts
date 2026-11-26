@@ -25,7 +25,8 @@ const envSchema = t.Object({
   PORT: t.String({ default: "3001" }),
   WEB_ORIGINS: t.String({
     pattern: "^https?://[^/,\\s*]+(,https?://[^/,\\s*]+)*$",
-    default: "http://localhost:3000,http://localhost:3001",
+    default:
+      "http://localhost:3000,http://localhost:3001,http://localhost:5174",
   }),
   STRIPE_SECRET_KEY: t.String({ minLength: 1 }),
   STRIPE_WEBHOOK_SECRET: t.String({ minLength: 1 }),
