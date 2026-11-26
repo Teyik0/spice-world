@@ -1,0 +1,31 @@
+packages/ui/src/lib/utils.ts
+  s_16d2c973fcbc6a::t_034f666efe00e4 1
+packages/ui/src/styles/globals.css
+  s_16d2c973fcbc6a::t_4e8b3f0620feca 88,123
+  s_16d2c973fcbc6a::t_9faab8b300b8a1 1-87,89-122,124-133
+packages/ui/tsconfig.json
+  s_16d2c973fcbc6a::t_034f666efe00e4 1-11
+packages/ui/package.json
+  s_16d2c973fcbc6a::t_034f666efe00e4 1-27
+packages/ui/components.json
+  s_16d2c973fcbc6a::t_034f666efe00e4 1-23
+packages/ui/src/components/button.tsx
+  s_16d2c973fcbc6a::t_4e8b3f0620feca 2-3,7,15,52
+  s_16d2c973fcbc6a::t_eeca7261e46892 1,4-6,8-14,16-51,53-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32c2eebd6f5cc73735b15a3dd84bc8dfd62cdc75",
+  "prompts": {},
+  "sessions": {
+    "s_16d2c973fcbc6a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4885025e-8a2c-4097-82e2-9eb1a459b86c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
