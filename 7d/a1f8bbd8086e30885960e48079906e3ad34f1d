@@ -1,0 +1,24 @@
+sst.config.ts
+  s_8eba0906691e32::t_2511ffaa29613a 24-25,32,43-47
+apps/web/src/app/(login)/signin/actions.ts
+  s_8eba0906691e32::t_4999e4a7a8193d 5,27,30
+apps/web/src/app/(login)/signin/email-signin.tsx
+  s_8eba0906691e32::t_cabd8ca317c798 35,41,47
+  s_8eba0906691e32::t_4999e4a7a8193d 7,11,24-26,34,36-40,42-46,48,97,103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7da1f8bbd8086e30885960e48079906e3ad34f1d",
+  "prompts": {},
+  "sessions": {
+    "s_8eba0906691e32": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3560207c-3a96-47f8-88b0-0bdb37c47702",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
