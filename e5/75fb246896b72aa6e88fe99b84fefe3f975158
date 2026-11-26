@@ -1,0 +1,39 @@
+.github/workflows/ci.yaml
+  s_27edd262a31dfa::t_88fd683abd7a93 140-141
+vercel.json
+  s_824a6a29ca2a1c::t_d75608ee1dc216 1-3
+apps/server/load/load.test.ts
+  s_f28f220b21e455::t_69ef524696297a 220-221,230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e575fb246896b72aa6e88fe99b84fefe3f975158",
+  "prompts": {},
+  "sessions": {
+    "s_27edd262a31dfa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9484b7bf-517d-4986-847e-e154aab130dd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_824a6a29ca2a1c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16fe63b0-8ea4-468c-85f4-f2a4366b13af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_f28f220b21e455": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "22ec40b6-7f61-4090-b02b-975d882bd802",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
