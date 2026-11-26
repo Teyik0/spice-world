@@ -223,7 +223,7 @@ export const orderService = {
       return await moveStock(tx, id, 1);
     });
     if (restocked.length) {
-      purge({ stale: [tag.products, ...restocked.map(tag.product)] });
+      await purge({ stale: [tag.products, ...restocked.map(tag.product)] });
     }
   },
 

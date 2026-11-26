@@ -13,6 +13,7 @@ import {
   mockStripe,
   shippingAddress,
 } from "../utils/helper";
+import { recordPurges } from "../utils/vercel";
 
 describe.concurrent("Order checkout amounts and stock", () => {
   let stripe: Awaited<ReturnType<typeof mockStripe>>;
@@ -123,6 +124,15 @@ describe.concurrent("Order checkout amounts and stock", () => {
     // The webhook triggered by the expiration must not restore stock again
     await orderService.cancelPending(order.stripeSessionId, order.id);
     expect(await stockOf(variant.id)).toBe(10);
+  });
+
+  test("admin cancel refreshes the CDN copies showing the stock", async () => {
+    const variant = await createVariant(1000);
+    const { order } = await checkout([{ variantId: variant.id, quantity: 1 }]);
+    const { stale } = await recordPurges(() =>
+      orderService.updateStatus({ id: order.id, status: "CANCELLED" }),
+    );
+    expect(stale).toEqual([`product:${variant.productId}`, "products"]);
   });
 
   test("admin cancel of an already expired session does not expire it again", async () => {

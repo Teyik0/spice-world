@@ -1,3 +1,4 @@
+import "./utils/vercel"; // first: sets the Vercel env before any import of lib/env
 import { afterAll } from "bun:test";
 import { relative } from "node:path";
 

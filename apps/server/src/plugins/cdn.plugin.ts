@@ -1,6 +1,6 @@
 import { Elysia, ElysiaStatus } from "elysia";
 
-import { BYPASS_HEADER, tag } from "../lib/cdn";
+import { BYPASS_HEADER, CACHE_CONTROL, tag } from "../lib/cdn";
 
 type Tags = (
   query: Record<string, unknown>,
@@ -51,8 +51,7 @@ export const cdnPlugin = new Elysia({ name: "cdn" }).macro({
       if (!tags) {
         return;
       }
-      set.headers["cache-control"] =
-        "public, s-maxage=3600, stale-while-revalidate=86400";
+      set.headers["cache-control"] = CACHE_CONTROL;
       set.headers["vercel-cache-tag"] = tags.join(",");
       // keep the vary set by CORS: the cached body carries its allowed origin
       set.headers.vary = [set.headers.vary, BYPASS_HEADER]

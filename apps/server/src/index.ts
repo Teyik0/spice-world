@@ -1,14 +1,14 @@
 import "@spice-world/server/lib/env";
-import { cors } from "@elysia/cors";
 import { opentelemetry } from "@elysia/opentelemetry";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
-import { env, origins } from "@spice-world/server/lib/env";
+import { env } from "@spice-world/server/lib/env";
 import { attributeRouter } from "@spice-world/server/modules/attributes";
 import { categoryRouter } from "@spice-world/server/modules/categories";
 import { collectionRouter } from "@spice-world/server/modules/collections";
 import { ordersRouter } from "@spice-world/server/modules/orders";
 import { productsRouter } from "@spice-world/server/modules/products";
+import { corsPlugin } from "@spice-world/server/plugins/cors.plugin";
 import { Elysia, setFileTypeDetector } from "elysia";
 import { fileTypeFromBlob } from "file-type";
 
@@ -35,19 +35,7 @@ const app = new Elysia()
     }),
   )
   .use(loggerPlugin)
-  .use(
-    cors({
-      origin: origins,
-      methods: ["GET", "QUERY", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      credentials: true,
-      allowedHeaders: [
-        "Content-Type",
-        "Authorization",
-        "X-Version",
-        "X-Cache-Bypass",
-      ],
-    }),
-  )
+  .use(corsPlugin)
   .mount(auth.handler)
   .use(openApiConfig)
   .use(openApiLogin)

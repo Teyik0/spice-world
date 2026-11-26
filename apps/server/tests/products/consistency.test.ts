@@ -18,6 +18,7 @@ import {
   createTestCategory,
   createTestProducts,
   expectDefined,
+  expireCdnCopies,
   file,
   mockUtapi,
   randomLowerString,
@@ -205,6 +206,7 @@ describe.concurrent("products", () => {
     expect(data.images[0]?.keyLarge).not.toBe(first.keyLarge);
 
     const keys = [first, second].flatMap(imageKeys);
+    await expireCdnCopies(testDb, keys);
     await waitFor(async () => {
       await api.products({ id: Bun.randomUUIDv7() }).delete();
       expect(await queued(keys)).toBe(0);
@@ -225,6 +227,7 @@ describe.concurrent("products", () => {
       [1, 2].map(() => api.products({ id: product.id }).delete()),
     );
     expect(results.map(({ status }) => status).sort()).toEqual([200, 404]);
+    await expireCdnCopies(testDb, keys);
     await waitFor(async () => {
       await api.products({ id: Bun.randomUUIDv7() }).delete();
       expect(await queued(keys)).toBe(0);

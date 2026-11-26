@@ -88,6 +88,7 @@ export default $config({
       "STRIPE_SUCCESS_URL",
       "STRIPE_CANCEL_URL",
       "WEB_ORIGINS",
+      "VERCEL_PURGE_TOKEN", // Vercel token allowed to purge the server project's CDN cache
     ].map((name) => new sst.Secret(name));
     const spiceWorldServer = new vercel.Project("spice-world-server", {
       name: "spice-world-server",
@@ -134,6 +135,19 @@ export default $config({
           value: database.properties.prodConnectionString,
           targets: ["production"],
           sensitive: true,
+        },
+        // CDN purge through the REST API (apps/server/src/lib/cdn.ts)
+        {
+          key: "VERCEL_PROJECT_ID",
+          value: spiceWorldServer.id,
+          targets: ["production", "preview"], // a local write must not purge the deployed cache
+          sensitive: false,
+        },
+        {
+          key: "VERCEL_TEAM_ID",
+          value: "team_jKy3xXivkDGmI01SAr9Bo9d1",
+          targets: ["production", "preview"], // a local write must not purge the deployed cache
+          sensitive: false,
         },
         {
           key: "DATABASE_URL",

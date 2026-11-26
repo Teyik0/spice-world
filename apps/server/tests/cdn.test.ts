@@ -1,12 +1,19 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { treaty } from "@elysia/eden";
+import { MAX_CDN_AGE_MINUTES } from "@spice-world/server/lib/cdn";
+import { db } from "@spice-world/server/lib/db";
+import { origins } from "@spice-world/server/lib/env";
 import { attributeRouter } from "@spice-world/server/modules/attributes";
 import { categoryRouter } from "@spice-world/server/modules/categories";
 import { collectionRouter } from "@spice-world/server/modules/collections";
 import { orderService } from "@spice-world/server/modules/orders/service";
 import { productsRouter } from "@spice-world/server/modules/products";
+import { corsPlugin } from "@spice-world/server/plugins/cors.plugin";
+import { eq } from "drizzle-orm";
+import { Elysia } from "elysia";
 
+import { imageDeletionTable, imageTable } from "../drizzle/schema";
 import { testDb } from "./setup";
 import {
   createSessionCookie,
@@ -20,9 +27,9 @@ import {
   mockStripe,
   mockUtapi,
   randomLowerString,
-  recordPurges,
   shippingAddress,
 } from "./utils/helper";
+import { recordPurges } from "./utils/vercel";
 
 await mockUtapi();
 const stripe = await mockStripe();
@@ -143,6 +150,56 @@ describe.concurrent("CDN cache", () => {
         expect(response.headers.get("cache-control")).toBeNull();
       }
     });
+
+    test("with the CORS vary kept and no request header copied", async () => {
+      const app = new Elysia().use(corsPlugin).use(categoryRouter);
+      const response = await app.handle(
+        new Request("http://localhost/categories", {
+          headers: { origin: String(origins[0]), "x-private-name": "1" },
+        }),
+      );
+      expect(response.headers.get("vercel-cache-tag")).toBe("categories");
+      expect(response.headers.get("vary")).toBe("Origin, x-cache-bypass");
+      expect(response.headers.get("access-control-allow-origin")).toBe(
+        String(origins[0]),
+      );
+      expect(
+        response.headers.get("access-control-expose-headers") ?? "",
+      ).not.toContain("x-private-name");
+    });
+  });
+
+  test("repeats each purge once the reads started before the commit are done", async () => {
+    const [product] = await createTestProducts(testDb, 1);
+    expectDefined(product);
+    const { stale, all } = await recordPurges(() =>
+      products({ id: product.id }).patch(
+        { description: "repeated purge" },
+        { headers: { ...admin.headers, "x-version": product.version } },
+      ),
+    );
+    await Bun.sleep(5500);
+    expect(all().stale).toEqual([...stale, ...stale].toSorted());
+  });
+
+  test("keeps a replaced image file as long as a CDN copy can show it", async () => {
+    const { category } = await catalog();
+    const [old] = await db
+      .select()
+      .from(imageTable)
+      .where(eq(imageTable.id, category.imageId));
+    expectDefined(old);
+    const { result } = await recordPurges(() =>
+      categories({ id: category.id }).patch({ file: image }),
+    );
+    expect(result.status).toBe(200);
+    const queued = await db
+      .select({ notBefore: imageDeletionTable.notBefore })
+      .from(imageDeletionTable)
+      .where(eq(imageDeletionTable.fileKey, old.keyThumb));
+    expect(queued[0]?.notBefore.getTime()).toBeGreaterThan(
+      Date.now() + (MAX_CDN_AGE_MINUTES - 1) * 60_000,
+    );
   });
 
   describe("purges after a product write", () => {
@@ -277,6 +334,26 @@ describe.concurrent("CDN cache", () => {
         `category:${category.id}`,
         "products",
       ]);
+    });
+
+    test("a change without a new name leaves the product listings alone", async () => {
+      const { category } = await catalog();
+      const { result, stale, gone } = await recordPurges(() =>
+        categories({ id: category.id }).patch({
+          attributes: {
+            create: [
+              { name: `origin ${randomLowerString(6)}`, values: ["inde"] },
+            ],
+          },
+        }),
+      );
+      expect(result.status).toBe(200);
+      expect(stale).toEqual([
+        "attributes",
+        "categories",
+        `category:${category.id}`,
+      ]);
+      expect(gone).toEqual([]);
     });
 
     test("a deleted attribute drops its page", async () => {

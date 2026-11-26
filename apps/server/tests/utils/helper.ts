@@ -1,12 +1,11 @@
 import { expect, spyOn } from "bun:test";
-import { AsyncLocalStorage } from "node:async_hooks";
 import { basename } from "node:path";
 
 import type { treaty } from "@elysia/eden";
 import type * as OrderModel from "@spice-world/server/modules/orders/model";
 import type { productsRouter } from "@spice-world/server/modules/products";
 import type * as ProductModel from "@spice-world/server/modules/products/model";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import type { UnwrapSchema } from "elysia";
 import type { UploadedFileData, UploadFileResult } from "uploadthing/types";
 
@@ -15,6 +14,7 @@ import {
   attributeValueTable,
   attributeValueToProductVariantTable,
   categoryTable,
+  imageDeletionTable,
   imageTable,
   orderItemTable,
   orderTable,
@@ -597,35 +597,11 @@ export const runBlocked = async <T>(
 };
 
 /**
- * Vercel runtime (third party) stand-in: the request context `@vercel/functions` reads.
- * Records the purges made while `call` runs, isolated per call for concurrent tests.
+ * Makes the queued deletion of these files due now, as if every CDN copy that could show
+ * them had expired (a replaced or deleted image waits MAX_CDN_AGE_MINUTES).
  */
-const purges = new AsyncLocalStorage<{ stale: string[]; gone: string[] }>();
-Object.assign(globalThis, {
-  [Symbol.for("@vercel/request-context")]: {
-    get: () => {
-      const store = purges.getStore();
-      return (
-        store && {
-          waitUntil: () => undefined,
-          purge: {
-            invalidateByTag: (tags: string | string[]) => {
-              store.stale.push(...[tags].flat());
-              return Promise.resolve();
-            },
-            dangerouslyDeleteByTag: (tags: string | string[]) => {
-              store.gone.push(...[tags].flat());
-              return Promise.resolve();
-            },
-          },
-        }
-      );
-    },
-  },
-});
-
-export const recordPurges = async <T>(call: () => Promise<T>) => {
-  const store = { stale: [] as string[], gone: [] as string[] };
-  const result = await purges.run(store, call);
-  return { result, stale: store.stale.toSorted(), gone: store.gone.toSorted() };
-};
+export const expireCdnCopies = ({ db }: TestDatabase, keys: string[]) =>
+  db
+    .update(imageDeletionTable)
+    .set({ notBefore: sql`statement_timestamp()` })
+    .where(inArray(imageDeletionTable.fileKey, keys));

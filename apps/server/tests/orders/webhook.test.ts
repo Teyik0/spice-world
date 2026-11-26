@@ -10,6 +10,7 @@ import {
   createTestUser,
   expectDefined,
 } from "../utils/helper";
+import { recordPurges } from "../utils/vercel";
 
 describe.concurrent("Stripe webhook", () => {
   let userId: string;
@@ -100,6 +101,16 @@ describe.concurrent("Stripe webhook", () => {
     expect(await send(type, sessionOf(paid))).toBe(200);
     await expectOrder(pending.id, { status: "CANCELLED" });
     await expectOrder(paid.id, { status: "PAID" });
+  });
+
+  test("an expired checkout refreshes the CDN copies showing its stock", async () => {
+    const order = await createOrder();
+    const { result, stale } = await recordPurges(() =>
+      send("checkout.session.expired", sessionOf(order)),
+    );
+    expect(result).toBe(200);
+    expect(stale).toHaveLength(2); // the listings and the ordered product page
+    expect(stale).toContain("products");
   });
 
   test("a duplicate completed event does not revert a refund", async () => {

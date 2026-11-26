@@ -1,4 +1,8 @@
-import { purgeOnSuccess, tag } from "@spice-world/server/lib/cdn";
+import {
+  MAX_CDN_AGE_MINUTES,
+  purgeOnSuccess,
+  tag,
+} from "@spice-world/server/lib/cdn";
 import { db } from "@spice-world/server/lib/db";
 import type { MultiSizeUploadData } from "@spice-world/server/lib/images";
 import {
@@ -338,11 +342,15 @@ export const categoryService = {
 
         if (imageUpdate) {
           await claimUploads(tx, [newFile as MultiSizeUploadData]);
-          await enqueueImageCheck(tx, [
-            current.image.keyThumb,
-            current.image.keyMedium,
-            current.image.keyLarge,
-          ]);
+          await enqueueImageCheck(
+            tx,
+            [
+              current.image.keyThumb,
+              current.image.keyMedium,
+              current.image.keyLarge,
+            ],
+            MAX_CDN_AGE_MINUTES, // a cached copy may still show the image
+          );
         }
 
         const renamed = name !== undefined && name !== current.name;
@@ -507,6 +515,7 @@ export const categoryService = {
           image.keyMedium,
           image.keyLarge,
         ]),
+        MAX_CDN_AGE_MINUTES, // a cached copy may still show the image
       );
 
       return { deletedCategory };

@@ -1,4 +1,8 @@
-import { purgeOnSuccess, tag } from "@spice-world/server/lib/cdn";
+import {
+  MAX_CDN_AGE_MINUTES,
+  purgeOnSuccess,
+  tag,
+} from "@spice-world/server/lib/cdn";
 import { db } from "@spice-world/server/lib/db";
 import type { MultiSizeUploadData } from "@spice-world/server/lib/images";
 import {
@@ -602,6 +606,7 @@ export const productService = {
             image.keyMedium,
             image.keyLarge,
           ]),
+        MAX_CDN_AGE_MINUTES, // a cached copy may still show the image
       );
       if (deletedImages.length) {
         await tx
@@ -766,6 +771,7 @@ export const productService = {
           image.keyMedium,
           image.keyLarge,
         ]),
+        MAX_CDN_AGE_MINUTES, // a cached copy may still show the image
       );
       return status("OK");
     });
