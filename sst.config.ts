@@ -19,34 +19,13 @@ export default $config({
     };
   },
   async run() {
-    // PR stage (pr-<number>): a Neon branch forked from the seeded "preview" branch + a Vercel preview deployment of the PR branch.
+    // PR stage (pr-<number>): a Vercel preview deployment of the PR branch, on the anonymized Neon branch created by preview.yaml.
     if ($app.stage.startsWith("pr-")) {
-      const projectId = process.env.NEON_PROJECT_ID as string;
-      const prBranch = new neon.Branch("spice-world-db-pr", {
-        projectId,
-        name: $app.stage,
-        parentId: process.env.NEON_PREVIEW_BRANCH_ID as string,
-      });
-      const prEndpoint = new neon.Endpoint("spice-world-db-pr-endpoint", {
-        projectId,
-        branchId: prBranch.id,
-        type: "read_write",
-      });
-      const databaseUrl = prEndpoint.host.apply((host) => {
-        const url = new URL(process.env.PREVIEW_DATABASE_URL as string);
-        url.host = host;
-        return url.toString();
-      });
-      new sst.Linkable("PrDatabase", { properties: { url: databaseUrl } });
-      // CI first pass: DB only, so migrations run before the build. Dropping the deployment here also forces a fresh one per push.
-      if (process.env.PR_DB_ONLY) {
-        return {};
-      }
       const deployment = new vercel.Deployment("spice-world-server-pr", {
         projectId: process.env.VERCEL_SERVER_PROJECT_ID as string,
-        ref: process.env.PR_BRANCH as string,
+        ref: process.env.PR_SHA as string, // a new commit replaces the deployment
         production: false,
-        environment: { DATABASE_URL: databaseUrl },
+        environment: { DATABASE_URL: process.env.PR_DATABASE_URL as string },
         deleteOnDestroy: true,
       });
       return { url: deployment.url };
@@ -68,27 +47,12 @@ export default $config({
       branchId: devBranch.id,
       type: "read_write",
     });
-    // Seeded parent of every PR branch (see apps/server/scripts/seed.ts).
-    const previewBranch = new neon.Branch("spice-world-db-preview", {
-      projectId: neonProject.id,
-      name: "preview",
-      parentId: neonProject.defaultBranchId,
-    });
-    const previewEndpoint = new neon.Endpoint(
-      "spice-world-db-preview-endpoint",
-      {
-        projectId: neonProject.id,
-        branchId: previewBranch.id,
-        type: "read_write",
-      },
-    );
     const connectionString = (host: $util.Input<string>) =>
       $interpolate`postgresql://${neonProject.databaseUser}:${neonProject.databasePassword}@${host}/${neonProject.databaseName}?sslmode=require`;
     const database = new sst.Linkable("Database", {
       properties: {
         prodConnectionString: neonProject.connectionUri,
         devConnectionString: connectionString(devEndpoint.host),
-        previewConnectionString: connectionString(previewEndpoint.host),
       },
     });
     const serverSecrets = [
@@ -133,13 +97,7 @@ export default $config({
         {
           key: "DATABASE_URL",
           value: database.properties.devConnectionString,
-          targets: ["development"],
-          sensitive: true,
-        },
-        {
-          key: "DATABASE_URL",
-          value: database.properties.previewConnectionString,
-          targets: ["preview"],
+          targets: ["development", "preview"], // PR deployments override it with their own branch
           sensitive: true,
         },
       ],
@@ -164,10 +122,10 @@ export default $config({
     // Values to copy into GitHub (vars/secrets) for the preview workflow.
     return {
       NEON_PROJECT_ID: neonProject.id,
-      NEON_PREVIEW_BRANCH_ID: previewBranch.id,
       VERCEL_SERVER_PROJECT_ID: spiceWorldServer.id,
+      // Credentials template for PR databases (preview.yaml swaps in their host).
       PREVIEW_DATABASE_URL: $util.secret(
-        database.properties.previewConnectionString,
+        database.properties.devConnectionString,
       ),
     };
   },

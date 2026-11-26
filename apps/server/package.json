@@ -9,10 +9,9 @@
     "dev": "PORT=3001 bun run --bun --watch --cpu-prof --cpu-prof-name '@spice-world/server' --inspect --title '@spice-world/server' src/index.ts",
     "stripe": "stripe listen --events checkout.session.completed,checkout.session.async_payment_failed,checkout.session.expired --forward-to localhost:3001/api/auth/stripe/webhook",
     "test": "bun test --randomize --parallel=4 --concurrent --bail --timeout=20000",
-    "build": "bun build src/index.ts --compile --target=bun --format=esm --bytecode --minify-whitespace --minify-syntax --sourcemap --outfile=dist/server",
+    "build": "bun build src/index.ts --compile --target=bun --format=esm --bytecode --minify-whitespace --minify-syntax --sourcemap --define 'process.env.NODE_ENV=process.env.NODE_ENV' --outfile=dist/server",
     "start": "NODE_ENV=production PORT=3001 ./dist/server",
-    "db:migrate": "drizzle-kit migrate",
-    "db:seed": "bun run scripts/seed.ts"
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.7.28",
