@@ -217,8 +217,8 @@ describe("Load Testing", () => {
   ];
 
   beforeAll(async () => {
-    if (Bun.env.NODE_ENV === "production") {
-      throw new Error("You can't run tests in production");
+    if (Bun.env.NODE_ENV === "production" && !Bun.env.ALLOW_LOAD_TEST) {
+      throw new Error("Set ALLOW_LOAD_TEST=1 to benchmark production build");
     }
     if (!Bun.env.DATABASE_URL) {
       throw new Error("DATABASE_URL should be set");
@@ -227,7 +227,7 @@ describe("Load Testing", () => {
       () => null,
     );
     if (!res?.ok) {
-      throw new Error("Server not reachable on :3001 — run `bun dev` first");
+      throw new Error("Server not reachable on :3001");
     }
   });
 

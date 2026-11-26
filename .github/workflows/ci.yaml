@@ -137,6 +137,8 @@ jobs:
             path: apps/server
           - name: web
             path: apps/web
+          - name: storefront
+            path: apps/storefront
 
     steps:
       - uses: actions/checkout@v6
