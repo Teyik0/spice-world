@@ -2,9 +2,8 @@
 
 import { invalidateSessionCache } from "@spice-world/web/lib/dal";
 import { standardSchema } from "@spice-world/web/lib/schema";
-import { actionClient, authClient } from "@spice-world/web/lib/utils";
+import { actionClient } from "@spice-world/web/lib/utils";
 import { t } from "elysia";
-import { ResponseCookies } from "next/dist/server/web/spec-extension/cookies";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -22,34 +21,13 @@ const signinSchema = t.Object({
     format: "email",
     error: "Please enter a valid email address",
   }),
-  password: t.String({ minLength: 3 }),
   rememberMe: t.Boolean({ default: false }),
 });
 
+// Runs after the browser signed in through the /api proxy (see email-signin.tsx).
 export const signInAction = actionClient
   .inputSchema(standardSchema(signinSchema))
-  .action(async ({ parsedInput: { email, password, rememberMe } }) => {
-    const response = await authClient.signIn.email({
-      email,
-      password,
-      rememberMe,
-      // Signed in server side: hand the session cookies over to the browser.
-      fetchOptions: {
-        onResponse: async (ctx) => {
-          const store = await cookies();
-          for (const cookie of new ResponseCookies(
-            ctx.response.headers,
-          ).getAll()) {
-            store.set(cookie);
-          }
-        },
-      },
-    });
-
-    if (!response.data) {
-      throw new Error("Invalid email or password. Please try again.");
-    }
-
+  .action(async ({ parsedInput: { email, rememberMe } }) => {
     await setSignInCookie(rememberMe, rememberMe ? email : "");
     await invalidateSessionCache();
 

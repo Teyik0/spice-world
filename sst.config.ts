@@ -21,13 +21,15 @@ export default $config({
   async run() {
     // PR stage (pr-<number>): Vercel preview deployments of the PR branch, on the anonymized Neon branch created by preview.yaml.
     if ($app.stage.startsWith("pr-")) {
+      // Stable web URL, known before deploying: the server must trust it as an origin.
+      const webDomain = `spice-world-web-${$app.stage}-teyik0-team.vercel.app`;
       const server = new vercel.Deployment("spice-world-server-pr", {
         projectId: process.env.VERCEL_SERVER_PROJECT_ID as string,
         ref: process.env.PR_SHA as string, // a new commit replaces the deployment
         production: false,
         environment: {
           DATABASE_URL: process.env.PR_DATABASE_URL as string,
-          WEB_ORIGINS: "https://spice-world-web-*-teyik0-team.vercel.app", // the web preview URL isn't known yet
+          WEB_ORIGINS: `https://${webDomain}`,
         },
         deleteOnDestroy: true,
       });
@@ -38,7 +40,11 @@ export default $config({
         environment: { API_URL: $interpolate`https://${server.url}` },
         deleteOnDestroy: true,
       });
-      return { server: server.url, web: web.url };
+      new vercel.Alias("spice-world-web-pr-alias", {
+        alias: webDomain,
+        deploymentId: web.id,
+      });
+      return { server: server.url, web: webDomain };
     }
     const neonProject = new neon.Project("spice-world-db", {
       name: "spice-world-db",

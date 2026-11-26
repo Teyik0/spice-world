@@ -4,9 +4,11 @@ import { Button } from "@spice-world/web/components/ui/button";
 import { Checkbox } from "@spice-world/web/components/ui/checkbox";
 import { Input } from "@spice-world/web/components/ui/input";
 import { Label } from "@spice-world/web/components/ui/label";
+import { authClient } from "@spice-world/web/lib/utils";
 import { Loader2 } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
 import Link from "next/link";
+import { useState, useTransition } from "react";
 
 import { signInAction } from "./actions";
 
@@ -19,7 +21,9 @@ export const EmailSignIn = ({
   rememberMe = true,
   lastEmail = "",
 }: EmailSignInProps) => {
-  const { execute, result, isExecuting } = useAction(signInAction);
+  const { executeAsync, result } = useAction(signInAction);
+  const [authError, setAuthError] = useState("");
+  const [isExecuting, startTransition] = useTransition();
 
   return (
     <form
@@ -27,10 +31,21 @@ export const EmailSignIn = ({
       onSubmit={(e) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
-        execute({
-          email: formData.get("email") as string,
-          password: formData.get("password") as string,
-          rememberMe: formData.get("rememberMe") === "on",
+        const email = formData.get("email") as string;
+        const remember = formData.get("rememberMe") === "on";
+        startTransition(async () => {
+          // In the browser, so the session cookie lands on this origin.
+          const { error } = await authClient.signIn.email({
+            email,
+            password: formData.get("password") as string,
+            rememberMe: remember,
+          });
+          setAuthError(
+            error ? "Invalid email or password. Please try again." : "",
+          );
+          if (!error) {
+            await executeAsync({ email, rememberMe: remember });
+          }
         });
       }}
     >
@@ -79,13 +94,13 @@ export const EmailSignIn = ({
         <Label htmlFor="rememberMe">Remember me</Label>
       </div>
 
-      {result.serverError ? (
+      {authError || result.serverError ? (
         <div
           aria-live="polite"
           className="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200"
           role="alert"
         >
-          {result.serverError}
+          {authError || result.serverError}
         </div>
       ) : null}
       {result.validationErrors ? (
