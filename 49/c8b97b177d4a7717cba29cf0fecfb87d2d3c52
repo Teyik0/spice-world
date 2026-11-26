@@ -1,0 +1,80 @@
+packages/ui/src/components/sign-in-form.tsx
+  s_16d2c973fcbc6a::t_0cdf90a1f86061 7-12,35,39
+apps/dashboard/src/app/(login)/reset-password/page.tsx
+  s_16d2c973fcbc6a::t_74cec5458acedc 5-7,21-27,34-37,43-46
+  s_16d2c973fcbc6a::t_c3e94ddd2dbc5d 1-4,8-20,28-33,38-42,47-50
+apps/dashboard/src/app/(login)/forgot-password/page.tsx
+  s_16d2c973fcbc6a::t_74cec5458acedc 4-6,22-24,27-30
+  s_16d2c973fcbc6a::t_c3e94ddd2dbc5d 1-3,7-21,25-26,31-34
+apps/dashboard/src/app/(login)/signin/page.tsx
+  s_16d2c973fcbc6a::t_c3e94ddd2dbc5d 1-6,10-36,40-55,57-62,68-73,75-82
+  s_16d2c973fcbc6a::t_74cec5458acedc 7-9,37-39,63-67,74
+  s_16d2c973fcbc6a::t_87f93fa9b0bf88 56
+packages/ui/src/components/form.tsx
+  s_16d2c973fcbc6a::t_0cdf90a1f86061 5,80-92
+  s_16d2c973fcbc6a::t_3318edaca37ce3 93-94
+apps/dashboard/biome.jsonc
+  s_16d2c973fcbc6a::t_c3e94ddd2dbc5d 1-7,9
+  s_16d2c973fcbc6a::t_74cec5458acedc 8
+apps/dashboard/src/components/auth-heading.tsx
+  s_16d2c973fcbc6a::t_74cec5458acedc 15
+  s_16d2c973fcbc6a::t_c3e94ddd2dbc5d 1-14,16-18
+apps/dashboard/src/app/(dashboard)/layout.tsx
+  s_16d2c973fcbc6a::t_74cec5458acedc 3
+  s_16d2c973fcbc6a::t_0449657df359c9 4
+packages/ui/src/components/card.tsx
+  s_16d2c973fcbc6a::t_74cec5458acedc 1-2,12-13,15-16,19,27,29,32,40,42,45,51,55,63,65,68,75,78,85-86,88,91,102
+  s_16d2c973fcbc6a::t_6e3de686bec9dc 3-11,14,17-18,20-26,28,30-31,33-39,41,43-44,46-50,52-54,56-62,64,66-67,69-74,76-77,79-84,87,89-90,92-101
+packages/ui/src/components/forgot-password-form.tsx
+  s_16d2c973fcbc6a::t_0cdf90a1f86061 1-13,18-65
+  s_16d2c973fcbc6a::t_74cec5458acedc 14-17
+AGENTS.md
+  s_16d2c973fcbc6a::t_16cad75fb290c3 97
+  s_16d2c973fcbc6a::t_302cb32861cace 79
+  s_e78c08b0582e10::t_55d349770b9cb1 26,67-68,94
+apps/server/.env.example
+  s_16d2c973fcbc6a::t_6e3de686bec9dc 13
+apps/dashboard/src/app/(login)/layout.tsx
+  s_f50508cdf12311::t_16d8c6c43486db 9,13-14,16,18-21
+  s_f50508cdf12311::t_b18bb279e1344d 11-12,15,17
+  s_16d2c973fcbc6a::t_c3e94ddd2dbc5d 1-8,10,22-33
+packages/ui/src/components/reset-password-form.tsx
+  s_16d2c973fcbc6a::t_74cec5458acedc 15-18
+  s_16d2c973fcbc6a::t_0cdf90a1f86061 1-14,19-80
+packages/ui/src/components/google-sign-in-form.tsx
+  s_16d2c973fcbc6a::t_0cdf90a1f86061 1-46
+bun.lock
+  s_16d2c973fcbc6a::t_6758045f126195 156-157,166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "49c8b97b177d4a7717cba29cf0fecfb87d2d3c52",
+  "prompts": {},
+  "sessions": {
+    "s_16d2c973fcbc6a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4885025e-8a2c-4097-82e2-9eb1a459b86c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_e78c08b0582e10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e9f97f1-e43d-4002-8011-26357466759b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_f50508cdf12311": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1aeb2e8d-799c-48eb-8ab9-27f7929ebe54",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
