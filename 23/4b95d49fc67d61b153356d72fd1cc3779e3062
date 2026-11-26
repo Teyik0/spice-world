@@ -1,0 +1,71 @@
+apps/server/src/modules/products/index.ts
+  s_23394d8d7569fc::t_8d2cc794516ccb 50,53-54,56
+  s_4140c89cd56374::t_7b6914fa2c543e 4,31,95-98,164-166,170-171,183-186
+  s_23394d8d7569fc::t_4d28b6453a4531 49,51-52,55,57
+apps/server/tests/products/get.test.ts
+  s_23394d8d7569fc::t_62ea51d10d961a 398-400
+  s_23394d8d7569fc::t_665092906e2b70 382-384,386-390,438-442,448-455,459-466,469-472,474-475,479
+  s_23394d8d7569fc::t_0802d11b8a4f26 6,18,372,374-381,385,391-397,401-408,410-435,437,447,480-482,484-486,488-489,491-492,497-500,502,504-505,507-510
+  s_23394d8d7569fc::t_8d2cc794516ccb 373,409,436,443-446,457-458,468,473,477-478,483,487,490,493-496,501,503,506
+  s_358623c01bba48::t_35f8fb62418367 456,467,476
+  s_358623c01bba48::t_55011f3038687f 511
+apps/server/src/modules/products/model.ts
+  s_23394d8d7569fc::t_8d2cc794516ccb 57,59,62-66,73-78,80,83,222
+  s_23394d8d7569fc::t_4d28b6453a4531 7-8,26,34,81-82
+  s_358623c01bba48::t_35f8fb62418367 67-72
+  s_23394d8d7569fc::t_8e94ae30f60605 79
+  s_23394d8d7569fc::t_ca8af77ec0ac2a 58,60-61
+apps/server/src/modules/products/service.ts
+  s_23394d8d7569fc::t_8d2cc794516ccb 372,460,462,465-470,472-479,481,489,496
+  s_23394d8d7569fc::t_4d28b6453a4531 20,22,41,107-117,120-125,142-148,150-170,352-353,376,400,492-495,499
+  s_23394d8d7569fc::t_8e94ae30f60605 464,482-485,487-488,500-504
+  s_23394d8d7569fc::t_551ec5eb505cf9 119,490,497
+  s_06e0e89174758d::t_8ac969e427f1a6 126-141,149,461,463,471,480,486
+  s_23394d8d7569fc::t_0802d11b8a4f26 118
+  s_358623c01bba48::t_35f8fb62418367 491,498
+  s_358623c01bba48::t_7753f2394ff206 505-506
+apps/server/package.json
+  s_4140c89cd56374::t_749866d4cc5789 25
+apps/server/tests/products/bulk.test.ts
+  s_4140c89cd56374::t_35c7ab282742d0 10,22-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "234b95d49fc67d61b153356d72fd1cc3779e3062",
+  "prompts": {},
+  "sessions": {
+    "s_06e0e89174758d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c7d55f7-6808-4dbf-adaf-a9fb39d01d5e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_23394d8d7569fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e926edd3-5f41-423a-8309-5d0f81890675",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_358623c01bba48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64836392-5233-4f0b-a7e5-1f0f2f15c7bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_4140c89cd56374": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d25a8d6-b57c-4c81-9bd7-8aaf2289d954",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
