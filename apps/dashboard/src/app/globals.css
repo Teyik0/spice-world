@@ -1,2 +1,7 @@
 @import "@spice-world/ui/globals.css";
 @source "../";
+
+@theme {
+  --font-sans: Geist, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: Geist Mono, ui-monospace, SFMono-Regular, Menlo, monospace;
+}
