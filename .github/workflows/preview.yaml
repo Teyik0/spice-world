@@ -43,10 +43,10 @@ jobs:
           neon() { curl -sSf -H "Authorization: Bearer $NEON_API_KEY" -H 'Content-Type: application/json' "$@"; }
           id=$(neon "$NEON_API/branches" | jq -r --arg n "$STAGE" '.branches[] | select(.name == $n) | .id')
           if [ -z "$id" ]; then
-            id=$(jq --arg n "$STAGE" --arg admin "$ADMIN_EMAIL" '{ branch_create: { branch: { name: $n } }, start_anonymization: true,
+            id=$(jq --arg n "$STAGE" --arg admin "$ADMIN_EMAIL" --arg q "'" '{ branch_create: { branch: { name: $n } }, start_anonymization: true,
                    masking_rules: map({ database_name: "neondb", schema_name: "public" } + .
                      | if .table_name == "user" and .column_name == "email" and $admin != ""
-                       then .masking_function = "CASE WHEN email = '\($admin)' THEN email ELSE \(.masking_function) END"
+                       then .masking_function = "CASE WHEN email = \($q)\($admin)\($q) THEN email ELSE \(.masking_function) END"
                        else . end) }' .github/neon/masking-rules.json \
               | neon -X POST "$NEON_API/branch_anonymized" -d @- | jq -r .branch.id)
           fi
