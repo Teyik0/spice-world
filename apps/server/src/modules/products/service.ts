@@ -17,7 +17,9 @@ import {
   EmptyFilter,
   eq,
   getColumns,
+  gt,
   inArray,
+  lt,
   sql,
 } from "drizzle-orm";
 import { ElysiaStatus, problem, status } from "elysia";
@@ -36,6 +38,7 @@ import { categoryService } from "../categories/service";
 import type { ExpectedVersion, uuidGuard } from "../shared";
 import { uploadFileErrStatus } from "../shared";
 import type * as ProductModel from "./model";
+import { LOW_STOCK_THRESHOLD } from "./model";
 import { hasProductChanges } from "./validators/has-changes";
 import { validateImages } from "./validators/images";
 import { validatePublish } from "./validators/publish";
@@ -100,6 +103,70 @@ const productPurge = (ids: string[], pagesMayMove: boolean) => {
     : { stale: [tag.products, ...pages] };
 };
 type ProductKey = { id: string } | { slug: string };
+
+/** Price range over in-stock variants and total stock, joined laterally per product. */
+const variantStats = () => {
+  const { price, stock, productId } = productVariantTable;
+  return db
+    .select({
+      priceMin: sql<
+        number | null
+      >`min(${price}) filter (where ${stock} > 0)`.as("priceMin"),
+      priceMax: sql<
+        number | null
+      >`max(${price}) filter (where ${stock} > 0)`.as("priceMax"),
+      totalStock: sql<number>`coalesce(sum(${stock}), 0)::int`.as("totalStock"),
+      variantCount: sql<number>`count(*)::int`.as("variantCount"),
+    })
+    .from(productVariantTable)
+    .where(eq(productId, productTable.id))
+    .as("stats");
+};
+
+/**
+ * Total stock of every product in one grouped pass, joined on `productId`. Counting all
+ * products this way avoids a lateral lookup per product (~80 ms against ~540 ms at 100k).
+ */
+const stockTotals = () => {
+  const { stock, productId } = productVariantTable;
+  return db
+    .select({
+      productId,
+      totalStock: sql<number>`coalesce(sum(${stock}), 0)::int`.as("totalStock"),
+    })
+    .from(productVariantTable)
+    .groupBy(productId)
+    .as("stats");
+};
+
+const listingFilters = (
+  {
+    name,
+    status: productStatus,
+    categories,
+    stock,
+  }: Pick<ProductModel.getQuery, "name" | "status" | "categories" | "stock">,
+  stats: Pick<ReturnType<typeof variantStats>, "totalStock">,
+) =>
+  and(
+    productStatus && eq(productTable.status, productStatus),
+    name
+      ? sql`to_tsvector('french', ${productTable.name}) @@ plainto_tsquery('french', ${name})`
+      : undefined,
+    categories?.length
+      ? inArray(
+          productTable.categoryId,
+          db
+            .select({ id: categoryTable.id })
+            .from(categoryTable)
+            .where(inArray(categoryTable.name, categories)),
+        )
+      : undefined,
+    stock === "out" ? eq(stats.totalStock, 0) : undefined,
+    stock === "low"
+      ? and(gt(stats.totalStock, 0), lt(stats.totalStock, LOW_STOCK_THRESHOLD))
+      : undefined,
+  );
 
 async function find(
   {
@@ -282,33 +349,8 @@ export const productService = {
   }),
 
   async get(query: ProductModel.getQuery) {
-    const {
-      name,
-      skip,
-      take,
-      status: productStatus,
-      categories,
-      collection,
-      sortBy,
-      sortDir,
-    } = query;
-
-    const { price, stock, productId } = productVariantTable;
-    const stats = db
-      .select({
-        priceMin: sql<
-          number | null
-        >`min(${price}) filter (where ${stock} > 0)`.as("priceMin"),
-        priceMax: sql<
-          number | null
-        >`max(${price}) filter (where ${stock} > 0)`.as("priceMax"),
-        totalStock: sql<number>`coalesce(sum(${stock}), 0)::int`.as(
-          "totalStock",
-        ),
-      })
-      .from(productVariantTable)
-      .where(eq(productId, productTable.id))
-      .as("stats");
+    const { skip, take, collection, sortBy, sortDir } = query;
+    const stats = variantStats();
     const thumbnail = db
       .select({ urlThumb: imageTable.urlThumb })
       .from(imageTable)
@@ -327,26 +369,11 @@ export const productService = {
         priceMin: stats.priceMin,
         priceMax: stats.priceMax,
         totalStock: stats.totalStock,
+        variantCount: stats.variantCount,
       })
       .from(productTable)
       .crossJoinLateral(stats)
-      .where(
-        and(
-          productStatus && eq(productTable.status, productStatus),
-          name
-            ? sql`to_tsvector('french', ${productTable.name}) @@ plainto_tsquery('french', ${name})`
-            : undefined,
-          categories?.length
-            ? inArray(
-                productTable.categoryId,
-                db
-                  .select({ id: categoryTable.id })
-                  .from(categoryTable)
-                  .where(inArray(categoryTable.name, categories)),
-              )
-            : undefined,
-        ),
-      )
+      .where(listingFilters(query, stats))
       .$dynamic();
 
     if (collection) {
@@ -370,6 +397,7 @@ export const productService = {
       updatedAt: productTable.updatedAt,
       priceMin: stats.priceMin,
       priceMax: stats.priceMax,
+      totalStock: stats.totalStock,
       position: collectionProductTable.position,
     };
     // A collection is listed in its curated order unless a sort is requested.
@@ -427,6 +455,53 @@ export const productService = {
       productTable,
       productStatus && eq(productTable.status, productStatus),
     );
+  },
+
+  async facets(query: ProductModel.facetsQuery) {
+    const stats = stockTotals();
+    const { totalStock } = stats;
+    const withStats = eq(stats.productId, productTable.id);
+    const [byStatus, [byStock], byCategory] = await Promise.all([
+      db
+        .select({
+          status: productTable.status,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(productTable)
+        .innerJoin(stats, withStats)
+        .where(listingFilters({ ...query, status: undefined }, stats))
+        .groupBy(productTable.status),
+      db
+        .select({
+          low: sql<number>`(count(*) filter (where ${totalStock} > 0 and ${totalStock} < ${LOW_STOCK_THRESHOLD}))::int`,
+          out: sql<number>`(count(*) filter (where ${totalStock} = 0))::int`,
+        })
+        .from(productTable)
+        .innerJoin(stats, withStats)
+        .where(listingFilters({ ...query, stock: undefined }, stats)),
+      db
+        .select({ name: categoryTable.name, count: sql<number>`count(*)::int` })
+        .from(productTable)
+        .innerJoin(categoryTable, eq(productTable.categoryId, categoryTable.id))
+        .innerJoin(stats, withStats)
+        .where(listingFilters({ ...query, categories: undefined }, stats))
+        .groupBy(categoryTable.name),
+    ]);
+    const counts: ProductModel.facets["status"] = {
+      ALL: 0,
+      PUBLISHED: 0,
+      DRAFT: 0,
+      ARCHIVED: 0,
+    };
+    for (const row of byStatus) {
+      counts[row.status] = row.count;
+      counts.ALL += row.count;
+    }
+    return {
+      status: counts,
+      stock: byStock ?? { low: 0, out: 0 },
+      category: Object.fromEntries(byCategory.map((c) => [c.name, c.count])),
+    };
   },
 
   async post({

@@ -4,6 +4,8 @@ import { t } from "elysia";
 import { imageResult, nameLowerPattern, uuid } from "../shared";
 
 export const MAX_IMAGES_PER_PRODUCT = 5;
+/** A product with stock above 0 and below this total is low on stock. */
+export const LOW_STOCK_THRESHOLD = 20;
 
 export const productStatus = t.Union(
   [t.Literal("DRAFT"), t.Literal("PUBLISHED"), t.Literal("ARCHIVED")],
@@ -21,6 +23,7 @@ export const getQuery = t.Object(
     status: t.Optional(productStatus),
     categories: t.Optional(t.Array(t.String())),
     collection: t.Optional(t.String()),
+    stock: t.Optional(t.Union([t.Literal("low"), t.Literal("out")])),
     sortBy: t.Optional(
       t.Union([
         t.Literal("name"),
@@ -28,6 +31,7 @@ export const getQuery = t.Object(
         t.Literal("updatedAt"),
         t.Literal("priceMin"),
         t.Literal("priceMax"),
+        t.Literal("totalStock"),
       ]),
     ),
     sortDir: t.Optional(t.Union([t.Literal("asc"), t.Literal("desc")])),
@@ -50,6 +54,33 @@ export const countQuery = t.Object(
   { additionalProperties: false },
 );
 export type countQuery = UnwrapSchema<typeof countQuery>;
+export const facetsQuery = t.Pick(
+  getQuery,
+  ["name", "categories", "status", "stock"],
+  { additionalProperties: false },
+);
+export type facetsQuery = UnwrapSchema<typeof facetsQuery>;
+
+export const facets = t.Object(
+  {
+    status: t.Object(
+      {
+        ALL: t.Integer(),
+        PUBLISHED: t.Integer(),
+        DRAFT: t.Integer(),
+        ARCHIVED: t.Integer(),
+      },
+      { additionalProperties: false },
+    ),
+    stock: t.Object(
+      { low: t.Integer(), out: t.Integer() },
+      { additionalProperties: false },
+    ),
+    category: t.Record(t.String(), t.Integer()),
+  },
+  { additionalProperties: false },
+);
+export type facets = UnwrapSchema<typeof facets>;
 
 export const imageCreate = t.Object(
   {
@@ -188,6 +219,7 @@ export const productListItem = t.Object(
     priceMin: t.Nullable(t.Integer()),
     priceMax: t.Nullable(t.Integer()),
     totalStock: t.Integer(),
+    variantCount: t.Integer(),
   },
   { additionalProperties: false },
 );

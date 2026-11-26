@@ -7,6 +7,7 @@ import { testDb } from "../setup";
 import {
   createSessionCookie,
   createTestCategory,
+  createTestProducts,
   expectDefined,
   file,
   mockUtapi,
@@ -18,6 +19,27 @@ const api = treaty(productsRouter, {
 });
 
 describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
+  it("reports the product listings to refetch only when it succeeds", async () => {
+    const [product] = await createTestProducts(testDb, 1, "DRAFT");
+    expectDefined(product);
+
+    const updated = await api.products.bulk.patch({
+      ids: [product.id],
+      status: "ARCHIVED",
+    });
+    expect(updated.status).toBe(200);
+    expect(updated.response.headers.get("x-furin-queries")).toContain(
+      "/products",
+    );
+
+    const missing = await api.products.bulk.patch({
+      ids: [Bun.randomUUIDv7()],
+      status: "ARCHIVED",
+    });
+    expect(missing.status).toBe(404);
+    expect(missing.response.headers.get("x-furin-queries")).toBeNull();
+  });
+
   const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
   const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
   const files = [file(filePath1), file(filePath2)];

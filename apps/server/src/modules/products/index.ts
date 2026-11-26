@@ -1,6 +1,7 @@
 import { betterAuthPlugin } from "@spice-world/server/plugins/auth.plugin";
 import { cdnPlugin } from "@spice-world/server/plugins/cdn.plugin";
 import { drizzleErrorPlugin } from "@spice-world/server/plugins/drizzle.plugin";
+import { furinInvalidate } from "@teyik0/furin";
 import { Elysia, t } from "elysia";
 
 import { imageCleanupPlugin } from "../../plugins/image.plugin";
@@ -27,6 +28,7 @@ export const productsRouter = new Elysia({
   .use(imageCleanupPlugin)
   .use(betterAuthPlugin)
   .use(cdnPlugin)
+  .use(furinInvalidate())
   .get(
     "/",
     {
@@ -43,6 +45,15 @@ export const productsRouter = new Elysia({
     { access: "optional", cdn: "products", query: ProductModel.countQuery },
     async ({ query, user }) =>
       await productService.count({ ...query, ...visibility(user) }),
+  )
+  .get(
+    "/facets",
+    {
+      access: "admin",
+      query: ProductModel.facetsQuery,
+      response: { 200: ProductModel.facets },
+    },
+    async ({ query }) => await productService.facets(query),
   )
   .post(
     "/",
@@ -81,7 +92,10 @@ export const productsRouter = new Elysia({
         404: t.Union([ProductModel.productNotFound, categoryNotFound]),
       },
     },
-    async ({ body }) => await productService.bulkPatch(body),
+    async ({ body, invalidate }) => {
+      invalidate("/products");
+      return await productService.bulkPatch(body);
+    },
   )
   .get(
     "/slug/:slug",
@@ -147,12 +161,14 @@ export const productsRouter = new Elysia({
       },
       imageCleanup: true,
     },
-    async ({ params, body, headers }) =>
-      await productService.patch({
+    async ({ params, body, headers, invalidate }) => {
+      invalidate("/products");
+      return await productService.patch({
         ...params,
         ...body,
         expectedVersion: headers["x-version"],
-      }),
+      });
+    },
   )
   .delete(
     "/:id",
@@ -164,5 +180,8 @@ export const productsRouter = new Elysia({
       },
       imageCleanup: true,
     },
-    async ({ params }) => await productService.delete(params),
+    async ({ params, invalidate }) => {
+      invalidate("/products");
+      return await productService.delete(params);
+    },
   );

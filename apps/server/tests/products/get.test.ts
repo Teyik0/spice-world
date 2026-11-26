@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from "bun:test";
 import { treaty } from "@elysia/eden";
 import { productsRouter } from "@spice-world/server/modules/products";
 import type * as ProductModel from "@spice-world/server/modules/products/model";
+import { LOW_STOCK_THRESHOLD } from "@spice-world/server/modules/products/model";
 
 import {
   collectionProductTable,
@@ -14,6 +15,7 @@ import { createDummyProducts } from "../utils/dummy-products";
 import {
   createSessionCookie,
   createTestProducts,
+  createTestVariant,
   expectDefined,
   mockUtapi,
 } from "../utils/helper";
@@ -366,5 +368,145 @@ describe.concurrent("GET /products - Integration Tests", () => {
     expect(byName.data?.map(({ name }) => name)).toEqual(
       products.map(({ name }) => name).sort(),
     );
+  });
+
+  describe("stock filter and facets", () => {
+    const stocked = async () => {
+      const variants = await Promise.all([
+        createTestVariant(testDb, { stock: 0 }),
+        createTestVariant(testDb, { stock: LOW_STOCK_THRESHOLD - 1 }),
+        createTestVariant(testDb, { stock: LOW_STOCK_THRESHOLD }),
+        createTestVariant(testDb, { stock: 0, status: "DRAFT" }),
+      ]);
+      const ids = variants.map(({ productId }) => productId);
+      const products = await testDb.db.query.product.findMany({
+        where: { id: { in: ids } },
+        with: { category: true },
+      });
+      // Same order as ids, so tests can tell which category holds which product.
+      const categories = ids.map(
+        (id) => products.find((p) => p.id === id)?.category?.name ?? "",
+      );
+      return { ids, categories };
+    };
+
+    it("filters products by stock level", async () => {
+      const {
+        ids: [out, low, , draftOut],
+        categories,
+      } = await stocked();
+      expectDefined(out);
+      expectDefined(low);
+      expectDefined(draftOut);
+      const [outs, lows] = await Promise.all([
+        api.products.get({ query: { categories, stock: "out" } }),
+        api.products.get({ query: { categories, stock: "low" } }),
+      ]);
+      expect(outs.data?.map(({ id }) => id).toSorted()).toEqual(
+        [out, draftOut].toSorted(),
+      );
+      expect(lows.data?.map(({ id }) => id)).toEqual([low]);
+      expect(lows.data?.[0]?.variantCount).toBe(1);
+    });
+
+    it("sorts products by total stock", async () => {
+      const { categories } = await stocked();
+      const [ascending, descending] = await Promise.all(
+        (["asc", "desc"] as const).map((sortDir) =>
+          api.products.get({
+            query: { categories, sortBy: "totalStock", sortDir },
+          }),
+        ),
+      );
+      const low = LOW_STOCK_THRESHOLD - 1;
+      expect(ascending?.data?.map(({ totalStock }) => totalStock)).toEqual([
+        0,
+        0,
+        low,
+        LOW_STOCK_THRESHOLD,
+      ]);
+      expect(descending?.data?.map(({ totalStock }) => totalStock)).toEqual([
+        LOW_STOCK_THRESHOLD,
+        low,
+        0,
+        0,
+      ]);
+    });
+
+    it("counts each facet with every filter but its own", async () => {
+      const { categories } = await stocked();
+      const [out, low, enough, draftOut] = categories;
+      expectDefined(out);
+      expectDefined(low);
+      expectDefined(enough);
+      expectDefined(draftOut);
+      const [all, outOfStock, drafts] = await Promise.all([
+        api.products.facets.get({ query: { categories } }),
+        api.products.facets.get({ query: { categories, stock: "out" } }),
+        api.products.facets.get({ query: { categories, status: "DRAFT" } }),
+      ]);
+      // The category facet ignores the category filter, so other tests' categories show up too.
+      const ours = (category: Record<string, number> = {}) =>
+        Object.fromEntries(
+          Object.entries(category).filter(([name]) =>
+            categories.includes(name),
+          ),
+        );
+      expect(all.data).toMatchObject({
+        status: { ALL: 4, PUBLISHED: 3, DRAFT: 1, ARCHIVED: 0 },
+        stock: { low: 1, out: 2 },
+      });
+      expect(ours(all.data?.category)).toEqual({
+        [out]: 1,
+        [low]: 1,
+        [enough]: 1,
+        [draftOut]: 1,
+      });
+      // The stock filter narrows the status and category facets, not the stock facet.
+      expect(outOfStock.data).toMatchObject({
+        status: { ALL: 2, PUBLISHED: 1, DRAFT: 1, ARCHIVED: 0 },
+        stock: { low: 1, out: 2 },
+      });
+      expect(ours(outOfStock.data?.category)).toEqual({
+        [out]: 1,
+        [draftOut]: 1,
+      });
+      // The status filter narrows the stock and category facets, not the status facet.
+      expect(drafts.data).toMatchObject({
+        status: { ALL: 4, PUBLISHED: 3, DRAFT: 1, ARCHIVED: 0 },
+        stock: { low: 0, out: 1 },
+      });
+      expect(ours(drafts.data?.category)).toEqual({ [draftOut]: 1 });
+    });
+
+    it("rejects an unknown stock level", async () => {
+      const [listing, facets] = await Promise.all([
+        // @ts-expect-error an unknown stock level is rejected
+        api.products.get({ query: { stock: "none" } }),
+        // @ts-expect-error an unknown stock level is rejected
+        api.products.facets.get({ query: { stock: "none" } }),
+      ]);
+      expect(listing.error).toMatchObject({ status: 422 });
+      expect(facets.error).toMatchObject({ status: 422 });
+    });
+
+    it("rejects pagination on facets", async () => {
+      const { error } = await api.products.facets.get({
+        // @ts-expect-error facets count the whole listing
+        query: { take: 10 },
+      });
+      expect(error).toMatchObject({ status: 422 });
+    });
+
+    it("keeps facets for admins", async () => {
+      const [anonymous, user] = await Promise.all([
+        treaty(productsRouter).products.facets.get({ query: {} }),
+        treaty(productsRouter, {
+          headers: { cookie: userCookie },
+        }).products.facets.get({ query: {} }),
+      ]);
+      expect(anonymous.error).toMatchObject({ status: 401 });
+      expect(user.error).toMatchObject({ status: 403 });
+    });
   });
 });
