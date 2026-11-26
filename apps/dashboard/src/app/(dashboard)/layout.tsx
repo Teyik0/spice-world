@@ -1,18 +1,46 @@
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@spice-world/ui/components/sidebar";
 import { defineRoute } from "@teyik0/furin";
 
+import { AppSidebar } from "../../components/app-sidebar";
+import { Toaster } from "../../components/toaster";
 import { authClient } from "../../lib/api";
 
 export const route = defineRoute("/(dashboard)")
   .config({ mode: "ssr" })
-  .loader(async ({ request, redirect }) => {
+  .loader(async ({ cookie, headers, redirect }) => {
     const { data: session } = await authClient.getSession({
       fetchOptions: {
-        headers: { cookie: request.headers.get("cookie") ?? "" },
+        headers: { cookie: headers.cookie ?? "" },
       },
     });
     if (session?.user.role !== "admin") {
       throw redirect("/signin");
     }
-    return { user: session.user };
+    const sidebarOpen = String(cookie.sidebar_state?.value) !== "false"; // shadcn's SidebarProvider persists its open state in this cookie.
+    return { user: session.user, sidebarOpen };
   })
-  .layout(({ children }) => children);
+  .layout(({ children, sidebarOpen, user }) => (
+    <SidebarProvider defaultOpen={sidebarOpen}>
+      <a
+        className="focus:bg-background focus:ring-ring sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:px-3 focus:py-2 focus:text-sm focus:ring-2"
+        href="#content"
+      >
+        Skip to Content
+      </a>
+
+      <AppSidebar user={user} />
+
+      <SidebarInset id="content">
+        <header className="flex h-12 shrink-0 items-center px-4">
+          <SidebarTrigger className="-ml-1" />
+        </header>
+
+        <div className="flex flex-1 flex-col gap-6 p-6 pt-0">{children}</div>
+      </SidebarInset>
+      <Toaster />
+    </SidebarProvider>
+  ));

@@ -8,12 +8,12 @@ import { adminClient, inferAdditionalFields } from "better-auth/client/plugins";
 import { env } from "./env";
 
 // x-cache-bypass: the admin must read its own writes, never a CDN copy.
-// Server: no cookie jar, so loaders pass the incoming headers to stay authenticated.
+// Server: no cookie jar, so loaders pass the incoming cookie header to stay authenticated.
 // Browser: same-origin /api relay (server.ts) sends the session cookie itself.
 export const api = createIsomorphicFn()
-  .server((headers?: Headers) =>
+  .server((cookie = "") =>
     treaty<App>(env.API_URL, {
-      headers: { cookie: headers?.get("cookie") ?? "", "x-cache-bypass": "1" },
+      headers: { cookie, "x-cache-bypass": "1" },
     }),
   )
   .client(() =>

@@ -10,6 +10,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useTransition,
 } from "react";
 
 import { clearHandoff, peekHandoff } from "../lib/handoff";
@@ -242,20 +243,19 @@ function Avis({
   productId: string;
 }) {
   const [list, setList] = useState(first.comments);
-  const [busy, setBusy] = useState(false);
+  const [busy, startTransition] = useTransition();
   const n = list.length;
-  const more = useCallback(async () => {
-    setBusy(true);
-    try {
-      const res = await fetch(`/_avis/${productId}?skip=${n}`);
-      if (res.ok) {
-        const page: Reviews = await res.json();
-        setList((l) => [...l, ...page.comments]);
-      }
-    } finally {
-      setBusy(false);
-    }
-  }, [n, productId]);
+  const more = useCallback(
+    () =>
+      startTransition(async () => {
+        const res = await fetch(`/_avis/${productId}?skip=${n}`);
+        if (res.ok) {
+          const page: Reviews = await res.json();
+          setList((l) => [...l, ...page.comments]);
+        }
+      }),
+    [n, productId],
+  );
   return (
     <section aria-labelledby="r-h" className="sec story">
       <div className="txt">
