@@ -60,7 +60,7 @@ jobs:
         working-directory: apps/server
         run: DATABASE_URL=$PR_DATABASE_URL bun run db:migrate
 
-      - run: bunx sst deploy --stage $STAGE
+      - run: bunx sst deploy --stage $STAGE --print-logs
 
   remove:
     if: github.event.action == 'closed'
