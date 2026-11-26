@@ -1,0 +1,19 @@
+apps/dashboard/src/app/(dashboard)/products/[slug]/page.tsx
+  s_358623c01bba48::t_c9582136757a6a 4,15-16,18,26-29,33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b5853cb5cabf90b282e584dc025a6d1ca698b10",
+  "prompts": {},
+  "sessions": {
+    "s_358623c01bba48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64836392-5233-4f0b-a7e5-1f0f2f15c7bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
