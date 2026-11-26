@@ -1,0 +1,28 @@
+{
+  "root": false,
+  "extends": ["../../biome.jsonc", "ultracite/biome/react"],
+  "linter": {
+    "rules": {
+      "performance": { "noJsxPropsBind": "off" },
+    },
+  },
+  "overrides": [
+    {
+      "includes": ["src/components/label.tsx", "src/components/field.tsx"],
+      "linter": { "rules": { "a11y": { "noLabelWithoutControl": "off" } } },
+    },
+    {
+      "includes": ["src/components/field.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noDoubleEquals": "off",
+            "noLeakedRender": "off",
+            "noUnnecessaryConditions": "off",
+            "noArrayIndexKey": "off",
+          },
+        },
+      },
+    },
+  ],
+}
