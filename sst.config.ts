@@ -123,10 +123,6 @@ export default $config({
     return {
       NEON_PROJECT_ID: neonProject.id,
       VERCEL_SERVER_PROJECT_ID: spiceWorldServer.id,
-      // Credentials template for PR databases (preview.yaml swaps in their host).
-      PREVIEW_DATABASE_URL: $util.secret(
-        database.properties.devConnectionString,
-      ),
     };
   },
 });
