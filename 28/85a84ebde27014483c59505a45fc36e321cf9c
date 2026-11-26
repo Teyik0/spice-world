@@ -1,0 +1,98 @@
+apps/dashboard/src/lib/env.ts
+  s_16d2c973fcbc6a::t_a62c04b4115566 1-9
+apps/dashboard/src/server.ts
+  s_09ae08fb5906bf::t_398f25305e51bb 7,12-14
+  s_16d2c973fcbc6a::t_a62c04b4115566 4-6,8-11,15-16
+apps/dashboard/package.json
+  s_16d2c973fcbc6a::t_63a81e709879df 8-9
+  s_16d2c973fcbc6a::t_577639507375a3 12,24
+  s_32266907514162::t_6f05ccc8c5b34d 15,17
+apps/server/tests/orders/webhook.test.ts
+  s_bb53aef63ffedf::t_23e7aec0980053 112
+  s_bb53aef63ffedf::t_aaec8607a21535 113
+package.json
+  s_32266907514162::t_0ad60310d4d70c 27-28
+  s_32266907514162::t_6f05ccc8c5b34d 26,29-30
+apps/dashboard/src/app/(dashboard)/page.tsx
+  s_16d2c973fcbc6a::t_c0c2c67e71cdc3 4,9
+apps/dashboard/src/lib/api.ts
+  s_16d2c973fcbc6a::t_a62c04b4115566 1-21
+  s_16d2c973fcbc6a::t_fcc60fc6fc1c17 22-24
+.gitignore
+  s_c77e11718b01d1::t_f4a80ae602cd90 65-68
+apps/server/package.json
+  s_32266907514162::t_6f05ccc8c5b34d 25,28
+  s_32266907514162::t_0ad60310d4d70c 17-18
+apps/web/package.json
+  s_32266907514162::t_6f05ccc8c5b34d 19
+apps/server/src/lib/cdn.ts
+  s_bb53aef63ffedf::t_e642b5d574d923 88
+  s_bb53aef63ffedf::t_a9cc6b93b22449 34
+  s_bb53aef63ffedf::t_d0b97053f1b0b5 67-72
+apps/server/tests/cdn.test.ts
+  s_bb53aef63ffedf::t_3c5b2775a4c512 201-213
+  s_bb53aef63ffedf::t_3697f9a835d06a 175,181-182
+  s_bb53aef63ffedf::t_d9367f19b26b6c 13
+apps/storefront/package.json
+  s_32266907514162::t_6f05ccc8c5b34d 14
+apps/server/tests/utils/vercel.ts
+  s_bb53aef63ffedf::t_3fdfd656eebce7 21-38
+.github/workflows/preview.yaml
+  s_bb53aef63ffedf::t_d73e6466b596b0 49
+apps/dashboard/src/app/(dashboard)/layout.tsx
+  s_16d2c973fcbc6a::t_a62c04b4115566 2-9,11-18
+  s_16d2c973fcbc6a::t_a9ad171068ab47 1
+  s_16d2c973fcbc6a::t_9ac7c87b40def5 10
+apps/dashboard/tsconfig.json
+  s_16d2c973fcbc6a::t_4d8cddb65d14b9 12
+bun.lock
+  s_32266907514162::t_eed3a8f2738d49 21-41,46-47,54,57,78,103,151-169,175-176,180,182,226-229,232-237,240-253,258-261,264-273,374-377,510-511,526-529,686-687,710-711,718-719,780-781,804-805,938-939,952-953,960-961,970-971,980-981,984-985,990-991,1004-1005,1016-1019,1036-1037,1054-1055,1060-1065,1074-1075,1086-1087,1116-1117,1136-1137,1164-1165,1176-1177,1182-1183,1186-1189,1196-1197,1222-1223,1230-1231,1236-1237,1244-1249,1252-1253,1256-1257,1262-1264,1290-1292,1350-1351,1362,1386,1390-1391,1440-1441,1444-1446,1452-1453,1456-1461,1470-1473,1484,1490-1491,1496-1497,1500-1501,1534-1535,1558-1559,1574-1575,1590-1591,1598-1599,1630-1631,1634-1635,1656-1657,1670-1671,1674-1675,1680-1681,1688,1700-1701,1706-1707,1720-1723,1738,1746-1747,1762-1763,1772-1779,1784-1813,1822-1831,1940-1947,1986-1987,1990-1991,1994-1995,2002-2003,2008-2009,2014-2015,2018-2023,2028-2037,2046-2047,2050-2051,2054-2109,2134-2135,2150-2155,2158-2169,2180-2181,2184-2185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2885a84ebde27014483c59505a45fc36e321cf9c",
+  "prompts": {},
+  "sessions": {
+    "s_09ae08fb5906bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88e46f25-25ef-4724-bd1d-ab65fbb32561",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_16d2c973fcbc6a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4885025e-8a2c-4097-82e2-9eb1a459b86c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_32266907514162": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2bf1f002-2451-4fa9-bac0-b8f145404df8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_bb53aef63ffedf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5719c22c-841a-47e7-834e-ac064db2e713",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_c77e11718b01d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79b954d3-b627-4575-a252-ca9b2f72fd2a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
