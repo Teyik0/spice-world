@@ -1,0 +1,20 @@
+apps/web/src/app/(dashboard)/products/@main/[slug]/form.tsx
+  s_c1fad8d68733da::t_9a32e268358d24 354-358
+  s_c1fad8d68733da::t_a3b6305953c04c 24,31,252-259,359
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2edbb8cdd03062b107723a2836a727a2bba2da16",
+  "prompts": {},
+  "sessions": {
+    "s_c1fad8d68733da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "19b9c780-d32b-4785-b1f6-a1f0b00ed1a6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
