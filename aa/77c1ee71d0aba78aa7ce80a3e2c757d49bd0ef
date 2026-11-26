@@ -1,0 +1,83 @@
+sst.config.ts
+  s_6285bff4f29f82::t_b09da6b5666e1b 143,149
+  s_6285bff4f29f82::t_893d4a8c56c52c 91,139-142,144-148,150-151
+apps/server/tests/setup.ts
+  s_6285bff4f29f82::t_1bcc3a7e4d8ade 1
+apps/web/next-env.d.ts
+  s_c1fad8d68733da::t_b84bef931757cf 3-4
+apps/server/src/modules/products/service.ts
+  s_6285bff4f29f82::t_73d18745a313b6 1-5,609,774
+apps/server/src/modules/categories/service.ts
+  s_6285bff4f29f82::t_73d18745a313b6 1-5,345-351
+  s_bb53aef63ffedf::t_c34a2f2b333681 352-353,518
+apps/server/src/index.ts
+  s_6285bff4f29f82::t_20c1d7212196ba 5,11,38
+apps/server/tests/utils/vercel.ts
+  s_6285bff4f29f82::t_1238899a1d5c99 1-43
+apps/server/src/plugins/cdn.plugin.ts
+  s_6285bff4f29f82::t_43bf42d8569134 3,54
+apps/server/src/lib/env.ts
+  s_6285bff4f29f82::t_43bf42d8569134 40-44,74-76
+apps/server/tests/orders/checkout.test.ts
+  s_6285bff4f29f82::t_95587d3feac569 16,129-135
+  s_6285bff4f29f82::t_e83a68e0854ca8 136-137
+apps/server/src/lib/cdn.ts
+  s_6285bff4f29f82::t_43bf42d8569134 1,3,25-31,33-45,47-54,58-72,74,76-84,87-88,90,92-93,105,107-118
+  s_bb53aef63ffedf::t_bad611079998b6 122,124
+apps/server/tests/cdn.test.ts
+  s_6285bff4f29f82::t_26c938cf26d4f4 4-6,12-14,16,153-202,339-356,358
+  s_6285bff4f29f82::t_1238899a1d5c99 32
+  s_bb53aef63ffedf::t_ca50cd5ab54135 357
+apps/server/tests/orders/webhook.test.ts
+  s_6285bff4f29f82::t_95587d3feac569 13,106-113
+  s_6285bff4f29f82::t_fb7448417ae42e 114-115
+apps/server/src/modules/orders/service.ts
+  s_6285bff4f29f82::t_73d18745a313b6 226
+apps/server/src/plugins/cors.plugin.ts
+  s_6285bff4f29f82::t_20c1d7212196ba 1-16
+apps/server/tests/products/consistency.test.ts
+  s_6285bff4f29f82::t_111dbf3cc5dde5 209,230
+  s_bb53aef63ffedf::t_82a9b00eb15212 21
+apps/server/tests/utils/helper.ts
+  s_6285bff4f29f82::t_111dbf3cc5dde5 8,17,600-601,603-607
+apps/server/tests/categories/images.test.ts
+  s_6285bff4f29f82::t_111dbf3cc5dde5 12,284
+apps/server/tests/categories/setup.ts
+  s_6285bff4f29f82::t_111dbf3cc5dde5 10-15,36-38,42
+bun.lock
+  s_6285bff4f29f82::t_bc02b0e26a622e 754,758,760,1518,1676,1680-1681
+sst-env.d.ts
+  s_6285bff4f29f82::t_9078dfd367f724 9-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aa77c1ee71d0aba78aa7ce80a3e2c757d49bd0ef",
+  "prompts": {},
+  "sessions": {
+    "s_6285bff4f29f82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88593fa2-a761-4bc4-8750-c661a88acb35",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_bb53aef63ffedf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5719c22c-841a-47e7-834e-ac064db2e713",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_c1fad8d68733da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "19b9c780-d32b-4785-b1f6-a1f0b00ed1a6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
