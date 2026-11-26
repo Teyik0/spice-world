@@ -8,21 +8,15 @@
     "*.tsx",
     ".next/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    ".next",
-    "dist",
-    "**/*.test.ts",
-    "**/*.test.tsx"
-  ],
+  "exclude": ["node_modules", ".next", "dist", "**/*.test.ts", "**/*.test.tsx"],
   "compilerOptions": {
     "jsx": "preserve",
     "jsxImportSource": "react",
-    "lib": [
-      "ESNext",
-      "DOM",
-      "DOM.Iterable"
-    ],
-    "strictNullChecks": true
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "strictNullChecks": true,
+    "paths": {
+      "@spice-world/web/*": ["./src/*"],
+      "@spice-world/server/*": ["../server/src/*"]
+    }
   }
 }

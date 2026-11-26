@@ -1,91 +1,208 @@
-import { prisma } from "@spice-world/server/lib/prisma";
-import { status } from "elysia";
+import { purgeOnSuccess, tag } from "@spice-world/server/lib/cdn";
+import { db } from "@spice-world/server/lib/db";
+import { EmptyFilter, eq } from "drizzle-orm";
+import { ElysiaStatus, problem, status } from "elysia";
+
+import { attributeTable, attributeValueTable } from "../../../drizzle/schema";
 import type { uuidGuard } from "../shared";
-import type { AttributeModel, AttributeValueModel } from "./model";
+import type * as AttributeModel from "./model";
+import type * as AttributeValueModel from "./value-model";
+
+/** Everything that embeds the attributes of a category. */
+const attributeTags = (categoryId: string) => [
+  tag.attributes,
+  tag.categories,
+  tag.category(categoryId),
+];
+
+const categoryOf = async (attributeId: string) => {
+  const [attribute] = await db
+    .select({ categoryId: attributeTable.categoryId })
+    .from(attributeTable)
+    .where(eq(attributeTable.id, attributeId));
+  return attribute?.categoryId;
+};
 
 export const attributeService = {
-	async get({ categoryId }: AttributeModel.getQuery) {
-		const attributes = await prisma.attribute.findMany({
-			where: categoryId ? { categoryId } : undefined,
-			include: { values: true },
-		});
-		return attributes;
-	},
+  attributeNotFound: problem("Not Found", {
+    code: "ATTRIBUTE_NOT_FOUND",
+    message: "Attribute not found",
+  }),
 
-	async getById({ id }: { id: string }) {
-		const attribute = await prisma.attribute.findUnique({
-			where: { id },
-			include: { values: true, category: true },
-		});
+  findOptions: {
+    columns: { categoryId: false as const },
+    with: {
+      values: { orderBy: { id: "asc" as const } },
+      category: true as const,
+    },
+  },
 
-		return attribute ?? status("Not Found", "Attribute not found");
-	},
+  async get({ categoryId, skip, take }: AttributeModel.getQuery) {
+    return await db.query.attribute.findMany({
+      where: categoryId ? { categoryId } : EmptyFilter,
+      offset: skip,
+      limit: take,
+      orderBy: { id: "asc" },
+      ...this.findOptions,
+    });
+  },
 
-	async post({ categoryId, name, values }: AttributeModel.postBody) {
-		const attribute = await prisma.attribute.create({
-			data: {
-				name,
-				categoryId,
-				values: {
-					createMany: {
-						data: values.map((value) => ({ value })),
-					},
-				},
-			},
-			include: { values: true },
-		});
-		return status("Created", attribute);
-	},
+  async getById({ id }: uuidGuard) {
+    const attribute = await db.query.attribute.findFirst({
+      where: { id },
+      ...this.findOptions,
+    });
 
-	async count() {
-		const count = await prisma.attribute.count();
-		return count;
-	},
+    return attribute ?? this.attributeNotFound;
+  },
 
-	async patch({ id, name }: AttributeModel.patchBody & uuidGuard) {
-		const attribute = prisma.attribute.update({
-			where: { id },
-			data: {
-				name,
-			},
-			include: { values: true },
-		});
-		return attribute;
-	},
+  async post({ name, categoryId, values }: AttributeModel.postBody) {
+    const created = await db.transaction(async (tx) => {
+      const id = Bun.randomUUIDv7();
+      await tx.insert(attributeTable).values({ id, name, categoryId });
+      await tx.insert(attributeValueTable).values(
+        values.map((value) => ({
+          id: Bun.randomUUIDv7(),
+          attributeId: id,
+          value,
+        })),
+      );
+      const attribute = await tx.query.attribute.findFirst({
+        where: { id },
+        ...this.findOptions,
+      });
+      return status("Created", attribute as NonNullable<typeof attribute>);
+    });
+    return purgeOnSuccess(created, { stale: attributeTags(categoryId) });
+  },
 
-	async delete({ id }: uuidGuard) {
-		await prisma.attribute.delete({
-			where: {
-				id,
-			},
-		});
-		return status(200);
-	},
+  async count() {
+    return await db.$count(attributeTable);
+  },
+
+  async patch({ id, name }: AttributeModel.patchBody & uuidGuard) {
+    const patched = await db.transaction(
+      async (tx) => {
+        await tx
+          .update(attributeTable)
+          .set({ name })
+          .where(eq(attributeTable.id, id));
+        // Separate statement: RETURNING would read values as of before the lock wait.
+        const attribute = await tx.query.attribute.findFirst({
+          where: { id },
+          ...this.findOptions,
+        });
+        return attribute ?? this.attributeNotFound;
+      },
+      { isolationLevel: "read committed" },
+    );
+    return patched instanceof ElysiaStatus
+      ? patched
+      : purgeOnSuccess(patched, { stale: attributeTags(patched.category.id) });
+  },
+
+  async delete({ id }: uuidGuard) {
+    const [deletedAttribute] = await db
+      .delete(attributeTable)
+      .where(eq(attributeTable.id, id))
+      .returning({ categoryId: attributeTable.categoryId });
+
+    return deletedAttribute
+      ? purgeOnSuccess(status(200), {
+          stale: attributeTags(deletedAttribute.categoryId),
+          gone: [tag.attribute(id)],
+        })
+      : this.attributeNotFound;
+  },
 };
 
 export const attributeValueService = {
-	async post({ id, name }: AttributeValueModel.postBody & uuidGuard) {
-		const attributeValue = await prisma.attributeValue.create({
-			data: {
-				value: name,
-				attributeId: id,
-			},
-		});
-		return status("Created", attributeValue);
-	},
+  attributeValueNotFound: problem("Not Found", {
+    code: "ATTRIBUTE_VALUE_NOT_FOUND",
+    message: "Attribute value not found",
+  }),
 
-	async patch({ id, name }: AttributeValueModel.patchBody & uuidGuard) {
-		const attributeValue = prisma.attributeValue.update({
-			where: { id },
-			data: { value: name },
-		});
-		return attributeValue;
-	},
+  async post({ id, name }: AttributeValueModel.postBody & uuidGuard) {
+    const [attributeValue] = await db
+      .insert(attributeValueTable)
+      .values({
+        id: Bun.randomUUIDv7(),
+        attributeId: id,
+        value: name,
+      })
+      .returning();
+    const categoryId = await categoryOf(id);
 
-	async delete({ id }: uuidGuard) {
-		await prisma.attributeValue.delete({
-			where: { id },
-		});
-		return status(200);
-	},
+    return purgeOnSuccess(
+      status("Created", attributeValue as NonNullable<typeof attributeValue>),
+      { stale: categoryId ? attributeTags(categoryId) : [] },
+    );
+  },
+
+  async patch({ id, name }: AttributeValueModel.patchBody & uuidGuard) {
+    const [attributeValue] = await db
+      .update(attributeValueTable)
+      .set({
+        value: name,
+      })
+      .where(eq(attributeValueTable.id, id))
+      .returning();
+    if (!attributeValue) {
+      return this.attributeValueNotFound;
+    }
+    const categoryId = await categoryOf(attributeValue.attributeId);
+
+    return purgeOnSuccess(attributeValue, {
+      stale: categoryId ? attributeTags(categoryId) : [],
+    });
+  },
+
+  async delete({ id }: uuidGuard) {
+    const deleted = await db.transaction(
+      async (tx) => {
+        const [attribute] = await tx
+          .select({
+            id: attributeTable.id,
+            categoryId: attributeTable.categoryId,
+          })
+          .from(attributeTable)
+          .innerJoin(
+            attributeValueTable,
+            eq(attributeValueTable.attributeId, attributeTable.id),
+          )
+          .where(eq(attributeValueTable.id, id))
+          .for("update", { of: attributeTable });
+
+        if (!attribute) {
+          return this.attributeValueNotFound;
+        }
+
+        const values = await tx.query.attributeValue.findMany({
+          where: { attributeId: attribute.id },
+          columns: { id: true },
+        });
+
+        if (!values.some((value) => value.id === id)) {
+          return this.attributeValueNotFound;
+        }
+        if (values.length <= 1) {
+          return problem("Bad Request", {
+            code: "ATTRIBUTE_VALUE_LAST_VALUE",
+            message: "Attribute value to delete is the last value",
+          });
+        }
+
+        await tx
+          .delete(attributeValueTable)
+          .where(eq(attributeValueTable.id, id));
+        return { categoryId: attribute.categoryId };
+      },
+      { isolationLevel: "read committed" },
+    );
+    return deleted instanceof ElysiaStatus
+      ? deleted
+      : purgeOnSuccess(status(200), {
+          stale: attributeTags(deleted.categoryId),
+        });
+  },
 };

@@ -2,7 +2,7 @@ pre-commit:
   parallel: true
   jobs:
     - name: files format
-      run: bun run format
+      run: bun fmt
       glob:
         - "*.js"
         - "*.jsx"
@@ -13,18 +13,24 @@ pre-commit:
         - "*.css"
       stage_fixed: true
 
+    - name: lint
+      run: bun run ultracite check
+      glob: "*.{js,jsx,ts,tsx,json,jsonc,css,svg}"
+
     - name: typescript check (monorepo)
-      run: bun run tsc --build --noEmit
+      run: bun check
       glob: "*.{ts,tsx}"
       stage_fixed: true
 
 pre-push:
   parallel: true
   jobs:
-    - name: Server test
+    - name: Test
       run: bun run test
-      root: apps/server
-      glob: "*.{ts,tsx}"
+      stage_fixed: true
+
+    - name: Build
+      run: bun run build
       stage_fixed: true
 
 commit-msg:

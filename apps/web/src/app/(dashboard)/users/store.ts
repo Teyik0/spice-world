@@ -5,12 +5,12 @@ import { atom } from "jotai";
  * This is a simplified version of the full user model
  */
 export interface UserItemProps {
-	id: string;
-	name: string | null;
-	email: string | null;
-	image: string | null;
-	role: string;
-	banned: boolean | null;
+  banned: boolean | null;
+  email: string | null;
+  id: string;
+  image: string | null;
+  name: string | null;
+  role: string;
 }
 
 /**

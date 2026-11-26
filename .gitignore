@@ -47,10 +47,6 @@
 **/.sst
 **/sst-env.d.ts
 
-# Project-specific ignores
-**/src/prismabox
-**/src/prisma
-
 # Misc package managers
 package-lock.json
 **/package-lock.json

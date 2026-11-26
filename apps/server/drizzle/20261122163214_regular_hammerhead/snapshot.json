@@ -1,0 +1,137 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "6d038bb8-ef22-4d60-9419-304a78fcdc74",
+  "prevIds": ["d47de1eb-841a-4a2a-b832-e0cae003e184"],
+  "footprints": [
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "account", "updatedAt"],
+      "writes": ["s|colprop|public.account.updatedAt.default"],
+      "reads": [
+        "n|tbl|public.account",
+        "n|sch|public",
+        "n|col|public.account.updatedAt"
+      ],
+      "sqlHash": "b9dd230e35c820b2"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "Comment", "updatedAt"],
+      "writes": ["s|colprop|public.Comment.updatedAt.default"],
+      "reads": [
+        "n|tbl|public.Comment",
+        "n|sch|public",
+        "n|col|public.Comment.updatedAt"
+      ],
+      "sqlHash": "59c591eb05d98332"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "Order", "updatedAt"],
+      "writes": ["s|colprop|public.Order.updatedAt.default"],
+      "reads": [
+        "n|tbl|public.Order",
+        "n|sch|public",
+        "n|col|public.Order.updatedAt"
+      ],
+      "sqlHash": "352245fe37824f39"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "Product", "updatedAt"],
+      "writes": ["s|colprop|public.Product.updatedAt.default"],
+      "reads": [
+        "n|tbl|public.Product",
+        "n|sch|public",
+        "n|col|public.Product.updatedAt"
+      ],
+      "sqlHash": "01431040a6e6f37a"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "ProductVariant", "updatedAt"],
+      "writes": ["s|colprop|public.ProductVariant.updatedAt.default"],
+      "reads": [
+        "n|tbl|public.ProductVariant",
+        "n|sch|public",
+        "n|col|public.ProductVariant.updatedAt"
+      ],
+      "sqlHash": "da7c993540298b72"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "session", "updatedAt"],
+      "writes": ["s|colprop|public.session.updatedAt.default"],
+      "reads": [
+        "n|tbl|public.session",
+        "n|sch|public",
+        "n|col|public.session.updatedAt"
+      ],
+      "sqlHash": "1bb243cd1e63daee"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "user", "updatedAt"],
+      "writes": ["s|colprop|public.user.updatedAt.default"],
+      "reads": [
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.user.updatedAt"
+      ],
+      "sqlHash": "fd99f517e4500e56"
+    }
+  ],
+  "deltas": [
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"account\",\"updatedAt\"]",
+      "set": {
+        "default": "CURRENT_TIMESTAMP"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"Comment\",\"updatedAt\"]",
+      "set": {
+        "default": "CURRENT_TIMESTAMP"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"Order\",\"updatedAt\"]",
+      "set": {
+        "default": "CURRENT_TIMESTAMP"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"Product\",\"updatedAt\"]",
+      "set": {
+        "default": "CURRENT_TIMESTAMP"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"ProductVariant\",\"updatedAt\"]",
+      "set": {
+        "default": "CURRENT_TIMESTAMP"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"session\",\"updatedAt\"]",
+      "set": {
+        "default": "CURRENT_TIMESTAMP"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"user\",\"updatedAt\"]",
+      "set": {
+        "default": "CURRENT_TIMESTAMP"
+      }
+    }
+  ]
+}

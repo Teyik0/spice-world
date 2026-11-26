@@ -1,200 +1,370 @@
-import {
-	afterAll,
-	beforeAll,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	spyOn,
-} from "bun:test";
-import { treaty } from "@elysiajs/eden";
-import * as imagesModule from "@spice-world/server/lib/images";
-import type { productsRouter } from "@spice-world/server/modules/products";
-import type { ProductModel } from "@spice-world/server/modules/products/model";
-import type {
-	Category,
-	Image,
-	Product,
-	ProductVariant,
-} from "@spice-world/server/prisma/client";
-import { createTestDatabase } from "../utils/db-manager";
-import { createDummyProducts } from "../utils/dummy-products";
-import { createUploadedFileData, expectDefined } from "../utils/helper";
+import { beforeAll, describe, expect, it } from "bun:test";
 
-let api: ReturnType<typeof treaty<typeof productsRouter>>;
+import { treaty } from "@elysia/eden";
+import { productsRouter } from "@spice-world/server/modules/products";
+import type * as ProductModel from "@spice-world/server/modules/products/model";
+
+import {
+  collectionProductTable,
+  collectionTable,
+  productVariantTable,
+} from "../../drizzle/schema";
+import { testDb } from "../setup";
+import { createDummyProducts } from "../utils/dummy-products";
+import {
+  createSessionCookie,
+  createTestProducts,
+  expectDefined,
+  mockUtapi,
+} from "../utils/helper";
+
+await mockUtapi();
+const api = treaty(productsRouter, {
+  headers: { cookie: await createSessionCookie(testDb) },
+});
+
+const userCookie = await createSessionCookie(testDb, "user");
 
 describe.concurrent("GET /products - Integration Tests", () => {
-	let testCategories: Category[];
-	let testProducts: (Product & {
-		variants: ProductVariant[];
-		images: Image[];
-	})[];
-	let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
+  let testCategories: Awaited<
+    ReturnType<typeof createDummyProducts>
+  >["categories"];
+  let testProducts: Awaited<ReturnType<typeof createDummyProducts>>["products"];
 
-	beforeAll(async () => {
-		testDb = await createTestDatabase("get.test.ts");
+  beforeAll(async () => {
+    const { categories, products } = await createDummyProducts(testDb);
+    testCategories = categories;
+    testProducts = products;
+  });
 
-		const { productsRouter } = await import(
-			"@spice-world/server/modules/products"
-		);
-		api = treaty(productsRouter);
+  describe("GET /products", () => {
+    it("should return a list of products sorted by name", async () => {
+      const { data, status } = await api.products.get({
+        query: { sortBy: "name", sortDir: "asc", take: 100 },
+      });
 
-		const { categories, products } = await createDummyProducts(testDb.client);
-		testCategories = categories;
-		testProducts = products;
-	});
+      expect(status).toBe(200);
+      expectDefined(data);
+      expect(Array.isArray(data)).toBe(true);
+      expect(data.length).toBeGreaterThanOrEqual(testProducts.length - 1);
 
-	afterAll(async () => {
-		await testDb.destroy();
-	}, 10000);
+      const returnedProductNames = data.map((p) => p.name);
+      for (const testProduct of testProducts) {
+        expect(returnedProductNames).toContain(testProduct.name);
+      }
 
-	beforeEach(() => {
-		spyOn(imagesModule.utapi, "uploadFiles").mockImplementation((async (
-			files,
-		) => {
-			return {
-				data: createUploadedFileData(files as File | File[]),
-				error: null,
-			};
-		}) as typeof imagesModule.utapi.uploadFiles);
-	});
+      for (let i = 0; i < data.length - 1; i += 1) {
+        const currentItem: ProductModel.productListItem | undefined = data[i];
+        const nextItem: ProductModel.productListItem | undefined = data[i + 1];
+        expectDefined(currentItem);
+        expectDefined(nextItem);
+        expect(
+          currentItem.name.localeCompare(nextItem.name),
+        ).toBeLessThanOrEqual(0);
+      }
+    });
 
-	describe("GET /products", () => {
-		it("should return a list of products sorted by name", async () => {
-			const { data, status } = await api.products.get({
-				query: { sortBy: "name", sortDir: "asc" },
-			});
+    it("should return a list of products sorted by price", async () => {
+      const { data, status } = await api.products.get({
+        query: { sortBy: "priceMin", sortDir: "asc", take: 100 },
+      });
 
-			expect(status).toBe(200);
-			expectDefined(data);
-			expect(Array.isArray(data)).toBe(true);
-			expect(data.length).toBeGreaterThanOrEqual(testProducts.length - 1);
+      expect(status).toBe(200);
+      expectDefined(data);
+      expect(Array.isArray(data)).toBe(true);
+      expect(data.length).toBeGreaterThanOrEqual(testProducts.length);
 
-			const returnedProductNames = data.map((p) => p.name);
-			for (const testProduct of testProducts) {
-				expect(returnedProductNames).toContain(testProduct.name);
-			}
+      const returnedProductNames = data.map((p) => p.name);
+      for (const testProduct of testProducts) {
+        expect(returnedProductNames).toContain(testProduct.name);
+      }
 
-			for (let i = 0; i < data.length - 1; i++) {
-				const currentItem = data[i] as (typeof data)[number];
-				const nextItem = data[i + 1] as (typeof data)[number];
-				expectDefined(currentItem);
-				expectDefined(nextItem);
-				expect(
-					currentItem.name.localeCompare(nextItem.name),
-				).toBeLessThanOrEqual(0);
-			}
-		});
+      for (let i = 0; i < data.length - 1; i += 1) {
+        const current = data[i] as ProductModel.productListItem;
+        const next = data[i + 1] as ProductModel.productListItem;
+        if (current.priceMin !== null && next.priceMin !== null) {
+          expect(current.priceMin).toBeLessThanOrEqual(next.priceMin);
+        }
+      }
+    });
 
-		it("should return a list of products sorted by price", async () => {
-			const { data, status } = await api.products.get({
-				query: { sortBy: "priceMin", sortDir: "asc" },
-			});
+    it("should return a list of products filtered by category", async () => {
+      const [category] = testCategories;
+      expectDefined(category);
+      const { data, status } = await api.products.get({
+        query: { categories: [category.name] },
+      });
 
-			expect(status).toBe(200);
-			expectDefined(data);
-			expect(Array.isArray(data)).toBe(true);
-			expect(data.length).toBeGreaterThanOrEqual(testProducts.length);
+      expect(status).toBe(200);
+      expectDefined(data);
+      expect(Array.isArray(data)).toBe(true);
 
-			const returnedProductNames = data.map((p) => p.name);
-			for (const testProduct of testProducts) {
-				expect(returnedProductNames).toContain(testProduct.name);
-			}
+      for (const product of data) {
+        expect(product.categoryId).toBe(category.id);
+      }
+    });
 
-			for (let i = 0; i < data.length - 1; i++) {
-				const current = data[i] as ProductModel.getResult[number];
-				const next = data[i + 1] as ProductModel.getResult[number];
-				if (current.priceMin !== null && next.priceMin !== null) {
-					expect(current.priceMin).toBeLessThanOrEqual(next.priceMin);
-				}
-			}
-		});
+    it("should return products from multiple categories (OR filter)", async () => {
+      const [category1, category2] = testCategories;
+      expectDefined(category1);
+      expectDefined(category2);
+      expect(category1.id).not.toBe(category2.id);
 
-		it("should return a list of products filtered by category", async () => {
-			const category = testCategories[0];
-			expectDefined(category);
-			const { data, status } = await api.products.get({
-				query: { categories: [category.name] },
-			});
+      const { data, status } = await api.products.get({
+        query: { categories: [category1.name, category2.name] },
+      });
 
-			expect(status).toBe(200);
-			expectDefined(data);
-			expect(Array.isArray(data)).toBe(true);
+      expect(status).toBe(200);
+      expectDefined(data);
+      expect(Array.isArray(data)).toBe(true);
 
-			for (const product of data) {
-				expect(product.categoryId).toBe(category.id);
-			}
-		});
+      for (const product of data) {
+        expect([category1.id, category2.id]).toContain(product.categoryId);
+      }
 
-		it("should return products from multiple categories (OR filter)", async () => {
-			const category1 = testCategories[0];
-			const category2 = testCategories[1];
-			expectDefined(category1);
-			expectDefined(category2);
-			expect(category1.id).not.toBe(category2.id);
+      const category1Products = data.filter(
+        (p) => p.categoryId === category1.id,
+      );
+      const category2Products = data.filter(
+        (p) => p.categoryId === category2.id,
+      );
+      expect(category1Products.length + category2Products.length).toBe(
+        data.length,
+      );
+    });
 
-			const { data, status } = await api.products.get({
-				query: { categories: [category1.name, category2.name] },
-			});
+    it("should return a list of products filtered by status", async () => {
+      const { data, status } = await api.products.get({
+        query: { status: "PUBLISHED" },
+      });
 
-			expect(status).toBe(200);
-			expectDefined(data);
-			expect(Array.isArray(data)).toBe(true);
+      expect(status).toBe(200);
+      expectDefined(data);
+      expect(Array.isArray(data)).toBe(true);
 
-			for (const product of data) {
-				expect([category1.id, category2.id]).toContain(product.categoryId);
-			}
+      for (const product of data) {
+        expect(product.status).toBe("PUBLISHED");
+      }
+    });
+  });
 
-			const category1Products = data.filter(
-				(p) => p.categoryId === category1.id,
-			);
-			const category2Products = data.filter(
-				(p) => p.categoryId === category2.id,
-			);
-			expect(category1Products.length + category2Products.length).toBe(
-				data.length,
-			);
-		});
+  describe("GET /products/count", () => {
+    it("should return the count of products filtered by status", async () => {
+      const { data, status } = await api.products.count.get({
+        query: { status: "PUBLISHED" },
+      });
 
-		it("should return a list of products filtered by status", async () => {
-			const { data, status } = await api.products.get({
-				query: { status: "PUBLISHED" },
-			});
+      expect(status).toBe(200);
+      expectDefined(data);
+      expect(typeof data).toBe("number");
+    });
+  });
 
-			expect(status).toBe(200);
-			expectDefined(data);
-			expect(Array.isArray(data)).toBe(true);
+  describe("GET /products/:id", () => {
+    it("should return a product by id", async () => {
+      const [product] = testProducts;
+      expectDefined(product);
 
-			for (const product of data) {
-				expect(product.status).toBe("PUBLISHED");
-			}
-		});
-	});
+      const { data, status } = await api.products({ id: product.id }).get();
 
-	describe("GET /products/count", () => {
-		it("should return the count of products filtered by status", async () => {
-			const { data, status } = await api.products.count.get({
-				query: { status: "PUBLISHED" },
-			});
+      expect(status).toBe(200);
+      expectDefined(data);
+      expect(data.id).toBe(product.id);
+      expect(data.name).toBe(product.name);
+      expect(data.description).toBe(product.description);
+    });
+  });
 
-			expect(status).toBe(200);
-			expectDefined(data);
-			expect(typeof data).toBe("number");
-		});
-	});
+  describe("visibility", () => {
+    const visitors = {
+      anonymous: treaty(productsRouter),
+      user: treaty(productsRouter, { headers: { cookie: userCookie } }),
+    };
 
-	describe("GET /products/:id", () => {
-		it("should return a product by id", async () => {
-			const product = testProducts[0];
-			expectDefined(product);
+    for (const [role, visitor] of Object.entries(visitors)) {
+      it(`hides unpublished products from ${role}`, async () => {
+        const [[published], [draft], [archived]] = await Promise.all([
+          createTestProducts(testDb, 1),
+          createTestProducts(testDb, 1, "DRAFT"),
+          createTestProducts(testDb, 1, "ARCHIVED"),
+        ]);
+        expectDefined(published);
+        expectDefined(draft);
+        expectDefined(archived);
+        const categories = await testDb.db.query.category.findMany({
+          where: {
+            products: { id: { in: [published.id, draft.id, archived.id] } },
+          },
+        });
+        const names = categories.map(({ name }) => name);
 
-			const { data, status } = await api.products({ id: product.id }).get();
+        const [all, drafts, adminDrafts] = await Promise.all([
+          visitor.products.get({ query: { categories: names } }),
+          visitor.products.get({
+            query: { categories: names, status: "DRAFT" },
+          }),
+          api.products.get({ query: { categories: names, status: "DRAFT" } }),
+        ]);
+        expect(all.data?.map(({ id }) => id)).toEqual([published.id]);
+        expect(drafts.data?.map(({ id }) => id)).toEqual([published.id]);
+        expect(adminDrafts.data?.map(({ id }) => id)).toEqual([draft.id]);
 
-			expect(status).toBe(200);
-			expectDefined(data);
-			expect(data.id).toBe(product.id);
-			expect(data.name).toBe(product.name);
-			expect(data.description).toBe(product.description);
-		});
-	});
+        const hidden = await Promise.all(
+          [draft, archived].flatMap(({ id, slug }) => [
+            visitor.products({ id }).get(),
+            visitor.products.slug({ slug }).get(),
+            visitor.products({ id }).comments.get({ query: {} }),
+          ]),
+        );
+        expect(hidden.map(({ status }) => status)).toEqual([
+          404, 404, 404, 404, 404, 404,
+        ]);
+
+        const visible = await Promise.all([
+          visitor.products({ id: published.id }).get(),
+          visitor.products.slug({ slug: published.slug }).get(),
+          api.products({ id: draft.id }).get(),
+          api.products.slug({ slug: draft.slug }).get(),
+          visitor.products({ id: published.id }).comments.get({ query: {} }),
+          api.products({ id: draft.id }).comments.get({ query: {} }),
+        ]);
+        expect(visible.map(({ status }) => status)).toEqual([
+          200, 200, 200, 200, 200, 200,
+        ]);
+
+        const [drafted, total] = await Promise.all([
+          visitor.products.count.get({ query: { status: "DRAFT" } }),
+          api.products.count.get({ query: {} }),
+        ]);
+        expectDefined(drafted.data);
+        expectDefined(total.data);
+        // The draft and the archived product are never counted.
+        expect(drafted.data).toBeLessThanOrEqual(total.data - 2);
+      });
+    }
+  });
+
+  describe("cache", () => {
+    const listing = async (id: string) => {
+      const category = await testDb.db.query.category.findFirst({
+        where: { products: { id } },
+      });
+      expectDefined(category);
+      return async () => {
+        const { data } = await api.products.get({
+          query: { status: "PUBLISHED", categories: [category.name] },
+        });
+        return data?.map((product) => product.id);
+      };
+    };
+
+    it("drops a product from its old status listing after a patch", async () => {
+      const [product] = await createTestProducts(testDb, 1);
+      expectDefined(product);
+      await testDb.db.insert(productVariantTable).values({
+        id: Bun.randomUUIDv7(),
+        productId: product.id,
+        price: 1000,
+        stock: 1,
+      });
+      const list = await listing(product.id);
+      expect(await list()).toEqual([product.id]);
+
+      const { status } = await api
+        .products({ id: product.id })
+        .patch(
+          { status: "DRAFT" },
+          { headers: { "x-version": product.version } },
+        );
+      expect(status).toBe(200);
+      expect(await list()).toEqual([]);
+    });
+
+    it("drops a product from its old status listing after a bulk patch", async () => {
+      const [product] = await createTestProducts(testDb, 1);
+      expectDefined(product);
+      const list = await listing(product.id);
+      expect(await list()).toEqual([product.id]);
+
+      const { status } = await api.products.bulk.patch({
+        ids: [product.id],
+        status: "ARCHIVED",
+      });
+      expect(status).toBe(200);
+      expect(await list()).toEqual([]);
+    });
+  });
+
+  it("orders ties by id so pages never overlap", async () => {
+    const products = await createTestProducts(testDb, 6);
+    const [first] = products;
+    expectDefined(first);
+    const category = await testDb.db.query.category.findFirst({
+      where: { id: first.categoryId },
+    });
+    expectDefined(category);
+    // No variant: every priceMin is null, so all of them tie.
+    const pages = await Promise.all(
+      [0, 2, 4].map((skip) =>
+        api.products.get({
+          query: {
+            categories: [category.name],
+            sortBy: "priceMin",
+            skip,
+            take: 2,
+          },
+        }),
+      ),
+    );
+    expect(pages.flatMap(({ data }) => data?.map(({ id }) => id))).toEqual(
+      products.map(({ id }) => id).sort(),
+    );
+  });
+
+  it("returns the typed not found problem", async () => {
+    const results = await Promise.all([
+      api.products({ id: Bun.randomUUIDv7() }).get(),
+      api.products.slug({ slug: "missing" }).get(),
+      api.products({ id: Bun.randomUUIDv7() }).comments.get({ query: {} }),
+    ]);
+    for (const { error } of results) {
+      expect(error).toMatchObject({
+        status: 404,
+        value: { code: "PRODUCT_NOT_FOUND", message: "Product not found" },
+      });
+    }
+  });
+
+  it("finds products by full-text name", async () => {
+    const [product] = await createTestProducts(testDb, 1);
+    expectDefined(product);
+    const { data } = await api.products.get({ query: { name: product.name } });
+    expect(data?.map(({ id }) => id)).toEqual([product.id]);
+  });
+
+  it("lists a collection in its curated order, unless a sort is requested", async () => {
+    const products = await createTestProducts(testDb, 3);
+    const curated = products.map(({ id }) => id).reverse();
+    const collectionId = Bun.randomUUIDv7();
+    const handle = collectionId;
+    await testDb.db
+      .insert(collectionTable)
+      .values({ id: collectionId, handle, name: handle });
+    await testDb.db.insert(collectionProductTable).values(
+      curated.map((productId, position) => ({
+        collectionId,
+        productId,
+        position,
+      })),
+    );
+
+    const [byPosition, byName] = await Promise.all([
+      api.products.get({ query: { collection: handle } }),
+      api.products.get({ query: { collection: handle, sortBy: "name" } }),
+    ]);
+    expect(byPosition.data?.map(({ id }) => id)).toEqual(curated);
+    expect(byName.data?.map(({ name }) => name)).toEqual(
+      products.map(({ name }) => name).sort(),
+    );
+  });
 });

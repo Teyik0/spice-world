@@ -1,0 +1,1 @@
+ALTER TABLE "_AttributeValueToProductVariant" DROP CONSTRAINT "_AttributeValueToProductVariant_A_fkey", ADD CONSTRAINT "_AttributeValueToProductVariant_A_fkey" FOREIGN KEY ("A") REFERENCES "AttributeValue"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

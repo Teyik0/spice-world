@@ -4,67 +4,111 @@ on:
   pull_request:
     branches: [dev]
 
+env:
+  BUN_VERSION: 1.4.5
+
 jobs:
-  setup:
-    name: Setup Project
-    uses: ./.github/workflows/setup-wc.yaml
-    with:
-      bun-version: latest
-      install-dependencies: true
-
   lint:
-    name: Lint & format check
+    name: Lint & Format Check
     runs-on: ubuntu-latest
-    needs: setup
     steps:
-      - uses: ./.github/workflows/setup-wc.yml
-        with:
-          bun-version: latest
-          install-dependencies: true
+      - uses: actions/checkout@v6
 
-      - name: Run ultracite linting
-        run: bunx ultracite check
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+            ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock', '**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run linting
+        run: bun run ultracite check
 
   typecheck:
-    name: TypeScript type check
+    name: Type Check
     runs-on: ubuntu-latest
-    needs: setup
+
     steps:
-      - uses: ./.github/workflows/setup-wc.yml
+      - uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
-          install-dependencies: true
+          bun-version: ${{ env.BUN_VERSION }}
 
-      - name: Generate prisma client
-        working-directory: apps/server
-        run: bunx prisma generate
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+            ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock', '**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
 
-      - name: Type check workspace
-        working-directory: ${{ matrix.workspace }}
-        run: bunx tsc --build --noEmit
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Type check
+        run: bun check
 
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    needs: setup
-    steps:
-      - uses: ./.github/workflows/setup-wc.yml
-        with:
-          bun-version: latest
-          install-dependencies: true
-
-      - name: Setup test database
-        run: docker compose up -d postresdb
-
-      - name: Setup test database
-        working-directory: apps/server
+    services:
+      postgres:
+        image: postgres:18-alpine
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
-        run: |
-          bunx prisma generate
-          bunx prisma db push
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
 
-      - name: Run server tests
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+            ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock', '**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run tests
         working-directory: apps/server
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
@@ -74,29 +118,53 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          # Dummies: tests/setup.ts overrides the Stripe secret keys, Axiom is disabled in test.
+          STRIPE_PUBLISHABLE_KEY: pk_test_dummy
+          AXIOM_TOKEN: dummy
+          STRIPE_SUCCESS_URL: http://localhost:3000/orders/success
+          STRIPE_CANCEL_URL: http://localhost:3000/cart
         run: bun run test
 
   build:
-    name: Build Applications
+    name: Build (${{ matrix.app }})
     runs-on: ubuntu-latest
-    needs: [setup, lint, typecheck, test]
+    needs: [lint, typecheck, test]
     strategy:
+      fail-fast: false
       matrix:
-        workspace:
-          - apps/server
-          - apps/dashboard
-          - packages/emails
+        app:
+          - name: server
+            path: apps/server
+          - name: web
+            path: apps/web
+          - name: storefront
+            path: apps/storefront
+
     steps:
-      - uses: ./.github/workflows/setup-wc.yml
+      - uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
-          install-dependencies: true
+          bun-version: ${{ env.BUN_VERSION }}
 
-      - name: Generate prisma client
-        if: matrix.workspace == 'apps/server'
-        working-directory: ${{ matrix.workspace }}
-        run: bunx prisma generate
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+            ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock', '**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
 
-      - name: Build ${{ matrix.workspace }}
-        working-directory: ${{ matrix.workspace }}
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build ${{ matrix.app.name }}
+        working-directory: ${{ matrix.app.path }}
+        env:
+          API_URL: http://localhost:3001
         run: bun run build

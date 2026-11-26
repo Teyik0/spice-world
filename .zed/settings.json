@@ -2,80 +2,108 @@
   "formatter": "language_server",
   "format_on_save": "on",
   "languages": {
+    "JSON": {
+      "language_servers": ["biome"],
+      "prettier": {
+        "allowed": false
+      },
+      "formatter": {
+        "external": {
+          "command": "bun",
+          "arguments": ["fmt", "--stdin-filepath={buffer_path}"]
+        }
+      },
+      "code_actions_on_format": {
+        "source.action.useSortedPackageJson.biome": false,
+        "source.fixAll.biome": false
+      }
+    },
+    "JSONC": {
+      "language_servers": ["biome"],
+      "prettier": {
+        "allowed": false
+      },
+      "formatter": {
+        "external": {
+          "command": "bun",
+          "arguments": ["fmt", "--stdin-filepath={buffer_path}"]
+        }
+      }
+    },
     "JavaScript": {
       "language_servers": [
-        "vtsls",
-        "biome"
+        "typescript-ls",
+        "biome",
+        "!vtsls",
+        "!typescript-language-server"
       ],
       "prettier": {
         "allowed": false
       },
       "formatter": {
-        "language_server": {
-          "name": "biome"
+        "external": {
+          "command": "bun",
+          "arguments": ["fmt", "--stdin-filepath={buffer_path}"]
         }
       },
       "code_actions_on_format": {
-        "source.fixAll.biome": true,
-        "source.organizeImports.biome": true
+        "source.fixAll.biome": true
       }
     },
     "TypeScript": {
       "language_servers": [
-        "vtsls",
-        "biome"
+        "typescript-ls",
+        "biome",
+        "!vtsls",
+        "!typescript-language-server"
       ],
       "prettier": {
         "allowed": false
       },
       "formatter": {
-        "language_server": {
-          "name": "biome"
+        "external": {
+          "command": "bun",
+          "arguments": ["fmt", "--stdin-filepath={buffer_path}"]
         }
       },
       "code_actions_on_format": {
-        "source.fixAll.biome": true,
-        "source.organizeImports.biome": true
+        "source.fixAll.biome": true
       }
     },
     "TSX": {
       "language_servers": [
-        "vtsls",
-        "biome"
+        "typescript-ls",
+        "biome",
+        "!vtsls",
+        "!typescript-language-server"
       ],
       "prettier": {
         "allowed": false
       },
       "formatter": {
-        "language_server": {
-          "name": "biome"
+        "external": {
+          "command": "bun",
+          "arguments": ["fmt", "--stdin-filepath={buffer_path}"]
         }
       },
       "code_actions_on_format": {
-        "source.fixAll.biome": true,
-        "source.organizeImports.biome": true
+        "source.fixAll.biome": true
       }
     }
   },
   "lsp": {
-    "typescript-language-server": {
+    "typescript-ls": {
       "settings": {
+        "package_version": "7.0.2",
         "typescript": {
-          "preferences": {
-            "includePackageJsonAutoImports": "on"
+          "inlayHints": {
+            "parameterNames": { "enabled": "all" },
+            "parameterTypes": { "enabled": true },
+            "variableTypes": { "enabled": true },
+            "propertyDeclarationTypes": { "enabled": true },
+            "functionLikeReturnTypes": { "enabled": true },
+            "enumMemberValues": { "enabled": true }
           }
-        }
-      },
-      "initialization_options": {
-        "preferences": {
-          "includeInlayParameterNameHints": "all",
-          "includeInlayParameterNameHintsWhenArgumentMatchesName": true,
-          "includeInlayFunctionParameterTypeHints": true,
-          "includeInlayVariableTypeHints": true,
-          "includeInlayVariableTypeHintsWhenTypeMatchesName": true,
-          "includeInlayPropertyDeclarationTypeHints": true,
-          "includeInlayFunctionLikeReturnTypeHints": true,
-          "includeInlayEnumMemberValueHints": true
         }
       }
     }

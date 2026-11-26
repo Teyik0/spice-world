@@ -1,91 +1,64 @@
-import { cors } from "@elysiajs/cors";
-import { openapi } from "@elysiajs/openapi";
-import { opentelemetry } from "@elysiajs/opentelemetry";
+import "@spice-world/server/lib/env";
+import { cors } from "@elysia/cors";
+import { opentelemetry } from "@elysia/opentelemetry";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
+import { env, origins } from "@spice-world/server/lib/env";
 import { attributeRouter } from "@spice-world/server/modules/attributes";
 import { categoryRouter } from "@spice-world/server/modules/categories";
+import { collectionRouter } from "@spice-world/server/modules/collections";
+import { ordersRouter } from "@spice-world/server/modules/orders";
 import { productsRouter } from "@spice-world/server/modules/products";
-import { Elysia } from "elysia";
-import { betterAuthPlugin, OpenAPI } from "./plugins/better-auth.plugin.tsx";
+import { Elysia, setFileTypeDetector } from "elysia";
+import { fileTypeFromBlob } from "file-type";
 
-const formattedDate = () =>
-	new Date().toLocaleString("en-US", {
-		year: "numeric",
-		month: "2-digit",
-		day: "2-digit",
-		hour: "2-digit",
-		minute: "2-digit",
-		second: "2-digit",
-		hour12: false,
-	});
+import { auth } from "./plugins/auth.plugin.tsx";
+import { loggerPlugin } from "./plugins/logger.plugin";
+import { openApiConfig, openApiLogin } from "./plugins/openapi.plugin.ts";
 
-let startTime = performance.now();
+setFileTypeDetector(fileTypeFromBlob);
 
 const app = new Elysia()
-	.use(
-		opentelemetry({
-			spanProcessors: [
-				new BatchSpanProcessor(
-					new OTLPTraceExporter({
-						url: "https://api.axiom.co/v1/traces",
-						headers: {
-							Authorization: `Bearer ${Bun.env.AXIOM_TOKEN}`,
-							"X-Axiom-Dataset": "spice-world",
-						},
-					}),
-				),
-			],
-		}),
-	)
-	.use(
-		openapi({
-			documentation: {
-				components: await OpenAPI.components,
-				paths: await OpenAPI.getPaths(),
-			},
-		}),
-	)
-	.use(
-		cors({
-			origin: ["http://localhost:3000", "http://localhost:3001"],
-			methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-			credentials: true,
-			allowedHeaders: ["Content-Type", "Authorization"],
-		}),
-	)
-	.onTransform(({ body, params, path, request: { method } }) => {
-		startTime = performance.now();
-		console.log(`${formattedDate()} - ${method} ${path}`, {
-			body,
-			params,
-		});
-	})
-	.use(betterAuthPlugin)
-	.guard({
-		user: true,
-	})
-	.onAfterResponse(({ user, path, set }) => {
-		console.log(`${formattedDate()} - RESPONSE ${path}`, {
-			performance: `${((performance.now() - startTime) / 1000).toFixed(2)} s`,
-			status: set.status,
-			user: user ? user.id : "anonymous",
-		});
-	})
-	.onBeforeHandle(({ request, user, status }) => {
-		if (request.method !== "GET" && (!user || user.role !== "admin")) {
-			return status(
-				"Unauthorized",
-				"You need to be admin to perform this action",
-			);
-		}
-	})
-	.use(categoryRouter)
-	.use(attributeRouter)
-	.use(productsRouter)
-	.listen(Bun.env.PORT ?? 3001);
+  .use(
+    opentelemetry({
+      spanProcessors: [
+        new BatchSpanProcessor(
+          new OTLPTraceExporter({
+            url: "https://api.axiom.co/v1/traces",
+            headers: {
+              Authorization: `Bearer ${env.AXIOM_TOKEN}`,
+              "X-Axiom-Dataset": "spice-world",
+            },
+          }),
+        ),
+      ],
+    }),
+  )
+  .use(loggerPlugin)
+  .use(
+    cors({
+      origin: origins,
+      methods: ["GET", "QUERY", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      credentials: true,
+      allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "X-Version",
+        "X-Cache-Bypass",
+      ],
+    }),
+  )
+  .mount(auth.handler)
+  .use(openApiConfig)
+  .use(openApiLogin)
+  .use(categoryRouter)
+  .use(collectionRouter)
+  .use(attributeRouter)
+  .use(productsRouter)
+  .use(ordersRouter)
+  .listen(Bun.env.PORT ?? 3001);
 
 console.log(
-	`🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`,
+  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`,
 );
 export type App = typeof app;

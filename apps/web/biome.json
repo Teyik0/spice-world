@@ -1,7 +1,19 @@
 {
-	"root": false,
-	"extends": ["../../biome.jsonc"],
-	"files": {
-		"includes": ["**"]
-	}
+  "root": false,
+  "extends": [
+    "../../biome.jsonc",
+    "ultracite/biome/react",
+    "ultracite/biome/next"
+  ],
+  "files": {
+    "includes": []
+  },
+  "linter": {
+    "rules": {
+      "performance": {
+        "noJsxPropsBind": "off",
+        "noNamespaceImport": "error"
+      }
+    }
+  }
 }
