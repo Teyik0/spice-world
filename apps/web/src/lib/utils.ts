@@ -17,18 +17,19 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const env = createEnv({
-  server: {},
-
-  client: {
-    NEXT_PUBLIC_BETTER_AUTH_URL: standardSchema(t.String({ format: "uri" })),
+  // The API origin, reached directly server side. The browser goes through the
+  // same-origin /api proxy (next.config.ts) so auth cookies stay first-party.
+  server: {
+    API_URL: standardSchema(t.String({ format: "uri" })),
   },
+  client: {},
   runtimeEnv: {
-    NEXT_PUBLIC_BETTER_AUTH_URL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
+    API_URL: process.env.API_URL,
   },
 });
 
 export const authClient = createAuthClient({
-  baseURL: env.NEXT_PUBLIC_BETTER_AUTH_URL,
+  baseURL: typeof window === "undefined" ? env.API_URL : undefined, // browser: same origin
   plugins: [adminClient(), inferAdditionalFields<typeof auth>()],
   fetchOptions: {
     credentials: "include", // automatic includes cookies in requests

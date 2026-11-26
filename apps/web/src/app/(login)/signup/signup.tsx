@@ -63,7 +63,7 @@ export function SignUp() {
           image: values.image
             ? await convertImageToBase64(values.image as File)
             : "",
-          callbackURL: "http://localhost:3000/",
+          callbackURL: `${window.location.origin}/`,
           fetchOptions: {
             onSuccess: () => {
               toast.success("Account created successfully!", {

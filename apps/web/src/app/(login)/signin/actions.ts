@@ -31,7 +31,6 @@ export const signInAction = actionClient
     const response = await authClient.signIn.email({
       email,
       password,
-      callbackURL: "http://localhost:3000/",
       rememberMe,
     });
 

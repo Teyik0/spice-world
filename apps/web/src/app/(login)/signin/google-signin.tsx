@@ -19,8 +19,8 @@ export const GoogleSignIn = () => {
           await authClient.signIn.social(
             {
               provider: "google",
-              callbackURL: "http://localhost:3000/",
-              errorCallbackURL: "http://localhost:3000/signin",
+              callbackURL: `${window.location.origin}/`,
+              errorCallbackURL: `${window.location.origin}/signin`,
             },
             {
               onSuccess: () => {

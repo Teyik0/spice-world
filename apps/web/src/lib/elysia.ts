@@ -8,12 +8,15 @@ import { env } from "./utils";
 // Browser twin (see elysia-server.ts for the RSC twin): cookies are attached
 // by credentials: "include" itself. Client-safe: never import next/headers here
 // or every client bundle pulling this module fails to build.
-export const app = treaty<App>(env.NEXT_PUBLIC_BETTER_AUTH_URL, {
-  fetch: {
-    credentials: "include", // automatic includes cookies in requests
-    cache: "no-store", // disable Next.js cache for fetch requests
+export const app = treaty<App>(
+  typeof window === "undefined" ? env.API_URL : `${window.location.origin}/api`,
+  {
+    fetch: {
+      credentials: "include", // automatic includes cookies in requests
+      cache: "no-store", // disable Next.js cache for fetch requests
+    },
   },
-});
+);
 
 type TreatyMethod = (...args: any[]) => Promise<{
   data: any;

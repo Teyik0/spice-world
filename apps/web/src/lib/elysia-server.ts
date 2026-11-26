@@ -8,7 +8,7 @@ import { env } from "./utils";
 // cookie jar (credentials: "include" is browser-only), so forward the browser
 // cookies to hit the API authenticated. Import this module ONLY from server
 // components/actions — it is not client-safe (next/headers).
-export const app = treaty<App>(env.NEXT_PUBLIC_BETTER_AUTH_URL, {
+export const app = treaty<App>(env.API_URL, {
   fetch: {
     credentials: "include",
     cache: "no-store",

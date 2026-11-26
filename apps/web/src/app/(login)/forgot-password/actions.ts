@@ -3,6 +3,7 @@
 import { standardSchema } from "@spice-world/web/lib/schema";
 import { actionClient, authClient } from "@spice-world/web/lib/utils";
 import { t } from "elysia";
+import { headers } from "next/headers";
 
 const forgotPasswordSchema = t.Object({
   email: t.String({
@@ -17,7 +18,7 @@ export const forgotPasswordAction = actionClient
     try {
       await authClient.requestPasswordReset({
         email,
-        redirectTo: "http://localhost:3000/reset-password",
+        redirectTo: `${(await headers()).get("origin")}/reset-password`,
       });
     } catch (error: unknown) {
       console.error("Forgot password error:", error);

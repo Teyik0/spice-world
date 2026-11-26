@@ -166,5 +166,5 @@ jobs:
       - name: Build ${{ matrix.app.name }}
         working-directory: ${{ matrix.app.path }}
         env:
-          NEXT_PUBLIC_BETTER_AUTH_URL: http://localhost:3000
+          API_URL: http://localhost:3001
         run: bun run build

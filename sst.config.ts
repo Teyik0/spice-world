@@ -19,16 +19,26 @@ export default $config({
     };
   },
   async run() {
-    // PR stage (pr-<number>): a Vercel preview deployment of the PR branch, on the anonymized Neon branch created by preview.yaml.
+    // PR stage (pr-<number>): Vercel preview deployments of the PR branch, on the anonymized Neon branch created by preview.yaml.
     if ($app.stage.startsWith("pr-")) {
-      const deployment = new vercel.Deployment("spice-world-server-pr", {
+      const server = new vercel.Deployment("spice-world-server-pr", {
         projectId: process.env.VERCEL_SERVER_PROJECT_ID as string,
         ref: process.env.PR_SHA as string, // a new commit replaces the deployment
         production: false,
-        environment: { DATABASE_URL: process.env.PR_DATABASE_URL as string },
+        environment: {
+          DATABASE_URL: process.env.PR_DATABASE_URL as string,
+          WEB_ORIGINS: "https://spice-world-web-*-teyik0-team.vercel.app", // the web preview URL isn't known yet
+        },
         deleteOnDestroy: true,
       });
-      return { url: deployment.url };
+      const web = new vercel.Deployment("spice-world-web-pr", {
+        projectId: process.env.VERCEL_WEB_PROJECT_ID as string,
+        ref: process.env.PR_SHA as string,
+        production: false,
+        environment: { API_URL: $interpolate`https://${server.url}` },
+        deleteOnDestroy: true,
+      });
+      return { server: server.url, web: web.url };
     }
     const neonProject = new neon.Project("spice-world-db", {
       name: "spice-world-db",
@@ -78,6 +88,28 @@ export default $config({
         type: "github",
         repo: "Teyik0/spice-world",
       },
+      vercelAuthentication: { deploymentType: "none" }, // the web proxy calls it server side; Better Auth guards the API
+    });
+    const spiceWorldWeb = new vercel.Project("spice-world-web", {
+      name: "spice-world-web",
+      framework: "nextjs",
+      rootDirectory: "apps/web",
+      resourceConfig: { functionDefaultRegions: ["fra1"] },
+      gitRepository: {
+        type: "github",
+        repo: "Teyik0/spice-world",
+      },
+    });
+    new vercel.ProjectEnvironmentVariables("spice-world-web-env", {
+      projectId: spiceWorldWeb.id,
+      variables: [
+        {
+          key: "API_URL",
+          value: "https://spice-world-server.vercel.app",
+          targets: ["production", "preview"], // PR deployments override it with their own server
+          sensitive: false,
+        },
+      ],
     });
     new vercel.ProjectEnvironmentVariables("spice-world-server-env", {
       projectId: spiceWorldServer.id,
@@ -123,6 +155,7 @@ export default $config({
     return {
       NEON_PROJECT_ID: neonProject.id,
       VERCEL_SERVER_PROJECT_ID: spiceWorldServer.id,
+      VERCEL_WEB_PROJECT_ID: spiceWorldWeb.id,
     };
   },
 });
