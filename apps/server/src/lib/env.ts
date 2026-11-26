@@ -10,6 +10,9 @@ const envSchema = t.Object({
     format: "uri",
     default: "http://localhost:3001",
   }),
+  // Set on PR previews only: OAuth providers redirect to this registered URL,
+  // which hands the session back to BETTER_AUTH_URL (Better Auth oAuthProxy).
+  BETTER_AUTH_PRODUCTION_URL: t.Optional(t.String({ format: "uri" })),
   NODE_ENV: t.Union(
     [
       t.Literal("development"),
@@ -50,6 +53,7 @@ function validateEnv(): EnvSchema {
       UPLOADTHING_TOKEN: process.env.UPLOADTHING_TOKEN,
       BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
       BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+      BETTER_AUTH_PRODUCTION_URL: process.env.BETTER_AUTH_PRODUCTION_URL,
       GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
       GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,

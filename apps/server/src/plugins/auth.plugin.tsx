@@ -7,7 +7,7 @@ import { db } from "@spice-world/server/lib/db";
 import { env, origins } from "@spice-world/server/lib/env";
 import { stripeClient } from "@spice-world/server/lib/stripe";
 import { betterAuth } from "better-auth/minimal";
-import { admin, openAPI } from "better-auth/plugins";
+import { admin, oAuthProxy, openAPI } from "better-auth/plugins";
 import type { MacroTypeLambda } from "elysia";
 import { Elysia, ElysiaStatus, macroType } from "elysia";
 import { Resend } from "resend";
@@ -109,6 +109,11 @@ export const auth = betterAuth({
   plugins: [
     openAPI(),
     admin(),
+    // Without BETTER_AUTH_PRODUCTION_URL both URLs match and the proxy is skipped.
+    oAuthProxy({
+      currentURL: env.BETTER_AUTH_URL,
+      productionURL: env.BETTER_AUTH_PRODUCTION_URL,
+    }),
     stripe({
       stripeClient,
       stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,

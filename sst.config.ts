@@ -30,6 +30,9 @@ export default $config({
         environment: {
           DATABASE_URL: process.env.PR_DATABASE_URL as string,
           WEB_ORIGINS: `https://${webDomain}`,
+          // Auth is served through the web /api proxy; Google only knows the production URL.
+          BETTER_AUTH_URL: `https://${webDomain}`,
+          BETTER_AUTH_PRODUCTION_URL: "https://spice-world-web.vercel.app",
         },
         deleteOnDestroy: true,
       });
