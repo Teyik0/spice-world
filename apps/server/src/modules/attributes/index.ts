@@ -2,6 +2,7 @@ import { betterAuthPlugin } from "@spice-world/server/plugins/auth.plugin";
 import { drizzleErrorPlugin } from "@spice-world/server/plugins/drizzle.plugin";
 import { Elysia, t } from "elysia";
 
+import { invalidateProductListings } from "../products/service";
 import { uuidGuard } from "../shared";
 import * as AttributeModel from "./model";
 import { attributeService, attributeValueService } from "./service";
@@ -14,6 +15,12 @@ export const attributeRouter = new Elysia({
 })
   .use(drizzleErrorPlugin)
   .use(betterAuthPlugin)
+  // product pages embed their category's attributes and values
+  .onAfterHandle(({ request }) => {
+    if (request.method !== "GET") {
+      invalidateProductListings();
+    }
+  })
   .get(
     "/",
     {

@@ -10,6 +10,7 @@ import {
   productTable,
   productVariantTable,
 } from "../../../drizzle/schema";
+import { invalidateProductListings } from "../products/service";
 import type { uuidGuard } from "../shared";
 import { closeStripeCheckout, createStripeCheckout } from "../stripe-checkout";
 import type * as OrderModel from "./model";
@@ -52,7 +53,7 @@ export const orderService = {
     items,
     shippingAddress,
   }: OrderModel.checkoutBody & { userId: string }) {
-    return await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const variants = await tx
         .select({
           id: productVariantTable.id,
@@ -162,6 +163,10 @@ export const orderService = {
         checkoutUrl: checkout.url,
       });
     });
+    if (result.status === 201) {
+      invalidateProductListings(); // the reserved stock changes the listings
+    }
+    return result;
   },
 
   /** Stock is already reserved by createCheckout. */
@@ -185,7 +190,7 @@ export const orderService = {
   },
 
   async cancelPending(stripeSessionId: string, id: string) {
-    await db.transaction(async (tx) => {
+    const restored = await db.transaction(async (tx) => {
       const [cancelled] = await tx
         .update(orderTable)
         .set({ status: "CANCELLED" })
@@ -198,7 +203,7 @@ export const orderService = {
         )
         .returning({ id: orderTable.id });
       if (!cancelled) {
-        return;
+        return false;
       }
       await tx
         .select({ id: productVariantTable.id })
@@ -215,7 +220,11 @@ export const orderService = {
         .orderBy(asc(productVariantTable.id)) // Stable lock order
         .for("update");
       await moveStock(tx, id, 1);
+      return true;
     });
+    if (restored) {
+      invalidateProductListings();
+    }
   },
 
   async get({

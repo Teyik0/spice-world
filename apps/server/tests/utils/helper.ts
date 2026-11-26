@@ -588,7 +588,7 @@ export const runBlocked = async <T>(
         sql`select 1 from pg_stat_activity where ${session?.pid}::int = any(pg_blocking_pids(pid))`,
       );
       expect(blocked.length).toBeGreaterThan(0);
-    });
+    }, 250); // ~5s: the request may process images before reaching the lock (slow on CI)
     await meanwhile(tx);
     return running;
   });

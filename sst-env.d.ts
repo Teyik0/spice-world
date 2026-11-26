@@ -6,64 +6,6 @@
 
 declare module "sst" {
   export interface Resource {
-    "AXIOM_TOKEN": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "BETTER_AUTH_SECRET": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "BETTER_AUTH_URL": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "Database": {
-      "devConnectionString": string
-      "previewConnectionString": string
-      "prodConnectionString": string
-      "type": "sst.sst.Linkable"
-    }
-    "GOOGLE_CLIENT_ID": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "GOOGLE_CLIENT_SECRET": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "RESEND_API_KEY": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "STRIPE_CANCEL_URL": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "STRIPE_PUBLISHABLE_KEY": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "STRIPE_SECRET_KEY": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "STRIPE_SUCCESS_URL": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "STRIPE_WEBHOOK_SECRET": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "UPLOADTHING_TOKEN": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "WEB_ORIGINS": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
   }
 }
 

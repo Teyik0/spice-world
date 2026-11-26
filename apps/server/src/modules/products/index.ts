@@ -1,6 +1,6 @@
 import { betterAuthPlugin } from "@spice-world/server/plugins/auth.plugin";
 import { drizzleErrorPlugin } from "@spice-world/server/plugins/drizzle.plugin";
-import { Elysia, t } from "elysia";
+import { Elysia, ElysiaStatus, t } from "elysia";
 
 import { imageCleanupPlugin } from "../../plugins/image.plugin";
 import { categoryNotFound } from "../categories/model";
@@ -17,6 +17,15 @@ import { productService } from "./service";
 const visibility = (user: { role?: string | null } | null) =>
   user?.role === "admin" ? {} : { status: "PUBLISHED" as const };
 
+/**
+ * Only a published result is the same body for every user, so only it may sit in the
+ * shared CDN cache. `invalidateProductListings` purges the tag.
+ */
+const publishedCache = {
+  "cache-control": "public, s-maxage=3600, stale-while-revalidate=86400",
+  "vercel-cache-tag": "products",
+};
+
 export const productsRouter = new Elysia({
   name: "products",
   prefix: "/products",
@@ -32,14 +41,22 @@ export const productsRouter = new Elysia({
       query: ProductModel.getQuery,
       response: { 200: t.Array(ProductModel.productListItem) },
     },
-    async ({ query, user }) =>
-      await productService.get({ ...query, ...visibility(user) }),
+    async ({ query, user, set }) => {
+      if (query.status === "PUBLISHED") {
+        Object.assign(set.headers, publishedCache);
+      }
+      return await productService.get({ ...query, ...visibility(user) });
+    },
   )
   .get(
     "/count",
     { access: "optional", query: ProductModel.countQuery },
-    async ({ query, user }) =>
-      await productService.count({ ...query, ...visibility(user) }),
+    async ({ query, user, set }) => {
+      if (query.status === "PUBLISHED") {
+        Object.assign(set.headers, publishedCache);
+      }
+      return await productService.count({ ...query, ...visibility(user) });
+    },
   )
   .post(
     "/",
@@ -89,8 +106,19 @@ export const productsRouter = new Elysia({
         404: ProductModel.productNotFound,
       },
     },
-    async ({ params, user }) =>
-      await productService.getBySlug({ ...params, ...visibility(user) }),
+    async ({ params, user, set }) => {
+      const product = await productService.getBySlug({
+        ...params,
+        ...visibility(user),
+      });
+      if (
+        !(product instanceof ElysiaStatus) &&
+        product.status === "PUBLISHED"
+      ) {
+        Object.assign(set.headers, publishedCache);
+      }
+      return product;
+    },
   )
   .guard({ schema: "merge", params: uuidGuard })
   .get(

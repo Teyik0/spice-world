@@ -5,6 +5,7 @@ import {
   enqueueImageCheck,
   uploadFiles,
 } from "@spice-world/server/lib/images";
+import { invalidateByTag, waitUntil } from "@vercel/functions";
 import {
   and,
   asc,
@@ -16,7 +17,6 @@ import {
   sql,
 } from "drizzle-orm";
 import { ElysiaStatus, problem, status } from "elysia";
-import { LRUCache } from "lru-cache";
 
 import {
   attributeValueToProductVariantTable,
@@ -89,17 +89,9 @@ Product: "Organic Paprika Powder"
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type ProductKey = { id: string } | { slug: string };
 
-const localCache = new LRUCache<string, ProductModel.productListItem[]>({
-  max: 500,
-  ttl: 1000 * 60 * 10,
-  updateAgeOnGet: true,
-});
-
-let listingGeneration = 0;
-
+/** Marks the CDN copies tagged "products" stale, in every region. No-op outside Vercel. */
 export function invalidateProductListings() {
-  listingGeneration += 1;
-  localCache.clear();
+  waitUntil(invalidateByTag("products"));
 }
 
 async function find(
@@ -283,12 +275,6 @@ export const productService = {
   }),
 
   async get(query: ProductModel.getQuery) {
-    const cacheKey = JSON.stringify(query);
-    const cached = localCache.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
-    const generation = listingGeneration;
     const {
       name,
       skip,
@@ -382,7 +368,7 @@ export const productService = {
     // A collection is listed in its curated order unless a sort is requested.
     const sort = sortBy ?? (collection ? "position" : "name");
     const order = (sortDir === "desc" ? desc : asc)(sortColumns[sort]);
-    const products = await listing
+    return await listing
       .orderBy(
         sort === "priceMin" || sort === "priceMax"
           ? sql`${order} nulls last`
@@ -391,12 +377,6 @@ export const productService = {
       )
       .limit(take ?? 25)
       .offset(skip ?? 0);
-
-    // Read before an invalidation: possibly stale, do not cache it.
-    if (generation === listingGeneration) {
-      localCache.set(cacheKey, products);
-    }
-    return products;
   },
 
   /** Newest first; only the author's display name leaves the server. */

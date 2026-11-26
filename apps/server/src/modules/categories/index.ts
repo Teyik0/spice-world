@@ -81,9 +81,7 @@ export const categoryRouter = new Elysia({
     },
     async ({ body, params }) => {
       const result = await categoryService.patch({ ...params, ...body });
-      if (body.name) {
-        invalidateProductListings(); // listings are filtered by category name
-      }
+      invalidateProductListings(); // product pages embed the category and its attributes
       return result;
     },
   );

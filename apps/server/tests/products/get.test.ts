@@ -293,6 +293,46 @@ describe.concurrent("GET /products - Integration Tests", () => {
       expect(status).toBe(200);
       expect(await list()).toEqual([]);
     });
+
+    it("lets the CDN share only an explicit published listing", async () => {
+      const [published, count, implicit, drafts] = await Promise.all([
+        api.products.get({ query: { status: "PUBLISHED" } }),
+        api.products.count.get({ query: { status: "PUBLISHED" } }),
+        api.products.get({ query: {} }),
+        api.products.get({ query: { status: "DRAFT" } }),
+      ]);
+      for (const { response } of [published, count]) {
+        expect(response.headers.get("cache-control")).toStartWith("public");
+        expect(response.headers.get("vercel-cache-tag")).toBe("products");
+      }
+      for (const { response } of [implicit, drafts]) {
+        expect(response.headers.get("cache-control")).toBeNull();
+        expect(response.headers.get("vercel-cache-tag")).toBeNull();
+      }
+    });
+
+    it("lets the CDN share only a published product page", async () => {
+      const [[published], [draft]] = await Promise.all([
+        createTestProducts(testDb, 1),
+        createTestProducts(testDb, 1, "DRAFT"),
+      ]);
+      expectDefined(published);
+      expectDefined(draft);
+      const [cached, adminDraft, visitorDraft] = await Promise.all([
+        api.products.slug({ slug: published.slug }).get(),
+        api.products.slug({ slug: draft.slug }).get(),
+        api.products
+          .slug({ slug: draft.slug })
+          .get({ headers: { cookie: userCookie } }),
+      ]);
+      expect(cached.status).toBe(200);
+      expect(cached.response.headers.get("vercel-cache-tag")).toBe("products");
+      expect(adminDraft.status).toBe(200);
+      expect(visitorDraft.status).toBe(404);
+      for (const { response } of [adminDraft, visitorDraft]) {
+        expect(response.headers.get("cache-control")).toBeNull();
+      }
+    });
   });
 
   it("orders ties by id so pages never overlap", async () => {
