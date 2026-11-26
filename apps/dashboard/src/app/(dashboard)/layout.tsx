@@ -1,7 +1,7 @@
-import { authClient } from "@spice-world/dashboard/lib/api";
 import { defineRoute } from "@teyik0/furin";
 
-// UX only: the API guards every admin endpoint itself (access: "admin").
+import { authClient } from "../../lib/api";
+
 export const route = defineRoute("/(dashboard)")
   .config({ mode: "ssr" })
   .loader(async ({ request, redirect }) => {

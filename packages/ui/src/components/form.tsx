@@ -2,6 +2,7 @@ import type { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
 import type { AnyFormApi } from "@tanstack/react-form";
 import { createFormHook, createFormHookContexts } from "@tanstack/react-form";
 import type { ComponentProps, ReactNode } from "react";
+import { useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { Button } from "./button";
@@ -74,6 +75,21 @@ export function SubmitButton({
       {children}
     </Button>
   );
+}
+
+/**
+ * Adapts an app action (resolves an error message, or nothing on success) to
+ * TanStack's `onSubmit`, keeping its outcome for the form to render.
+ */
+export function useActionResult<Values>(
+  action: (values: Values) => Promise<string | undefined>,
+) {
+  const [result, setResult] = useState({ done: false, error: "" });
+  const onSubmit = async ({ value }: { value: Values }) => {
+    const error = await action(value);
+    setResult({ done: !error, error: error ?? "" });
+  };
+  return [result, onSubmit] as const;
 }
 
 /** `onSubmitInvalid` handler: moves focus to the first invalid field. */

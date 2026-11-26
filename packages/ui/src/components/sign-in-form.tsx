@@ -1,11 +1,15 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
 import type { Static } from "typebox";
 import { Type } from "typebox";
 
 import { standardSchema } from "../lib/schema";
 import { FieldError, FieldGroup } from "./field";
-import { focusFirstError, SubmitButton, useAppForm } from "./form";
+import {
+  focusFirstError,
+  SubmitButton,
+  useActionResult,
+  useAppForm,
+} from "./form";
 
 const signInBody = Type.Object({
   email: Type.String({
@@ -28,11 +32,11 @@ export function SignInForm({
   defaultEmail = "",
   forgotPassword,
 }: SignInFormProps) {
-  const [error, setError] = useState<string>();
+  const [{ error }, onSubmit] = useActionResult(action);
   const form = useAppForm({
     defaultValues: { email: defaultEmail, password: "", rememberMe: true },
     validators: { onSubmit: validator },
-    onSubmit: async ({ value }) => setError(await action(value)),
+    onSubmit,
     onSubmitInvalid: focusFirstError,
   });
 
