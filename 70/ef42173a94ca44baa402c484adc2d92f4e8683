@@ -1,0 +1,155 @@
+apps/dashboard/src/app/(dashboard)/products/[slug]/page.tsx
+  s_2cad0bcdaedec4::t_bc3685d6156140 10-12
+packages/ui/src/components/alert-dialog.tsx
+  s_bd0ff37831e0a9::t_064691066d1b5c 34,55-56,73,89,105,121,137,150,166-167
+apps/dashboard/src/lib/api.ts
+  s_4140c89cd56374::t_a9aadf591a5e62 5,13
+  s_2cad0bcdaedec4::t_b6480f3b240f4c 11-12,15,17-18
+apps/dashboard/src/app/(dashboard)/products/page.tsx
+  s_2cad0bcdaedec4::t_c017e0d37b71e6 32-33,35
+  s_4140c89cd56374::t_8cd17de0878a47 21
+  s_06e0e89174758d::t_29d50c03b47ff7 2-3,55-70,73-77
+  s_2cad0bcdaedec4::t_e763615f0d493d 18,20,22
+  s_23394d8d7569fc::t_7f38b0567b06be 36-39,44-45,47-48
+  s_358623c01bba48::t_fa812f4d72a4a9 6,52,71
+  s_23394d8d7569fc::t_a1e12708aacc30 30-31,34,41-42,46,51,53
+  s_23394d8d7569fc::t_581a71bd8ceae5 40
+apps/dashboard/src/app/(dashboard)/products/components/bulk-actions.tsx
+  s_23394d8d7569fc::t_6df2aeec6fc98c 19,27-29,70-77,129-137
+  s_358623c01bba48::t_12ee49e4a19508 25
+  s_358623c01bba48::t_4aa1e3f3afcd2f 52
+  s_06e0e89174758d::t_d712f3e3fba3bb 33,116-120
+  s_23394d8d7569fc::t_a1e12708aacc30 79-81,104-106
+  s_358623c01bba48::t_7fb507b9a3a2ea 97
+  s_358623c01bba48::t_d2cd7a9f78d60e 53
+  s_23394d8d7569fc::t_3f3dfc1fe91a75 26,44,57,140
+apps/dashboard/src/lib/format.ts
+  s_23394d8d7569fc::t_51494021abedcf 20-23
+  s_23394d8d7569fc::t_6d572b122f83a7 26-28
+  s_23394d8d7569fc::t_df39948444d872 6-19,24-25
+apps/dashboard/package.json
+  s_4140c89cd56374::t_83640771308ab1 13
+packages/ui/src/components/empty.tsx
+  s_bd0ff37831e0a9::t_064691066d1b5c 11,21,49,61,74,87
+apps/dashboard/src/app/(dashboard)/products/components/products-table.tsx
+  s_4140c89cd56374::t_8cd17de0878a47 466,468-472
+  s_23394d8d7569fc::t_6d572b122f83a7 39,467
+  s_23394d8d7569fc::t_6df2aeec6fc98c 60,62,64-76,82,84,87,92,94-99,114-117,267,270-271,372-379,385,389,405,410,417,419-432,437,444,446-455,462-465
+  s_358623c01bba48::t_cc272744ea2a44 188-192
+  s_358623c01bba48::t_986636e136f1b5 42,296-314,346-370
+  s_358623c01bba48::t_8d8bcddeb4d803 43-50,172,175,200,323
+  s_23394d8d7569fc::t_51494021abedcf 77-81,83,85-86,88-91,93
+  s_358623c01bba48::t_5dfad5e70b6cfc 169
+  s_23394d8d7569fc::t_df27d9cc2b57c7 2,4,6-15,34-35,100-113,118-149,151-168,170-171,173-174,176-177,181-187,193-199,201-204,216,283,289-295,315-322,328-345,371
+  s_4140c89cd56374::t_b1bf51b532ad5e 32,36,217-218,220-224,231,235-237,242
+  s_23394d8d7569fc::t_d04a7bab4e8690 208,212,324-327
+  s_23394d8d7569fc::t_7f38b0567b06be 178-180,284-288
+  s_358623c01bba48::t_35f8fb62418367 215
+  s_358623c01bba48::t_fce6e0dde34799 150
+  s_3e2a027b7440cd::t_8ef0f1eba6a54c 54-57,436
+  s_db1e5db48179fe::t_aa940ec12a873b 219
+apps/dashboard/src/app/(dashboard)/products/components/products-toolbar.tsx
+  s_23394d8d7569fc::t_6d572b122f83a7 35,139-144,253
+  s_06e0e89174758d::t_29d50c03b47ff7 27-33,202,279-280,282-283,285
+  s_50fbea29a19ac3::t_99b0fb1af79b47 130,371,374-376
+  s_23394d8d7569fc::t_d04a7bab4e8690 84,88
+  s_06e0e89174758d::t_5905dd7ca450fd 199-200,295-296
+  s_23394d8d7569fc::t_9ab2df36e20d9a 20-25,53-54,127-129,131-138,145-147,149-169,172-173,175,177-185,190,194,206,208-221,230-236,240-241,247-252,254-278,288,291-294,297-300,302-313,320-326,328,330-333,335-339,345-357,359-360,362-368
+  s_50fbea29a19ac3::t_ed75a6501aff8d 370,372-373,377-378
+  s_358623c01bba48::t_8d8bcddeb4d803 26,68-80,82,94,125,314-319
+  s_358623c01bba48::t_986636e136f1b5 148,379-390
+  s_23394d8d7569fc::t_ad11988477aaec 1,16-19,37-42,50,81,83,85-87,89-92,186,197
+  s_06e0e89174758d::t_883a5949f6b71c 203,284,289
+  s_50fbea29a19ac3::t_27522f3022113c 391-395
+  s_358623c01bba48::t_12ee49e4a19508 327,329
+  s_23394d8d7569fc::t_a1e12708aacc30 334
+  s_23394d8d7569fc::t_f29ee22337e9b9 171,174,176,222-223,228,238-239,242-246
+  s_358623c01bba48::t_35f8fb62418367 301
+  s_358623c01bba48::t_fbfeeea44ad43a 8,55-67,93,95-124,126,340-344,358,361
+  s_db1e5db48179fe::t_0921461c82edad 170,198,201,224-226,237,369
+apps/dashboard/src/app/(dashboard)/products/components/products-query.ts
+  s_23394d8d7569fc::t_28787d7cc6ba89 14-32
+  s_2cad0bcdaedec4::t_dcd142dc23aa0c 2
+packages/ui/src/components/table.tsx
+  s_bd0ff37831e0a9::t_064691066d1b5c 8,12,23,33,46,59,72,85,98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "70ef42173a94ca44baa402c484adc2d92f4e8683",
+  "prompts": {},
+  "sessions": {
+    "s_06e0e89174758d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c7d55f7-6808-4dbf-adaf-a9fb39d01d5e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_23394d8d7569fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e926edd3-5f41-423a-8309-5d0f81890675",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_2cad0bcdaedec4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9862ca64-c4be-4990-8d45-5070f40bb1df",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_358623c01bba48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64836392-5233-4f0b-a7e5-1f0f2f15c7bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_3e2a027b7440cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "220ed7b1-4d7f-43be-957f-a07a89c057cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_4140c89cd56374": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d25a8d6-b57c-4c81-9bd7-8aaf2289d954",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_50fbea29a19ac3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "12bd11b5-eda1-4d1b-8613-13aef026f2b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_bd0ff37831e0a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "471d0b68-d381-472f-8bef-b2ab3d68b5f5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_db1e5db48179fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e1bc068-2e5a-4787-bd3b-c0732c984c76",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
