@@ -4,6 +4,7 @@ import { invalidateSessionCache } from "@spice-world/web/lib/dal";
 import { standardSchema } from "@spice-world/web/lib/schema";
 import { actionClient, authClient } from "@spice-world/web/lib/utils";
 import { t } from "elysia";
+import { ResponseCookies } from "next/dist/server/web/spec-extension/cookies";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -32,6 +33,17 @@ export const signInAction = actionClient
       email,
       password,
       rememberMe,
+      // Signed in server side: hand the session cookies over to the browser.
+      fetchOptions: {
+        onResponse: async (ctx) => {
+          const store = await cookies();
+          for (const cookie of new ResponseCookies(
+            ctx.response.headers,
+          ).getAll()) {
+            store.set(cookie);
+          }
+        },
+      },
     });
 
     if (!response.data) {

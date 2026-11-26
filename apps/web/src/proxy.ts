@@ -3,15 +3,9 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 export default async function middleware(req: NextRequest) {
-  const cookieName = "better-auth.session_token";
-  const sessionCookie = req.cookies.get(cookieName)?.value;
-
+  // Forward every cookie: over HTTPS the session cookie is __Secure- prefixed.
   const { data: session } = await authClient.getSession({
-    fetchOptions: {
-      headers: {
-        cookie: sessionCookie ? `${cookieName}=${sessionCookie}` : "",
-      },
-    },
+    fetchOptions: { headers: { cookie: req.headers.get("cookie") ?? "" } },
   });
 
   if (session?.user?.role !== "admin") {
