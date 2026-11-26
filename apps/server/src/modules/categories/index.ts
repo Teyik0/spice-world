@@ -1,9 +1,9 @@
 import { betterAuthPlugin } from "@spice-world/server/plugins/auth.plugin";
+import { cdnPlugin } from "@spice-world/server/plugins/cdn.plugin";
 import { drizzleErrorPlugin } from "@spice-world/server/plugins/drizzle.plugin";
 import { Elysia, status, t } from "elysia";
 
 import { imageCleanupPlugin } from "../../plugins/image.plugin";
-import { invalidateProductListings } from "../products/service";
 import { invalidImage, uploadFailed, uuidGuard } from "../shared";
 import * as CategoryModel from "./model";
 import { categoryService } from "./service";
@@ -16,10 +16,12 @@ export const categoryRouter = new Elysia({
   .use(drizzleErrorPlugin)
   .use(imageCleanupPlugin)
   .use(betterAuthPlugin)
+  .use(cdnPlugin)
   .get(
     "/",
     {
       access: "optional",
+      cdn: "categories",
       query: CategoryModel.getQuery,
       response: { 200: t.Array(CategoryModel.categoryResult) },
     },
@@ -42,7 +44,7 @@ export const categoryRouter = new Elysia({
   )
   .get(
     "/count",
-    { access: "optional" },
+    { access: "optional", cdn: "categories" },
     async () => await categoryService.count(),
   )
   .guard({ schema: "merge", params: uuidGuard })
@@ -50,6 +52,7 @@ export const categoryRouter = new Elysia({
     "/:id",
     {
       access: "optional",
+      cdn: "category",
       response: {
         200: CategoryModel.categoryResult,
         404: CategoryModel.categoryNotFound,
@@ -79,9 +82,6 @@ export const categoryRouter = new Elysia({
       },
       imageCleanup: true,
     },
-    async ({ body, params }) => {
-      const result = await categoryService.patch({ ...params, ...body });
-      invalidateProductListings(); // product pages embed the category and its attributes
-      return result;
-    },
+    async ({ body, params }) =>
+      await categoryService.patch({ ...params, ...body }),
   );

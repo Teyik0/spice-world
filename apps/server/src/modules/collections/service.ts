@@ -1,3 +1,4 @@
+import { purgeOnSuccess, tag } from "@spice-world/server/lib/cdn";
 import { db } from "@spice-world/server/lib/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { problem, status } from "elysia";
@@ -7,7 +8,6 @@ import {
   collectionTable,
   productTable,
 } from "../../../drizzle/schema";
-import { invalidateProductListings } from "../products/service";
 import type { ExpectedVersion, uuidGuard } from "../shared";
 import type * as CollectionModel from "./model";
 
@@ -79,8 +79,11 @@ export const collectionService = {
       await setProducts(tx, id, productIds);
       return find(id, tx);
     });
-    invalidateProductListings();
-    return status("Created", collection as CollectionModel.collectionResult);
+    // product listings filter by collection; collections themselves are never cached
+    return purgeOnSuccess(
+      status("Created", collection as CollectionModel.collectionResult),
+      { stale: [tag.products] },
+    );
   },
 
   async patch({
@@ -113,8 +116,7 @@ export const collectionService = {
       }
       return (await find(id, tx)) as CollectionModel.collectionResult;
     });
-    invalidateProductListings();
-    return result;
+    return purgeOnSuccess(result, { stale: [tag.products] });
   },
 
   async delete({ id }: uuidGuard) {
@@ -125,7 +127,6 @@ export const collectionService = {
     if (!row) {
       return this.collectionNotFound;
     }
-    invalidateProductListings();
-    return status("OK");
+    return purgeOnSuccess(status("OK"), { stale: [tag.products] });
   },
 };

@@ -15,6 +15,8 @@ export const app = treaty<App>(
       credentials: "include", // automatic includes cookies in requests
       cache: "no-store", // disable Next.js cache for fetch requests
     },
+    // the admin must read its own writes, never a CDN copy (BYPASS_HEADER in the server)
+    headers: { "x-cache-bypass": "1" },
   },
 );
 

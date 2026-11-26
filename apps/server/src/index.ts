@@ -38,9 +38,14 @@ const app = new Elysia()
   .use(
     cors({
       origin: origins,
-      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      methods: ["GET", "QUERY", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       credentials: true,
-      allowedHeaders: ["Content-Type", "Authorization", "X-Version"],
+      allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "X-Version",
+        "X-Cache-Bypass",
+      ],
     }),
   )
   .mount(auth.handler)

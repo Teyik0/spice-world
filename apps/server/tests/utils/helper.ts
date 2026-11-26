@@ -1,4 +1,5 @@
 import { expect, spyOn } from "bun:test";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { basename } from "node:path";
 
 import type { treaty } from "@elysia/eden";
@@ -593,4 +594,38 @@ export const runBlocked = async <T>(
     return running;
   });
   return await response;
+};
+
+/**
+ * Vercel runtime (third party) stand-in: the request context `@vercel/functions` reads.
+ * Records the purges made while `call` runs, isolated per call for concurrent tests.
+ */
+const purges = new AsyncLocalStorage<{ stale: string[]; gone: string[] }>();
+Object.assign(globalThis, {
+  [Symbol.for("@vercel/request-context")]: {
+    get: () => {
+      const store = purges.getStore();
+      return (
+        store && {
+          waitUntil: () => undefined,
+          purge: {
+            invalidateByTag: (tags: string | string[]) => {
+              store.stale.push(...[tags].flat());
+              return Promise.resolve();
+            },
+            dangerouslyDeleteByTag: (tags: string | string[]) => {
+              store.gone.push(...[tags].flat());
+              return Promise.resolve();
+            },
+          },
+        }
+      );
+    },
+  },
+});
+
+export const recordPurges = async <T>(call: () => Promise<T>) => {
+  const store = { stale: [] as string[], gone: [] as string[] };
+  const result = await purges.run(store, call);
+  return { result, stale: store.stale.toSorted(), gone: store.gone.toSorted() };
 };

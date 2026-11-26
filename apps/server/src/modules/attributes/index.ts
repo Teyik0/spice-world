@@ -1,8 +1,8 @@
 import { betterAuthPlugin } from "@spice-world/server/plugins/auth.plugin";
+import { cdnPlugin } from "@spice-world/server/plugins/cdn.plugin";
 import { drizzleErrorPlugin } from "@spice-world/server/plugins/drizzle.plugin";
 import { Elysia, t } from "elysia";
 
-import { invalidateProductListings } from "../products/service";
 import { uuidGuard } from "../shared";
 import * as AttributeModel from "./model";
 import { attributeService, attributeValueService } from "./service";
@@ -15,16 +15,12 @@ export const attributeRouter = new Elysia({
 })
   .use(drizzleErrorPlugin)
   .use(betterAuthPlugin)
-  // product pages embed their category's attributes and values
-  .onAfterHandle(({ request }) => {
-    if (request.method !== "GET") {
-      invalidateProductListings();
-    }
-  })
+  .use(cdnPlugin)
   .get(
     "/",
     {
       access: "optional",
+      cdn: "attributes",
       query: AttributeModel.getQuery,
       response: {
         200: t.Array(AttributeModel.attributeResult),
@@ -43,7 +39,7 @@ export const attributeRouter = new Elysia({
   )
   .get(
     "/count",
-    { access: "optional" },
+    { access: "optional", cdn: "attributes" },
     async () => await attributeService.count(),
   )
   .guard({ schema: "merge", params: uuidGuard })
@@ -51,6 +47,7 @@ export const attributeRouter = new Elysia({
     "/:id",
     {
       access: "optional",
+      cdn: "attribute",
       response: {
         200: AttributeModel.attributeResult,
         404: AttributeModel.attributeNotFound,

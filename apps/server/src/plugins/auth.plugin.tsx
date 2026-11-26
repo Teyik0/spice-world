@@ -109,7 +109,6 @@ export const auth = betterAuth({
   plugins: [
     openAPI(),
     admin(),
-    // Without BETTER_AUTH_PRODUCTION_URL both URLs match and the proxy is skipped.
     oAuthProxy({
       currentURL: env.BETTER_AUTH_URL,
       productionURL: env.BETTER_AUTH_PRODUCTION_URL,

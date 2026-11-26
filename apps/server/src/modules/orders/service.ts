@@ -1,3 +1,4 @@
+import { purge, purgeOnSuccess, tag } from "@spice-world/server/lib/cdn";
 import { db } from "@spice-world/server/lib/db";
 import { env } from "@spice-world/server/lib/env";
 import { and, asc, EmptyFilter, eq, inArray, sql } from "drizzle-orm";
@@ -10,7 +11,6 @@ import {
   productTable,
   productVariantTable,
 } from "../../../drizzle/schema";
-import { invalidateProductListings } from "../products/service";
 import type { uuidGuard } from "../shared";
 import { closeStripeCheckout, createStripeCheckout } from "../stripe-checkout";
 import type * as OrderModel from "./model";
@@ -53,6 +53,7 @@ export const orderService = {
     items,
     shippingAddress,
   }: OrderModel.checkoutBody & { userId: string }) {
+    let restocked: string[] = [];
     const result = await db.transaction(async (tx) => {
       const variants = await tx
         .select({
@@ -156,17 +157,17 @@ export const orderService = {
         shippingAddress,
       });
       await tx.insert(orderItemTable).values(lines);
-      await moveStock(tx, orderId, -1);
+      restocked = await moveStock(tx, orderId, -1);
 
       return status("Created", {
         order: (await find({ id: orderId }, tx)) as OrderModel.orderResult,
         checkoutUrl: checkout.url,
       });
     });
-    if (result.status === 201) {
-      invalidateProductListings(); // the reserved stock changes the listings
-    }
-    return result;
+    // stock shows in the listings (total, prices in stock) and on the product pages
+    return purgeOnSuccess(result, {
+      stale: [tag.products, ...restocked.map(tag.product)],
+    });
   },
 
   /** Stock is already reserved by createCheckout. */
@@ -190,7 +191,7 @@ export const orderService = {
   },
 
   async cancelPending(stripeSessionId: string, id: string) {
-    const restored = await db.transaction(async (tx) => {
+    const restocked = await db.transaction(async (tx) => {
       const [cancelled] = await tx
         .update(orderTable)
         .set({ status: "CANCELLED" })
@@ -203,7 +204,7 @@ export const orderService = {
         )
         .returning({ id: orderTable.id });
       if (!cancelled) {
-        return false;
+        return [];
       }
       await tx
         .select({ id: productVariantTable.id })
@@ -219,11 +220,10 @@ export const orderService = {
         )
         .orderBy(asc(productVariantTable.id)) // Stable lock order
         .for("update");
-      await moveStock(tx, id, 1);
-      return true;
+      return await moveStock(tx, id, 1);
     });
-    if (restored) {
-      invalidateProductListings();
+    if (restocked.length) {
+      purge({ stale: [tag.products, ...restocked.map(tag.product)] });
     }
   },
 
@@ -313,7 +313,10 @@ export const orderService = {
   },
 };
 
-/** Reserves (-1) or restores (1) the stock of an order. Lock its variants first. */
+/**
+ * Reserves (-1) or restores (1) the stock of an order. Lock its variants first.
+ * Returns the ids of the products whose stock moved.
+ */
 async function moveStock(tx: Tx, orderId: string, direction: 1 | -1) {
   const ordered = tx
     .select({
@@ -326,11 +329,13 @@ async function moveStock(tx: Tx, orderId: string, direction: 1 | -1) {
     .where(eq(orderItemTable.orderId, orderId))
     .groupBy(orderItemTable.variantId) // old orders may repeat a variant
     .as("ordered");
-  await tx
+  const moved = await tx
     .update(productVariantTable)
     .set({
       stock: sql`${productVariantTable.stock} + ${direction}::int * ${ordered.quantity}`,
     })
     .from(ordered)
-    .where(eq(ordered.variantId, productVariantTable.id));
+    .where(eq(ordered.variantId, productVariantTable.id))
+    .returning({ productId: productVariantTable.productId });
+  return [...new Set(moved.map(({ productId }) => productId))];
 }

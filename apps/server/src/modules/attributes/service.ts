@@ -1,11 +1,27 @@
+import { purgeOnSuccess, tag } from "@spice-world/server/lib/cdn";
 import { db } from "@spice-world/server/lib/db";
 import { EmptyFilter, eq } from "drizzle-orm";
-import { problem, status } from "elysia";
+import { ElysiaStatus, problem, status } from "elysia";
 
 import { attributeTable, attributeValueTable } from "../../../drizzle/schema";
 import type { uuidGuard } from "../shared";
 import type * as AttributeModel from "./model";
 import type * as AttributeValueModel from "./value-model";
+
+/** Everything that embeds the attributes of a category. */
+const attributeTags = (categoryId: string) => [
+  tag.attributes,
+  tag.categories,
+  tag.category(categoryId),
+];
+
+const categoryOf = async (attributeId: string) => {
+  const [attribute] = await db
+    .select({ categoryId: attributeTable.categoryId })
+    .from(attributeTable)
+    .where(eq(attributeTable.id, attributeId));
+  return attribute?.categoryId;
+};
 
 export const attributeService = {
   attributeNotFound: problem("Not Found", {
@@ -41,7 +57,7 @@ export const attributeService = {
   },
 
   async post({ name, categoryId, values }: AttributeModel.postBody) {
-    return await db.transaction(async (tx) => {
+    const created = await db.transaction(async (tx) => {
       const id = Bun.randomUUIDv7();
       await tx.insert(attributeTable).values({ id, name, categoryId });
       await tx.insert(attributeValueTable).values(
@@ -57,6 +73,7 @@ export const attributeService = {
       });
       return status("Created", attribute as NonNullable<typeof attribute>);
     });
+    return purgeOnSuccess(created, { stale: attributeTags(categoryId) });
   },
 
   async count() {
@@ -64,7 +81,7 @@ export const attributeService = {
   },
 
   async patch({ id, name }: AttributeModel.patchBody & uuidGuard) {
-    return await db.transaction(
+    const patched = await db.transaction(
       async (tx) => {
         await tx
           .update(attributeTable)
@@ -79,15 +96,23 @@ export const attributeService = {
       },
       { isolationLevel: "read committed" },
     );
+    return patched instanceof ElysiaStatus
+      ? patched
+      : purgeOnSuccess(patched, { stale: attributeTags(patched.category.id) });
   },
 
   async delete({ id }: uuidGuard) {
     const [deletedAttribute] = await db
       .delete(attributeTable)
       .where(eq(attributeTable.id, id))
-      .returning({ id: attributeTable.id });
+      .returning({ categoryId: attributeTable.categoryId });
 
-    return deletedAttribute ? status(200) : this.attributeNotFound;
+    return deletedAttribute
+      ? purgeOnSuccess(status(200), {
+          stale: attributeTags(deletedAttribute.categoryId),
+          gone: [tag.attribute(id)],
+        })
+      : this.attributeNotFound;
   },
 };
 
@@ -106,10 +131,11 @@ export const attributeValueService = {
         value: name,
       })
       .returning();
+    const categoryId = await categoryOf(id);
 
-    return status(
-      "Created",
-      attributeValue as NonNullable<typeof attributeValue>,
+    return purgeOnSuccess(
+      status("Created", attributeValue as NonNullable<typeof attributeValue>),
+      { stale: categoryId ? attributeTags(categoryId) : [] },
     );
   },
 
@@ -121,15 +147,24 @@ export const attributeValueService = {
       })
       .where(eq(attributeValueTable.id, id))
       .returning();
+    if (!attributeValue) {
+      return this.attributeValueNotFound;
+    }
+    const categoryId = await categoryOf(attributeValue.attributeId);
 
-    return attributeValue ?? this.attributeValueNotFound;
+    return purgeOnSuccess(attributeValue, {
+      stale: categoryId ? attributeTags(categoryId) : [],
+    });
   },
 
   async delete({ id }: uuidGuard) {
-    return await db.transaction(
+    const deleted = await db.transaction(
       async (tx) => {
         const [attribute] = await tx
-          .select({ id: attributeTable.id })
+          .select({
+            id: attributeTable.id,
+            categoryId: attributeTable.categoryId,
+          })
           .from(attributeTable)
           .innerJoin(
             attributeValueTable,
@@ -160,9 +195,14 @@ export const attributeValueService = {
         await tx
           .delete(attributeValueTable)
           .where(eq(attributeValueTable.id, id));
-        return status(200);
+        return { categoryId: attribute.categoryId };
       },
       { isolationLevel: "read committed" },
     );
+    return deleted instanceof ElysiaStatus
+      ? deleted
+      : purgeOnSuccess(status(200), {
+          stale: attributeTags(deleted.categoryId),
+        });
   },
 };

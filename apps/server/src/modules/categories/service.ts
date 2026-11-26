@@ -1,3 +1,4 @@
+import { purgeOnSuccess, tag } from "@spice-world/server/lib/cdn";
 import { db } from "@spice-world/server/lib/db";
 import type { MultiSizeUploadData } from "@spice-world/server/lib/images";
 import {
@@ -82,7 +83,7 @@ export const categoryService = {
       return uploadFileErrStatus(fileError);
     }
 
-    return await db.transaction(async (tx) => {
+    const created = await db.transaction(async (tx) => {
       await claimUploads(tx, images);
       const createdImageId = Bun.randomUUIDv7();
       const createdImage = tx.$with("created_image").as(
@@ -210,6 +211,10 @@ export const categoryService = {
           }));
         }),
       });
+    });
+    // a new category has no product yet
+    return purgeOnSuccess(created, {
+      stale: [tag.categories, tag.attributes],
     });
   },
 
@@ -468,11 +473,19 @@ export const categoryService = {
       },
       { isolationLevel: "read committed" },
     );
-    return outcome;
+    return purgeOnSuccess(outcome, {
+      stale: [
+        tag.categories,
+        tag.attributes, // they embed their category
+        tag.category(id),
+        ...(name === undefined ? [] : [tag.products]), // listings filter by category name
+      ],
+      gone: deleteIds.map(tag.attribute),
+    });
   },
 
   async delete({ id }: uuidGuard) {
-    return await db.transaction(async (tx) => {
+    const deleted = await db.transaction(async (tx) => {
       const [deletedCategory] = await tx
         .delete(categoryTable)
         .where(eq(categoryTable.id, id))
@@ -497,6 +510,11 @@ export const categoryService = {
       );
 
       return { deletedCategory };
+    });
+    // its attributes are deleted with it; a category with products cannot be deleted
+    return purgeOnSuccess(deleted, {
+      stale: [tag.categories, tag.attributes],
+      gone: [tag.category(id)],
     });
   },
 

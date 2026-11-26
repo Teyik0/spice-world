@@ -1,3 +1,4 @@
+import { purgeOnSuccess, tag } from "@spice-world/server/lib/cdn";
 import { db } from "@spice-world/server/lib/db";
 import type { MultiSizeUploadData } from "@spice-world/server/lib/images";
 import {
@@ -5,7 +6,6 @@ import {
   enqueueImageCheck,
   uploadFiles,
 } from "@spice-world/server/lib/images";
-import { invalidateByTag, waitUntil } from "@vercel/functions";
 import {
   and,
   asc,
@@ -87,12 +87,15 @@ Product: "Organic Paprika Powder"
 */
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-type ProductKey = { id: string } | { slug: string };
 
-/** Marks the CDN copies tagged "products" stale, in every region. No-op outside Vercel. */
-export function invalidateProductListings() {
-  waitUntil(invalidateByTag("products"));
-}
+/** A new name moves a page to a new slug and a new status can hide it: drop those pages. */
+const productPurge = (ids: string[], pagesMayMove: boolean) => {
+  const pages = ids.map(tag.product);
+  return pagesMayMove
+    ? { stale: [tag.products], gone: pages }
+    : { stale: [tag.products, ...pages] };
+};
+type ProductKey = { id: string } | { slug: string };
 
 async function find(
   {
@@ -477,8 +480,11 @@ export const productService = {
       await insertVariants(tx, id, vOps.create);
       return await find({ id }, tx);
     });
-    invalidateProductListings();
-    return status("Created", product as ProductModel.productResult);
+    // no page to purge: a product URL is never cached before it exists
+    return purgeOnSuccess(
+      status("Created", product as ProductModel.productResult),
+      { stale: [tag.products] },
+    );
   },
 
   async patch({
@@ -649,8 +655,10 @@ export const productService = {
 
       return (await find({ id }, tx)) as ProductModel.productResult;
     });
-    invalidateProductListings();
-    return outcome;
+    return purgeOnSuccess(
+      outcome,
+      productPurge([id], name !== undefined || requestedStatus !== undefined),
+    );
   },
 
   async bulkPatch({
@@ -729,8 +737,10 @@ export const productService = {
       }
       return { count: products.length };
     });
-    invalidateProductListings();
-    return outcome;
+    return purgeOnSuccess(
+      outcome,
+      productPurge(ids, requestedStatus !== undefined),
+    );
   },
 
   async delete({ id }: uuidGuard) {
@@ -759,7 +769,9 @@ export const productService = {
       );
       return status("OK");
     });
-    invalidateProductListings();
-    return outcome;
+    return purgeOnSuccess(outcome, {
+      stale: [tag.products],
+      gone: [tag.product(id)],
+    });
   },
 };

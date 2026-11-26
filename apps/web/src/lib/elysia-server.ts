@@ -13,5 +13,8 @@ export const app = treaty<App>(env.API_URL, {
     credentials: "include",
     cache: "no-store",
   },
-  headers: async () => ({ cookie: (await cookies()).toString() }),
+  headers: async () => ({
+    cookie: (await cookies()).toString(),
+    "x-cache-bypass": "1", // read-your-writes: never a CDN copy (see lib/elysia)
+  }),
 });
