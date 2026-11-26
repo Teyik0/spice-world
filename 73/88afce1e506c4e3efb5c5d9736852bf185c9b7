@@ -1,0 +1,23 @@
+apps/server/src/lib/env.ts
+  s_8eba0906691e32::t_004a7dae71a85c 13-15,56
+sst.config.ts
+  s_8eba0906691e32::t_6aaff8f9dac485 33-35
+apps/server/src/plugins/auth.plugin.tsx
+  s_8eba0906691e32::t_004a7dae71a85c 10,112-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7388afce1e506c4e3efb5c5d9736852bf185c9b7",
+  "prompts": {},
+  "sessions": {
+    "s_8eba0906691e32": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3560207c-3a96-47f8-88b0-0bdb37c47702",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
