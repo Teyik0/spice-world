@@ -78,7 +78,7 @@ export const auth = betterAuth({
         type: "string",
         required: false,
         defaultValue: "user",
-        input: false, // don't allow user to set role
+        input: false,
         returned: true,
       },
     },
@@ -149,6 +149,10 @@ export const auth = betterAuth({
   ],
 });
 
+export type User = typeof auth.$Infer.Session.user;
+
+export const isAdmin = (user: User | null) => user?.role === "admin";
+
 interface AccessContext extends MacroTypeLambda {
   output: "optional" extends this["input"]
     ? {
@@ -166,7 +170,7 @@ export const betterAuthPlugin = new Elysia({
   .macro({
     access: (level: "optional" | "login" | "admin") => ({
       $type: macroType<AccessContext>(),
-      async derive({ log, request: { headers }, problem }) {
+      async derive({ log, request: { headers }, problem, set }) {
         const session = await auth.api.getSession({ headers });
         log.set({
           user: session
@@ -180,6 +184,10 @@ export const betterAuthPlugin = new Elysia({
 
         if (level === "admin" && session && session.user.role !== "admin") {
           return problem("Forbidden");
+        }
+
+        if (isAdmin(session?.user ?? null)) {
+          set.headers["cache-control"] = "private, no-store";
         }
 
         return {

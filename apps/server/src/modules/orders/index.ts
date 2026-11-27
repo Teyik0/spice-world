@@ -1,4 +1,8 @@
-import { betterAuthPlugin } from "@spice-world/server/plugins/auth.plugin";
+import type { User } from "@spice-world/server/plugins/auth.plugin";
+import {
+  betterAuthPlugin,
+  isAdmin,
+} from "@spice-world/server/plugins/auth.plugin";
 import { drizzleErrorPlugin } from "@spice-world/server/plugins/drizzle.plugin";
 import { Elysia } from "elysia";
 
@@ -6,9 +10,7 @@ import { uuidGuard } from "../shared";
 import * as OrderModel from "./model";
 import { orderService } from "./service";
 
-/** Only admins see the orders of other users. */
-const visibility = (user: { id: string; role?: string | null }) =>
-  user.role === "admin" ? {} : { userId: user.id };
+const visibility = (user: User) => (isAdmin(user) ? {} : { userId: user.id });
 
 export const ordersRouter = new Elysia({
   name: "orders",

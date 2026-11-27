@@ -149,6 +149,7 @@ export const checkoutConflict = t.Object({
   code: t.Union([
     t.Literal("INSUFFICIENT_STOCK"),
     t.Literal("VARIANT_NOT_AVAILABLE"),
+    t.Literal("PRICE_CHANGED"),
   ]),
   message: t.String(),
 });
@@ -162,6 +163,8 @@ export const cancelConflict = t.Object({
   code: t.Union([
     t.Literal("ORDER_REQUIRES_REFUND"),
     t.Literal("ORDER_ALREADY_PAID"),
+    t.Literal("INVALID_STATUS_TRANSITION"),
+    t.Literal("ORDER_STATUS_CHANGED"),
   ]),
   message: t.String(),
 });

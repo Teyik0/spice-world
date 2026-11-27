@@ -40,7 +40,8 @@ export const cdnPlugin = new Elysia({ name: "cdn" }).macro({
     afterHandle({ query, request, responseValue, set }) {
       if (
         responseValue instanceof ElysiaStatus ||
-        request.headers.has(BYPASS_HEADER)
+        request.headers.has(BYPASS_HEADER) ||
+        set.headers["cache-control"]
       ) {
         return;
       }
