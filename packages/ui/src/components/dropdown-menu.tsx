@@ -250,7 +250,16 @@ function DropdownMenuShortcut({
   );
 }
 
+/** Dashboard menu look: indicator on the left, small uppercase group labels. */
+const MENU_ITEM =
+  "gap-2 py-1.5 pr-2 pl-8 *:data-[slot$=indicator]:right-auto *:data-[slot$=indicator]:left-2 *:data-[slot$=indicator]:text-primary";
+const MENU_CONTENT = "max-h-80 w-64";
+const MENU_LABEL = "px-2 pt-1.5 text-[11px] tracking-wider uppercase";
+
 export {
+  MENU_CONTENT,
+  MENU_ITEM,
+  MENU_LABEL,
   DropdownMenu,
   DropdownMenuPortal,
   DropdownMenuTrigger,

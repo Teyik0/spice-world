@@ -6,10 +6,16 @@
       "path": "./apps/server"
     },
     {
-      "path": "./apps/web"
+      "path": "./packages/emails"
     },
     {
-      "path": "./packages/emails"
+      "path": "./apps/dashboard"
+    },
+    {
+      "path": "./apps/storefront"
+    },
+    {
+      "path": "./packages/ui"
     }
   ],
   "compilerOptions": {

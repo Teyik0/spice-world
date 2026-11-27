@@ -11,10 +11,6 @@ COPY ./apps/server/tsconfig.json ./apps/server/tsconfig.json
 COPY ./packages/emails/package.json ./packages/emails/package.json
 COPY ./packages/emails/tsconfig.json ./packages/emails/tsconfig.json
 
-COPY ./apps/web/package.json ./apps/web/package.json
-COPY ./apps/web/tsconfig.json ./apps/web/tsconfig.json
-
-
 RUN bun install --frozen-lockfile --ignore-scripts
 
 COPY ./apps/server/src ./apps/server/src

@@ -11,9 +11,13 @@ import { Checkbox } from "./checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
+  MENU_ITEM,
+  MENU_LABEL,
 } from "./dropdown-menu";
 import { Field, FieldDescription, FieldError, FieldLabel } from "./field";
 import { Input } from "./input";
@@ -96,15 +100,12 @@ function TextareaField({
   );
 }
 
+/** A single choice, in the dashboard menu look (trigger-wide, titled with the label). */
 function SelectField({
   description,
-  itemClassName,
   items,
   label,
-}: Labels & {
-  itemClassName?: string;
-  items: { label: string; value: string }[];
-}) {
+}: Labels & { items: { label: string; value: string }[] }) {
   const field = useFieldContext<string>();
   return (
     <LabeledField description={description} label={label}>
@@ -123,21 +124,24 @@ function SelectField({
           {items.find(({ value }) => value === field.state.value)?.label}
           <ChevronDownIcon className="text-muted-foreground" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuRadioGroup
-            onValueChange={(value: string) => field.handleChange(value)}
-            value={field.state.value}
-          >
-            {items.map(({ label: text, value }) => (
-              <DropdownMenuRadioItem
-                className={itemClassName}
-                key={value}
-                value={value}
-              >
-                {text}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
+        <DropdownMenuContent className="max-h-80">
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className={MENU_LABEL}>{label}</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              onValueChange={(value: string) => field.handleChange(value)}
+              value={field.state.value}
+            >
+              {items.map(({ label: text, value }) => (
+                <DropdownMenuRadioItem
+                  className={MENU_ITEM}
+                  key={value}
+                  value={value}
+                >
+                  {text}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
     </LabeledField>

@@ -28,8 +28,7 @@ export const route = defineRoute("/produits/$slug/")
     return { product: data, reviews: reviews ?? { comments: [], total: 0 } };
   })
   .head(({ product }) => {
-    const image =
-      product.images.find((i) => i.isThumbnail) ?? product.images[0];
+    const [image] = product.images; // ordered by position: the cover first
     const prices = product.variants.map((v) => v.price / 100);
     return {
       meta: [

@@ -14,7 +14,7 @@ import {
 
 const baseUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
-  : "http://localhost:5173";
+  : "http://localhost:4172";
 
 function ChangeEmailVerification({ verifyLink }: { verifyLink: string }) {
   return (

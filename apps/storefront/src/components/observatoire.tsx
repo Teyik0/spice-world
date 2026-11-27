@@ -53,7 +53,7 @@ export function Observatoire({
 }) {
   const look = useMemo(() => lookOf(product), [product]);
   const { facts, palette } = look;
-  const image = product.images.find((i) => i.isThumbnail) ?? product.images[0];
+  const [image] = product.images; // ordered by position: the cover first
   const chapters: Chapter[] = [
     "intro",
     "open",

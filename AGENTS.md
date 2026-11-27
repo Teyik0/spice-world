@@ -10,13 +10,13 @@ Key features: product management, categories with dynamic attributes, user authe
 - `/src/modules`: Business logic (products, categories, orders)
 - `/drizzle/schema.ts`: Database models
 
-**apps/web** (port 5173): React/Next.js admin dashboard
+**apps/dashboard** (port 5174): React/Furin admin dashboard
 
 - Uses Eden Treaty for type-safe API calls
 - TanStack Form for form management
 - shadcn/ui components
 
-**apps/storefront** (port 3002): React/Furin admin dashboard
+**apps/storefront** (port 4172): React/Furin storefront
 
 - Uses Eden Treaty for type-safe API calls
 - TanStack Form for form management
@@ -66,7 +66,6 @@ const { data, status, error } = await api.attributes.post(newAttrData);
 
 ```sh
 cd apps/server && bun dev
-cd apps/web && bun dev
 cd apps/dashboard && bun dev
 cd apps/storefront && bun dev
 ```
@@ -77,7 +76,6 @@ cd apps/storefront && bun dev
 bun fmt
 bun run biome check
 bun check -p apps/server
-bun check -p apps/web
 bun check -p apps/storefront
 bun check -p apps/dashboard
 ```
@@ -94,7 +92,7 @@ bun check -p apps/dashboard
 - MUST ABSOLUTELY load and apply `elysia` skill for any backend change
 - MUST reject any bad input, no magic behavior (no thumbnail auto assign, no input normalization on server side...)
 
-## Task involving frontend end change (apps/web, apps/dashboard or apps/storefront)
+## Task involving frontend end change (apps/dashboard or apps/storefront)
 
 - MUST ABSOLUTELY load and apply `frontend-design` and `web-design-guidelines` skills for ANY task involving frontend/UI, regardless of what the user asks
 - MUST report to the users if the problem come from furin, we should fix furin first if the issue is in it. No workaround
