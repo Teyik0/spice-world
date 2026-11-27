@@ -40,6 +40,7 @@ import {
 import { standardSchema } from "@spice-world/ui/lib/schema";
 import { useQuery } from "@teyik0/furin/client";
 import { Link, useNavigate } from "@teyik0/furin/link";
+import { t } from "elysia";
 import { ArrowUpRightIcon } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import { createContext, use, useEffect, useRef, useState } from "react";
@@ -47,8 +48,21 @@ import { flushSync } from "react-dom";
 import { toast } from "sonner";
 
 import { api } from "../../../../lib/api";
+import { formatCount } from "../../../../lib/format";
 import type { ProductsQuery } from "./products-query";
 import { label, STATUSES, useProductsQuery } from "./products-query";
+import {
+  mergeUpdates,
+  stockDraft,
+  stockDraftOf,
+  StockInput,
+  variantOperations,
+} from "./stock";
+
+const quickEditBody = t.Object({
+  ...t.Omit(ProductModel.patchBody, ["stockMode", "inventory"]).properties,
+  stock: stockDraft,
+});
 
 function useQuickEdit(query: ProductsQuery) {
   const navigate = useNavigate();
@@ -201,12 +215,14 @@ function Loaded({
       dirty={dirty}
       key={`${data.id}:${data.version}`}
       onDone={onDone}
-      product={data}
+      product={ProductModel.adminView(data)}
     />
   );
 }
 
-const variantName = (variant: ProductModel.productResult["variants"][number]) =>
+export const variantName = (
+  variant: ProductModel.productResult["variants"][number],
+) =>
   variant.attributeValues.map((v) => v.value).join(" · ") ||
   variant.sku ||
   "Default";
@@ -216,12 +232,9 @@ const fieldsOf = (product: ProductModel.productResult) => ({
   description: product.description,
   status: product.status,
   variants: {
-    update: product.variants.map(({ id, price, stock }) => ({
-      id,
-      price,
-      stock,
-    })),
+    update: product.variants.map(({ id, price }) => ({ id, price })),
   },
+  stock: stockDraftOf(product),
 });
 
 function QuickEditForm({
@@ -238,7 +251,7 @@ function QuickEditForm({
   const initial = fieldsOf(product);
   const form = useAppForm({
     defaultValues: initial,
-    validators: { onSubmit: standardSchema(ProductModel.patchBody) },
+    validators: { onSubmit: standardSchema(quickEditBody) },
     onSubmitInvalid: focusFirstError,
     listeners: {
       onChange: ({ formApi }) => {
@@ -246,10 +259,15 @@ function QuickEditForm({
       },
     },
     onSubmit: async ({ value }) => {
-      const update = value.variants.update.filter(
-        (v, i) =>
-          v.price !== initial.variants.update[i]?.price ||
-          v.stock !== initial.variants.update[i]?.stock,
+      const { update: updates, ...stock } = variantOperations(
+        product,
+        value.stock,
+      );
+      const update = mergeUpdates(
+        value.variants.update.filter(
+          (v, i) => v.price !== initial.variants.update[i]?.price,
+        ),
+        updates,
       );
       const { error } = await api.products({ id: product.id }).patch(
         {
@@ -258,6 +276,7 @@ function QuickEditForm({
             ? {}
             : { description: value.description }),
           ...(value.status === product.status ? {} : { status: value.status }),
+          ...stock,
           ...(update.length ? { variants: { update } } : {}),
         },
         { headers: { "x-version": product.version } },
@@ -285,7 +304,9 @@ function QuickEditForm({
     },
     [dirty],
   );
-  const thumbnail = product.images.find((i) => i.isThumbnail);
+  const [thumbnail] = product.images;
+  const shared = product.stockMode === "SHARED";
+  const dimension = product.variants[0]?.inventory.dimension ?? "COUNT";
 
   return (
     <form
@@ -359,16 +380,35 @@ function QuickEditForm({
           </form.Field>
         </FieldGroup>
 
+        {shared ? (
+          <form.Field name="stock.quantity">
+            {(field) => (
+              <Field>
+                <FieldLabel htmlFor={field.name}>Shared Stock</FieldLabel>
+                <StockInput
+                  aria-invalid={!field.state.meta.isValid}
+                  dimension={dimension}
+                  id={field.name}
+                  label="Shared stock"
+                  name={field.name}
+                  onChange={field.handleChange}
+                  value={field.state.value}
+                />
+              </Field>
+            )}
+          </form.Field>
+        ) : null}
+
         <FieldSet className="gap-2">
           <FieldLegend variant="label">Variants</FieldLegend>
-          <div className="text-muted-foreground grid grid-cols-[1fr_6.5rem_5rem] gap-2 text-xs">
+          <div className="text-muted-foreground grid grid-cols-[1fr_6.5rem_6.5rem] gap-2 text-xs">
             <span>Variant</span>
             <span>Price (€)</span>
-            <span>Stock</span>
+            <span>{shared ? "Available" : "Stock"}</span>
           </div>
           {product.variants.map((variant, i) => (
             <div
-              className="grid grid-cols-[1fr_6.5rem_5rem] items-center gap-2"
+              className="grid grid-cols-[1fr_6.5rem_6.5rem] items-center gap-2"
               key={variant.id}
             >
               <span className="truncate text-sm">{variantName(variant)}</span>
@@ -397,25 +437,25 @@ function QuickEditForm({
                   />
                 )}
               </form.Field>
-              <form.Field name={`variants.update[${i}].stock`}>
-                {(field) => (
-                  <Input
-                    aria-invalid={!field.state.meta.isValid}
-                    aria-label={`${variantName(variant)} stock`}
-                    className="text-right tabular-nums"
-                    id={field.name}
-                    inputMode="numeric"
-                    min={0}
-                    name={field.name}
-                    onChange={(e) => field.handleChange(e.target.valueAsNumber)}
-                    step={1}
-                    type="number"
-                    value={
-                      Number.isNaN(field.state.value) ? "" : field.state.value
-                    }
-                  />
-                )}
-              </form.Field>
+              {shared ? (
+                <span className="text-muted-foreground text-right text-sm tabular-nums">
+                  {formatCount(variant.available)}
+                </span>
+              ) : (
+                <form.Field name={`stock.variants[${i}].quantity`}>
+                  {(field) => (
+                    <StockInput
+                      aria-invalid={!field.state.meta.isValid}
+                      dimension="COUNT"
+                      id={field.name}
+                      label={`${variantName(variant)} stock`}
+                      name={field.name}
+                      onChange={field.handleChange}
+                      value={field.state.value}
+                    />
+                  )}
+                </form.Field>
+              )}
             </div>
           ))}
         </FieldSet>

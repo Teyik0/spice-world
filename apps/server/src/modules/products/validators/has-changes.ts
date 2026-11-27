@@ -9,6 +9,8 @@ export function hasProductChanges({
     description?: string;
     requestedStatus?: string;
     categoryId?: string;
+    stockMode?: ProductModel.stockMode;
+    inventory?: ProductModel.sharedInventory;
     iOps?: ProductModel.imageOperations;
     vOps?: ProductModel.variantOperations;
   };
@@ -21,7 +23,14 @@ export function hasProductChanges({
     (newData.requestedStatus !== undefined &&
       newData.requestedStatus !== currentProduct.status) ||
     (newData.categoryId !== undefined &&
-      newData.categoryId !== currentProduct.categoryId);
+      newData.categoryId !== currentProduct.categoryId) ||
+    (newData.stockMode !== undefined &&
+      newData.stockMode !== currentProduct.stockMode) ||
+    (currentProduct.variants[0] !== undefined &&
+      hasInventoryChange(
+        newData.inventory,
+        currentProduct.variants[0].inventory,
+      ));
 
   return (
     hasProductFieldsChange ||
@@ -44,7 +53,7 @@ function hasImageChanges({
   currentImages: Array<{
     id: string;
     altText: string | null;
-    isThumbnail: boolean;
+    position: number;
   }>;
 }): boolean {
   if (imagesOps?.create && imagesOps.create.length > 0) {
@@ -67,8 +76,8 @@ function hasImageChanges({
       return (
         (imgToUpdate.altText !== undefined &&
           imgToUpdate.altText !== current.altText) ||
-        (imgToUpdate.isThumbnail !== undefined &&
-          imgToUpdate.isThumbnail !== current.isThumbnail) ||
+        (imgToUpdate.position !== undefined &&
+          imgToUpdate.position !== current.position) ||
         imgToUpdate.file !== undefined
       );
     });
@@ -86,7 +95,8 @@ function hasVariantChanges({
     id: string;
     price: number;
     sku: string | null;
-    stock: number;
+    stockUsage: number;
+    inventory: { lowStockAt: number };
     currency: string;
     attributeValues: Array<{ id: string }>;
   }>;
@@ -109,7 +119,8 @@ function hasVariantChanges({
       return (
         (op.price !== undefined && op.price !== current.price) ||
         (op.sku !== undefined && op.sku !== current.sku) ||
-        (op.stock !== undefined && op.stock !== current.stock) ||
+        (op.stockUsage !== undefined && op.stockUsage !== current.stockUsage) ||
+        hasInventoryChange(op.inventory, current.inventory) ||
         (op.currency !== undefined && op.currency !== current.currency) ||
         (op.attributeValueIds !== undefined &&
           !arraysEqual(
@@ -121,6 +132,21 @@ function hasVariantChanges({
   }
 
   return false;
+}
+
+function hasInventoryChange(
+  op:
+    { adjust?: number; lowStockAt?: number } | { quantity: number } | undefined,
+  current: { lowStockAt: number },
+): boolean {
+  if (!op) {
+    return false;
+  }
+  return (
+    "quantity" in op ||
+    Boolean(op.adjust) ||
+    (op.lowStockAt !== undefined && op.lowStockAt !== current.lowStockAt)
+  );
 }
 
 function arraysEqual(a: string[], b: string[]): boolean {

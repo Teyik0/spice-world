@@ -156,7 +156,7 @@ function validateCombinations(
       return [
         {
           code: "VVA4",
-          message: `Variants ${duplicate} and ${index + 1} have the same attribute values. Each variant needs a distinct combination.`,
+          message: `Variants ${duplicate} and ${index + 1} ${key ? "have the same attribute values" : "both have no attribute value (a category change clears them)"}. Each variant needs a distinct combination.`,
           field: "variants.attributeValueIds",
         },
       ];

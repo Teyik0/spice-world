@@ -1,8 +1,12 @@
-import { betterAuthPlugin } from "@spice-world/server/plugins/auth.plugin";
+import type { User } from "@spice-world/server/plugins/auth.plugin";
+import {
+  betterAuthPlugin,
+  isAdmin,
+} from "@spice-world/server/plugins/auth.plugin";
 import { cdnPlugin } from "@spice-world/server/plugins/cdn.plugin";
 import { drizzleErrorPlugin } from "@spice-world/server/plugins/drizzle.plugin";
 import { furinInvalidate } from "@teyik0/furin";
-import { Elysia, t } from "elysia";
+import { Elysia, ElysiaStatus, t } from "elysia";
 
 import { imageCleanupPlugin } from "../../plugins/image.plugin";
 import { categoryNotFound } from "../categories/model";
@@ -15,9 +19,24 @@ import {
 import * as ProductModel from "./model";
 import { productService } from "./service";
 
-/** Only admins see products that are not published. */
-const visibility = (user: { role?: string | null } | null) =>
-  user?.role === "admin" ? {} : { status: "PUBLISHED" as const };
+const visibility = (user: User | null) =>
+  isAdmin(user) ? {} : { status: "PUBLISHED" as const };
+
+const publicItem = ({
+  totalStock: _,
+  ...item
+}: ProductModel.productListItem): ProductModel.publicListItem => item;
+
+const publicProduct = ({
+  totalStock: _,
+  variants,
+  ...product
+}: ProductModel.productResult): ProductModel.publicProductResult => ({
+  ...product,
+  variants: variants.map(
+    ({ available: _available, inventory: _inventory, ...variant }) => variant,
+  ),
+});
 
 export const productsRouter = new Elysia({
   name: "products",
@@ -35,10 +54,19 @@ export const productsRouter = new Elysia({
       access: "optional",
       cdn: "products",
       query: ProductModel.getQuery,
-      response: { 200: t.Array(ProductModel.productListItem) },
+      response: {
+        200: t.Array(
+          t.Union([ProductModel.productListItem, ProductModel.publicListItem]),
+        ),
+      },
     },
-    async ({ query, user }) =>
-      await productService.get({ ...query, ...visibility(user) }),
+    async ({ query, user }) => {
+      const products = await productService.get({
+        ...query,
+        ...(isAdmin(user) ? {} : { status: "PUBLISHED" }),
+      });
+      return isAdmin(user) ? products : products.map(publicItem);
+    },
   )
   .get(
     "/count",
@@ -66,6 +94,7 @@ export const productsRouter = new Elysia({
           ProductModel.validationFailed,
           ProductModel.publishError,
           ProductModel.invalidReference,
+          ProductModel.invalidStock,
           invalidImage,
         ]),
         404: categoryNotFound,
@@ -103,12 +132,22 @@ export const productsRouter = new Elysia({
       access: "optional",
       cdn: "product",
       response: {
-        200: ProductModel.productResult,
+        200: t.Union([
+          ProductModel.productResult,
+          ProductModel.publicProductResult,
+        ]),
         404: ProductModel.productNotFound,
       },
     },
-    async ({ params, user }) =>
-      await productService.getBySlug({ ...params, ...visibility(user) }),
+    async ({ params, user }) => {
+      const product = await productService.getBySlug({
+        ...params,
+        ...visibility(user),
+      });
+      return product instanceof ElysiaStatus || isAdmin(user)
+        ? product
+        : publicProduct(product);
+    },
   )
   .guard({ schema: "merge", params: uuidGuard })
   .get(
@@ -116,12 +155,22 @@ export const productsRouter = new Elysia({
     {
       access: "optional",
       response: {
-        200: ProductModel.productResult,
+        200: t.Union([
+          ProductModel.productResult,
+          ProductModel.publicProductResult,
+        ]),
         404: ProductModel.productNotFound,
       },
     },
-    async ({ params, user }) =>
-      await productService.getById({ ...params, ...visibility(user) }),
+    async ({ params, user }) => {
+      const product = await productService.getById({
+        ...params,
+        ...visibility(user),
+      });
+      return product instanceof ElysiaStatus || isAdmin(user)
+        ? product
+        : publicProduct(product);
+    },
   )
   .get(
     "/:id/comments",
@@ -152,6 +201,7 @@ export const productsRouter = new Elysia({
           ProductModel.validationFailed,
           ProductModel.publishError,
           ProductModel.invalidReference,
+          ProductModel.invalidStock,
           invalidImage,
         ]),
         404: t.Union([ProductModel.productNotFound, categoryNotFound]),

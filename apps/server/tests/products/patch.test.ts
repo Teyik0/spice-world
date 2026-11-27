@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, describe, expect, it } from "bun:test";
 
 import { treaty } from "@elysia/eden";
 import { productsRouter } from "@spice-world/server/modules/products";
@@ -10,6 +10,7 @@ import {
   createTestCategory,
   createTestProducts,
   expectDefined,
+  expectNoDrift,
   file,
   mockUtapi,
   randomLowerString,
@@ -54,17 +55,18 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         description: "First product for name conflict test",
         categoryId: category.id,
         status: "DRAFT",
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 1099,
               sku: "first product variant",
-              stock: 10,
+              inventory: { quantity: 10 },
               attributeValueIds: [],
             },
           ],
         },
-        images: { create: [{ isThumbnail: true, file: file(filePath1) }] },
+        images: { create: [{ position: 0, file: file(filePath1) }] },
       });
 
       const testId2 = randomLowerString(8);
@@ -75,17 +77,18 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         description: "Second product for name conflict test",
         categoryId: category.id,
         status: "DRAFT",
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 1199,
               sku: "second product variant",
-              stock: 11,
+              inventory: { quantity: 11 },
               attributeValueIds: [],
             },
           ],
         },
-        images: { create: [{ isThumbnail: true, file: file(filePath1) }] },
+        images: { create: [{ position: 0, file: file(filePath1) }] },
       });
 
       expectDefined(product1);
@@ -107,8 +110,10 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       const { product, category } = await setupProduct({
         attributeCount: 2,
         attributeValueCount: 2,
-        variants: [{ price: 1000, stock: 10, attributeValueIds: [] }],
-        imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
+        variants: [
+          { price: 1000, inventory: { quantity: 10 }, attributeValueIds: [] },
+        ],
+        imagesCreate: [{ position: 0, file: file(filePath1) }],
       });
 
       // Add a second variant with different attribute values
@@ -120,7 +125,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
               create: [
                 {
                   price: 1500,
-                  stock: 15,
+                  inventory: { quantity: 15 },
                   attributeValueIds: [
                     category.attributes[0]?.values[0]?.id as string,
                   ],
@@ -164,11 +169,11 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           {
             price: 1000,
             sku: "VERSION-TEST",
-            stock: 10,
+            inventory: { quantity: 10 },
             attributeValueIds: [],
           },
         ],
-        imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
+        imagesCreate: [{ position: 0, file: file(filePath1) }],
       });
 
       const { status } = await api.products({ id: product.id }).patch(
@@ -231,19 +236,20 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           description: "Testing attribute validation",
           categoryId: spicesCategory.id,
           status: "DRAFT",
+          stockMode: "VARIANT",
           variants: {
             create: [
               {
                 price: 1000,
                 sku: "ATTR-ERR-TEST",
-                stock: 10,
+                inventory: { quantity: 10 },
                 attributeValueIds: [
                   spicesAttributes[0]?.values[0]?.id as string,
                 ],
               },
             ],
           },
-          images: { create: [{ isThumbnail: true, file: file(filePath1) }] },
+          images: { create: [{ position: 0, file: file(filePath1) }] },
         });
 
       expect(createStatus).toBe(201);
@@ -256,7 +262,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
               {
                 price: 1500,
                 sku: "INVALID-VARIANT",
-                stock: 20,
+                inventory: { quantity: 20 },
                 attributeValueIds: [
                   herbsAttributes[0]?.values[0]?.id as string,
                 ],
@@ -303,19 +309,20 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           description: "Testing attribute validation on update",
           categoryId: spicesCategory.id,
           status: "DRAFT",
+          stockMode: "VARIANT",
           variants: {
             create: [
               {
                 price: 1000,
                 sku: "ATTR-UPD-TEST",
-                stock: 10,
+                inventory: { quantity: 10 },
                 attributeValueIds: [
                   spicesAttributes[0]?.values[0]?.id as string,
                 ],
               },
             ],
           },
-          images: { create: [{ isThumbnail: true, file: file(filePath1) }] },
+          images: { create: [{ position: 0, file: file(filePath1) }] },
         });
 
       expect(createStatus).toBe(201);
@@ -374,14 +381,15 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         description: "Two variants that would both lose their values",
         categoryId: spicesCategory.id,
         status: "DRAFT",
+        stockMode: "VARIANT",
         variants: {
           create: values.map(({ id }) => ({
             price: 1000,
-            stock: 5,
+            inventory: { quantity: 5 },
             attributeValueIds: [id],
           })),
         },
-        images: { create: [{ isThumbnail: true, file: file(filePath1) }] },
+        images: { create: [{ position: 0, file: file(filePath1) }] },
       });
       expectDefined(createdProduct);
 
@@ -395,12 +403,81 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         status: 400,
         value: {
           code: "VARIANTS_VALIDATION_FAILED",
-          details: { subErrors: [{ code: "VVA4" }] },
+          details: {
+            subErrors: [
+              {
+                code: "VVA4",
+                message: expect.stringContaining("a category change clears"),
+              },
+            ],
+          },
         },
       });
       expect(
         (await api.products({ id: createdProduct.id }).get()).data,
       ).toEqual(createdProduct);
+    });
+
+    it("should change category and give each variant values of the new category in one request", async () => {
+      const spicesCategory = await createTestCategory({
+        testDb,
+        attributeCount: 1,
+        attributeValueCount: 2,
+      });
+      const herbsCategory = await createTestCategory({
+        testDb,
+        attributeCount: 1,
+        attributeValueCount: 2,
+      });
+      expectDefined(spicesCategory);
+      expectDefined(herbsCategory);
+      const herbValues = herbsCategory.attributes[0]?.values ?? [];
+
+      const { data: createdProduct } = await api.products.post({
+        name: "product for category change with reassigned values",
+        description: "Two variants moved to another category",
+        categoryId: spicesCategory.id,
+        status: "DRAFT",
+        stockMode: "VARIANT",
+        variants: {
+          create: (spicesCategory.attributes[0]?.values ?? []).map(
+            ({ id }) => ({
+              price: 1000,
+              inventory: { quantity: 5 },
+              attributeValueIds: [id],
+            }),
+          ),
+        },
+        images: { create: [{ position: 0, file: file(filePath1) }] },
+      });
+      expectDefined(createdProduct);
+
+      const { data, status } = await api
+        .products({ id: createdProduct.id })
+        .patch(
+          {
+            categoryId: herbsCategory.id,
+            variants: {
+              update: createdProduct.variants.map(({ id }, i) => ({
+                id,
+                attributeValueIds: [herbValues[i]?.id as string],
+              })),
+            },
+          },
+          { headers: { "x-version": createdProduct.version } },
+        );
+
+      expect(status).toBe(200);
+      expectDefined(data);
+      expect(data.categoryId).toBe(herbsCategory.id);
+      expect(
+        data.variants.map(({ attributeValues }) =>
+          attributeValues.map(({ id }) => id),
+        ),
+      ).toEqual(expect.arrayContaining(herbValues.map(({ id }) => [id])));
+      expect(
+        (await api.products({ id: createdProduct.id }).get()).data,
+      ).toEqual(data);
     });
 
     it("should change category successfully with atomic variant replacement", async () => {
@@ -424,19 +501,20 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           description: "Testing atomic category change",
           categoryId: spicesCategory.id,
           status: "DRAFT",
+          stockMode: "VARIANT",
           variants: {
             create: [
               {
                 price: 1000,
                 sku: "CAT-ATOMIC-1",
-                stock: 10,
+                inventory: { quantity: 10 },
                 attributeValueIds: [
                   spicesAttributes[0]?.values[0]?.id as string,
                 ],
               },
             ],
           },
-          images: { create: [{ isThumbnail: true, file: file(filePath1) }] },
+          images: { create: [{ position: 0, file: file(filePath1) }] },
         });
 
       expect(createStatus).toBe(201);
@@ -456,7 +534,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
                 {
                   price: 1500,
                   sku: "CAT-ATOMIC-NEW",
-                  stock: 20,
+                  inventory: { quantity: 20 },
                   attributeValueIds: [
                     herbsAttributes[0]?.values[0]?.id as string,
                   ],
@@ -485,11 +563,11 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           {
             price: 1000,
             sku: "DUP-ATTR-TEST",
-            stock: 10,
+            inventory: { quantity: 10 },
             attributeValueIds: [],
           },
         ],
-        imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
+        imagesCreate: [{ position: 0, file: file(filePath1) }],
       });
 
       const firstAttrValues = category.attributes[0]?.values;
@@ -538,11 +616,11 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           {
             price: 1000,
             sku: "UPDATE-TEST-1",
-            stock: 50,
+            inventory: { quantity: 50 },
             attributeValueIds: [],
           },
         ],
-        imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
+        imagesCreate: [{ position: 0, file: file(filePath1) }],
       });
 
       const [variantToUpdate] = product.variants;
@@ -554,7 +632,13 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           description: "an updated description",
           status: "DRAFT",
           variants: {
-            update: [{ id: variantToUpdate.id, price: 1299, stock: 524 }],
+            update: [
+              {
+                id: variantToUpdate.id,
+                price: 1299,
+                inventory: { adjust: 474 },
+              },
+            ],
           },
         },
         { headers: { "x-version": product.version } },
@@ -574,8 +658,10 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       expectDefined(updatedVariant);
       expect(updatedVariant.price).toBe(1299);
       expect(updatedVariant.price).not.toBe(product.variants[0]?.price);
-      expect(updatedVariant.stock).toBe(524);
-      expect(updatedVariant.price).not.toBe(product.variants[0]?.stock);
+      expect(updatedVariant).toMatchObject({
+        available: 524,
+        inventory: { quantity: 524 },
+      });
     });
 
     it("should update product with new images", async () => {
@@ -586,11 +672,11 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           {
             price: 1000,
             sku: "IMG-UPDATE-TEST",
-            stock: 10,
+            inventory: { quantity: 10 },
             attributeValueIds: [],
           },
         ],
-        imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
+        imagesCreate: [{ position: 0, file: file(filePath1) }],
       });
 
       const initialImageCount = product.images.length;
@@ -599,8 +685,8 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         {
           images: {
             create: [
-              { isThumbnail: false, file: file(filePath1) },
-              { isThumbnail: false, file: file(filePath2) },
+              { position: 1, file: file(filePath1) },
+              { position: 2, file: file(filePath2) },
             ],
           },
         },
@@ -621,37 +707,32 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           {
             price: 1000,
             sku: "ASG-IMG-TEST",
-            stock: 10,
+            inventory: { quantity: 10 },
             attributeValueIds: [],
           },
         ],
         imagesCreate: [
-          { isThumbnail: true, file: file(filePath1) },
-          { isThumbnail: false, file: file(filePath2) },
+          { position: 0, file: file(filePath1) },
+          { position: 1, file: file(filePath2) },
         ],
       });
 
-      const thumbnails = product.images
-        .filter((img) => img.isThumbnail)
-        .map((img) => img.id);
-      expect(thumbnails.length).toBe(1);
-
-      const replacement = product.images.find((img) => !img.isThumbnail);
+      const [cover, replacement] = product.images;
+      expectDefined(cover);
       expectDefined(replacement);
 
       const { data, status } = await api.products({ id: product.id }).patch(
         {
           images: {
-            delete: thumbnails,
-            update: [{ id: replacement.id, isThumbnail: true }],
+            delete: [cover.id],
+            update: [{ id: replacement.id, position: 0 }],
           },
         },
         { headers: { "x-version": product.version } },
       );
       expect(status).toBe(200);
       expectDefined(data);
-      const thumbnails2 = data.images.filter((img) => img.isThumbnail);
-      expect(thumbnails2).toMatchObject([{ id: replacement.id }]);
+      expect(data.images).toMatchObject([{ id: replacement.id, position: 0 }]);
     });
 
     it("should update image metadata successfully", async () => {
@@ -662,11 +743,11 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           {
             price: 1000,
             sku: "IMG-META-TEST",
-            stock: 10,
+            inventory: { quantity: 10 },
             attributeValueIds: [],
           },
         ],
-        imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
+        imagesCreate: [{ position: 0, file: file(filePath1) }],
       });
 
       const imageId = product.images[0]?.id;
@@ -698,11 +779,11 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           {
             price: 1000,
             sku: "ADD-VAR-TEST",
-            stock: 10,
+            inventory: { quantity: 10 },
             attributeValueIds: [],
           },
         ],
-        imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
+        imagesCreate: [{ position: 0, file: file(filePath1) }],
       });
 
       const initialVariantCount = product.variants.length;
@@ -714,7 +795,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
               {
                 price: 1500,
                 sku: "NEW-VARIANT-1",
-                stock: 20,
+                inventory: { quantity: 20 },
                 attributeValueIds: [
                   category.attributes[2]?.values[0]?.id as string,
                 ],
@@ -722,7 +803,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
               {
                 price: 20,
                 sku: "NEW-VARIANT-2",
-                stock: 25,
+                inventory: { quantity: 25 },
                 attributeValueIds: [
                   category.attributes[3]?.values[0]?.id as string,
                 ],
@@ -746,11 +827,11 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         variants: [
           {
             price: 1000,
-            stock: 10,
+            inventory: { quantity: 10 },
             attributeValueIds: [],
           },
         ],
-        imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
+        imagesCreate: [{ position: 0, file: file(filePath1) }],
       });
 
       // Add a second variant with different attribute values
@@ -762,7 +843,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
               create: [
                 {
                   price: 1500,
-                  stock: 15,
+                  inventory: { quantity: 15 },
                   attributeValueIds: [
                     category.attributes[0]?.values[0]?.id as string,
                   ],
@@ -796,11 +877,11 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           {
             price: 1000,
             sku: "FILE-REP-TEST",
-            stock: 10,
+            inventory: { quantity: 10 },
             attributeValueIds: [],
           },
         ],
-        imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
+        imagesCreate: [{ position: 0, file: file(filePath1) }],
       });
 
       const [existingImage] = product.images;
@@ -827,11 +908,11 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           {
             price: 1000,
             sku: "EARLY-EXIT-001",
-            stock: 50,
+            inventory: { quantity: 50 },
             attributeValueIds: [],
           },
         ],
-        imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
+        imagesCreate: [{ position: 0, file: file(filePath1) }],
       });
 
       const { data: patched, status: patchStatus } = await api
@@ -854,3 +935,5 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
     });
   });
 });
+
+afterAll(() => expectNoDrift(testDb));

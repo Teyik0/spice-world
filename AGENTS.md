@@ -45,6 +45,7 @@ const { data, status, error } = await api.attributes.post(newAttrData);
 - MUST always use Bun, not npm/node/pnpm
 - MUST reuse backend models in frontend, no type duplication
 - MUST always use async/await, never `.then()`/`.catch()` chains
+- MUST NOT write any comment (`//`, `/* */`, JSDoc, JSX `{/* */}`): 0 comments allowed. Names and code must explain themselves. Only tool directives (`biome-ignore`, `@ts-expect-error`) are allowed
 - MUST ABSOLUTELY propose YOUR recommendations (considering production-grade / industry standard apps) AND alternatives, regardless of what the user prompts
 - MUST check for type error after diff: `bun check <file_path>`
 - MUST check for lint error after diff: `bun run biome check <file_path>`

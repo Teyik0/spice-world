@@ -17,9 +17,8 @@ import {
   EmptyFilter,
   eq,
   getColumns,
-  gt,
   inArray,
-  lt,
+  notExists,
   sql,
 } from "drizzle-orm";
 import { ElysiaStatus, problem, status } from "elysia";
@@ -31,6 +30,9 @@ import {
   collectionTable,
   commentTable,
   imageTable,
+  inventoryTable,
+  orderItemTable,
+  orderTable,
   productTable,
   productVariantTable,
 } from "../../../drizzle/schema";
@@ -38,10 +40,10 @@ import { categoryService } from "../categories/service";
 import type { ExpectedVersion, uuidGuard } from "../shared";
 import { uploadFileErrStatus } from "../shared";
 import type * as ProductModel from "./model";
-import { LOW_STOCK_THRESHOLD } from "./model";
 import { hasProductChanges } from "./validators/has-changes";
 import { validateImages } from "./validators/images";
 import { validatePublish } from "./validators/publish";
+import { validateStock } from "./validators/stock";
 import {
   applyVariantOperations,
   validateVariantIds,
@@ -57,15 +59,16 @@ Product: "Organic Paprika Powder"
 ├─ description: "Sweet Hungarian paprika. Adds vibrant color and mild flavor."
 ├─ categoryId: "cat_spices_001" → Category: "Spices"
 ├─ status: "PUBLISHED"
+├─ stockMode: "SHARED" → one inventory: { dimension: "MASS", quantity: 5000000 } (5 kg in mg)
 ├─ images: [
-│   { url: "paprika.jpg", isThumbnail: true }
+│   { url: "paprika.jpg", position: 0 }
 │  ]
 └─ variants: [
     Variant 1:
     ├─ id: "variant_002a"
     ├─ price: €3.99
     ├─ sku: "PAP-50G-001"
-    ├─ stock: 80
+    ├─ stockUsage: 50000 (50 g)
     ├─ currency: "EUR"
     └─ attributeValues: [
         { id: "val_50g", value: "50g" } → Attribute: "Weight"
@@ -75,7 +78,7 @@ Product: "Organic Paprika Powder"
     ├─ id: "variant_002b"
     ├─ price: €6.99
     ├─ sku: "PAP-100G-001"
-    ├─ stock: 60
+    ├─ stockUsage: 100000 (100 g)
     ├─ currency: "EUR"
     └─ attributeValues: [
         { id: "val_100g", value: "100g" } → Attribute: "Weight"
@@ -85,7 +88,7 @@ Product: "Organic Paprika Powder"
     ├─ id: "variant_002c"
     ├─ price: €14.99
     ├─ sku: "PAP-250G-001"
-    ├─ stock: 30
+    ├─ stockUsage: 250000 (250 g)
     ├─ currency: "EUR"
     └─ attributeValues: [
         { id: "val_250g", value: "250g" } → Attribute: "Weight"
@@ -104,50 +107,85 @@ const productPurge = (ids: string[], pagesMayMove: boolean) => {
 };
 type ProductKey = { id: string } | { slug: string };
 
-/** Price range over in-stock variants and total stock, joined laterally per product. */
+const withInventory = eq(inventoryTable.id, productVariantTable.inventoryId);
+
+/**
+ * Recomputes what listings read from products: stockState, totalStock, priceMin and priceMax.
+ * Call it in the transaction that changed their variants or inventories, after locking the
+ * inventories it changed: these columns are never repaired afterwards.
+ * - out: no variant can be sold
+ * - low: a variant is sold out, or an inventory is at or under its lowStockAt
+ * - the total counts each inventory once
+ * - the price range covers the variants that can be sold, null when none can
+ * A product without variant keeps its defaults: out, 0, null.
+ *
+ * Two checkouts of different variants lock different inventories, yet both refresh the
+ * product. The product rows are locked first, in a statement of their own: the next
+ * statement then reads the variants and inventories as the other transaction committed them.
+ * Lock order, everywhere: inventories, then products, each by id.
+ */
+export async function refreshListing(
+  tx: Pick<Tx, "select" | "update">,
+  productIds?: string[],
+) {
+  await tx
+    .select({ id: productTable.id })
+    .from(productTable)
+    .where(productIds && inArray(productTable.id, productIds))
+    .orderBy(asc(productTable.id))
+    .for("no key update");
+  const { quantity, lowStockAt } = inventoryTable;
+  const { price, stockUsage, productId } = productVariantTable;
+  const sellable = sql`${quantity} >= ${stockUsage}`;
+  const listings = tx
+    .select({
+      productId,
+      state: sql`case when not bool_or(${sellable}) then 'out'
+        when bool_or(${quantity} < ${stockUsage} or ${quantity} <= ${lowStockAt}) then 'low'
+        else 'in' end`.as("state"),
+      priceMin: sql`min(${price}) filter (where ${sellable})`.as("priceMin"),
+      priceMax: sql`max(${price}) filter (where ${sellable})`.as("priceMax"),
+    })
+    .from(productVariantTable)
+    .innerJoin(inventoryTable, withInventory)
+    .where(productIds && inArray(productId, productIds))
+    .groupBy(productId)
+    .as("listings");
+  await tx
+    .update(productTable)
+    .set({
+      stockState: sql`${listings.state}::"StockState"`,
+      totalStock: sql`(select coalesce(sum(${quantity}), 0) from ${inventoryTable} where ${inventoryTable.productId} = ${productTable.id})`,
+      priceMin: sql`${listings.priceMin}`,
+      priceMax: sql`${listings.priceMax}`,
+      updatedAt: sql`${productTable.updatedAt}`,
+    })
+    .from(listings)
+    .where(eq(listings.productId, productTable.id));
+}
+
 const variantStats = () => {
-  const { price, stock, productId } = productVariantTable;
+  const { productId } = productVariantTable;
   return db
     .select({
-      priceMin: sql<
-        number | null
-      >`min(${price}) filter (where ${stock} > 0)`.as("priceMin"),
-      priceMax: sql<
-        number | null
-      >`max(${price}) filter (where ${stock} > 0)`.as("priceMax"),
-      totalStock: sql<number>`coalesce(sum(${stock}), 0)::int`.as("totalStock"),
+      stockDimension:
+        sql<ProductModel.stockDimension>`coalesce(min(${inventoryTable.dimension}), 'COUNT')`.as(
+          "stockDimension",
+        ),
       variantCount: sql<number>`count(*)::int`.as("variantCount"),
     })
     .from(productVariantTable)
+    .innerJoin(inventoryTable, withInventory)
     .where(eq(productId, productTable.id))
     .as("stats");
 };
 
-/**
- * Total stock of every product in one grouped pass, joined on `productId`. Counting all
- * products this way avoids a lateral lookup per product (~80 ms against ~540 ms at 100k).
- */
-const stockTotals = () => {
-  const { stock, productId } = productVariantTable;
-  return db
-    .select({
-      productId,
-      totalStock: sql<number>`coalesce(sum(${stock}), 0)::int`.as("totalStock"),
-    })
-    .from(productVariantTable)
-    .groupBy(productId)
-    .as("stats");
-};
-
-const listingFilters = (
-  {
-    name,
-    status: productStatus,
-    categories,
-    stock,
-  }: Pick<ProductModel.getQuery, "name" | "status" | "categories" | "stock">,
-  stats: Pick<ReturnType<typeof variantStats>, "totalStock">,
-) =>
+const listingFilters = ({
+  name,
+  status: productStatus,
+  categories,
+  stock,
+}: Pick<ProductModel.getQuery, "name" | "status" | "categories" | "stock">) =>
   and(
     productStatus && eq(productTable.status, productStatus),
     name
@@ -162,10 +200,7 @@ const listingFilters = (
             .where(inArray(categoryTable.name, categories)),
         )
       : undefined,
-    stock === "out" ? eq(stats.totalStock, 0) : undefined,
-    stock === "low"
-      ? and(gt(stats.totalStock, 0), lt(stats.totalStock, LOW_STOCK_THRESHOLD))
-      : undefined,
+    stock && eq(productTable.stockState, stock),
   );
 
 async function find(
@@ -175,7 +210,7 @@ async function find(
   }: ProductKey & { status?: ProductModel.productStatus },
   tx: Tx | typeof db = db,
 ) {
-  return await tx.query.product.findFirst({
+  const product = await tx.query.product.findFirst({
     where: { ...key, status: productStatus ?? EmptyFilter },
     with: {
       category: {
@@ -193,17 +228,25 @@ async function find(
           },
         },
       },
-      images: { columns: { productId: false }, orderBy: { id: "asc" } },
+      images: { columns: { productId: false }, orderBy: { position: "asc" } },
       variants: {
         columns: {
           id: true,
           sku: true,
           price: true,
           currency: true,
-          stock: true,
+          stockUsage: true,
         },
         orderBy: { id: "asc" },
         with: {
+          inventory: {
+            columns: {
+              id: true,
+              dimension: true,
+              quantity: true,
+              lowStockAt: true,
+            },
+          },
           attributeValues: {
             columns: { id: true, value: true, attributeId: true },
             orderBy: { id: "asc" },
@@ -212,7 +255,32 @@ async function find(
       },
     },
   });
+  return (
+    product && {
+      ...product,
+      variants: product.variants.map((variant) => {
+        const { quantity, lowStockAt } = variant.inventory;
+        const available = Math.floor(quantity / variant.stockUsage);
+        return {
+          ...variant,
+          available,
+          stockState: stockState(available, quantity, lowStockAt),
+        };
+      }),
+    }
+  );
 }
+
+const stockState = (
+  available: number,
+  quantity: number,
+  lowStockAt: number,
+): ProductModel.stockState => {
+  if (!available) {
+    return "out";
+  }
+  return quantity <= lowStockAt ? "low" : "in";
+};
 
 /** Rules shared by patch and bulkPatch, checked on the state the change would leave. */
 function validateChange({
@@ -265,6 +333,32 @@ function validateChange({
   });
 }
 
+function validateOperations(
+  current: ProductModel.productResult,
+  {
+    iOps,
+    vOps,
+    ...stock
+  }: {
+    inventory?: ProductModel.sharedInventory;
+    iOps?: ProductModel.imageOperations;
+    mode: ProductModel.stockMode;
+    modeChanged: boolean;
+    vOps?: ProductModel.variantOperations;
+  },
+) {
+  return (
+    (iOps &&
+      validateImages({ imagesOps: iOps, currentImages: current.images })) ??
+    (vOps && validateVariantIds(current.variants, vOps)) ??
+    validateStock({
+      ...stock,
+      vOps,
+      currentIds: current.variants.map((variant) => variant.id),
+    })
+  );
+}
+
 const slugOf = (name: string) => name.toLowerCase().replace(/\s+/gu, "-");
 
 const uploadColumns = ({ thumb, medium, large }: MultiSizeUploadData) => ({
@@ -278,18 +372,18 @@ const uploadColumns = ({ thumb, medium, large }: MultiSizeUploadData) => ({
 
 async function insertImages(
   tx: Tx,
-  product: { id: string; name: string },
+  productId: string,
   images: NonNullable<ProductModel.imageOperations["create"]>,
   uploads: MultiSizeUploadData[],
 ) {
   if (images.length) {
     await tx.insert(imageTable).values(
-      images.map(({ altText, isThumbnail }, index) => ({
+      images.map(({ altText, position }, index) => ({
         ...uploadColumns(uploads[index] as MultiSizeUploadData),
         id: Bun.randomUUIDv7(),
-        productId: product.id,
-        altText: altText ?? `${product.name} image`,
-        isThumbnail,
+        productId,
+        altText,
+        position,
       })),
     );
   }
@@ -317,18 +411,161 @@ async function insertVariants(
   tx: Tx,
   productId: string,
   variants: NonNullable<ProductModel.variantOperations["create"]>,
+  sharedInventoryId?: string,
 ) {
   const rows = variants.map((variant) => ({
     ...variant,
     id: Bun.randomUUIDv7(),
     productId,
+    inventoryId: sharedInventoryId ?? Bun.randomUUIDv7(),
   }));
-  if (rows.length) {
-    await tx
-      .insert(productVariantTable)
-      .values(rows.map(({ attributeValueIds, ...row }) => row));
-    await linkAttributeValues(tx, rows);
+  if (!rows.length) {
+    return;
   }
+  const inventories = rows.flatMap(({ inventory, inventoryId }) =>
+    inventory ? [{ ...inventory, id: inventoryId, productId }] : [],
+  );
+  if (inventories.length) {
+    await tx.insert(inventoryTable).values(inventories);
+  }
+  await tx
+    .insert(productVariantTable)
+    .values(rows.map(({ attributeValueIds, inventory, ...row }) => row));
+  await linkAttributeValues(tx, rows);
+}
+
+async function adjustInventory(
+  tx: Tx,
+  inventoryId: string,
+  { adjust, lowStockAt }: { adjust?: number; lowStockAt?: number },
+) {
+  await tx
+    .update(inventoryTable)
+    .set({
+      ...(adjust && { quantity: sql`${inventoryTable.quantity} + ${adjust}` }),
+      lowStockAt,
+      updatedAt: sql`CURRENT_TIMESTAMP`,
+    })
+    .where(eq(inventoryTable.id, inventoryId));
+}
+
+async function lockStock(
+  tx: Tx,
+  { variants }: { variants: { inventory: { id: string } }[] },
+) {
+  const inventoryIds = variants.map(({ inventory }) => inventory.id);
+  await tx
+    .select({ id: inventoryTable.id })
+    .from(inventoryTable)
+    .where(inArray(inventoryTable.id, inventoryIds))
+    .orderBy(asc(inventoryTable.id))
+    .for("update");
+  const reserved = await tx
+    .selectDistinct({ variantId: orderItemTable.variantId })
+    .from(orderItemTable)
+    .innerJoin(orderTable, eq(orderTable.id, orderItemTable.orderId))
+    .where(
+      and(
+        inArray(orderItemTable.inventoryId, inventoryIds),
+        eq(orderTable.status, "PENDING"),
+      ),
+    );
+  return new Set(reserved.map(({ variantId }) => variantId));
+}
+
+function reservedConflict(
+  reserved: Set<string | null>,
+  modeChanged: boolean,
+  deleted: string[] = [],
+) {
+  if (modeChanged && reserved.size) {
+    return problem("Conflict", {
+      code: "STOCK_RESERVED",
+      message:
+        "Pending orders reserve this stock: the stock mode can change once they are paid or cancelled",
+    });
+  }
+  const variantId = deleted.find((id) => reserved.has(id));
+  if (variantId) {
+    return problem("Conflict", {
+      code: "VARIANT_RESERVED",
+      message: `Pending orders reserve variant ${variantId}: it can be deleted once they are paid or cancelled`,
+    });
+  }
+}
+
+async function updateVariants(
+  tx: Tx,
+  {
+    current,
+    mode,
+    modeChanged,
+    inventory,
+    updates,
+  }: {
+    current: ProductModel.productResult;
+    inventory?: ProductModel.sharedInventory;
+    mode: ProductModel.stockMode;
+    modeChanged: boolean;
+    updates: NonNullable<ProductModel.variantOperations["update"]>;
+  },
+) {
+  const currentShared = current.variants[0]?.inventory.id;
+  const sharedInventoryId =
+    mode === "SHARED" && modeChanged ? Bun.randomUUIDv7() : undefined;
+  if (inventory && "quantity" in inventory && sharedInventoryId) {
+    await tx
+      .insert(inventoryTable)
+      .values({ ...inventory, id: sharedInventoryId, productId: current.id });
+  } else if (inventory && currentShared) {
+    await adjustInventory(tx, currentShared, inventory);
+  }
+  const inventoryOf = new Map(
+    current.variants.map((variant) => [variant.id, variant.inventory.id]),
+  );
+  await Promise.all(
+    updates.map(
+      async ({ id, price, sku, currency, stockUsage, inventory: own }) => {
+        const ownInventoryId =
+          own && "quantity" in own ? Bun.randomUUIDv7() : undefined;
+        if (own && ownInventoryId) {
+          await tx
+            .insert(inventoryTable)
+            .values({ ...own, id: ownInventoryId, productId: current.id });
+        } else if (own) {
+          await adjustInventory(tx, inventoryOf.get(id) as string, own);
+        }
+        await tx
+          .update(productVariantTable)
+          .set({
+            price,
+            sku,
+            currency,
+            stockUsage: ownInventoryId ? 1 : stockUsage,
+            inventoryId: ownInventoryId ?? sharedInventoryId,
+            updatedAt: sql`CURRENT_TIMESTAMP`,
+          })
+          .where(eq(productVariantTable.id, id));
+      },
+    ),
+  );
+  return mode === "SHARED" ? (sharedInventoryId ?? currentShared) : undefined;
+}
+
+async function deleteUnusedInventories(tx: Tx, productId: string) {
+  await tx
+    .delete(inventoryTable)
+    .where(
+      and(
+        eq(inventoryTable.productId, productId),
+        notExists(
+          tx
+            .select({ id: productVariantTable.id })
+            .from(productVariantTable)
+            .where(eq(productVariantTable.inventoryId, inventoryTable.id)),
+        ),
+      ),
+    );
 }
 
 export const productService = {
@@ -351,7 +588,7 @@ export const productService = {
       .where(
         and(
           eq(imageTable.productId, productTable.id),
-          eq(imageTable.isThumbnail, true),
+          eq(imageTable.position, 0),
         ),
       )
       .limit(1);
@@ -360,14 +597,12 @@ export const productService = {
       .select({
         ...getColumns(productTable),
         img: sql<string | null>`(${thumbnail})`,
-        priceMin: stats.priceMin,
-        priceMax: stats.priceMax,
-        totalStock: stats.totalStock,
+        stockDimension: stats.stockDimension,
         variantCount: stats.variantCount,
       })
       .from(productTable)
       .crossJoinLateral(stats)
-      .where(listingFilters(query, stats))
+      .where(listingFilters(query))
       .$dynamic();
 
     if (collection) {
@@ -389,19 +624,21 @@ export const productService = {
       name: productTable.name,
       createdAt: productTable.createdAt,
       updatedAt: productTable.updatedAt,
-      priceMin: stats.priceMin,
-      priceMax: stats.priceMax,
-      totalStock: stats.totalStock,
+      priceMin: productTable.priceMin,
+      priceMax: productTable.priceMax,
+      stock: productTable.stockState,
       position: collectionProductTable.position,
     };
     // A collection is listed in its curated order unless a sort is requested.
     const sort = sortBy ?? (collection ? "position" : "name");
-    const order = (sortDir === "desc" ? desc : asc)(sortColumns[sort]);
+    const direction = sortDir === "desc" ? desc : asc;
+    const order = direction(sortColumns[sort]);
     return await listing
       .orderBy(
         sort === "priceMin" || sort === "priceMax"
           ? sql`${order} nulls last`
           : order,
+        ...(sort === "stock" ? [direction(productTable.totalStock)] : []),
         productTable.id,
       )
       .limit(take ?? 25)
@@ -452,9 +689,7 @@ export const productService = {
   },
 
   async facets(query: ProductModel.facetsQuery) {
-    const stats = stockTotals();
-    const { totalStock } = stats;
-    const withStats = eq(stats.productId, productTable.id);
+    const state = productTable.stockState;
     const [byStatus, [byStock], byCategory] = await Promise.all([
       db
         .select({
@@ -462,23 +697,23 @@ export const productService = {
           count: sql<number>`count(*)::int`,
         })
         .from(productTable)
-        .innerJoin(stats, withStats)
-        .where(listingFilters({ ...query, status: undefined }, stats))
+        .where(listingFilters({ ...query, status: undefined }))
         .groupBy(productTable.status),
       db
         .select({
-          low: sql<number>`(count(*) filter (where ${totalStock} > 0 and ${totalStock} < ${LOW_STOCK_THRESHOLD}))::int`,
-          out: sql<number>`(count(*) filter (where ${totalStock} = 0))::int`,
+          low: sql<number>`(count(*) filter (where ${state} = 'low'))::int`,
+          out: sql<number>`(count(*) filter (where ${state} = 'out'))::int`,
         })
         .from(productTable)
-        .innerJoin(stats, withStats)
-        .where(listingFilters({ ...query, stock: undefined }, stats)),
+        .where(listingFilters({ ...query, stock: undefined })),
       db
-        .select({ name: categoryTable.name, count: sql<number>`count(*)::int` })
+        .select({
+          name: categoryTable.name,
+          count: sql<number>`count(*)::int`,
+        })
         .from(productTable)
         .innerJoin(categoryTable, eq(productTable.categoryId, categoryTable.id))
-        .innerJoin(stats, withStats)
-        .where(listingFilters({ ...query, categories: undefined }, stats))
+        .where(listingFilters({ ...query, categories: undefined }))
         .groupBy(categoryTable.name),
     ]);
     const counts: ProductModel.facets["status"] = {
@@ -503,9 +738,20 @@ export const productService = {
     status: requestedStatus,
     description,
     categoryId,
+    stockMode,
+    inventory,
     variants: vOps,
     images: iOps,
   }: ProductModel.postBody) {
+    const invalidStock = validateStock({
+      mode: stockMode,
+      modeChanged: true,
+      inventory,
+      vOps,
+    });
+    if (invalidStock) {
+      return invalidStock;
+    }
     const category = await categoryService.getById({ id: categoryId });
     if (category instanceof ElysiaStatus) {
       return category;
@@ -548,9 +794,17 @@ export const productService = {
         description,
         categoryId,
         status: requestedStatus,
+        stockMode,
       });
-      await insertImages(tx, { id, name }, iOps.create, uploads);
-      await insertVariants(tx, id, vOps.create);
+      const sharedInventoryId = inventory && Bun.randomUUIDv7();
+      if (inventory && sharedInventoryId) {
+        await tx
+          .insert(inventoryTable)
+          .values({ ...inventory, id: sharedInventoryId, productId: id });
+      }
+      await insertImages(tx, id, iOps.create, uploads);
+      await insertVariants(tx, id, vOps.create, sharedInventoryId);
+      await refreshListing(tx, [id]);
       return await find({ id }, tx);
     });
     // no page to purge: a product URL is never cached before it exists
@@ -566,6 +820,8 @@ export const productService = {
     status: requestedStatus,
     description,
     categoryId,
+    stockMode,
+    inventory,
     images: iOps,
     variants: vOps,
     expectedVersion,
@@ -577,16 +833,30 @@ export const productService = {
     if (current.version !== expectedVersion) {
       return this.versionConflict;
     }
-    const invalidOperations =
-      (iOps &&
-        validateImages({ imagesOps: iOps, currentImages: current.images })) ??
-      (vOps && validateVariantIds(current.variants, vOps));
+    const mode = stockMode ?? current.stockMode;
+    const modeChanged = mode !== current.stockMode;
+    const invalidOperations = validateOperations(current, {
+      iOps,
+      vOps,
+      mode,
+      modeChanged,
+      inventory,
+    });
     if (invalidOperations) {
       return invalidOperations;
     }
     if (
       !hasProductChanges({
-        newData: { name, description, requestedStatus, categoryId, iOps, vOps },
+        newData: {
+          name,
+          description,
+          requestedStatus,
+          categoryId,
+          stockMode,
+          inventory,
+          iOps,
+          vOps,
+        },
         currentProduct: current,
       })
     ) {
@@ -632,12 +902,19 @@ export const productService = {
     );
 
     const createdVariants = vOps?.create ?? [];
-    const updatedVariants = vOps?.update ?? [];
-    const relinkedVariants = updatedVariants.filter(
+    const relinkedVariants = (vOps?.update ?? []).filter(
       ({ attributeValueIds }) => attributeValueIds,
     );
 
     const outcome = await db.transaction(async (tx) => {
+      const reserved = reservedConflict(
+        await lockStock(tx, current),
+        modeChanged,
+        vOps?.delete,
+      );
+      if (reserved) {
+        return reserved;
+      }
       const [updated] = await tx
         .update(productTable)
         .set({
@@ -645,6 +922,7 @@ export const productService = {
           description,
           categoryId,
           status: requestedStatus,
+          stockMode,
           version: expectedVersion + 1,
         })
         .where(
@@ -683,40 +961,33 @@ export const productService = {
           .where(inArray(imageTable.id, deletedImages));
       }
       await Promise.all(
-        updatedImages.map(({ id: imageId, altText, isThumbnail }) => {
+        updatedImages.map(({ id: imageId, altText, position }) => {
           const upload = replacements.get(imageId);
           return tx
             .update(imageTable)
             .set({
               ...(upload && uploadColumns(upload)),
               altText,
-              isThumbnail,
+              position,
               updatedAt: sql`CURRENT_TIMESTAMP`, // an update may only carry its id
             })
             .where(eq(imageTable.id, imageId));
         }),
       );
-      await insertImages(tx, updated, createdImages, uploads);
+      await insertImages(tx, updated.id, createdImages, uploads);
 
       if (vOps?.delete?.length) {
         await tx
           .delete(productVariantTable)
           .where(inArray(productVariantTable.id, vOps.delete));
       }
-      await Promise.all(
-        updatedVariants.map(({ id: variantId, price, sku, stock, currency }) =>
-          tx
-            .update(productVariantTable)
-            .set({
-              price,
-              sku,
-              stock,
-              currency,
-              updatedAt: sql`CURRENT_TIMESTAMP`, // an update may only carry attribute values
-            })
-            .where(eq(productVariantTable.id, variantId)),
-        ),
-      );
+      const sharedInventoryId = await updateVariants(tx, {
+        current,
+        mode,
+        modeChanged,
+        inventory,
+        updates: vOps?.update ?? [],
+      });
       const unlinked = categoryChanged ? current.variants : relinkedVariants;
       if (unlinked.length) {
         await unlinkAttributeValues(
@@ -725,7 +996,9 @@ export const productService = {
         );
       }
       await linkAttributeValues(tx, relinkedVariants);
-      await insertVariants(tx, id, createdVariants);
+      await insertVariants(tx, id, createdVariants, sharedInventoryId);
+      await deleteUnusedInventories(tx, id);
+      await refreshListing(tx, [id]);
 
       return (await find({ id }, tx)) as ProductModel.productResult;
     });
@@ -748,6 +1021,12 @@ export const productService = {
     }
 
     const outcome = await db.transaction(async (tx) => {
+      await tx
+        .select({ id: inventoryTable.id })
+        .from(inventoryTable)
+        .where(inArray(inventoryTable.productId, ids))
+        .orderBy(asc(inventoryTable.id))
+        .for("update");
       const locked = await tx
         .select({ id: productTable.id })
         .from(productTable)
@@ -819,6 +1098,12 @@ export const productService = {
 
   async delete({ id }: uuidGuard) {
     const outcome = await db.transaction(async (tx) => {
+      await tx
+        .select({ id: inventoryTable.id })
+        .from(inventoryTable)
+        .where(eq(inventoryTable.productId, id))
+        .orderBy(asc(inventoryTable.id))
+        .for("update");
       // Locked first: no image can be added before the cascade removes them.
       const [locked] = await tx
         .select({ id: productTable.id })
@@ -827,6 +1112,24 @@ export const productService = {
         .for("update");
       if (!locked) {
         return this.productNotFound;
+      }
+      const [reserved] = await tx
+        .select({ id: orderItemTable.id })
+        .from(orderItemTable)
+        .innerJoin(orderTable, eq(orderTable.id, orderItemTable.orderId))
+        .where(
+          and(
+            eq(orderItemTable.productId, id),
+            eq(orderTable.status, "PENDING"),
+          ),
+        )
+        .limit(1);
+      if (reserved) {
+        return problem("Conflict", {
+          code: "PRODUCT_RESERVED",
+          message:
+            "Pending orders reserve this product: it can be deleted once they are paid or cancelled",
+        });
       }
       const images = await tx
         .delete(imageTable)

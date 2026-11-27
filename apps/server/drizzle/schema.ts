@@ -486,7 +486,6 @@ export const inventoryTable = pgTable(
       "btree",
       table.productId.asc().nullsLast(),
     ),
-    // target of ProductVariant_inventoryId_fkey: a variant's stock is its product's
     uniqueIndex("Inventory_id_productId_key").using(
       "btree",
       table.id.asc().nullsLast(),

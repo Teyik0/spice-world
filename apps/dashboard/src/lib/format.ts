@@ -1,3 +1,5 @@
+import { STOCK_UNITS } from "@spice-world/server/modules/products/model";
+
 const eur = new Intl.NumberFormat("fr-FR", {
   currency: "EUR",
   style: "currency",
@@ -26,3 +28,18 @@ export const formatAgo = (date: Date | string) => {
 
 const count = new Intl.NumberFormat("en-US");
 export const formatCount = (n: number) => count.format(n);
+
+const amount = new Intl.NumberFormat("en-US", { maximumFractionDigits: 3 });
+type Dimension = keyof typeof STOCK_UNITS;
+
+export const unitsOf = (dimension: Dimension) =>
+  Object.entries(STOCK_UNITS[dimension]) as [string, number][];
+
+export const formatStock = (quantity: number, dimension: Dimension) => {
+  const units = unitsOf(dimension);
+  const [unit, ratio] = units.findLast(([, r]) => quantity >= r) ??
+    units[0] ?? ["", 1];
+  return dimension === "COUNT"
+    ? count.format(quantity)
+    : `${amount.format(quantity / ratio)} ${unit}`;
+};

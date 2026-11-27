@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { stripeClient } from "@spice-world/server/lib/stripe";
 import type { OrderStatus } from "@spice-world/server/modules/orders/model";
@@ -9,6 +9,7 @@ import {
   createTestOrder,
   createTestUser,
   expectDefined,
+  expectNoDrift,
 } from "../utils/helper";
 import { recordPurges } from "../utils/vercel";
 
@@ -146,3 +147,5 @@ describe.concurrent("Stripe webhook", () => {
     await expectOrder(order.id, { status: "PENDING" });
   });
 });
+
+afterAll(() => expectNoDrift(testDb));

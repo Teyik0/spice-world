@@ -1,15 +1,11 @@
-import { beforeAll, describe, expect, it } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 
 import { treaty } from "@elysia/eden";
 import { productsRouter } from "@spice-world/server/modules/products";
 import type * as ProductModel from "@spice-world/server/modules/products/model";
-import { LOW_STOCK_THRESHOLD } from "@spice-world/server/modules/products/model";
+import { adminView } from "@spice-world/server/modules/products/model";
 
-import {
-  collectionProductTable,
-  collectionTable,
-  productVariantTable,
-} from "../../drizzle/schema";
+import { collectionProductTable, collectionTable } from "../../drizzle/schema";
 import { testDb } from "../setup";
 import { createDummyProducts } from "../utils/dummy-products";
 import {
@@ -17,6 +13,8 @@ import {
   createTestProducts,
   createTestVariant,
   expectDefined,
+  expectNoDrift,
+  insertVariant,
   mockUtapi,
 } from "../utils/helper";
 
@@ -56,8 +54,8 @@ describe.concurrent("GET /products - Integration Tests", () => {
       }
 
       for (let i = 0; i < data.length - 1; i += 1) {
-        const currentItem: ProductModel.productListItem | undefined = data[i];
-        const nextItem: ProductModel.productListItem | undefined = data[i + 1];
+        const currentItem: { name: string } | undefined = data[i];
+        const nextItem: { name: string } | undefined = data[i + 1];
         expectDefined(currentItem);
         expectDefined(nextItem);
         expect(
@@ -263,12 +261,7 @@ describe.concurrent("GET /products - Integration Tests", () => {
     it("drops a product from its old status listing after a patch", async () => {
       const [product] = await createTestProducts(testDb, 1);
       expectDefined(product);
-      await testDb.db.insert(productVariantTable).values({
-        id: Bun.randomUUIDv7(),
-        productId: product.id,
-        price: 1000,
-        stock: 1,
-      });
+      await insertVariant(testDb.db, { productId: product.id, price: 1000 });
       const list = await listing(product.id);
       expect(await list()).toEqual([product.id]);
 
@@ -374,8 +367,8 @@ describe.concurrent("GET /products - Integration Tests", () => {
     const stocked = async () => {
       const variants = await Promise.all([
         createTestVariant(testDb, { stock: 0 }),
-        createTestVariant(testDb, { stock: LOW_STOCK_THRESHOLD - 1 }),
-        createTestVariant(testDb, { stock: LOW_STOCK_THRESHOLD }),
+        createTestVariant(testDb, { stock: 5, lowStockAt: 10 }),
+        createTestVariant(testDb, { stock: 20, lowStockAt: 10 }),
         createTestVariant(testDb, { stock: 0, status: "DRAFT" }),
       ]);
       const ids = variants.map(({ productId }) => productId);
@@ -409,27 +402,36 @@ describe.concurrent("GET /products - Integration Tests", () => {
       expect(lows.data?.[0]?.variantCount).toBe(1);
     });
 
-    it("sorts products by total stock", async () => {
+    it("sorts products by stock state, then by total stock", async () => {
       const { categories } = await stocked();
       const [ascending, descending] = await Promise.all(
         (["asc", "desc"] as const).map((sortDir) =>
           api.products.get({
-            query: { categories, sortBy: "totalStock", sortDir },
+            query: { categories, sortBy: "stock", sortDir },
           }),
         ),
       );
-      const low = LOW_STOCK_THRESHOLD - 1;
-      expect(ascending?.data?.map(({ totalStock }) => totalStock)).toEqual([
-        0,
-        0,
-        low,
-        LOW_STOCK_THRESHOLD,
+      const stocks = (
+        data: (ProductModel.productListItem | ProductModel.publicListItem)[],
+      ) =>
+        data
+          .map(adminView)
+          .map(({ stockState, totalStock, stockDimension }) => [
+            stockState,
+            totalStock,
+            stockDimension,
+          ]);
+      expect(stocks(ascending?.data ?? [])).toEqual([
+        ["out", 0, "COUNT"],
+        ["out", 0, "COUNT"],
+        ["low", 5, "COUNT"],
+        ["in", 20, "COUNT"],
       ]);
-      expect(descending?.data?.map(({ totalStock }) => totalStock)).toEqual([
-        LOW_STOCK_THRESHOLD,
-        low,
-        0,
-        0,
+      expect(stocks(descending?.data ?? [])).toEqual([
+        ["in", 20, "COUNT"],
+        ["low", 5, "COUNT"],
+        ["out", 0, "COUNT"],
+        ["out", 0, "COUNT"],
       ]);
     });
 
@@ -510,3 +512,5 @@ describe.concurrent("GET /products - Integration Tests", () => {
     });
   });
 });
+
+afterAll(() => expectNoDrift(testDb));

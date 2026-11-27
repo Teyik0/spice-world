@@ -4,8 +4,61 @@ import { t } from "elysia";
 import { imageResult, nameLowerPattern, uuid } from "../shared";
 
 export const MAX_IMAGES_PER_PRODUCT = 5;
-/** A product with stock above 0 and below this total is low on stock. */
-export const LOW_STOCK_THRESHOLD = 20;
+
+export const stockMode = t.Union([t.Literal("VARIANT"), t.Literal("SHARED")]);
+export type stockMode = UnwrapSchema<typeof stockMode>;
+export const stockDimension = t.Union([
+  t.Literal("COUNT"),
+  t.Literal("MASS"),
+  t.Literal("VOLUME"),
+  t.Literal("LENGTH"),
+  t.Literal("AREA"),
+]);
+export type stockDimension = UnwrapSchema<typeof stockDimension>;
+
+export const STOCK_UNITS = {
+  COUNT: { pcs: 1 },
+  MASS: { mg: 1, g: 1000, kg: 1_000_000 },
+  VOLUME: { ml: 1, cl: 10, l: 1000 },
+  LENGTH: { mm: 1, cm: 10, m: 1000 },
+  AREA: { "mm²": 1, "cm²": 100, "m²": 1_000_000 },
+} as const satisfies Record<stockDimension, Record<string, number>>;
+
+export const stockState = t.Union([
+  t.Literal("in"),
+  t.Literal("low"),
+  t.Literal("out"),
+]);
+export type stockState = UnwrapSchema<typeof stockState>;
+
+export const MAX_STOCK = 1_000_000_000_000;
+const stockAmount = t.Integer({ minimum: 0, maximum: MAX_STOCK });
+
+const inventoryCreate = t.Object(
+  { quantity: stockAmount, lowStockAt: t.Optional(stockAmount) },
+  { additionalProperties: false },
+);
+
+const inventoryEdit = t.Object(
+  {
+    adjust: t.Optional(
+      t.Integer({
+        minimum: -MAX_STOCK,
+        maximum: MAX_STOCK,
+      }),
+    ),
+    lowStockAt: t.Optional(stockAmount),
+  },
+  { additionalProperties: false, minProperties: 1 },
+);
+const sharedInventoryCreate = t.Object(
+  { dimension: stockDimension, ...inventoryCreate.properties },
+  { additionalProperties: false },
+);
+const sharedInventory = t.Union([sharedInventoryCreate, inventoryEdit]);
+export type sharedInventory = UnwrapSchema<typeof sharedInventory>;
+
+const stockUsage = t.Integer({ minimum: 1, maximum: MAX_STOCK });
 
 export const productStatus = t.Union(
   [t.Literal("DRAFT"), t.Literal("PUBLISHED"), t.Literal("ARCHIVED")],
@@ -31,7 +84,7 @@ export const getQuery = t.Object(
         t.Literal("updatedAt"),
         t.Literal("priceMin"),
         t.Literal("priceMax"),
-        t.Literal("totalStock"),
+        t.Literal("stock"),
       ]),
     ),
     sortDir: t.Optional(t.Union([t.Literal("asc"), t.Literal("desc")])),
@@ -82,11 +135,16 @@ export const facets = t.Object(
 );
 export type facets = UnwrapSchema<typeof facets>;
 
+const imagePosition = t.Integer({
+  minimum: 0,
+  maximum: MAX_IMAGES_PER_PRODUCT - 1,
+});
+
 export const imageCreate = t.Object(
   {
     file: t.File({ type: "image/*", maxSize: "7m" }),
     altText: t.Optional(t.String()),
-    isThumbnail: t.Boolean(),
+    position: imagePosition,
   },
   { additionalProperties: false },
 );
@@ -103,7 +161,7 @@ export const imageOperations = t.Object(
             id: uuid,
             file: t.Optional(t.File({ type: "image/*", maxSize: "7m" })),
             altText: t.Optional(t.String()),
-            isThumbnail: t.Optional(t.Boolean()),
+            position: t.Optional(imagePosition),
           },
           { additionalProperties: false },
         ),
@@ -120,7 +178,8 @@ export const variantCreate = t.Object(
   {
     price: t.Integer({ minimum: 0 }),
     sku: t.Optional(t.String({ minLength: 3 })),
-    stock: t.Optional(t.Integer({ minimum: 0, default: 0 })),
+    inventory: t.Optional(inventoryCreate),
+    stockUsage: t.Optional(stockUsage),
     currency: t.Optional(t.String({ default: "EUR" })),
     attributeValueIds: t.Array(uuid),
   },
@@ -132,7 +191,8 @@ const variantUpdate = t.Object(
     id: uuid,
     price: t.Optional(t.Integer({ minimum: 0 })),
     sku: t.Optional(t.String({ minLength: 3 })),
-    stock: t.Optional(t.Integer({ minimum: 0 })),
+    inventory: t.Optional(t.Union([inventoryCreate, inventoryEdit])),
+    stockUsage: t.Optional(stockUsage),
     currency: t.Optional(t.String()),
     attributeValueIds: t.Optional(t.Array(uuid)),
   },
@@ -155,6 +215,8 @@ export const postBody = t.Object(
     description: t.String({ minLength: 1 }),
     status: productStatus,
     categoryId: uuid,
+    stockMode,
+    inventory: t.Optional(sharedInventoryCreate),
     variants: t.Object(
       { create: t.Array(variantCreate, { minItems: 1 }) },
       { additionalProperties: false },
@@ -178,6 +240,8 @@ export const patchBody = t.Object(
     description: t.Optional(t.String({ minLength: 1 })),
     status: t.Optional(productStatus),
     categoryId: t.Optional(uuid),
+    stockMode: t.Optional(stockMode),
+    inventory: t.Optional(sharedInventory),
     images: t.Optional(imageOperations),
     variants: t.Optional(variantOperations),
   },
@@ -206,6 +270,11 @@ const productColumns = {
   slug: t.String(),
   description: t.String(),
   status: productStatus,
+  stockMode,
+  stockState,
+  totalStock: t.Integer({ minimum: 0 }),
+  priceMin: t.Nullable(t.Integer()),
+  priceMax: t.Nullable(t.Integer()),
   version: t.Integer(),
   categoryId: uuid,
   createdAt: t.Date(),
@@ -216,14 +285,40 @@ export const productListItem = t.Object(
   {
     ...productColumns,
     img: t.Nullable(t.String()),
-    priceMin: t.Nullable(t.Integer()),
-    priceMax: t.Nullable(t.Integer()),
-    totalStock: t.Integer(),
+    stockDimension,
     variantCount: t.Integer(),
   },
   { additionalProperties: false },
 );
 export type productListItem = UnwrapSchema<typeof productListItem>;
+
+const variantResult = t.Object(
+  {
+    id: uuid,
+    sku: t.Nullable(t.String()),
+    price: t.Integer(),
+    currency: t.String(),
+    stockUsage,
+    available: stockAmount,
+    stockState,
+    inventory: t.Object(
+      {
+        id: uuid,
+        dimension: stockDimension,
+        quantity: stockAmount,
+        lowStockAt: stockAmount,
+      },
+      { additionalProperties: false },
+    ),
+    attributeValues: t.Array(
+      t.Object(
+        { id: uuid, value: t.String(), attributeId: uuid },
+        { additionalProperties: false },
+      ),
+    ),
+  },
+  { additionalProperties: false },
+);
 
 export const productResult = t.Object(
   {
@@ -251,28 +346,35 @@ export const productResult = t.Object(
       { additionalProperties: false },
     ),
     images: t.Array(imageResult),
-    variants: t.Array(
-      t.Object(
-        {
-          id: uuid,
-          sku: t.Nullable(t.String()),
-          price: t.Integer(),
-          currency: t.String(),
-          stock: t.Integer(),
-          attributeValues: t.Array(
-            t.Object(
-              { id: uuid, value: t.String(), attributeId: uuid },
-              { additionalProperties: false },
-            ),
-          ),
-        },
-        { additionalProperties: false },
-      ),
-    ),
+    variants: t.Array(variantResult),
   },
   { additionalProperties: false },
 );
 export type productResult = UnwrapSchema<typeof productResult>;
+
+export const publicListItem = t.Omit(productListItem, ["totalStock"], {
+  additionalProperties: false,
+});
+export type publicListItem = UnwrapSchema<typeof publicListItem>;
+export const publicProductResult = t.Object(
+  {
+    ...t.Omit(productResult, ["totalStock", "variants"]).properties,
+    variants: t.Array(
+      t.Omit(variantResult, ["available", "inventory"], {
+        additionalProperties: false,
+      }),
+    ),
+  },
+  { additionalProperties: false },
+);
+export type publicProductResult = UnwrapSchema<typeof publicProductResult>;
+
+export function adminView<T extends object>(view: T) {
+  if (!("totalStock" in view)) {
+    throw new Error("This view has no stock counts: sign in as an admin.");
+  }
+  return view as Extract<T, { totalStock: number }>;
+}
 
 export const commentsResult = t.Object(
   {
@@ -314,6 +416,10 @@ export const nameConflict = t.Object({
 export const patchConflict = t.Object({
   code: t.Union([
     t.Literal("VERSION_CONFLICT"),
+    t.Literal("STOCK_RESERVED"),
+    t.Literal("VARIANT_RESERVED"),
+    t.Literal("STOCK_LIMIT_EXCEEDED"),
+    t.Literal("INSUFFICIENT_STOCK"),
     t.Literal("PRODUCT_NAME_ALREADY_EXISTS"),
     t.Literal("VARIANT_SKU_ALREADY_EXISTS"),
   ]),
@@ -321,7 +427,10 @@ export const patchConflict = t.Object({
 });
 
 export const deleteConflict = t.Object({
-  code: t.Literal("PRODUCT_HAS_COMMENTS"),
+  code: t.Union([
+    t.Literal("PRODUCT_HAS_COMMENTS"),
+    t.Literal("PRODUCT_RESERVED"),
+  ]),
   message: t.String(),
 });
 
@@ -332,6 +441,12 @@ export const invalidReference = t.Object({
     t.Literal("VARIANT_ATTRIBUTE_VALUE_NOT_FOUND"),
   ]),
   message: t.String(),
+});
+
+export const invalidStock = t.Object({
+  code: t.Literal("INVALID_STOCK"),
+  message: t.String(),
+  field: t.String(),
 });
 
 export const publishError = t.Object({
@@ -367,8 +482,7 @@ export const invalidOperations = t.Object({
   code: t.Union([
     t.Literal("INVALID_IMAGE_OPERATIONS"),
     t.Literal("INVALID_VARIANT_OPERATIONS"),
-    t.Literal("THUMBNAIL_REQUIRED"),
-    t.Literal("MULTIPLE_THUMBNAILS"),
+    t.Literal("INVALID_IMAGE_POSITIONS"),
   ]),
   message: t.String(),
   field: t.String(),

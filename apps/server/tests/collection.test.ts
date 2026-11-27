@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 
 import { treaty } from "@elysia/eden";
 import { collectionRouter } from "@spice-world/server/modules/collections";
@@ -11,6 +11,7 @@ import {
   createSessionCookie,
   createTestProducts,
   expectDefined,
+  expectNoDrift,
   mockUtapi,
   randomLowerString,
 } from "./utils/helper";
@@ -435,3 +436,5 @@ describe.concurrent("Collection routes test", () => {
     });
   });
 });
+
+afterAll(() => expectNoDrift(testDb));

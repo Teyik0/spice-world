@@ -34,6 +34,22 @@ export const productConstraintFailures = new Map<string, ConstraintFailure>([
     },
   ],
   [
+    "23514:Inventory_quantity_check",
+    {
+      status: 409,
+      code: "INSUFFICIENT_STOCK",
+      message: "The adjustment would take the stock below 0",
+    },
+  ],
+  [
+    "23514:Inventory_quantity_max_check",
+    {
+      status: 409,
+      code: "STOCK_LIMIT_EXCEEDED",
+      message: "The adjustment would take the stock above 10^12 base units",
+    },
+  ],
+  [
     "23001:Comment_productId_fkey",
     {
       status: 409,

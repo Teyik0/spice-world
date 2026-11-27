@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, describe, expect, it } from "bun:test";
 
 import { treaty } from "@elysia/eden";
 import { productsRouter } from "@spice-world/server/modules/products";
@@ -9,6 +9,7 @@ import {
   createTestCategory,
   createTestProducts,
   expectDefined,
+  expectNoDrift,
   file,
   mockUtapi,
 } from "../utils/helper";
@@ -59,17 +60,18 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
       description: "Test product 1",
       categoryId: category.id,
       status: "DRAFT",
+      stockMode: "VARIANT",
       variants: {
         create: [
           {
             price: 1000,
             sku: "BULK-STATUS-1",
-            stock: 10,
+            inventory: { quantity: 10 },
             attributeValueIds: [categoryAttributes[0]?.values[0]?.id as string],
           },
         ],
       },
-      images: { create: [{ file: files[0] as File, isThumbnail: true }] },
+      images: { create: [{ file: files[0] as File, position: 0 }] },
     });
 
     expect(s1).toBe(201);
@@ -114,17 +116,18 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
       description: "Test product for bulk category change",
       categoryId: spicesCategory.id,
       status: "DRAFT",
+      stockMode: "VARIANT",
       variants: {
         create: [
           {
             price: 1500,
             sku: "BULK-CAT-1",
-            stock: 20,
+            inventory: { quantity: 20 },
             attributeValueIds: [spicesAttributes[0]?.values[0]?.id as string],
           },
         ],
       },
-      images: { create: [{ file: files[0] as File, isThumbnail: true }] },
+      images: { create: [{ file: files[0] as File, position: 0 }] },
     });
 
     expect(createStatus).toBe(201);
@@ -146,3 +149,5 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
     expect(updated.variants[0]?.attributeValues.length).toBe(0);
   });
 });
+
+afterAll(() => expectNoDrift(testDb));

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, describe, expect, it } from "bun:test";
 
 import { treaty } from "@elysia/eden";
 import { productsRouter } from "@spice-world/server/modules/products";
@@ -8,6 +8,7 @@ import {
   createSessionCookie,
   createTestCategory,
   expectDefined,
+  expectNoDrift,
   file,
   mockUtapi,
 } from "../utils/helper";
@@ -33,12 +34,13 @@ describe.concurrent("DELETE /products/:id - Integration Tests", () => {
         description: "This product will be deleted",
         categoryId: category.id,
         status: "DRAFT",
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 1000,
               sku: "DELETE-TEST-1",
-              stock: 10,
+              inventory: { quantity: 10 },
               attributeValueIds: [
                 categoryAttributes[0]?.values[0]?.id as string,
               ],
@@ -47,8 +49,8 @@ describe.concurrent("DELETE /products/:id - Integration Tests", () => {
         },
         images: {
           create: [
-            { file: file(filePath1), isThumbnail: true },
-            { file: file(filePath2), isThumbnail: false },
+            { file: file(filePath1), position: 0 },
+            { file: file(filePath2), position: 1 },
           ],
         },
       });
@@ -93,3 +95,5 @@ describe.concurrent("DELETE /products/:id - Integration Tests", () => {
     expect(error).toMatchObject({ value: { code: "PRODUCT_NOT_FOUND" } });
   });
 });
+
+afterAll(() => expectNoDrift(testDb));

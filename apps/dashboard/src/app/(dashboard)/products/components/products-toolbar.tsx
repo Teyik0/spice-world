@@ -11,6 +11,9 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  MENU_CONTENT,
+  MENU_ITEM,
+  MENU_LABEL,
 } from "@spice-world/ui/components/dropdown-menu";
 import { Input } from "@spice-world/ui/components/input";
 import {
@@ -41,13 +44,10 @@ const SORTS = {
   updatedAt: "Updated",
   priceMin: "Lowest Price",
   priceMax: "Highest Price",
-  totalStock: "Stock",
+  stock: "Stock",
 } satisfies Record<NonNullable<ProductsQuery["sortBy"]>, string>;
 
 const STOCK_LABELS = { low: "Low", out: "Out of Stock" } as const;
-
-export const MENU_ITEM =
-  "gap-2 py-1.5 pr-2 pl-8 *:data-[slot$=indicator]:right-auto *:data-[slot$=indicator]:left-2 *:data-[slot$=indicator]:text-primary";
 
 export function MenuCount({ value }: { value: number }) {
   return (
@@ -56,9 +56,6 @@ export function MenuCount({ value }: { value: number }) {
     </span>
   );
 }
-
-export const MENU_CONTENT = "max-h-80 w-64";
-export const MENU_LABEL = "px-2 pt-1.5 text-[11px] tracking-wider uppercase";
 
 export function FilterGroup({ children }: { children: ReactNode }) {
   return (

@@ -1,5 +1,5 @@
 import type * as ProductModel from "@spice-world/server/modules/products/model";
-import { LOW_STOCK_THRESHOLD } from "@spice-world/server/modules/products/model";
+import { adminView } from "@spice-world/server/modules/products/model";
 import { Badge } from "@spice-world/ui/components/badge";
 import { Button } from "@spice-world/ui/components/button";
 import { Checkbox } from "@spice-world/ui/components/checkbox";
@@ -12,6 +12,9 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  MENU_CONTENT,
+  MENU_ITEM,
+  MENU_LABEL,
 } from "@spice-world/ui/components/dropdown-menu";
 import {
   Empty,
@@ -41,29 +44,30 @@ import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import { api } from "../../../../lib/api";
-import { formatAgo, formatCount, formatPrice } from "../../../../lib/format";
+import {
+  formatAgo,
+  formatCount,
+  formatPrice,
+  formatStock,
+} from "../../../../lib/format";
 import { BulkActions } from "./bulk-actions";
 import { useQuickEditContext } from "./product-quick-edit";
 import type { ProductsQuery } from "./products-query";
 import { label, listQuery, STATUSES, useProductsQuery } from "./products-query";
-import {
-  CategoryFilter,
-  FilterGroup,
-  MENU_CONTENT,
-  MENU_ITEM,
-  MENU_LABEL,
-  MenuCount,
-} from "./products-toolbar";
+import { CategoryFilter, FilterGroup, MenuCount } from "./products-toolbar";
 
 export const PAGE_SIZE = 25;
 
-const STATUS_BADGE = {
+export const STATUS_BADGE = {
   PUBLISHED: "bg-success/10 text-success dark:bg-success/20",
   DRAFT: "bg-warning/10 text-warning dark:bg-warning/20",
   ARCHIVED: "bg-muted text-muted-foreground",
 } as const;
 
-function Price({ priceMin, priceMax }: ProductModel.productListItem) {
+export function Price({
+  priceMin,
+  priceMax,
+}: Pick<ProductModel.productListItem, "priceMin" | "priceMax">) {
   if (priceMin === null || priceMax === null) {
     return <span className="text-muted-foreground">—</span>;
   }
@@ -85,11 +89,12 @@ const STOCK_ALERT = {
   low: ["text-warning", "Low"],
 } as const;
 
-function Stock({ totalStock }: ProductModel.productListItem) {
-  const alert =
-    totalStock === 0
-      ? STOCK_ALERT.out
-      : totalStock < LOW_STOCK_THRESHOLD && STOCK_ALERT.low;
+function Stock({
+  totalStock,
+  stockDimension,
+  stockState,
+}: ProductModel.productListItem) {
+  const alert = stockState === "in" ? undefined : STOCK_ALERT[stockState];
   return (
     <span
       className={`inline-flex items-center gap-1.5 ${alert ? alert[0] : ""}`}
@@ -99,7 +104,7 @@ function Stock({ totalStock }: ProductModel.productListItem) {
           {alert[1]}
         </span>
       ) : null}
-      {totalStock}
+      {formatStock(totalStock, stockDimension)}
     </span>
   );
 }
@@ -122,8 +127,8 @@ const UPDATED_SORTS: SortOption[] = [
   ["updatedAt", "asc", "Oldest First"],
 ];
 const STOCK_SORTS: SortOption[] = [
-  ["totalStock", "asc", "Lowest First"],
-  ["totalStock", "desc", "Highest First"],
+  ["stock", "asc", "Out First"],
+  ["stock", "desc", "In Stock First"],
 ];
 
 function ColumnHeader({
@@ -216,7 +221,6 @@ export function ProductsTable({
   query: ProductsQuery;
 }) {
   const total = facets.status[query.status ?? "ALL"];
-  /** Headers show the query as just set; the rows stay on the loaded one. */
   const [current, update] = useProductsQuery();
   const { pages, fetchNext, hasNext, isFetching, error } = useInfiniteQuery(
     (index) =>
@@ -229,7 +233,7 @@ export function ProductsTable({
       }),
     { next: (last) => last.length === PAGE_SIZE },
   );
-  const products = pages.flat();
+  const products = pages.flat().map(adminView);
   const [selected, setSelected] = useState(new Set<string>());
   const quickEdit = useQuickEditContext();
   const sentinel = useRef<HTMLDivElement>(null);
@@ -352,7 +356,7 @@ export function ProductsTable({
                         Any Stock
                       </DropdownMenuRadioItem>
                       <DropdownMenuRadioItem className={MENU_ITEM} value="low">
-                        Low, Under {LOW_STOCK_THRESHOLD}
+                        Low Stock
                         <MenuCount value={facets.stock.low} />
                       </DropdownMenuRadioItem>
                       <DropdownMenuRadioItem className={MENU_ITEM} value="out">

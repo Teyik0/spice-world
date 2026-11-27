@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, describe, expect, it } from "bun:test";
 
 import { treaty } from "@elysia/eden";
 import { productsRouter } from "@spice-world/server/modules/products";
@@ -9,6 +9,7 @@ import {
   createSessionCookie,
   createTestCategory,
   expectDefined,
+  expectNoDrift,
   file,
   mockUtapi,
   randomLowerString,
@@ -37,18 +38,19 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Test product description",
         status: "PUBLISHED",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 1099,
               sku: `sku${testId}one`,
-              stock: 100,
+              inventory: { quantity: 100 },
               attributeValueIds: [category.attributes[0].values[0].id],
             },
           ],
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath1) }],
+          create: [{ position: 0, file: file(filePath1) }],
         },
       });
 
@@ -60,7 +62,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
       expect(data.status).toBe("PUBLISHED");
       expect(data.variants).toHaveLength(1);
       expect(data.images).toHaveLength(1);
-      expect(data.images[0]?.isThumbnail).toBe(true);
+      expect(data.images[0]?.position).toBe(0);
     });
 
     it("should create product with accented lowercase name", async () => {
@@ -74,18 +76,19 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Product with accented characters",
         status: "PUBLISHED",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 1099,
               sku: `sku${testId}one`,
-              stock: 100,
+              inventory: { quantity: 100 },
               attributeValueIds: [],
             },
           ],
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath1) }],
+          create: [{ position: 0, file: file(filePath1) }],
         },
       });
 
@@ -109,18 +112,19 @@ describe.concurrent("POST /products - Integration Tests", () => {
           description: "First product for duplicate test",
           categoryId: category.id,
           status: "PUBLISHED",
+          stockMode: "VARIANT",
           variants: {
             create: [
               {
                 price: 1099,
                 sku: `first${testId}`,
-                stock: 100,
+                inventory: { quantity: 100 },
                 attributeValueIds: [],
               },
             ],
           },
           images: {
-            create: [{ isThumbnail: true, file: file(filePath1) }],
+            create: [{ position: 0, file: file(filePath1) }],
           },
         });
 
@@ -133,18 +137,19 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Duplicate product name",
         categoryId: category.id,
         status: "PUBLISHED",
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 1099,
               sku: `second${testId}`,
-              stock: 100,
+              inventory: { quantity: 100 },
               attributeValueIds: [],
             },
           ],
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath1) }],
+          create: [{ position: 0, file: file(filePath1) }],
         },
       });
 
@@ -161,18 +166,19 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Product with non-existent category",
         categoryId: nonExistentCategoryId,
         status: "PUBLISHED",
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 899,
               sku: `invalid${testId}`,
-              stock: 20,
+              inventory: { quantity: 20 },
               attributeValueIds: [],
             },
           ],
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath1) }],
+          create: [{ position: 0, file: file(filePath1) }],
         },
       });
 
@@ -193,32 +199,33 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Product with multiple variants",
         categoryId: category.id,
         status: "PUBLISHED",
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 599,
               sku: "MULTI-VAR-001",
-              stock: 50,
+              inventory: { quantity: 50 },
               attributeValueIds: [firstAttribute?.values[0]?.id as string],
             },
             {
               price: 999,
               sku: "MULTI-VAR-002",
-              stock: 30,
+              inventory: { quantity: 30 },
               attributeValueIds: [secondAttribute?.values[0]?.id as string],
             },
             {
               price: 1499,
               sku: "MULTI-VAR-003",
-              stock: 20,
+              inventory: { quantity: 20 },
               attributeValueIds: [thirdAttribute?.values[0]?.id as string],
             },
           ],
         },
         images: {
           create: [
-            { isThumbnail: true, file: file(filePath1) },
-            { isThumbnail: false, file: file(filePath2) },
+            { position: 0, file: file(filePath1) },
+            { position: 1, file: file(filePath2) },
           ],
         },
       });
@@ -248,10 +255,12 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Test product description",
         status: "PUBLISHED",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 1999,
+              inventory: { quantity: 0 },
               sku: `sku${testId}one`,
               attributeValueIds: [
                 category.attributes[0].values[0].id,
@@ -261,7 +270,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
           ],
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath1) }],
+          create: [{ position: 0, file: file(filePath1) }],
         },
       });
 
@@ -291,23 +300,27 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Complex validation test",
         status: "PUBLISHED",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
           create: [
             // Valid variant
             {
               price: 999,
+              inventory: { quantity: 0 },
               sku: `valid-${testId}`,
               attributeValueIds: [category.attributes[0].values[0].id],
             },
             // Duplicate combination (VVA4)
             {
               price: 1499,
+              inventory: { quantity: 0 },
               sku: `dup-${testId}`,
               attributeValueIds: [category.attributes[0].values[0].id],
             },
             // Exceeds capacity (VVA3)
             {
               price: 1999,
+              inventory: { quantity: 0 },
               sku: `extra-${testId}`,
               attributeValueIds: [category.attributes[0].values[1].id],
             },
@@ -315,8 +328,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
         },
         images: {
           create: [
-            { isThumbnail: true, file: file(filePath1) },
-            { isThumbnail: false, file: file(filePath2) },
+            { position: 0, file: file(filePath1) },
+            { position: 1, file: file(filePath2) },
           ],
         },
       });
@@ -361,6 +374,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
           for (const attr2 of category.attributes[2].values) {
             variants.push({
               price: 999 + variants.length,
+              inventory: { quantity: 0 },
               sku: `max-${testId}-${variants.length}`,
               attributeValueIds: [attr0.id, attr1.id, attr2.id],
             });
@@ -373,11 +387,12 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Maximum configuration test",
         status: "PUBLISHED",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: { create: variants },
         images: {
           create: Array.from({ length: 5 }, (_, i) => ({
             file: file(filePath1),
-            isThumbnail: i === 0, // Only one thumbnail
+            position: i,
             altText: `Image ${i + 1}`,
           })),
         },
@@ -387,10 +402,9 @@ describe.concurrent("POST /products - Integration Tests", () => {
       expectDefined(data);
       expect(data.variants).toHaveLength(27); // 3×3×3
       expect(data.images).toHaveLength(5);
-      expect(data.images.filter((img) => img.isThumbnail).length).toBe(1);
-      expect(
-        data.images.find((img) => img.altText === "Image 1")?.isThumbnail,
-      ).toBe(true);
+      expect(data.images.map(({ altText }) => altText)).toEqual(
+        Array.from({ length: 5 }, (_, i) => `Image ${i + 1}`),
+      );
     });
   });
 
@@ -412,17 +426,19 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Test product description",
         status: "DRAFT",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 999,
+              inventory: { quantity: 0 },
               sku: `sku${testId}one`,
               attributeValueIds: [crypto.randomUUID()], // does not exist in db
             },
           ],
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath1) }],
+          create: [{ position: 0, file: file(filePath1) }],
         },
       });
 
@@ -463,10 +479,12 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Test product description",
         status: "DRAFT",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 999,
+              inventory: { quantity: 0 },
               sku: `sku${testId}one`,
               // Use attribute value from OTHER category
               attributeValueIds: [otherCategory.attributes[0].values[0].id],
@@ -474,7 +492,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
           ],
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath) }],
+          create: [{ position: 0, file: file(filePath) }],
         },
       });
 
@@ -510,10 +528,12 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Test product description",
         status: "DRAFT",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 999,
+              inventory: { quantity: 0 },
               sku: `sku${testId}one`,
               attributeValueIds: [
                 category.attributes[0].values[0].id,
@@ -523,7 +543,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
           ],
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath1) }],
+          create: [{ position: 0, file: file(filePath1) }],
         },
       });
 
@@ -558,6 +578,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
       const variants = category.attributes[0].values.map(
         (value: { id: string }, idx: number) => ({
           price: 999 + idx,
+          inventory: { quantity: 0 },
           sku: `sku${testId}${idx}`,
           attributeValueIds: [value.id],
         }),
@@ -566,6 +587,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
       // Add one more variant with empty attributeValueIds to exceed capacity
       variants.push({
         price: 9999,
+        inventory: { quantity: 0 },
         sku: `sku${testId}extra`,
         attributeValueIds: [],
       });
@@ -575,11 +597,12 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Test product description",
         status: "DRAFT",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
           create: variants,
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath1) }],
+          create: [{ position: 0, file: file(filePath1) }],
         },
       });
 
@@ -614,22 +637,25 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Test product description",
         status: "DRAFT",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 999,
+              inventory: { quantity: 0 },
               sku: `sku${testId}one`,
               attributeValueIds: [category.attributes[0].values[0].id],
             },
             {
               price: 1499,
+              inventory: { quantity: 0 },
               sku: `sku${testId}two`,
               attributeValueIds: [category.attributes[0].values[0].id],
             },
           ],
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath1) }],
+          create: [{ position: 0, file: file(filePath1) }],
         },
       });
 
@@ -670,22 +696,25 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Test product description",
         status: "DRAFT",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 999,
+              inventory: { quantity: 0 },
               sku: `sku${testId}one`,
               attributeValueIds: [attr1ValueId, attr2ValueId],
             },
             {
               price: 1499,
+              inventory: { quantity: 0 },
               sku: `sku${testId}two`,
               attributeValueIds: [attr2ValueId, attr1ValueId],
             },
           ],
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath) }],
+          create: [{ position: 0, file: file(filePath) }],
         },
       });
 
@@ -718,22 +747,25 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Test product description",
         status: "DRAFT",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 999,
+              inventory: { quantity: 0 },
               sku: `sku${testId}one`,
               attributeValueIds: [],
             },
             {
               price: 1499,
+              inventory: { quantity: 0 },
               sku: `sku${testId}two`,
               attributeValueIds: [], // Both empty = duplicate combination
             },
           ],
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath1) }],
+          create: [{ position: 0, file: file(filePath1) }],
         },
       });
 
@@ -775,6 +807,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
         for (const attr2Val of attr2Values) {
           variants.push({
             price: 999 + variants.length,
+            inventory: { quantity: 0 },
             sku: `sku${testId}${variants.length}`,
             attributeValueIds: [attr1Val.id, attr2Val.id],
           });
@@ -788,11 +821,12 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Test product description",
         status: "PUBLISHED",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
           create: variants,
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath1) }],
+          create: [{ position: 0, file: file(filePath1) }],
         },
       });
 
@@ -817,6 +851,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
       const variants = category.attributes[0].values.map(
         (value: { id: string }, idx: number) => ({
           price: 999 + idx,
+          inventory: { quantity: 0 },
           sku: `sku${testId}${idx}`,
           attributeValueIds: [value.id],
         }),
@@ -825,6 +860,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
       // Add variant with empty attributeValueIds to exceed capacity
       variants.push({
         price: 9999,
+        inventory: { quantity: 0 },
         sku: `sku${testId}extra`,
         attributeValueIds: [],
       });
@@ -834,11 +870,12 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Test product description",
         status: "DRAFT",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
           create: variants,
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath1) }],
+          create: [{ position: 0, file: file(filePath1) }],
         },
       });
 
@@ -871,22 +908,25 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Test product description",
         status: "DRAFT",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 999,
+              inventory: { quantity: 0 },
               sku: `sku${testId}one`,
               attributeValueIds: [],
             },
             {
               price: 1499,
+              inventory: { quantity: 0 },
               sku: `sku${testId}two`,
               attributeValueIds: [],
             },
           ],
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath1) }],
+          create: [{ position: 0, file: file(filePath1) }],
         },
       });
 
@@ -918,22 +958,25 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Test product description",
         status: "PUBLISHED", // Force validation
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 999,
+              inventory: { quantity: 0 },
               sku: `sku${testId}one`,
               attributeValueIds: [], // Empty when category requires attributes
             },
             {
               price: 1499,
+              inventory: { quantity: 0 },
               sku: `sku${testId}two`,
               attributeValueIds: [],
             },
           ],
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath1) }],
+          create: [{ position: 0, file: file(filePath1) }],
         },
       });
 
@@ -966,17 +1009,19 @@ describe.concurrent("POST /products - Integration Tests", () => {
         description: "Test product description",
         status: "DRAFT",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
           create: [
             {
               price: 999,
+              inventory: { quantity: 0 },
               sku: `sku${testId}one`,
               attributeValueIds: [valueId, valueId], // Same ID twice
             },
           ],
         },
         images: {
-          create: [{ isThumbnail: true, file: file(filePath1) }],
+          create: [{ position: 0, file: file(filePath1) }],
         },
       });
 
@@ -996,3 +1041,5 @@ describe.concurrent("POST /products - Integration Tests", () => {
     });
   });
 });
+
+afterAll(() => expectNoDrift(testDb));

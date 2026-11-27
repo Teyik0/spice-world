@@ -23,6 +23,7 @@ import {
   createTestUser,
   createTestVariant,
   expectDefined,
+  expectNoDrift,
   file,
   mockStripe,
   mockUtapi,
@@ -73,10 +74,11 @@ describe.concurrent("CDN cache", () => {
   });
 
   describe("tags of the shared responses", () => {
-    test("product listings only when restricted to published", async () => {
+    test("product listings only when restricted to published, and never an admin's view", async () => {
       const results = await Promise.all([
+        products.get({ query: { status: "PUBLISHED" }, ...visitor }),
+        products.count.get({ query: { status: "PUBLISHED" }, ...visitor }),
         products.get({ query: { status: "PUBLISHED" } }),
-        products.count.get({ query: { status: "PUBLISHED" } }),
         products.get({ query: {} }),
         products.get({ query: { status: "DRAFT" } }),
         products.count.get({ query: {} }),
@@ -87,7 +89,11 @@ describe.concurrent("CDN cache", () => {
         null,
         null,
         null,
+        null,
       ]);
+      expect(results[2]?.response.headers.get("cache-control")).toBe(
+        "private, no-store",
+      );
     });
 
     test("a product page only when published", async () => {
@@ -98,13 +104,15 @@ describe.concurrent("CDN cache", () => {
       expectDefined(published);
       expectDefined(draft);
       const results = await Promise.all([
+        products.slug({ slug: published.slug }).get(visitor),
         products.slug({ slug: published.slug }).get(),
         products.slug({ slug: draft.slug }).get(),
         products.slug({ slug: draft.slug }).get(visitor),
       ]);
-      expect(results.map(({ status }) => status)).toEqual([200, 200, 404]);
+      expect(results.map(({ status }) => status)).toEqual([200, 200, 200, 404]);
       expect(results.map(tagOf)).toEqual([
         `product:${published.id},category:${published.categoryId}`,
+        null,
         null,
         null,
       ]);
@@ -114,14 +122,14 @@ describe.concurrent("CDN cache", () => {
       const { category, attribute } = await catalog();
       const missing = Bun.randomUUIDv7();
       const results = await Promise.all([
-        categories.get({ query: {} }),
-        categories.count.get(),
-        categories({ id: category.id }).get(),
-        categories({ id: missing }).get(),
-        attributes.get({ query: {} }),
-        attributes.count.get(),
-        attributes({ id: attribute.id }).get(),
-        attributes({ id: missing }).get(),
+        categories.get({ query: {}, ...visitor }),
+        categories.count.get(visitor),
+        categories({ id: category.id }).get(visitor),
+        categories({ id: missing }).get(visitor),
+        attributes.get({ query: {}, ...visitor }),
+        attributes.count.get(visitor),
+        attributes({ id: attribute.id }).get(visitor),
+        attributes({ id: missing }).get(visitor),
       ]);
       expect(results.map(tagOf)).toEqual([
         "categories",
@@ -138,7 +146,7 @@ describe.concurrent("CDN cache", () => {
     test("never with the bypass header, which the shared copies vary on", async () => {
       const { category } = await catalog();
       const [shared, ...bypassed] = await Promise.all([
-        categories({ id: category.id }).get(),
+        categories({ id: category.id }).get(visitor),
         categories({ id: category.id }).get(bypass),
         products.get({ query: { status: "PUBLISHED" }, ...bypass }),
       ]);
@@ -147,7 +155,10 @@ describe.concurrent("CDN cache", () => {
         "public, s-maxage=",
       );
       for (const { response } of bypassed) {
-        expect(response.headers.get("cache-control")).toBeNull();
+        expect(response.headers.get("cache-control") ?? "").not.toStartWith(
+          "public",
+        );
+        expect(tagOf({ response })).toBeNull();
       }
     });
 
@@ -265,16 +276,17 @@ describe.concurrent("CDN cache", () => {
           description: "description",
           status: "DRAFT",
           categoryId: category.id,
+          stockMode: "VARIANT",
           variants: {
             create: [
               {
                 price: 1000,
-                stock: 1,
+                inventory: { quantity: 1 },
                 attributeValueIds: [attribute.values[0]?.id ?? ""],
               },
             ],
           },
-          images: { create: [{ isThumbnail: true, file: image }] },
+          images: { create: [{ position: 0, file: image }] },
         }),
       );
       expect(result.status).toBe(201);
@@ -522,3 +534,5 @@ describe.concurrent("CDN cache", () => {
     });
   });
 });
+
+afterAll(() => expectNoDrift(testDb));

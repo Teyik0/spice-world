@@ -11,6 +11,7 @@ import {
   createSessionCookie,
   createSetupProduct,
   expectDefined,
+  expectNoDrift,
   file,
   mockUtapi,
   verifyEmail,
@@ -82,11 +83,11 @@ describe("Stripe Checkout", () => {
           {
             price: 1000,
             sku: "NO-SYNC-NEEDED-001",
-            stock: 5,
+            inventory: { quantity: 5 },
             attributeValueIds: [],
           },
         ],
-        imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
+        imagesCreate: [{ position: 0, file: file(filePath1) }],
       });
 
       const [variant] = product.variants;
@@ -139,11 +140,11 @@ describe("Stripe Checkout", () => {
           {
             price: 1000,
             sku: "STRIPE-TEST-001",
-            stock: 5,
+            inventory: { quantity: 5 },
             attributeValueIds: [],
           },
         ],
-        imagesCreate: [{ isThumbnail: true, file: file(filePath1) }],
+        imagesCreate: [{ position: 0, file: file(filePath1) }],
       });
 
       const [variant] = product.variants;
@@ -190,3 +191,5 @@ describe("Stripe Checkout", () => {
     });
   });
 });
+
+afterAll(() => expectNoDrift(testDb));

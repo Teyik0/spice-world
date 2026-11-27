@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, describe, expect, it } from "bun:test";
 
 import { treaty } from "@elysia/eden";
 import { db } from "@spice-world/server/lib/db";
@@ -18,6 +18,7 @@ import {
   createTestCategory,
   createTestProducts,
   expectDefined,
+  expectNoDrift,
   expireCdnCopies,
   file,
   mockUtapi,
@@ -38,10 +39,12 @@ const setup = async (variantCount = 1) => {
   const { product, category } = await setupProduct({
     attributeCount: 2,
     attributeValueCount: 2,
-    variants: [{ price: 1000, stock: 1, attributeValueIds: [] }],
+    variants: [
+      { price: 1000, inventory: { quantity: 1 }, attributeValueIds: [] },
+    ],
     imagesCreate: [
-      { isThumbnail: true, file: file(filePath) },
-      { isThumbnail: false, file: file(filePath) },
+      { position: 0, file: file(filePath) },
+      { position: 1, file: file(filePath) },
     ],
   });
   const values = category.attributes[0]?.values.map(({ id }) => id) ?? [];
@@ -53,6 +56,7 @@ const setup = async (variantCount = 1) => {
         update: [{ id: variant.id, attributeValueIds: values.slice(0, 1) }],
         create: values.slice(1, variantCount).map((valueId) => ({
           price: 2000,
+          inventory: { quantity: 0 },
           attributeValueIds: [valueId],
         })),
       },
@@ -80,8 +84,13 @@ describe.concurrent("products", () => {
       description: "shape",
       status: "DRAFT",
       categoryId: category.id,
-      variants: { create: [{ price: 1, attributeValueIds: [] }] },
-      images: { create: [{ isThumbnail: true, file: file(filePath) }] },
+      stockMode: "VARIANT",
+      variants: {
+        create: [
+          { price: 1, inventory: { quantity: 0 }, attributeValueIds: [] },
+        ],
+      },
+      images: { create: [{ position: 0, file: file(filePath) }] },
     });
     expectDefined(posted);
     const [byId, bySlug, postedById] = await Promise.all([
@@ -102,8 +111,13 @@ describe.concurrent("products", () => {
       description: "duplicate",
       status: "DRAFT",
       categoryId: category.id,
-      variants: { create: [{ price: 1, attributeValueIds: [] }] },
-      images: { create: [{ isThumbnail: true, file: file(filePath) }] },
+      stockMode: "VARIANT",
+      variants: {
+        create: [
+          { price: 1, inventory: { quantity: 0 }, attributeValueIds: [] },
+        ],
+      },
+      images: { create: [{ position: 0, file: file(filePath) }] },
     });
     expect(error).toMatchObject({
       status: 409,
@@ -142,14 +156,17 @@ describe.concurrent("products", () => {
   it("rolls back everything on a SKU conflict and leaves the uploads to the cleanup", async () => {
     const { product, category } = await setup();
     const sku = crypto.randomUUID();
-    const create = [{ price: 1, sku, attributeValueIds: [] }];
+    const create = [
+      { price: 1, inventory: { quantity: 0 }, sku, attributeValueIds: [] },
+    ];
     const { data: owner } = await api.products.post({
       name: `sku owner ${randomLowerString()}`,
       description: "owner",
       status: "DRAFT",
       categoryId: category.id,
+      stockMode: "VARIANT",
       variants: { create },
-      images: { create: [{ isThumbnail: true, file: file(filePath) }] },
+      images: { create: [{ position: 0, file: file(filePath) }] },
     });
     expectDefined(owner);
 
@@ -158,7 +175,7 @@ describe.concurrent("products", () => {
       {
         name,
         variants: { create },
-        images: { create: [{ isThumbnail: false, file: file(filePath) }] },
+        images: { create: [{ position: 2, file: file(filePath) }] },
       },
       { headers: { "x-version": product.version } },
     );
@@ -201,7 +218,7 @@ describe.concurrent("products", () => {
     );
     expectDefined(data);
     expect(data.images).toMatchObject([
-      { id: first.id, isThumbnail: true, altText: first.altText },
+      { id: first.id, position: 0, altText: first.altText },
     ]);
     expect(data.images[0]?.keyLarge).not.toBe(first.keyLarge);
 
@@ -304,7 +321,13 @@ describe.concurrent("products", () => {
       {
         variants: {
           update: [{ id: variant.id, price: 5 }],
-          create: [{ price: 5, attributeValueIds: values.slice(0, 1) }],
+          create: [
+            {
+              price: 5,
+              inventory: { quantity: 0 },
+              attributeValueIds: values.slice(0, 1),
+            },
+          ],
         },
       },
       { headers: { "x-version": product.version } },
@@ -356,12 +379,27 @@ describe.concurrent("products", () => {
       {
         variants: {
           delete: [variant.id],
-          create: [{ price: 1, sku, attributeValueIds: values.slice(1, 2) }],
+          create: [
+            {
+              price: 1,
+              sku,
+              inventory: { quantity: 0 },
+              attributeValueIds: values.slice(1, 2),
+            },
+          ],
         },
       },
       { headers: { "x-version": withSku.version } },
     );
-    expect(data?.variants).toMatchObject([{ sku, currency: "EUR", stock: 0 }]);
+    expect(data?.variants).toMatchObject([
+      {
+        sku,
+        currency: "EUR",
+        stockUsage: 1,
+        available: 0,
+        inventory: { dimension: "COUNT", quantity: 0, lowStockAt: 0 },
+      },
+    ]);
   });
 
   it("keeps only the values given for the new category", async () => {
@@ -409,10 +447,17 @@ describe.concurrent("products", () => {
         description: "free",
         status: "PUBLISHED",
         categoryId: category.id,
+        stockMode: "VARIANT",
         variants: {
-          create: [{ price: 0, attributeValueIds: values.slice(0, 1) }],
+          create: [
+            {
+              price: 0,
+              inventory: { quantity: 0 },
+              attributeValueIds: values.slice(0, 1),
+            },
+          ],
         },
-        images: { create: [{ isThumbnail: true, file: file(filePath) }] },
+        images: { create: [{ position: 0, file: file(filePath) }] },
       }),
       api
         .products({ id: product.id })
@@ -524,7 +569,7 @@ describe.concurrent("products", () => {
         api.products({ id: product.id }).patch(
           {
             description: "stale",
-            images: { create: [{ isThumbnail: false, file: file(filePath) }] },
+            images: { create: [{ position: 2, file: file(filePath) }] },
           },
           { headers: { "x-version": product.version } },
         ),
@@ -652,3 +697,5 @@ describe.concurrent("products bulk", () => {
     });
   });
 });
+
+afterAll(() => expectNoDrift(testDb));

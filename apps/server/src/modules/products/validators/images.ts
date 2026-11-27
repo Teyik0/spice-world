@@ -4,12 +4,12 @@ import type * as ProductModel from "../model";
 import { hasInvalidIds } from "./operations";
 
 interface ValidateImages {
-  currentImages?: { id: string; isThumbnail: boolean }[];
+  currentImages?: { id: string; position: number }[];
   imagesOps: ProductModel.imageOperations;
 }
 
 /**
- * Validates the final state without assigning thumbnails or changing operations.
+ * Validates the final state without assigning positions or changing operations.
  * - VIO1: an image cannot be both updated and deleted
  * - VIO2: a product keeps at least 1 image
  */
@@ -57,27 +57,21 @@ export function validateImages({
     });
   }
 
-  const updates = new Map(update.map((op) => [op.id, op.isThumbnail]));
-  const thumbnails = [
+  const updates = new Map(update.map((op) => [op.id, op.position]));
+  const positions = new Set([
     ...currentImages
       .filter(({ id }) => !deletedIds.has(id))
-      .map(({ id, isThumbnail }) => updates.get(id) ?? isThumbnail),
-    ...create.map(({ isThumbnail }) => isThumbnail),
-  ].filter(Boolean).length;
-
-  if (thumbnails === 0) {
+      .map(({ id, position }) => updates.get(id) ?? position),
+    ...create.map(({ position }) => position),
+  ]);
+  const count = currentImages.length - deleted.length + create.length;
+  if (
+    positions.size !== count ||
+    [...positions].some((position) => position >= count)
+  ) {
     return problem("Unprocessable Content", {
-      code: "THUMBNAIL_REQUIRED",
-      message:
-        "Product must have a thumbnail. Explicitly assign a replacement when removing it.",
-      field: "images",
-    });
-  }
-  if (thumbnails > 1) {
-    return problem("Unprocessable Content", {
-      code: "MULTIPLE_THUMBNAILS",
-      message:
-        "Product must have exactly one thumbnail. Explicitly unset the previous thumbnail.",
+      code: "INVALID_IMAGE_POSITIONS",
+      message: `Image positions must be 0 to ${count - 1}, each used once. Explicitly move the other images when adding, removing or reordering one.`,
       field: "images",
     });
   }
