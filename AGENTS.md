@@ -84,6 +84,7 @@ bun check -p apps/dashboard
 
 - MUST ensure for any services that post, patch and getById return the same object, output type should be the same
 - MUST strictly follow atomicity principle: one transaction = many change. E.g. creating a product with attributes and category in one API call. Revert all if any part fails
+- MUST keep derived (denormalized) columns exact by design, never by repair: recompute them through their single refresh function (e.g. `refreshListing` for `Product.stockState`, `totalStock`, `priceMin`, `priceMax`), in the same transaction as every write to their source, after taking the locks in the shared order (inventories, then products, each by id). No periodic sync job. Tests assert there is no drift (`expectNoDrift` in tests/utils/helper.ts), including under concurrent writes
 - MUST create test that run concurrently and in parallel, each test should be isolated
 - MUST use tests/utils/helper.ts pattern when needed
 - MUST use expect().toMatchObject() when doing asserting api error call (to avoid type issue)

@@ -20,6 +20,8 @@ export const nameLowerPatternWithNumber = t.String({
   pattern: "^[a-zà-öø-ÿœ0-9]+(?: [a-zà-öø-ÿœ0-9]+)*$",
   minLength: 3,
   maxLength: 100,
+  error:
+    "Use 3 to 100 lowercase letters or digits, with single spaces between words.",
 });
 
 /** Bounds for array inputs: keeps bulk inserts under the Postgres parameter limit. */
@@ -70,7 +72,7 @@ export const imageResult = t.Object(
   {
     id: uuid,
     altText: t.Nullable(t.String()),
-    isThumbnail: t.Boolean(),
+    position: t.Integer({ minimum: 0 }),
     keyThumb: imageKey,
     keyMedium: imageKey,
     keyLarge: imageKey,

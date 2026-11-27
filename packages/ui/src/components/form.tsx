@@ -3,7 +3,7 @@ import type { AnyFormApi } from "@tanstack/react-form";
 import { createFormHook, createFormHookContexts } from "@tanstack/react-form";
 import { ChevronDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { Button } from "./button";
@@ -37,11 +37,13 @@ const isInvalid = ({
 function LabeledField({
   children,
   description,
+  htmlFor,
   label,
   labelEnd,
 }: {
   children: ReactNode;
   description?: ReactNode;
+  htmlFor?: string;
   label: ReactNode;
   labelEnd?: ReactNode;
 }) {
@@ -49,7 +51,7 @@ function LabeledField({
   return (
     <Field data-invalid={isInvalid(state)}>
       <div className="flex items-center">
-        <FieldLabel htmlFor={name}>{label}</FieldLabel>
+        <FieldLabel htmlFor={htmlFor ?? name}>{label}</FieldLabel>
         {labelEnd}
       </div>
       {children}
@@ -59,14 +61,17 @@ function LabeledField({
   );
 }
 
-type Labels = Omit<ComponentProps<typeof LabeledField>, "children">;
+type Labels = Omit<ComponentProps<typeof LabeledField>, "children" | "htmlFor">;
 
-/** The props every text control takes from its field. */
+/**
+ * The props every text control takes from its field. The id is generated: two
+ * forms on a page (a dialog over an editor) may both have a `name` field.
+ */
 function useTextControl() {
   const field = useFieldContext<string>();
   return {
     "aria-invalid": isInvalid(field.state),
-    id: field.name,
+    id: useId(),
     name: field.name,
     onBlur: field.handleBlur,
     onChange: (e: { target: { value: string } }) =>
@@ -81,9 +86,15 @@ function TextField({
   labelEnd,
   ...props
 }: ComponentProps<typeof Input> & Labels) {
+  const control = useTextControl();
   return (
-    <LabeledField description={description} label={label} labelEnd={labelEnd}>
-      <Input {...useTextControl()} {...props} />
+    <LabeledField
+      description={description}
+      htmlFor={control.id}
+      label={label}
+      labelEnd={labelEnd}
+    >
+      <Input {...control} {...props} />
     </LabeledField>
   );
 }
@@ -93,9 +104,10 @@ function TextareaField({
   label,
   ...props
 }: ComponentProps<typeof Textarea> & Labels) {
+  const control = useTextControl();
   return (
-    <LabeledField description={description} label={label}>
-      <Textarea {...useTextControl()} {...props} />
+    <LabeledField description={description} htmlFor={control.id} label={label}>
+      <Textarea {...control} {...props} />
     </LabeledField>
   );
 }
@@ -105,10 +117,11 @@ function SelectField({
   description,
   items,
   label,
+  labelEnd,
 }: Labels & { items: { label: string; value: string }[] }) {
   const field = useFieldContext<string>();
   return (
-    <LabeledField description={description} label={label}>
+    <LabeledField description={description} label={label} labelEnd={labelEnd}>
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
@@ -126,7 +139,9 @@ function SelectField({
         </DropdownMenuTrigger>
         <DropdownMenuContent className="max-h-80">
           <DropdownMenuGroup>
-            <DropdownMenuLabel className={MENU_LABEL}>{label}</DropdownMenuLabel>
+            <DropdownMenuLabel className={MENU_LABEL}>
+              {label}
+            </DropdownMenuLabel>
             <DropdownMenuRadioGroup
               onValueChange={(value: string) => field.handleChange(value)}
               value={field.state.value}
@@ -198,13 +213,21 @@ export function useActionResult<Values>(
   return [result, onSubmit] as const;
 }
 
-/** `onSubmitInvalid` handler: moves focus to the first invalid field. */
+/**
+ * `onSubmitInvalid` handler: moves focus to the first invalid field, by its
+ * `name` (or `id`), in the form being submitted.
+ */
 export function focusFirstError({ formApi }: { formApi: AnyFormApi }) {
   const invalid = Object.entries(formApi.state.fieldMeta).find(
     ([, meta]) => meta && !meta.isValid,
   );
   if (invalid) {
-    document.querySelector<HTMLElement>(`[id="${invalid[0]}"]`)?.focus();
+    const form = document.activeElement?.closest("form") ?? document;
+    form
+      .querySelector<HTMLElement>(
+        `[name="${invalid[0]}"], [id="${invalid[0]}"]`,
+      )
+      ?.focus();
   }
 }
 

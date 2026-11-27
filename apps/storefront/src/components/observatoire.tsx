@@ -63,7 +63,8 @@ export function Observatoire({
   ];
   const [sel, setSel] = useState(
     () =>
-      product.variants.find((x) => x.stock > 0)?.id ?? product.variants[0]?.id,
+      product.variants.find((x) => x.stockState !== "out")?.id ??
+      product.variants[0]?.id,
   );
   // the carousel's last frame, when we arrive from it (client navigation only)
   const [handoff] = useState(peekHandoff);
@@ -294,7 +295,7 @@ const stateOf = (exact: ProductDetail["variants"][number] | undefined) => {
   if (!exact) {
     return "none";
   }
-  return exact.stock > 0 ? "" : "out";
+  return exact.stockState === "out" ? "out" : "";
 };
 
 function Order({
@@ -371,8 +372,8 @@ function Order({
       </div>
       <p className="note" id={`${name}-soon`}>
         {v ? (
-          <span className="st" data-state={stockOf(v.stock).key}>
-            {stockOf(v.stock).label}
+          <span className="st" data-state={v.stockState}>
+            {stockOf(v.stockState).label}
           </span>
         ) : null}
         {kilo === null ? "" : ` · ${price(kilo)} / kg`} · Commande en ligne

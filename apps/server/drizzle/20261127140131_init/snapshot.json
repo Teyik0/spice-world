@@ -2,45 +2,120 @@
   "type": "base",
   "version": "9",
   "dialect": "postgres",
-  "id": "9145e7e0-d281-44ea-9d81-cb0bf26f176a",
-  "prevIds": ["00000000-0000-0000-0000-000000000000"],
+  "id": "522bdbd2-7ddb-4da6-997d-67d2ad15ed41",
+  "prevIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
   "footprints": [
     {
       "statementType": "create_enum",
-      "statementTarget": ["enum", "public", "OrderStatus"],
+      "statementTarget": [
+        "enum",
+        "public",
+        "OrderStatus"
+      ],
       "writes": [
         "s|enum|public.OrderStatus",
         "n|enum|public.OrderStatus",
         "e|enum|public.OrderStatus",
         "n|type|public.OrderStatus"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_enum",
-      "statementTarget": ["enum", "public", "ProductStatus"],
+      "statementTarget": [
+        "enum",
+        "public",
+        "ProductStatus"
+      ],
       "writes": [
         "s|enum|public.ProductStatus",
         "n|enum|public.ProductStatus",
         "e|enum|public.ProductStatus",
         "n|type|public.ProductStatus"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_enum",
-      "statementTarget": ["enum", "public", "ShippingStatus"],
+      "statementTarget": [
+        "enum",
+        "public",
+        "ShippingStatus"
+      ],
       "writes": [
         "s|enum|public.ShippingStatus",
         "n|enum|public.ShippingStatus",
         "e|enum|public.ShippingStatus",
         "n|type|public.ShippingStatus"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_enum",
+      "statementTarget": [
+        "enum",
+        "public",
+        "StockDimension"
+      ],
+      "writes": [
+        "s|enum|public.StockDimension",
+        "n|enum|public.StockDimension",
+        "e|enum|public.StockDimension",
+        "n|type|public.StockDimension"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_enum",
+      "statementTarget": [
+        "enum",
+        "public",
+        "StockMode"
+      ],
+      "writes": [
+        "s|enum|public.StockMode",
+        "n|enum|public.StockMode",
+        "e|enum|public.StockMode",
+        "n|type|public.StockMode"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_enum",
+      "statementTarget": [
+        "enum",
+        "public",
+        "StockState"
+      ],
+      "writes": [
+        "s|enum|public.StockState",
+        "n|enum|public.StockState",
+        "e|enum|public.StockState",
+        "n|type|public.StockState"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "account"],
+      "statementTarget": [
+        "table",
+        "public",
+        "account"
+      ],
       "writes": [
         "s|tbl|public.account",
         "n|tbl|public.account",
@@ -49,11 +124,17 @@
         "n|type|public.account",
         "n|rel|public.account_pkey"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "Attribute"],
+      "statementTarget": [
+        "table",
+        "public",
+        "Attribute"
+      ],
       "writes": [
         "s|tbl|public.Attribute",
         "n|tbl|public.Attribute",
@@ -62,11 +143,17 @@
         "n|type|public.Attribute",
         "n|rel|public.Attribute_pkey"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "AttributeValue"],
+      "statementTarget": [
+        "table",
+        "public",
+        "AttributeValue"
+      ],
       "writes": [
         "s|tbl|public.AttributeValue",
         "n|tbl|public.AttributeValue",
@@ -75,11 +162,17 @@
         "n|type|public.AttributeValue",
         "n|rel|public.AttributeValue_pkey"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "_AttributeValueToProductVariant"],
+      "statementTarget": [
+        "table",
+        "public",
+        "_AttributeValueToProductVariant"
+      ],
       "writes": [
         "s|tbl|public._AttributeValueToProductVariant",
         "n|tbl|public._AttributeValueToProductVariant",
@@ -88,11 +181,17 @@
         "n|type|public._AttributeValueToProductVariant",
         "n|rel|public._AttributeValueToProductVariant_AB_pkey"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "Category"],
+      "statementTarget": [
+        "table",
+        "public",
+        "Category"
+      ],
       "writes": [
         "s|tbl|public.Category",
         "n|tbl|public.Category",
@@ -101,11 +200,17 @@
         "n|type|public.Category",
         "n|rel|public.Category_pkey"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "CollectionProduct"],
+      "statementTarget": [
+        "table",
+        "public",
+        "CollectionProduct"
+      ],
       "writes": [
         "s|tbl|public.CollectionProduct",
         "n|tbl|public.CollectionProduct",
@@ -114,11 +219,17 @@
         "n|type|public.CollectionProduct",
         "n|rel|public.CollectionProduct_pkey"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "Collection"],
+      "statementTarget": [
+        "table",
+        "public",
+        "Collection"
+      ],
       "writes": [
         "s|tbl|public.Collection",
         "n|tbl|public.Collection",
@@ -127,11 +238,17 @@
         "n|type|public.Collection",
         "n|rel|public.Collection_pkey"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "Comment"],
+      "statementTarget": [
+        "table",
+        "public",
+        "Comment"
+      ],
       "writes": [
         "s|tbl|public.Comment",
         "n|tbl|public.Comment",
@@ -140,11 +257,17 @@
         "n|type|public.Comment",
         "n|rel|public.Comment_pkey"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "ImageDeletion"],
+      "statementTarget": [
+        "table",
+        "public",
+        "ImageDeletion"
+      ],
       "writes": [
         "s|tbl|public.ImageDeletion",
         "n|tbl|public.ImageDeletion",
@@ -153,11 +276,17 @@
         "n|type|public.ImageDeletion",
         "n|rel|public.ImageDeletion_pkey"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "Image"],
+      "statementTarget": [
+        "table",
+        "public",
+        "Image"
+      ],
       "writes": [
         "s|tbl|public.Image",
         "n|tbl|public.Image",
@@ -166,11 +295,37 @@
         "n|type|public.Image",
         "n|rel|public.Image_pkey"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "OrderItem"],
+      "statementTarget": [
+        "table",
+        "public",
+        "Inventory"
+      ],
+      "writes": [
+        "s|tbl|public.Inventory",
+        "n|tbl|public.Inventory",
+        "e|tbl|public.Inventory",
+        "n|rel|public.Inventory",
+        "n|type|public.Inventory",
+        "n|rel|public.Inventory_pkey"
+      ],
+      "reads": [
+        "n|sch|public",
+        "n|enum|public.StockDimension"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "OrderItem"
+      ],
       "writes": [
         "s|tbl|public.OrderItem",
         "n|tbl|public.OrderItem",
@@ -179,11 +334,17 @@
         "n|type|public.OrderItem",
         "n|rel|public.OrderItem_pkey"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "Order"],
+      "statementTarget": [
+        "table",
+        "public",
+        "Order"
+      ],
       "writes": [
         "s|tbl|public.Order",
         "n|tbl|public.Order",
@@ -200,20 +361,11 @@
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "_prisma_migrations"],
-      "writes": [
-        "s|tbl|public._prisma_migrations",
-        "n|tbl|public._prisma_migrations",
-        "e|tbl|public._prisma_migrations",
-        "n|rel|public._prisma_migrations",
-        "n|type|public._prisma_migrations",
-        "n|rel|public._prisma_migrations_pkey"
+      "statementTarget": [
+        "table",
+        "public",
+        "Product"
       ],
-      "reads": ["n|sch|public"]
-    },
-    {
-      "statementType": "create_table",
-      "statementTarget": ["table", "public", "Product"],
       "writes": [
         "s|tbl|public.Product",
         "n|tbl|public.Product",
@@ -222,11 +374,20 @@
         "n|type|public.Product",
         "n|rel|public.Product_pkey"
       ],
-      "reads": ["n|sch|public", "n|enum|public.ProductStatus"]
+      "reads": [
+        "n|sch|public",
+        "n|enum|public.ProductStatus",
+        "n|enum|public.StockMode",
+        "n|enum|public.StockState"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "ProductVariant"],
+      "statementTarget": [
+        "table",
+        "public",
+        "ProductVariant"
+      ],
       "writes": [
         "s|tbl|public.ProductVariant",
         "n|tbl|public.ProductVariant",
@@ -235,11 +396,17 @@
         "n|type|public.ProductVariant",
         "n|rel|public.ProductVariant_pkey"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "session"],
+      "statementTarget": [
+        "table",
+        "public",
+        "session"
+      ],
       "writes": [
         "s|tbl|public.session",
         "n|tbl|public.session",
@@ -248,11 +415,17 @@
         "n|type|public.session",
         "n|rel|public.session_pkey"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "user"],
+      "statementTarget": [
+        "table",
+        "public",
+        "user"
+      ],
       "writes": [
         "s|tbl|public.user",
         "n|tbl|public.user",
@@ -261,11 +434,17 @@
         "n|type|public.user",
         "n|rel|public.user_pkey"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "verification"],
+      "statementTarget": [
+        "table",
+        "public",
+        "verification"
+      ],
       "writes": [
         "s|tbl|public.verification",
         "n|tbl|public.verification",
@@ -274,11 +453,17 @@
         "n|type|public.verification",
         "n|rel|public.verification_pkey"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_table",
-      "statementTarget": ["table", "public", "VerificationToken"],
+      "statementTarget": [
+        "table",
+        "public",
+        "VerificationToken"
+      ],
       "writes": [
         "s|tbl|public.VerificationToken",
         "n|tbl|public.VerificationToken",
@@ -286,11 +471,18 @@
         "n|rel|public.VerificationToken",
         "n|type|public.VerificationToken"
       ],
-      "reads": ["n|sch|public"]
+      "reads": [
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_index",
-      "statementTarget": ["index", "public", "account", "account_userId_idx"],
+      "statementTarget": [
+        "index",
+        "public",
+        "account",
+        "account_userId_idx"
+      ],
       "writes": [
         "s|idx|public.account_userId_idx",
         "n|idx|public.account_userId_idx",
@@ -387,7 +579,12 @@
     },
     {
       "statementType": "create_index",
-      "statementTarget": ["index", "public", "Category", "Category_name_key"],
+      "statementTarget": [
+        "index",
+        "public",
+        "Category",
+        "Category_name_key"
+      ],
       "writes": [
         "s|idx|public.Category_name_key",
         "n|idx|public.Category_name_key",
@@ -483,7 +680,12 @@
     },
     {
       "statementType": "create_index",
-      "statementTarget": ["index", "public", "Image", "Image_keyLarge_key"],
+      "statementTarget": [
+        "index",
+        "public",
+        "Image",
+        "Image_keyLarge_key"
+      ],
       "writes": [
         "s|idx|public.Image_keyLarge_key",
         "n|idx|public.Image_keyLarge_key",
@@ -498,7 +700,12 @@
     },
     {
       "statementType": "create_index",
-      "statementTarget": ["index", "public", "Image", "Image_keyMedium_key"],
+      "statementTarget": [
+        "index",
+        "public",
+        "Image",
+        "Image_keyMedium_key"
+      ],
       "writes": [
         "s|idx|public.Image_keyMedium_key",
         "n|idx|public.Image_keyMedium_key",
@@ -513,7 +720,12 @@
     },
     {
       "statementType": "create_index",
-      "statementTarget": ["index", "public", "Image", "Image_keyThumb_key"],
+      "statementTarget": [
+        "index",
+        "public",
+        "Image",
+        "Image_keyThumb_key"
+      ],
       "writes": [
         "s|idx|public.Image_keyThumb_key",
         "n|idx|public.Image_keyThumb_key",
@@ -532,19 +744,80 @@
         "index",
         "public",
         "Image",
-        "Image_productId_isThumbnail_idx"
+        "Image_productId_position_idx"
       ],
       "writes": [
-        "s|idx|public.Image_productId_isThumbnail_idx",
-        "n|idx|public.Image_productId_isThumbnail_idx",
-        "e|idx|public.Image_productId_isThumbnail_idx",
-        "n|rel|public.Image_productId_isThumbnail_idx"
+        "s|idx|public.Image_productId_position_idx",
+        "n|idx|public.Image_productId_position_idx",
+        "e|idx|public.Image_productId_position_idx",
+        "n|rel|public.Image_productId_position_idx"
       ],
       "reads": [
         "n|tbl|public.Image",
         "n|sch|public",
         "n|col|public.Image.productId",
-        "n|col|public.Image.isThumbnail"
+        "n|col|public.Image.position"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "Inventory",
+        "Inventory_productId_idx"
+      ],
+      "writes": [
+        "s|idx|public.Inventory_productId_idx",
+        "n|idx|public.Inventory_productId_idx",
+        "e|idx|public.Inventory_productId_idx",
+        "n|rel|public.Inventory_productId_idx"
+      ],
+      "reads": [
+        "n|tbl|public.Inventory",
+        "n|sch|public",
+        "n|col|public.Inventory.productId"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "Inventory",
+        "Inventory_id_productId_key"
+      ],
+      "writes": [
+        "s|idx|public.Inventory_id_productId_key",
+        "n|idx|public.Inventory_id_productId_key",
+        "e|idx|public.Inventory_id_productId_key",
+        "n|rel|public.Inventory_id_productId_key"
+      ],
+      "reads": [
+        "n|tbl|public.Inventory",
+        "n|sch|public",
+        "n|col|public.Inventory.id",
+        "n|col|public.Inventory.productId"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "OrderItem",
+        "OrderItem_inventoryId_idx"
+      ],
+      "writes": [
+        "s|idx|public.OrderItem_inventoryId_idx",
+        "n|idx|public.OrderItem_inventoryId_idx",
+        "e|idx|public.OrderItem_inventoryId_idx",
+        "n|rel|public.OrderItem_inventoryId_idx"
+      ],
+      "reads": [
+        "n|tbl|public.OrderItem",
+        "n|sch|public",
+        "n|col|public.OrderItem.inventoryId"
       ]
     },
     {
@@ -609,7 +882,12 @@
     },
     {
       "statementType": "create_index",
-      "statementTarget": ["index", "public", "Order", "Order_createdAt_idx"],
+      "statementTarget": [
+        "index",
+        "public",
+        "Order",
+        "Order_createdAt_idx"
+      ],
       "writes": [
         "s|idx|public.Order_createdAt_idx",
         "n|idx|public.Order_createdAt_idx",
@@ -624,7 +902,12 @@
     },
     {
       "statementType": "create_index",
-      "statementTarget": ["index", "public", "Order", "Order_status_idx"],
+      "statementTarget": [
+        "index",
+        "public",
+        "Order",
+        "Order_status_idx"
+      ],
       "writes": [
         "s|idx|public.Order_status_idx",
         "n|idx|public.Order_status_idx",
@@ -679,7 +962,12 @@
     },
     {
       "statementType": "create_index",
-      "statementTarget": ["index", "public", "Order", "Order_userId_idx"],
+      "statementTarget": [
+        "index",
+        "public",
+        "Order",
+        "Order_userId_idx"
+      ],
       "writes": [
         "s|idx|public.Order_userId_idx",
         "n|idx|public.Order_userId_idx",
@@ -714,18 +1002,31 @@
     },
     {
       "statementType": "create_index",
-      "statementTarget": ["index", "public", "Product", "Product_name_fts_idx"],
+      "statementTarget": [
+        "index",
+        "public",
+        "Product",
+        "Product_name_fts_idx"
+      ],
       "writes": [
         "s|idx|public.Product_name_fts_idx",
         "n|idx|public.Product_name_fts_idx",
         "e|idx|public.Product_name_fts_idx",
         "n|rel|public.Product_name_fts_idx"
       ],
-      "reads": ["n|tbl|public.Product", "n|sch|public"]
+      "reads": [
+        "n|tbl|public.Product",
+        "n|sch|public"
+      ]
     },
     {
       "statementType": "create_index",
-      "statementTarget": ["index", "public", "Product", "Product_name_key"],
+      "statementTarget": [
+        "index",
+        "public",
+        "Product",
+        "Product_name_key"
+      ],
       "writes": [
         "s|idx|public.Product_name_key",
         "n|idx|public.Product_name_key",
@@ -740,7 +1041,12 @@
     },
     {
       "statementType": "create_index",
-      "statementTarget": ["index", "public", "Product", "Product_slug_key"],
+      "statementTarget": [
+        "index",
+        "public",
+        "Product",
+        "Product_slug_key"
+      ],
       "writes": [
         "s|idx|public.Product_slug_key",
         "n|idx|public.Product_slug_key",
@@ -755,7 +1061,12 @@
     },
     {
       "statementType": "create_index",
-      "statementTarget": ["index", "public", "Product", "Product_status_idx"],
+      "statementTarget": [
+        "index",
+        "public",
+        "Product",
+        "Product_status_idx"
+      ],
       "writes": [
         "s|idx|public.Product_status_idx",
         "n|idx|public.Product_status_idx",
@@ -766,6 +1077,69 @@
         "n|tbl|public.Product",
         "n|sch|public",
         "n|col|public.Product.status"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "Product",
+        "Product_priceMin_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.Product_priceMin_id_idx",
+        "n|idx|public.Product_priceMin_id_idx",
+        "e|idx|public.Product_priceMin_id_idx",
+        "n|rel|public.Product_priceMin_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.Product",
+        "n|sch|public",
+        "n|col|public.Product.priceMin",
+        "n|col|public.Product.id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "Product",
+        "Product_priceMax_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.Product_priceMax_id_idx",
+        "n|idx|public.Product_priceMax_id_idx",
+        "e|idx|public.Product_priceMax_id_idx",
+        "n|rel|public.Product_priceMax_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.Product",
+        "n|sch|public",
+        "n|col|public.Product.priceMax",
+        "n|col|public.Product.id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "Product",
+        "Product_stockState_totalStock_idx"
+      ],
+      "writes": [
+        "s|idx|public.Product_stockState_totalStock_idx",
+        "n|idx|public.Product_stockState_totalStock_idx",
+        "e|idx|public.Product_stockState_totalStock_idx",
+        "n|rel|public.Product_stockState_totalStock_idx"
+      ],
+      "reads": [
+        "n|tbl|public.Product",
+        "n|sch|public",
+        "n|col|public.Product.stockState",
+        "n|col|public.Product.totalStock"
       ]
     },
     {
@@ -794,20 +1168,18 @@
         "index",
         "public",
         "ProductVariant",
-        "ProductVariant_productId_stock_price_idx"
+        "ProductVariant_inventoryId_idx"
       ],
       "writes": [
-        "s|idx|public.ProductVariant_productId_stock_price_idx",
-        "n|idx|public.ProductVariant_productId_stock_price_idx",
-        "e|idx|public.ProductVariant_productId_stock_price_idx",
-        "n|rel|public.ProductVariant_productId_stock_price_idx"
+        "s|idx|public.ProductVariant_inventoryId_idx",
+        "n|idx|public.ProductVariant_inventoryId_idx",
+        "e|idx|public.ProductVariant_inventoryId_idx",
+        "n|rel|public.ProductVariant_inventoryId_idx"
       ],
       "reads": [
         "n|tbl|public.ProductVariant",
         "n|sch|public",
-        "n|col|public.ProductVariant.productId",
-        "n|col|public.ProductVariant.stock",
-        "n|col|public.ProductVariant.price"
+        "n|col|public.ProductVariant.inventoryId"
       ]
     },
     {
@@ -832,7 +1204,12 @@
     },
     {
       "statementType": "create_index",
-      "statementTarget": ["index", "public", "session", "session_token_key"],
+      "statementTarget": [
+        "index",
+        "public",
+        "session",
+        "session_token_key"
+      ],
       "writes": [
         "s|idx|public.session_token_key",
         "n|idx|public.session_token_key",
@@ -847,7 +1224,12 @@
     },
     {
       "statementType": "create_index",
-      "statementTarget": ["index", "public", "session", "session_userId_idx"],
+      "statementTarget": [
+        "index",
+        "public",
+        "session",
+        "session_userId_idx"
+      ],
       "writes": [
         "s|idx|public.session_userId_idx",
         "n|idx|public.session_userId_idx",
@@ -862,14 +1244,23 @@
     },
     {
       "statementType": "create_index",
-      "statementTarget": ["index", "public", "user", "user_email_key"],
+      "statementTarget": [
+        "index",
+        "public",
+        "user",
+        "user_email_key"
+      ],
       "writes": [
         "s|idx|public.user_email_key",
         "n|idx|public.user_email_key",
         "e|idx|public.user_email_key",
         "n|rel|public.user_email_key"
       ],
-      "reads": ["n|tbl|public.user", "n|sch|public", "n|col|public.user.email"]
+      "reads": [
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.user.email"
+      ]
     },
     {
       "statementType": "create_index",
@@ -954,7 +1345,11 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "account"],
+      "statementTarget": [
+        "table",
+        "public",
+        "account"
+      ],
       "writes": [
         "s|fk|public.account.account_userId_fkey",
         "n|fk|public.account.account_userId_fkey",
@@ -973,7 +1368,11 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "Attribute"],
+      "statementTarget": [
+        "table",
+        "public",
+        "Attribute"
+      ],
       "writes": [
         "s|fk|public.Attribute.Attribute_categoryId_fkey",
         "n|fk|public.Attribute.Attribute_categoryId_fkey",
@@ -992,7 +1391,11 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "AttributeValue"],
+      "statementTarget": [
+        "table",
+        "public",
+        "AttributeValue"
+      ],
       "writes": [
         "s|fk|public.AttributeValue.AttributeValue_attributeId_fkey",
         "n|fk|public.AttributeValue.AttributeValue_attributeId_fkey",
@@ -1011,7 +1414,11 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "_AttributeValueToProductVariant"],
+      "statementTarget": [
+        "table",
+        "public",
+        "_AttributeValueToProductVariant"
+      ],
       "writes": [
         "s|fk|public._AttributeValueToProductVariant._AttributeValueToProductVariant_A_fkey",
         "n|fk|public._AttributeValueToProductVariant._AttributeValueToProductVariant_A_fkey",
@@ -1030,7 +1437,11 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "_AttributeValueToProductVariant"],
+      "statementTarget": [
+        "table",
+        "public",
+        "_AttributeValueToProductVariant"
+      ],
       "writes": [
         "s|fk|public._AttributeValueToProductVariant._AttributeValueToProductVariant_B_fkey",
         "n|fk|public._AttributeValueToProductVariant._AttributeValueToProductVariant_B_fkey",
@@ -1049,7 +1460,11 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "Category"],
+      "statementTarget": [
+        "table",
+        "public",
+        "Category"
+      ],
       "writes": [
         "s|fk|public.Category.Category_imageId_fkey",
         "n|fk|public.Category.Category_imageId_fkey",
@@ -1068,7 +1483,11 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "CollectionProduct"],
+      "statementTarget": [
+        "table",
+        "public",
+        "CollectionProduct"
+      ],
       "writes": [
         "s|fk|public.CollectionProduct.CollectionProduct_collectionId_Collection_id_fkey",
         "n|fk|public.CollectionProduct.CollectionProduct_collectionId_Collection_id_fkey",
@@ -1087,7 +1506,11 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "CollectionProduct"],
+      "statementTarget": [
+        "table",
+        "public",
+        "CollectionProduct"
+      ],
       "writes": [
         "s|fk|public.CollectionProduct.CollectionProduct_productId_Product_id_fkey",
         "n|fk|public.CollectionProduct.CollectionProduct_productId_Product_id_fkey",
@@ -1106,7 +1529,11 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "Comment"],
+      "statementTarget": [
+        "table",
+        "public",
+        "Comment"
+      ],
       "writes": [
         "s|fk|public.Comment.Comment_productId_fkey",
         "n|fk|public.Comment.Comment_productId_fkey",
@@ -1125,7 +1552,11 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "Comment"],
+      "statementTarget": [
+        "table",
+        "public",
+        "Comment"
+      ],
       "writes": [
         "s|fk|public.Comment.Comment_userId_fkey",
         "n|fk|public.Comment.Comment_userId_fkey",
@@ -1144,7 +1575,11 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "Image"],
+      "statementTarget": [
+        "table",
+        "public",
+        "Image"
+      ],
       "writes": [
         "s|fk|public.Image.Image_productId_fkey",
         "n|fk|public.Image.Image_productId_fkey",
@@ -1163,7 +1598,34 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "OrderItem"],
+      "statementTarget": [
+        "table",
+        "public",
+        "Inventory"
+      ],
+      "writes": [
+        "s|fk|public.Inventory.Inventory_productId_fkey",
+        "n|fk|public.Inventory.Inventory_productId_fkey",
+        "e|fk|public.Inventory.Inventory_productId_fkey",
+        "n|con|public.Inventory.Inventory_productId_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.Inventory",
+        "n|sch|public",
+        "n|tbl|public.Product",
+        "n|sch|public",
+        "n|col|public.Inventory.productId",
+        "n|col|public.Product.id",
+        "e|uniqueness|public.Product.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "OrderItem"
+      ],
       "writes": [
         "s|fk|public.OrderItem.OrderItem_orderId_fkey",
         "n|fk|public.OrderItem.OrderItem_orderId_fkey",
@@ -1182,7 +1644,11 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "OrderItem"],
+      "statementTarget": [
+        "table",
+        "public",
+        "OrderItem"
+      ],
       "writes": [
         "s|fk|public.OrderItem.OrderItem_variantId_fkey",
         "n|fk|public.OrderItem.OrderItem_variantId_fkey",
@@ -1201,7 +1667,34 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "Order"],
+      "statementTarget": [
+        "table",
+        "public",
+        "OrderItem"
+      ],
+      "writes": [
+        "s|fk|public.OrderItem.OrderItem_inventoryId_fkey",
+        "n|fk|public.OrderItem.OrderItem_inventoryId_fkey",
+        "e|fk|public.OrderItem.OrderItem_inventoryId_fkey",
+        "n|con|public.OrderItem.OrderItem_inventoryId_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.OrderItem",
+        "n|sch|public",
+        "n|tbl|public.Inventory",
+        "n|sch|public",
+        "n|col|public.OrderItem.inventoryId",
+        "n|col|public.Inventory.id",
+        "e|uniqueness|public.Inventory.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "Order"
+      ],
       "writes": [
         "s|fk|public.Order.Order_userId_fkey",
         "n|fk|public.Order.Order_userId_fkey",
@@ -1220,7 +1713,11 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "Product"],
+      "statementTarget": [
+        "table",
+        "public",
+        "Product"
+      ],
       "writes": [
         "s|fk|public.Product.Product_categoryId_fkey",
         "n|fk|public.Product.Product_categoryId_fkey",
@@ -1239,7 +1736,11 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "ProductVariant"],
+      "statementTarget": [
+        "table",
+        "public",
+        "ProductVariant"
+      ],
       "writes": [
         "s|fk|public.ProductVariant.ProductVariant_productId_fkey",
         "n|fk|public.ProductVariant.ProductVariant_productId_fkey",
@@ -1258,7 +1759,36 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": ["table", "public", "session"],
+      "statementTarget": [
+        "table",
+        "public",
+        "ProductVariant"
+      ],
+      "writes": [
+        "s|fk|public.ProductVariant.ProductVariant_inventoryId_fkey",
+        "n|fk|public.ProductVariant.ProductVariant_inventoryId_fkey",
+        "e|fk|public.ProductVariant.ProductVariant_inventoryId_fkey",
+        "n|con|public.ProductVariant.ProductVariant_inventoryId_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.ProductVariant",
+        "n|sch|public",
+        "n|tbl|public.Inventory",
+        "n|sch|public",
+        "n|col|public.ProductVariant.inventoryId",
+        "n|col|public.ProductVariant.productId",
+        "n|col|public.Inventory.id",
+        "n|col|public.Inventory.productId",
+        "e|uniqueness|public.Inventory.id.productId"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "session"
+      ],
       "writes": [
         "s|fk|public.session.session_userId_fkey",
         "n|fk|public.session.session_userId_fkey",
@@ -1339,6 +1869,12 @@
     },
     {
       "schema": "public",
+      "name": "Inventory",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
       "name": "OrderItem",
       "isRlsEnabled": false,
       "entityType": "tables"
@@ -1346,12 +1882,6 @@
     {
       "schema": "public",
       "name": "Order",
-      "isRlsEnabled": false,
-      "entityType": "tables"
-    },
-    {
-      "schema": "public",
-      "name": "_prisma_migrations",
       "isRlsEnabled": false,
       "entityType": "tables"
     },
@@ -1394,19 +1924,64 @@
     {
       "schema": "public",
       "name": "OrderStatus",
-      "values": ["PENDING", "PAID", "FULFILLED", "CANCELLED", "REFUNDED"],
+      "values": [
+        "PENDING",
+        "PAID",
+        "FULFILLED",
+        "CANCELLED",
+        "REFUNDED"
+      ],
       "entityType": "enums"
     },
     {
       "schema": "public",
       "name": "ProductStatus",
-      "values": ["DRAFT", "PUBLISHED", "ARCHIVED"],
+      "values": [
+        "DRAFT",
+        "PUBLISHED",
+        "ARCHIVED"
+      ],
       "entityType": "enums"
     },
     {
       "schema": "public",
       "name": "ShippingStatus",
-      "values": ["PENDING", "SHIPPED", "DELIVERED"],
+      "values": [
+        "PENDING",
+        "SHIPPED",
+        "DELIVERED"
+      ],
+      "entityType": "enums"
+    },
+    {
+      "schema": "public",
+      "name": "StockDimension",
+      "values": [
+        "COUNT",
+        "MASS",
+        "VOLUME",
+        "LENGTH",
+        "AREA"
+      ],
+      "entityType": "enums"
+    },
+    {
+      "schema": "public",
+      "name": "StockMode",
+      "values": [
+        "VARIANT",
+        "SHARED"
+      ],
+      "entityType": "enums"
+    },
+    {
+      "schema": "public",
+      "name": "StockState",
+      "values": [
+        "out",
+        "low",
+        "in"
+      ],
       "entityType": "enums"
     },
     {
@@ -1491,7 +2066,7 @@
       "schema": "public",
       "table": "account",
       "name": "accessTokenExpiresAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": false,
       "dimensions": 0,
@@ -1504,7 +2079,7 @@
       "schema": "public",
       "table": "account",
       "name": "refreshTokenExpiresAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": false,
       "dimensions": 0,
@@ -1556,7 +2131,7 @@
       "schema": "public",
       "table": "account",
       "name": "createdAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
@@ -1569,11 +2144,11 @@
       "schema": "public",
       "table": "account",
       "name": "updatedAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
-      "default": null,
+      "default": "CURRENT_TIMESTAMP",
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -1619,6 +2194,32 @@
     },
     {
       "schema": "public",
+      "table": "Attribute",
+      "name": "createdAt",
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "CURRENT_TIMESTAMP",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Attribute",
+      "name": "updatedAt",
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "CURRENT_TIMESTAMP",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
       "table": "AttributeValue",
       "name": "id",
       "type": "text",
@@ -1652,6 +2253,32 @@
       "notNull": true,
       "dimensions": 0,
       "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "AttributeValue",
+      "name": "createdAt",
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "CURRENT_TIMESTAMP",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "AttributeValue",
+      "name": "updatedAt",
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "CURRENT_TIMESTAMP",
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -1723,6 +2350,32 @@
     },
     {
       "schema": "public",
+      "table": "Category",
+      "name": "createdAt",
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "CURRENT_TIMESTAMP",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Category",
+      "name": "updatedAt",
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "CURRENT_TIMESTAMP",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
       "table": "CollectionProduct",
       "name": "collectionId",
       "type": "text",
@@ -1762,6 +2415,32 @@
     },
     {
       "schema": "public",
+      "table": "CollectionProduct",
+      "name": "createdAt",
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "CURRENT_TIMESTAMP",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "CollectionProduct",
+      "name": "updatedAt",
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "CURRENT_TIMESTAMP",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
       "table": "Collection",
       "name": "id",
       "type": "text",
@@ -1795,6 +2474,45 @@
       "notNull": true,
       "dimensions": 0,
       "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Collection",
+      "name": "version",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Collection",
+      "name": "createdAt",
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "CURRENT_TIMESTAMP",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Collection",
+      "name": "updatedAt",
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "CURRENT_TIMESTAMP",
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -1855,7 +2573,7 @@
       "schema": "public",
       "table": "Comment",
       "name": "createdAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
@@ -1868,11 +2586,11 @@
       "schema": "public",
       "table": "Comment",
       "name": "updatedAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
-      "default": null,
+      "default": "CURRENT_TIMESTAMP",
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -1945,12 +2663,12 @@
     {
       "schema": "public",
       "table": "Image",
-      "name": "isThumbnail",
-      "type": "boolean",
+      "name": "position",
+      "type": "integer",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
-      "default": "false",
+      "default": null,
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -2042,6 +2760,123 @@
       "notNull": true,
       "dimensions": 0,
       "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Image",
+      "name": "createdAt",
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "CURRENT_TIMESTAMP",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Image",
+      "name": "updatedAt",
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "CURRENT_TIMESTAMP",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Inventory",
+      "name": "id",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Inventory",
+      "name": "productId",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Inventory",
+      "name": "dimension",
+      "type": "StockDimension",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'COUNT'",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Inventory",
+      "name": "quantity",
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Inventory",
+      "name": "lowStockAt",
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Inventory",
+      "name": "createdAt",
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "CURRENT_TIMESTAMP",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Inventory",
+      "name": "updatedAt",
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "CURRENT_TIMESTAMP",
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -2153,6 +2988,32 @@
     {
       "schema": "public",
       "table": "OrderItem",
+      "name": "inventoryId",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "OrderItem",
+      "name": "stockUsage",
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "OrderItem",
       "name": "unitPrice",
       "type": "integer",
       "typeSchema": null,
@@ -2185,6 +3046,32 @@
       "notNull": true,
       "dimensions": 0,
       "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "OrderItem",
+      "name": "createdAt",
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "CURRENT_TIMESTAMP",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "OrderItem",
+      "name": "updatedAt",
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "CURRENT_TIMESTAMP",
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -2232,7 +3119,7 @@
       "schema": "public",
       "table": "Order",
       "name": "createdAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
@@ -2245,11 +3132,11 @@
       "schema": "public",
       "table": "Order",
       "name": "updatedAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
-      "default": null,
+      "default": "CURRENT_TIMESTAMP",
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -2386,110 +3273,6 @@
     },
     {
       "schema": "public",
-      "table": "_prisma_migrations",
-      "name": "id",
-      "type": "varchar(36)",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "entityType": "columns"
-    },
-    {
-      "schema": "public",
-      "table": "_prisma_migrations",
-      "name": "checksum",
-      "type": "varchar(64)",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "entityType": "columns"
-    },
-    {
-      "schema": "public",
-      "table": "_prisma_migrations",
-      "name": "finished_at",
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "entityType": "columns"
-    },
-    {
-      "schema": "public",
-      "table": "_prisma_migrations",
-      "name": "migration_name",
-      "type": "varchar(255)",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "entityType": "columns"
-    },
-    {
-      "schema": "public",
-      "table": "_prisma_migrations",
-      "name": "logs",
-      "type": "text",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "entityType": "columns"
-    },
-    {
-      "schema": "public",
-      "table": "_prisma_migrations",
-      "name": "rolled_back_at",
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "entityType": "columns"
-    },
-    {
-      "schema": "public",
-      "table": "_prisma_migrations",
-      "name": "started_at",
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "now()",
-      "generated": null,
-      "identity": null,
-      "entityType": "columns"
-    },
-    {
-      "schema": "public",
-      "table": "_prisma_migrations",
-      "name": "applied_steps_count",
-      "type": "integer",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "0",
-      "generated": null,
-      "identity": null,
-      "entityType": "columns"
-    },
-    {
-      "schema": "public",
       "table": "Product",
       "name": "id",
       "type": "text",
@@ -2548,7 +3331,7 @@
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
-      "default": "0",
+      "default": "1",
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -2562,6 +3345,71 @@
       "notNull": true,
       "dimensions": 0,
       "default": "'DRAFT'",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Product",
+      "name": "stockMode",
+      "type": "StockMode",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'VARIANT'",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Product",
+      "name": "stockState",
+      "type": "StockState",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'out'",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Product",
+      "name": "totalStock",
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Product",
+      "name": "priceMin",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "Product",
+      "name": "priceMax",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -2583,7 +3431,7 @@
       "schema": "public",
       "table": "Product",
       "name": "createdAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
@@ -2596,11 +3444,11 @@
       "schema": "public",
       "table": "Product",
       "name": "updatedAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
-      "default": null,
+      "default": "CURRENT_TIMESTAMP",
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -2627,6 +3475,32 @@
       "notNull": true,
       "dimensions": 0,
       "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ProductVariant",
+      "name": "inventoryId",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ProductVariant",
+      "name": "stockUsage",
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -2673,21 +3547,8 @@
     {
       "schema": "public",
       "table": "ProductVariant",
-      "name": "stock",
-      "type": "integer",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "0",
-      "generated": null,
-      "identity": null,
-      "entityType": "columns"
-    },
-    {
-      "schema": "public",
-      "table": "ProductVariant",
       "name": "createdAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
@@ -2700,11 +3561,11 @@
       "schema": "public",
       "table": "ProductVariant",
       "name": "updatedAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
-      "default": null,
+      "default": "CURRENT_TIMESTAMP",
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -2752,7 +3613,7 @@
       "schema": "public",
       "table": "session",
       "name": "expiresAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
@@ -2791,7 +3652,7 @@
       "schema": "public",
       "table": "session",
       "name": "createdAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
@@ -2804,11 +3665,11 @@
       "schema": "public",
       "table": "session",
       "name": "updatedAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
-      "default": null,
+      "default": "CURRENT_TIMESTAMP",
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -2908,7 +3769,7 @@
       "schema": "public",
       "table": "user",
       "name": "createdAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
@@ -2921,11 +3782,11 @@
       "schema": "public",
       "table": "user",
       "name": "updatedAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
-      "default": null,
+      "default": "CURRENT_TIMESTAMP",
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -2960,7 +3821,7 @@
       "schema": "public",
       "table": "user",
       "name": "banExpires",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": false,
       "dimensions": 0,
@@ -3025,7 +3886,7 @@
       "schema": "public",
       "table": "verification",
       "name": "expiresAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
@@ -3038,7 +3899,7 @@
       "schema": "public",
       "table": "verification",
       "name": "createdAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": false,
       "dimensions": 0,
@@ -3051,7 +3912,7 @@
       "schema": "public",
       "table": "verification",
       "name": "updatedAt",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": false,
       "dimensions": 0,
@@ -3090,7 +3951,7 @@
       "schema": "public",
       "table": "VerificationToken",
       "name": "expires",
-      "type": "timestamp(3)",
+      "type": "timestamp(3) with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
@@ -3396,7 +4257,7 @@
     {
       "schema": "public",
       "table": "Image",
-      "name": "Image_productId_isThumbnail_idx",
+      "name": "Image_productId_position_idx",
       "nameExplicit": true,
       "columns": [
         {
@@ -3407,7 +4268,77 @@
           "opclass": null
         },
         {
-          "value": "isThumbnail",
+          "value": "position",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "Inventory",
+      "name": "Inventory_productId_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "productId",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "Inventory",
+      "name": "Inventory_id_productId_key",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "productId",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "OrderItem",
+      "name": "OrderItem_inventoryId_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "inventoryId",
           "isExpression": false,
           "asc": true,
           "nullsFirst": false,
@@ -3696,6 +4627,90 @@
     },
     {
       "schema": "public",
+      "table": "Product",
+      "name": "Product_priceMin_id_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "priceMin",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "Product",
+      "name": "Product_priceMax_id_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "priceMax",
+          "isExpression": false,
+          "asc": false,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "Product",
+      "name": "Product_stockState_totalStock_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "stockState",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "totalStock",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
       "table": "ProductVariant",
       "name": "ProductVariant_productId_idx",
       "nameExplicit": true,
@@ -3718,25 +4733,11 @@
     {
       "schema": "public",
       "table": "ProductVariant",
-      "name": "ProductVariant_productId_stock_price_idx",
+      "name": "ProductVariant_inventoryId_idx",
       "nameExplicit": true,
       "columns": [
         {
-          "value": "productId",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        },
-        {
-          "value": "stock",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        },
-        {
-          "value": "price",
+          "value": "inventoryId",
           "isExpression": false,
           "asc": true,
           "nullsFirst": false,
@@ -3930,10 +4931,14 @@
       "table": "account",
       "name": "account_userId_fkey",
       "nameExplicit": true,
-      "columns": ["userId"],
+      "columns": [
+        "userId"
+      ],
       "schemaTo": "public",
       "tableTo": "user",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
       "entityType": "fks"
@@ -3943,10 +4948,14 @@
       "table": "Attribute",
       "name": "Attribute_categoryId_fkey",
       "nameExplicit": true,
-      "columns": ["categoryId"],
+      "columns": [
+        "categoryId"
+      ],
       "schemaTo": "public",
       "tableTo": "Category",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
       "entityType": "fks"
@@ -3956,10 +4965,14 @@
       "table": "AttributeValue",
       "name": "AttributeValue_attributeId_fkey",
       "nameExplicit": true,
-      "columns": ["attributeId"],
+      "columns": [
+        "attributeId"
+      ],
       "schemaTo": "public",
       "tableTo": "Attribute",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
       "entityType": "fks"
@@ -3969,12 +4982,16 @@
       "table": "_AttributeValueToProductVariant",
       "name": "_AttributeValueToProductVariant_A_fkey",
       "nameExplicit": true,
-      "columns": ["A"],
+      "columns": [
+        "A"
+      ],
       "schemaTo": "public",
       "tableTo": "AttributeValue",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "CASCADE",
-      "onDelete": "CASCADE",
+      "onDelete": "RESTRICT",
       "entityType": "fks"
     },
     {
@@ -3982,10 +4999,14 @@
       "table": "_AttributeValueToProductVariant",
       "name": "_AttributeValueToProductVariant_B_fkey",
       "nameExplicit": true,
-      "columns": ["B"],
+      "columns": [
+        "B"
+      ],
       "schemaTo": "public",
       "tableTo": "ProductVariant",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
       "entityType": "fks"
@@ -3995,10 +5016,14 @@
       "table": "Category",
       "name": "Category_imageId_fkey",
       "nameExplicit": true,
-      "columns": ["imageId"],
+      "columns": [
+        "imageId"
+      ],
       "schemaTo": "public",
       "tableTo": "Image",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "CASCADE",
       "onDelete": "RESTRICT",
       "entityType": "fks"
@@ -4008,10 +5033,14 @@
       "table": "CollectionProduct",
       "name": "CollectionProduct_collectionId_Collection_id_fkey",
       "nameExplicit": false,
-      "columns": ["collectionId"],
+      "columns": [
+        "collectionId"
+      ],
       "schemaTo": "public",
       "tableTo": "Collection",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "entityType": "fks"
@@ -4021,10 +5050,14 @@
       "table": "CollectionProduct",
       "name": "CollectionProduct_productId_Product_id_fkey",
       "nameExplicit": false,
-      "columns": ["productId"],
+      "columns": [
+        "productId"
+      ],
       "schemaTo": "public",
       "tableTo": "Product",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "entityType": "fks"
@@ -4034,10 +5067,14 @@
       "table": "Comment",
       "name": "Comment_productId_fkey",
       "nameExplicit": true,
-      "columns": ["productId"],
+      "columns": [
+        "productId"
+      ],
       "schemaTo": "public",
       "tableTo": "Product",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "CASCADE",
       "onDelete": "RESTRICT",
       "entityType": "fks"
@@ -4047,10 +5084,14 @@
       "table": "Comment",
       "name": "Comment_userId_fkey",
       "nameExplicit": true,
-      "columns": ["userId"],
+      "columns": [
+        "userId"
+      ],
       "schemaTo": "public",
       "tableTo": "user",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "CASCADE",
       "onDelete": "RESTRICT",
       "entityType": "fks"
@@ -4060,10 +5101,31 @@
       "table": "Image",
       "name": "Image_productId_fkey",
       "nameExplicit": true,
-      "columns": ["productId"],
+      "columns": [
+        "productId"
+      ],
       "schemaTo": "public",
       "tableTo": "Product",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "entityType": "fks"
+    },
+    {
+      "schema": "public",
+      "table": "Inventory",
+      "name": "Inventory_productId_fkey",
+      "nameExplicit": true,
+      "columns": [
+        "productId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Product",
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
       "entityType": "fks"
@@ -4073,10 +5135,14 @@
       "table": "OrderItem",
       "name": "OrderItem_orderId_fkey",
       "nameExplicit": true,
-      "columns": ["orderId"],
+      "columns": [
+        "orderId"
+      ],
       "schemaTo": "public",
       "tableTo": "Order",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
       "entityType": "fks"
@@ -4086,10 +5152,31 @@
       "table": "OrderItem",
       "name": "OrderItem_variantId_fkey",
       "nameExplicit": true,
-      "columns": ["variantId"],
+      "columns": [
+        "variantId"
+      ],
       "schemaTo": "public",
       "tableTo": "ProductVariant",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "SET NULL",
+      "entityType": "fks"
+    },
+    {
+      "schema": "public",
+      "table": "OrderItem",
+      "name": "OrderItem_inventoryId_fkey",
+      "nameExplicit": true,
+      "columns": [
+        "inventoryId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Inventory",
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "CASCADE",
       "onDelete": "SET NULL",
       "entityType": "fks"
@@ -4099,10 +5186,14 @@
       "table": "Order",
       "name": "Order_userId_fkey",
       "nameExplicit": true,
-      "columns": ["userId"],
+      "columns": [
+        "userId"
+      ],
       "schemaTo": "public",
       "tableTo": "user",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "CASCADE",
       "onDelete": "RESTRICT",
       "entityType": "fks"
@@ -4112,10 +5203,14 @@
       "table": "Product",
       "name": "Product_categoryId_fkey",
       "nameExplicit": true,
-      "columns": ["categoryId"],
+      "columns": [
+        "categoryId"
+      ],
       "schemaTo": "public",
       "tableTo": "Category",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "CASCADE",
       "onDelete": "RESTRICT",
       "entityType": "fks"
@@ -4125,12 +5220,35 @@
       "table": "ProductVariant",
       "name": "ProductVariant_productId_fkey",
       "nameExplicit": true,
-      "columns": ["productId"],
+      "columns": [
+        "productId"
+      ],
       "schemaTo": "public",
       "tableTo": "Product",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
+      "entityType": "fks"
+    },
+    {
+      "schema": "public",
+      "table": "ProductVariant",
+      "name": "ProductVariant_inventoryId_fkey",
+      "nameExplicit": true,
+      "columns": [
+        "inventoryId",
+        "productId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Inventory",
+      "columnsTo": [
+        "id",
+        "productId"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "NO ACTION",
       "entityType": "fks"
     },
     {
@@ -4138,10 +5256,14 @@
       "table": "session",
       "name": "session_userId_fkey",
       "nameExplicit": true,
-      "columns": ["userId"],
+      "columns": [
+        "userId"
+      ],
       "schemaTo": "public",
       "tableTo": "user",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
       "entityType": "fks"
@@ -4150,7 +5272,10 @@
       "schema": "public",
       "table": "_AttributeValueToProductVariant",
       "name": "_AttributeValueToProductVariant_AB_pkey",
-      "columns": ["A", "B"],
+      "columns": [
+        "A",
+        "B"
+      ],
       "nameExplicit": true,
       "entityType": "pks"
     },
@@ -4158,7 +5283,10 @@
       "schema": "public",
       "table": "CollectionProduct",
       "name": "CollectionProduct_pkey",
-      "columns": ["collectionId", "productId"],
+      "columns": [
+        "collectionId",
+        "productId"
+      ],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -4166,7 +5294,9 @@
       "schema": "public",
       "table": "account",
       "name": "account_pkey",
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -4174,7 +5304,9 @@
       "schema": "public",
       "table": "Attribute",
       "name": "Attribute_pkey",
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -4182,7 +5314,9 @@
       "schema": "public",
       "table": "AttributeValue",
       "name": "AttributeValue_pkey",
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -4190,7 +5324,9 @@
       "schema": "public",
       "table": "Category",
       "name": "Category_pkey",
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -4198,7 +5334,9 @@
       "schema": "public",
       "table": "Collection",
       "name": "Collection_pkey",
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -4206,7 +5344,9 @@
       "schema": "public",
       "table": "Comment",
       "name": "Comment_pkey",
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -4214,7 +5354,9 @@
       "schema": "public",
       "table": "ImageDeletion",
       "name": "ImageDeletion_pkey",
-      "columns": ["fileKey"],
+      "columns": [
+        "fileKey"
+      ],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -4222,7 +5364,19 @@
       "schema": "public",
       "table": "Image",
       "name": "Image_pkey",
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "Inventory",
+      "name": "Inventory_pkey",
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -4230,7 +5384,9 @@
       "schema": "public",
       "table": "OrderItem",
       "name": "OrderItem_pkey",
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -4238,15 +5394,9 @@
       "schema": "public",
       "table": "Order",
       "name": "Order_pkey",
-      "columns": ["id"],
-      "nameExplicit": false,
-      "entityType": "pks"
-    },
-    {
-      "schema": "public",
-      "table": "_prisma_migrations",
-      "name": "_prisma_migrations_pkey",
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -4254,7 +5404,9 @@
       "schema": "public",
       "table": "Product",
       "name": "Product_pkey",
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -4262,7 +5414,9 @@
       "schema": "public",
       "table": "ProductVariant",
       "name": "ProductVariant_pkey",
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -4270,7 +5424,9 @@
       "schema": "public",
       "table": "session",
       "name": "session_pkey",
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -4278,7 +5434,9 @@
       "schema": "public",
       "table": "user",
       "name": "user_pkey",
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -4286,9 +5444,39 @@
       "schema": "public",
       "table": "verification",
       "name": "verification_pkey",
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "Inventory",
+      "name": "Inventory_quantity_check",
+      "value": "\"quantity\" >= 0",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "Inventory",
+      "name": "Inventory_quantity_max_check",
+      "value": "\"quantity\" <= 1000000000000",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "Inventory",
+      "name": "Inventory_lowStockAt_check",
+      "value": "\"lowStockAt\" between 0 and 1000000000000",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "ProductVariant",
+      "name": "ProductVariant_stockUsage_check",
+      "value": "\"stockUsage\" between 1 and 1000000000000",
+      "entityType": "checks"
     }
   ]
 }

@@ -20,24 +20,26 @@ export const getQuery = t.Object(
 );
 export type getQuery = UnwrapSchema<typeof getQuery>;
 
+export const postAttribute = t.Object(
+  {
+    name: nameLowerPattern,
+    values: t.Array(nameLowerPatternWithNumber, {
+      minItems: 1,
+      maxItems: MAX_ATTRIBUTE_VALUES,
+      uniqueItems: true,
+    }),
+  },
+  { additionalProperties: false },
+);
+export const uniqueAttributeNames = (attributes: { name: string }[]) =>
+  new Set(attributes.map(({ name }) => name)).size === attributes.length;
+export const uniqueAttributeNamesMessage = () =>
+  "Attribute names to create must be unique within a category";
+
 export const postAttributes = t.Refine(
-  t.Array(
-    t.Object(
-      {
-        name: nameLowerPattern,
-        values: t.Array(nameLowerPatternWithNumber, {
-          minItems: 1,
-          maxItems: MAX_ATTRIBUTE_VALUES,
-          uniqueItems: true,
-        }),
-      },
-      { additionalProperties: false },
-    ),
-    { minItems: 1, maxItems: MAX_ATTRIBUTES },
-  ),
-  (attributes) =>
-    new Set(attributes.map(({ name }) => name)).size === attributes.length,
-  () => "Attribute names to create must be unique within a category",
+  t.Array(postAttribute, { minItems: 1, maxItems: MAX_ATTRIBUTES }),
+  uniqueAttributeNames,
+  uniqueAttributeNamesMessage,
 );
 export type postAttribute = UnwrapSchema<typeof postAttributes>;
 
@@ -189,6 +191,11 @@ export type categoryResult = UnwrapSchema<typeof categoryResult>;
 export const categoryNotFound = t.Object({
   code: t.Literal("CATEGORY_NOT_FOUND"),
   message: t.Literal("Category not found"),
+});
+
+export const categoryInUse = t.Object({
+  code: t.Literal("CATEGORY_IN_USE"),
+  message: t.Literal("Category is used by products"),
 });
 
 export const nameConflict = t.Object({

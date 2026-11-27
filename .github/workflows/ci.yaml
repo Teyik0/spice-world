@@ -135,8 +135,8 @@ jobs:
         app:
           - name: server
             path: apps/server
-          - name: web
-            path: apps/web
+          - name: dashboard
+            path: apps/dashboard
           - name: storefront
             path: apps/storefront
 

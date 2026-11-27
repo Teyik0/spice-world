@@ -1,4 +1,4 @@
-import { isNotNull, sql } from "drizzle-orm";
+import { eq, notExists, sql } from "drizzle-orm";
 import { reset, seed } from "drizzle-seed";
 
 import * as schema from "../drizzle/schema";
@@ -8,10 +8,12 @@ import {
   attributeValueToProductVariantTable,
   categoryTable,
   imageTable,
+  inventoryTable,
   productTable,
   productVariantTable,
 } from "../drizzle/schema";
 import { db } from "../src/lib/db";
+import { refreshListing } from "../src/modules/products/service";
 
 const NUM_PRODUCTS = 100_000; // variants (×5) and images (×2) are set via `with` in seedProductBatch
 const BATCH_SIZE = 5000; // products per seed() call, one log line each
@@ -52,7 +54,7 @@ async function seedCategories() {
     name,
     imageId: Bun.randomUUIDv7(),
     image: {
-      isThumbnail: true,
+      position: 0,
       keyThumb: `category-${i}-thumb`,
       keyMedium: `category-${i}-medium`,
       keyLarge: `category-${i}-large`,
@@ -116,7 +118,7 @@ function seedProductBatch(
 ) {
   return seed(
     db,
-    { productTable, productVariantTable, imageTable },
+    { productTable, inventoryTable, productVariantTable, imageTable },
     { seed: offset },
   ).refine((f) => ({
     productTable: {
@@ -138,23 +140,40 @@ function seedProductBatch(
         description: f.loremIpsum({ sentencesCount: 2 }),
         categoryId: f.valuesFromArray({ values: categoryIds }),
         version: false,
+        stockMode: false,
+        // derived: refreshListing in fixInvariants
+        stockState: false,
+        totalStock: false,
+        priceMin: false,
+        priceMax: false,
       },
-      with: { productVariantTable: 5, imageTable: 2 },
+      // one inventory per variant (VARIANT); fixInvariants merges them for SHARED products
+      with: { inventoryTable: 5, imageTable: 2 },
+    },
+    inventoryTable: {
+      columns: {
+        id: f.uuid(),
+        dimension: false,
+        quantity: f.int({ minValue: 0, maxValue: 500 }),
+        // thresholds are the admin's: none by default, low means a sold-out variant
+        lowStockAt: f.default({ defaultValue: 0 }),
+      },
+      with: { productVariantTable: 1 },
     },
     productVariantTable: {
       columns: {
         id: f.uuid(),
         sku: false,
         currency: false,
+        stockUsage: false,
         price: f.int({ minValue: 500, maxValue: 10_000 }),
-        stock: f.int({ minValue: 0, maxValue: 500 }),
       },
     },
     imageTable: {
       columns: {
         id: f.uuid(),
         altText: false,
-        isThumbnail: false,
+        position: f.default({ defaultValue: 0 }), // fixed by fixInvariants
         keyThumb: f.uuid(),
         keyMedium: f.uuid(),
         keyLarge: f.uuid(),
@@ -174,8 +193,9 @@ async function step(label: string, query: PromiseLike<unknown>) {
   );
 }
 
-// Invariants drizzle-seed can't express: derived slug, one thumbnail per product,
-// one distinct attribute value combination per variant within a product.
+// Invariants drizzle-seed can't express: derived slug, image positions 0..n-1 per product,
+// variants on the product of their inventory, one distinct attribute value combination per
+// variant within a product, and a SHARED MASS stock for the products sold by weight.
 function fixInvariants(
   combos: Awaited<ReturnType<typeof seedCategories>>["combos"],
 ) {
@@ -187,17 +207,22 @@ function fixInvariants(
       }),
     );
     await step(
-      "thumbnails",
+      "image positions",
+      tx.execute(sql`
+        update ${imageTable} set position = ordered.position
+        from (
+          select id, row_number() over (partition by ${imageTable.productId} order by id) - 1 as position
+          from ${imageTable} where ${imageTable.productId} is not null
+        ) as ordered
+        where ${imageTable.id} = ordered.id`),
+    );
+    await step(
+      "variant products",
       tx
-        .update(imageTable)
-        .set({ isThumbnail: true })
-        .where(
-          sql`${imageTable.id} in ${tx
-            .selectDistinctOn([imageTable.productId], { id: imageTable.id })
-            .from(imageTable)
-            .where(isNotNull(imageTable.productId))
-            .orderBy(imageTable.productId, imageTable.id)}`,
-        ),
+        .update(productVariantTable)
+        .set({ productId: inventoryTable.productId })
+        .from(inventoryTable)
+        .where(eq(inventoryTable.id, productVariantTable.inventoryId)),
     );
     await step(
       "variant attribute values",
@@ -224,6 +249,46 @@ function fixInvariants(
         join c on c.category_id = v.category_id and c.idx = v.idx
       `),
     );
+    await step(
+      "shared stocks",
+      // Variants with a weight value draw from one MASS inventory: "250g" takes 250000 mg.
+      tx.execute(sql`
+        with weighed as (
+          select ${productVariantTable.id} as id, ${productVariantTable.productId} as product_id,
+            case when ${attributeValueTable.value} like '%kg'
+              then left(${attributeValueTable.value}, -2)::bigint * 1000000
+              else left(${attributeValueTable.value}, -1)::bigint * 1000 end as usage,
+            min(${productVariantTable.inventoryId}) over (partition by ${productVariantTable.productId}) as shared
+          from ${productVariantTable}
+          join ${attributeValueToProductVariantTable} on ${attributeValueToProductVariantTable.b} = ${productVariantTable.id}
+          join ${attributeValueTable} on ${attributeValueTable.id} = ${attributeValueToProductVariantTable.a}
+          join ${attributeTable} on ${attributeTable.id} = ${attributeValueTable.attributeId}
+          where ${attributeTable.name} = 'weight'
+        ), products as (
+          update ${productTable} set "stockMode" = 'SHARED'
+          where ${productTable.id} in (select product_id from weighed)
+        ), stocks as (
+          update ${inventoryTable} set dimension = 'MASS', quantity = quantity * 10000, "lowStockAt" = 500000
+          where ${inventoryTable.id} in (select shared from weighed)
+        )
+        update ${productVariantTable} set "inventoryId" = weighed.shared, "stockUsage" = weighed.usage
+        from weighed where ${productVariantTable.id} = weighed.id
+      `),
+    );
+    await step(
+      "unused inventories",
+      tx
+        .delete(inventoryTable)
+        .where(
+          notExists(
+            tx
+              .select({ id: productVariantTable.id })
+              .from(productVariantTable)
+              .where(eq(productVariantTable.inventoryId, inventoryTable.id)),
+          ),
+        ),
+    );
+    await step("listing columns", refreshListing(tx));
   });
 }
 

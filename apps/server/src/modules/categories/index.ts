@@ -62,7 +62,14 @@ export const categoryRouter = new Elysia({
   )
   .delete(
     "/:id",
-    { access: "admin", imageCleanup: true },
+    {
+      access: "admin",
+      response: {
+        400: CategoryModel.categoryInUse,
+        404: CategoryModel.categoryNotFound,
+      },
+      imageCleanup: true,
+    },
     async ({ params }) => {
       const result = await categoryService.delete(params);
       return "status" in result ? result : status(200);

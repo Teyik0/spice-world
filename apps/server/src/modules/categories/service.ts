@@ -102,7 +102,7 @@ export const categoryService = {
             keyLarge: images[0]?.large.key as string,
             urlLarge: images[0]?.large.ufsUrl as string,
             altText: name,
-            isThumbnail: true,
+            position: 0,
           })
           .returning(),
       );

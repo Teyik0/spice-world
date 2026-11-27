@@ -13,8 +13,9 @@ Generates fake e-commerce data using Faker.js.
 - 100,000 products with unique names and slugs
 - 10 categories with 2-3 attributes each
 - 5 variants per product with random attribute values
-- 2 images per product (thumbnail + regular)
-- Random stock levels and prices
+- 2 images per product (positions 0 = cover, 1)
+- Random stock levels and prices: one COUNT inventory per variant, except products whose
+  variants carry a `weight` value, which share one MASS inventory (SHARED, `stockUsage` from the weight)
 
 **Performance:**
 

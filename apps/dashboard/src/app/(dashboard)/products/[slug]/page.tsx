@@ -1,3 +1,4 @@
+import { adminView } from "@spice-world/server/modules/products/model";
 import { defineRoute, notFound } from "@teyik0/furin";
 import { t } from "elysia";
 
@@ -21,7 +22,7 @@ export const route = defineRoute("/(dashboard)/products/$slug/")
     if (categories.error) {
       throw categories.error;
     }
-    return { categories: categories.data, product: product.data };
+    return { categories: categories.data, product: adminView(product.data) };
   })
   .head(({ product }) => ({
     meta: [{ title: `${product.name} — Spice World` }],
@@ -32,7 +33,7 @@ export const route = defineRoute("/(dashboard)/products/$slug/")
       title={product.name}
     >
       <ProductEditor
-        categories={categories}
+        initialCategories={categories}
         key={product.id}
         product={product}
       />

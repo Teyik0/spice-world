@@ -15,8 +15,11 @@ const app = new Elysia()
   })
   .use(await furin({ style: "nextjs" }));
 
+// Read by the compiled Bun entry when PORT is unset.
+export const port = Number(Bun.env.PORT ?? 5174);
+
 if (import.meta.main) {
-  app.listen(Number(process.env.PORT ?? 5174), ({ port }) => {
+  app.listen(port, () => {
     console.info(`Spice World dashboard : http://localhost:${port}`);
   });
 }

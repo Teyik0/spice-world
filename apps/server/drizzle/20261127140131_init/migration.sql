@@ -1,6 +1,9 @@
 CREATE TYPE "OrderStatus" AS ENUM('PENDING', 'PAID', 'FULFILLED', 'CANCELLED', 'REFUNDED');--> statement-breakpoint
 CREATE TYPE "ProductStatus" AS ENUM('DRAFT', 'PUBLISHED', 'ARCHIVED');--> statement-breakpoint
 CREATE TYPE "ShippingStatus" AS ENUM('PENDING', 'SHIPPED', 'DELIVERED');--> statement-breakpoint
+CREATE TYPE "StockDimension" AS ENUM('COUNT', 'MASS', 'VOLUME', 'LENGTH', 'AREA');--> statement-breakpoint
+CREATE TYPE "StockMode" AS ENUM('VARIANT', 'SHARED');--> statement-breakpoint
+CREATE TYPE "StockState" AS ENUM('out', 'low', 'in');--> statement-breakpoint
 CREATE TABLE "account" (
 	"id" text PRIMARY KEY,
 	"userId" text NOT NULL,
@@ -8,25 +11,29 @@ CREATE TABLE "account" (
 	"providerId" text NOT NULL,
 	"accessToken" text,
 	"refreshToken" text,
-	"accessTokenExpiresAt" timestamp(3),
-	"refreshTokenExpiresAt" timestamp(3),
+	"accessTokenExpiresAt" timestamp(3) with time zone,
+	"refreshTokenExpiresAt" timestamp(3) with time zone,
 	"scope" text,
 	"idToken" text,
 	"password" text,
-	"createdAt" timestamp(3) NOT NULL,
-	"updatedAt" timestamp(3) NOT NULL
+	"createdAt" timestamp(3) with time zone NOT NULL,
+	"updatedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "Attribute" (
 	"id" text PRIMARY KEY,
 	"name" text NOT NULL,
-	"categoryId" text NOT NULL
+	"categoryId" text NOT NULL,
+	"createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"updatedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "AttributeValue" (
 	"id" text PRIMARY KEY,
 	"value" text NOT NULL,
-	"attributeId" text NOT NULL
+	"attributeId" text NOT NULL,
+	"createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"updatedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "_AttributeValueToProductVariant" (
@@ -38,20 +45,27 @@ CREATE TABLE "_AttributeValueToProductVariant" (
 CREATE TABLE "Category" (
 	"id" text PRIMARY KEY,
 	"name" text NOT NULL,
-	"imageId" text NOT NULL
+	"imageId" text NOT NULL,
+	"createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"updatedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "CollectionProduct" (
 	"collectionId" text,
 	"productId" text,
 	"position" integer NOT NULL,
+	"createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"updatedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	CONSTRAINT "CollectionProduct_pkey" PRIMARY KEY("collectionId","productId")
 );
 --> statement-breakpoint
 CREATE TABLE "Collection" (
 	"id" text PRIMARY KEY,
 	"handle" text NOT NULL,
-	"name" text NOT NULL
+	"name" text NOT NULL,
+	"version" integer DEFAULT 1 NOT NULL,
+	"createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"updatedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "Comment" (
@@ -59,8 +73,8 @@ CREATE TABLE "Comment" (
 	"text" text NOT NULL,
 	"productId" text NOT NULL,
 	"userId" text NOT NULL,
-	"createdAt" timestamp(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updatedAt" timestamp(3) NOT NULL
+	"createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"updatedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "ImageDeletion" (
@@ -72,14 +86,29 @@ CREATE TABLE "ImageDeletion" (
 CREATE TABLE "Image" (
 	"id" text PRIMARY KEY,
 	"altText" text,
-	"isThumbnail" boolean DEFAULT false NOT NULL,
+	"position" integer NOT NULL,
 	"productId" text,
 	"keyThumb" text NOT NULL,
 	"keyMedium" text NOT NULL,
 	"keyLarge" text NOT NULL,
 	"urlThumb" text NOT NULL,
 	"urlMedium" text NOT NULL,
-	"urlLarge" text NOT NULL
+	"urlLarge" text NOT NULL,
+	"createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"updatedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "Inventory" (
+	"id" text PRIMARY KEY,
+	"productId" text NOT NULL,
+	"dimension" "StockDimension" DEFAULT 'COUNT'::"StockDimension" NOT NULL,
+	"quantity" bigint DEFAULT 0 NOT NULL,
+	"lowStockAt" bigint DEFAULT 0 NOT NULL,
+	"createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"updatedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	CONSTRAINT "Inventory_quantity_check" CHECK ("quantity" >= 0),
+	CONSTRAINT "Inventory_quantity_max_check" CHECK ("quantity" <= 1000000000000),
+	CONSTRAINT "Inventory_lowStockAt_check" CHECK ("lowStockAt" between 0 and 1000000000000)
 );
 --> statement-breakpoint
 CREATE TABLE "OrderItem" (
@@ -91,17 +120,21 @@ CREATE TABLE "OrderItem" (
 	"variantId" text,
 	"variantName" text,
 	"variantSku" text,
+	"inventoryId" text,
+	"stockUsage" bigint NOT NULL,
 	"unitPrice" integer NOT NULL,
 	"quantity" integer NOT NULL,
-	"totalPrice" integer NOT NULL
+	"totalPrice" integer NOT NULL,
+	"createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"updatedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "Order" (
 	"id" text PRIMARY KEY,
 	"status" "OrderStatus" DEFAULT 'PENDING'::"OrderStatus" NOT NULL,
 	"userId" text NOT NULL,
-	"createdAt" timestamp(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updatedAt" timestamp(3) NOT NULL,
+	"createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"updatedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	"metadata" jsonb,
 	"stripeSessionId" text NOT NULL,
 	"stripePaymentIntentId" text,
@@ -114,49 +147,45 @@ CREATE TABLE "Order" (
 	"trackingNumber" text
 );
 --> statement-breakpoint
-CREATE TABLE "_prisma_migrations" (
-	"id" varchar(36) PRIMARY KEY,
-	"checksum" varchar(64) NOT NULL,
-	"finished_at" timestamp with time zone,
-	"migration_name" varchar(255) NOT NULL,
-	"logs" text,
-	"rolled_back_at" timestamp with time zone,
-	"started_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"applied_steps_count" integer DEFAULT 0 NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "Product" (
 	"id" text PRIMARY KEY,
 	"name" text NOT NULL,
 	"slug" text NOT NULL,
 	"description" text NOT NULL,
-	"version" integer DEFAULT 0 NOT NULL,
+	"version" integer DEFAULT 1 NOT NULL,
 	"status" "ProductStatus" DEFAULT 'DRAFT'::"ProductStatus" NOT NULL,
+	"stockMode" "StockMode" DEFAULT 'VARIANT'::"StockMode" NOT NULL,
+	"stockState" "StockState" DEFAULT 'out'::"StockState" NOT NULL,
+	"totalStock" bigint DEFAULT 0 NOT NULL,
+	"priceMin" integer,
+	"priceMax" integer,
 	"categoryId" text NOT NULL,
-	"createdAt" timestamp(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updatedAt" timestamp(3) NOT NULL
+	"createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"updatedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "ProductVariant" (
 	"id" text PRIMARY KEY,
 	"productId" text NOT NULL,
+	"inventoryId" text NOT NULL,
+	"stockUsage" bigint DEFAULT 1 NOT NULL,
 	"sku" text,
 	"price" integer NOT NULL,
 	"currency" text DEFAULT 'EUR' NOT NULL,
-	"stock" integer DEFAULT 0 NOT NULL,
-	"createdAt" timestamp(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updatedAt" timestamp(3) NOT NULL
+	"createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"updatedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	CONSTRAINT "ProductVariant_stockUsage_check" CHECK ("stockUsage" between 1 and 1000000000000)
 );
 --> statement-breakpoint
 CREATE TABLE "session" (
 	"id" text PRIMARY KEY,
 	"userId" text NOT NULL,
 	"token" text NOT NULL,
-	"expiresAt" timestamp(3) NOT NULL,
+	"expiresAt" timestamp(3) with time zone NOT NULL,
 	"ipAddress" text,
 	"userAgent" text,
-	"createdAt" timestamp(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updatedAt" timestamp(3) NOT NULL,
+	"createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"updatedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	"impersonatedBy" text
 );
 --> statement-breakpoint
@@ -167,11 +196,11 @@ CREATE TABLE "user" (
 	"emailVerified" boolean DEFAULT false NOT NULL,
 	"image" text,
 	"role" text DEFAULT 'user' NOT NULL,
-	"createdAt" timestamp(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updatedAt" timestamp(3) NOT NULL,
+	"createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"updatedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	"banned" boolean,
 	"banReason" text,
-	"banExpires" timestamp(3),
+	"banExpires" timestamp(3) with time zone,
 	"stripeCustomerId" text
 );
 --> statement-breakpoint
@@ -179,15 +208,15 @@ CREATE TABLE "verification" (
 	"id" text PRIMARY KEY,
 	"identifier" text NOT NULL,
 	"value" text NOT NULL,
-	"expiresAt" timestamp(3) NOT NULL,
-	"createdAt" timestamp(3),
-	"updatedAt" timestamp(3)
+	"expiresAt" timestamp(3) with time zone NOT NULL,
+	"createdAt" timestamp(3) with time zone,
+	"updatedAt" timestamp(3) with time zone
 );
 --> statement-breakpoint
 CREATE TABLE "VerificationToken" (
 	"identifier" text NOT NULL,
 	"token" text NOT NULL,
-	"expires" timestamp(3) NOT NULL
+	"expires" timestamp(3) with time zone NOT NULL
 );
 --> statement-breakpoint
 CREATE INDEX "account_userId_idx" ON "account" ("userId");--> statement-breakpoint
@@ -203,7 +232,10 @@ CREATE INDEX "ImageDeletion_notBefore_idx" ON "ImageDeletion" ("notBefore");--> 
 CREATE UNIQUE INDEX "Image_keyLarge_key" ON "Image" ("keyLarge");--> statement-breakpoint
 CREATE UNIQUE INDEX "Image_keyMedium_key" ON "Image" ("keyMedium");--> statement-breakpoint
 CREATE UNIQUE INDEX "Image_keyThumb_key" ON "Image" ("keyThumb");--> statement-breakpoint
-CREATE INDEX "Image_productId_isThumbnail_idx" ON "Image" ("productId","isThumbnail");--> statement-breakpoint
+CREATE INDEX "Image_productId_position_idx" ON "Image" ("productId","position");--> statement-breakpoint
+CREATE INDEX "Inventory_productId_idx" ON "Inventory" ("productId");--> statement-breakpoint
+CREATE UNIQUE INDEX "Inventory_id_productId_key" ON "Inventory" ("id","productId");--> statement-breakpoint
+CREATE INDEX "OrderItem_inventoryId_idx" ON "OrderItem" ("inventoryId");--> statement-breakpoint
 CREATE INDEX "OrderItem_orderId_idx" ON "OrderItem" ("orderId");--> statement-breakpoint
 CREATE INDEX "OrderItem_productId_idx" ON "OrderItem" ("productId");--> statement-breakpoint
 CREATE INDEX "OrderItem_variantId_idx" ON "OrderItem" ("variantId");--> statement-breakpoint
@@ -217,8 +249,11 @@ CREATE INDEX "Product_name_fts_idx" ON "Product" USING gin (to_tsvector('french'
 CREATE UNIQUE INDEX "Product_name_key" ON "Product" ("name");--> statement-breakpoint
 CREATE UNIQUE INDEX "Product_slug_key" ON "Product" ("slug");--> statement-breakpoint
 CREATE INDEX "Product_status_idx" ON "Product" ("status");--> statement-breakpoint
+CREATE INDEX "Product_priceMin_id_idx" ON "Product" ("priceMin","id");--> statement-breakpoint
+CREATE INDEX "Product_priceMax_id_idx" ON "Product" ("priceMax" DESC NULLS LAST,"id");--> statement-breakpoint
+CREATE INDEX "Product_stockState_totalStock_idx" ON "Product" ("stockState","totalStock");--> statement-breakpoint
 CREATE INDEX "ProductVariant_productId_idx" ON "ProductVariant" ("productId");--> statement-breakpoint
-CREATE INDEX "ProductVariant_productId_stock_price_idx" ON "ProductVariant" ("productId","stock","price");--> statement-breakpoint
+CREATE INDEX "ProductVariant_inventoryId_idx" ON "ProductVariant" ("inventoryId");--> statement-breakpoint
 CREATE UNIQUE INDEX "ProductVariant_sku_key" ON "ProductVariant" ("sku");--> statement-breakpoint
 CREATE UNIQUE INDEX "session_token_key" ON "session" ("token");--> statement-breakpoint
 CREATE INDEX "session_userId_idx" ON "session" ("userId");--> statement-breakpoint
@@ -230,7 +265,7 @@ CREATE UNIQUE INDEX "VerificationToken_token_key" ON "VerificationToken" ("token
 ALTER TABLE "account" ADD CONSTRAINT "account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "Attribute" ADD CONSTRAINT "Attribute_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "AttributeValue" ADD CONSTRAINT "AttributeValue_attributeId_fkey" FOREIGN KEY ("attributeId") REFERENCES "Attribute"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
-ALTER TABLE "_AttributeValueToProductVariant" ADD CONSTRAINT "_AttributeValueToProductVariant_A_fkey" FOREIGN KEY ("A") REFERENCES "AttributeValue"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
+ALTER TABLE "_AttributeValueToProductVariant" ADD CONSTRAINT "_AttributeValueToProductVariant_A_fkey" FOREIGN KEY ("A") REFERENCES "AttributeValue"("id") ON DELETE RESTRICT ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "_AttributeValueToProductVariant" ADD CONSTRAINT "_AttributeValueToProductVariant_B_fkey" FOREIGN KEY ("B") REFERENCES "ProductVariant"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "Category" ADD CONSTRAINT "Category_imageId_fkey" FOREIGN KEY ("imageId") REFERENCES "Image"("id") ON DELETE RESTRICT ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "CollectionProduct" ADD CONSTRAINT "CollectionProduct_collectionId_Collection_id_fkey" FOREIGN KEY ("collectionId") REFERENCES "Collection"("id") ON DELETE CASCADE;--> statement-breakpoint
@@ -238,9 +273,12 @@ ALTER TABLE "CollectionProduct" ADD CONSTRAINT "CollectionProduct_productId_Prod
 ALTER TABLE "Comment" ADD CONSTRAINT "Comment_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "Comment" ADD CONSTRAINT "Comment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE RESTRICT ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "Image" ADD CONSTRAINT "Image_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
+ALTER TABLE "Inventory" ADD CONSTRAINT "Inventory_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "ProductVariant"("id") ON DELETE SET NULL ON UPDATE CASCADE;--> statement-breakpoint
+ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_inventoryId_fkey" FOREIGN KEY ("inventoryId") REFERENCES "Inventory"("id") ON DELETE SET NULL ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "Order" ADD CONSTRAINT "Order_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE RESTRICT ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "Product" ADD CONSTRAINT "Product_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "ProductVariant" ADD CONSTRAINT "ProductVariant_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;--> statement-breakpoint
+ALTER TABLE "ProductVariant" ADD CONSTRAINT "ProductVariant_inventoryId_fkey" FOREIGN KEY ("inventoryId","productId") REFERENCES "Inventory"("id","productId") ON UPDATE CASCADE;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;

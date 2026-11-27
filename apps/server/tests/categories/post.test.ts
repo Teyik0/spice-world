@@ -117,7 +117,7 @@ describe.concurrent("category POST", () => {
       urlMedium: expect.any(String),
       urlLarge: expect.any(String),
       altText: expect.any(String),
-      isThumbnail: true,
+      position: 0,
     });
     expect(data.attributes).toEqual([]);
   });
@@ -142,7 +142,7 @@ describe.concurrent("category POST", () => {
       urlMedium: expect.any(String),
       urlLarge: expect.any(String),
       altText: expect.any(String),
-      isThumbnail: true,
+      position: 0,
     });
   });
 
