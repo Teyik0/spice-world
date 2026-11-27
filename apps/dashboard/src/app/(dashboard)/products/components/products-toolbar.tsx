@@ -24,13 +24,7 @@ import {
   XIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import {
-  useEffect,
-  useOptimistic,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { formatCount } from "../../../../lib/format";
 import type { ProductsQuery } from "./products-query";
@@ -38,7 +32,7 @@ import {
   label,
   STATUSES,
   usePrefetchQuery,
-  useUpdateQuery,
+  useProductsQuery,
 } from "./products-query";
 
 const SORTS = {
@@ -52,11 +46,9 @@ const SORTS = {
 
 const STOCK_LABELS = { low: "Low", out: "Out of Stock" } as const;
 
-/** Check on the left, count on the right: shared by every sort and filter menu. */
 export const MENU_ITEM =
   "gap-2 py-1.5 pr-2 pl-8 *:data-[slot$=indicator]:right-auto *:data-[slot$=indicator]:left-2 *:data-[slot$=indicator]:text-primary";
 
-/** Count shown at the end of a menu item. */
 export function MenuCount({ value }: { value: number }) {
   return (
     <span className="text-muted-foreground ml-auto text-xs tabular-nums">
@@ -65,7 +57,6 @@ export function MenuCount({ value }: { value: number }) {
   );
 }
 
-/** Width shared by every products menu, wide enough for long category names. */
 export const MENU_CONTENT = "max-h-80 w-64";
 export const MENU_LABEL = "px-2 pt-1.5 text-[11px] tracking-wider uppercase";
 
@@ -78,17 +69,14 @@ export function FilterGroup({ children }: { children: ReactNode }) {
   );
 }
 
-/** Shared by the toolbar menu and the Category column header. */
 export function CategoryFilter({
   categories,
   counts,
-  query,
 }: {
   categories: { id: string; name: string }[];
   counts: ProductModel.facets["category"];
-  query: ProductsQuery;
 }) {
-  const update = useUpdateQuery(query);
+  const [query, update] = useProductsQuery();
   const picked = new Set(query.categories);
   return (
     <FilterGroup>
@@ -126,15 +114,8 @@ export function CategoryFilter({
   );
 }
 
-/** "1 248 products · 31 low on stock · 4 out of stock", each alert a filter. */
-function ProductsSummary({
-  facets,
-  query,
-}: {
-  facets: ProductModel.facets;
-  query: ProductsQuery;
-}) {
-  const update = useUpdateQuery(query);
+function ProductsSummary({ facets }: { facets: ProductModel.facets }) {
+  const [query, update] = useProductsQuery();
   const alerts = [
     ["low", `${formatCount(facets.stock.low)} low on stock`, "text-warning"],
     [
@@ -188,19 +169,15 @@ function Chip({ text, onRemove }: { text: string; onRemove: () => void }) {
 export function ProductsToolbar({
   categories,
   facets,
-  query,
 }: {
   categories: { id: string; name: string }[];
   facets: ProductModel.facets;
-  query: ProductsQuery;
 }) {
-  const update = useUpdateQuery(query);
+  const [query, update] = useProductsQuery();
   const prefetch = usePrefetchQuery(query);
   const prefetchStatus = (status: string) =>
     prefetch({ status: STATUSES.find((s) => s === status) });
 
-  const [, startTransition] = useTransition();
-  const [tab, setTab] = useOptimistic(query.status ?? "ALL");
   const [name, setName] = useState(query.name ?? "");
   const debounce = useRef<ReturnType<typeof setTimeout>>(undefined);
   const search = useRef<HTMLInputElement>(null);
@@ -214,7 +191,10 @@ export function ProductsToolbar({
       }
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      clearTimeout(debounce.current);
+    };
   }, []);
 
   const chips = [
@@ -279,14 +259,10 @@ export function ProductsToolbar({
             if (!value) {
               return;
             }
-            const next = STATUSES.find((s) => s === value);
-            startTransition(async () => {
-              setTab(next ?? "ALL");
-              await update({ status: next });
-            });
+            update({ status: STATUSES.find((s) => s === value) });
           }}
           spacing={0.5}
-          value={[tab]}
+          value={[query.status ?? "ALL"]}
         >
           {(["ALL", ...STATUSES] as const).map((status) => (
             <ToggleGroupItem
@@ -312,11 +288,7 @@ export function ProductsToolbar({
             ) : null}
           </DropdownMenuTrigger>
           <DropdownMenuContent className={MENU_CONTENT}>
-            <CategoryFilter
-              categories={categories}
-              counts={facets.category}
-              query={query}
-            />
+            <CategoryFilter categories={categories} counts={facets.category} />
           </DropdownMenuContent>
         </DropdownMenu>
         <DropdownMenu>
@@ -368,7 +340,7 @@ export function ProductsToolbar({
       </div>
 
       <div className="flex min-h-7 flex-wrap items-center gap-1.5">
-        <ProductsSummary facets={facets} query={query} />
+        <ProductsSummary facets={facets} />
         {chips.length ? (
           <>
             <span aria-hidden className="text-muted-foreground">

@@ -5,7 +5,12 @@ import { Suspense } from "react";
 
 import { Page } from "../../../components/page";
 import { api } from "../../../lib/api";
-import { productsQuery } from "./components/products-query";
+import { QuickEditProvider } from "./components/product-quick-edit";
+import {
+  listQuery,
+  productsQuery,
+  ProductsQueryProvider,
+} from "./components/products-query";
 import {
   PAGE_SIZE,
   ProductsTable,
@@ -14,11 +19,11 @@ import {
 import { ProductsToolbar } from "./components/products-toolbar";
 
 export const route = defineRoute("/(dashboard)/products/")
-  .config({ mode: "ssr", query: productsQuery })
+  .config({ mode: "ssr", query: productsQuery, loaderDeps: listQuery })
   .loader(async ({ headers: { cookie }, query }) => {
     const products = (async () => {
       const { data, error } = await api.products.get.live({
-        query: { ...query, skip: 0, take: PAGE_SIZE },
+        query: { ...listQuery(query), skip: 0, take: PAGE_SIZE },
         headers: { cookie },
       });
       if (error) {
@@ -49,29 +54,40 @@ export const route = defineRoute("/(dashboard)/products/")
   })
   .head(() => ({ meta: [{ title: "Products — Spice World" }] }))
   .page(({ categories, facets, products, query }) => (
-    <Page title="Products">
-      <ProductsToolbar categories={categories} facets={facets} query={query} />
+    <ProductsQueryProvider query={query}>
+      <QuickEditProvider>
+        <Page title="Products">
+          <ProductsToolbar categories={categories} facets={facets} />
 
-      <Pending>
-        <Suspense
-          fallback={<ProductsTableSkeleton />}
-          key={JSON.stringify(query)}
-        >
-          <Await resolve={products}>
-            {() => (
-              <ProductsTable
-                categories={categories}
-                facets={facets}
-                query={query}
-              />
-            )}
-          </Await>
-        </Suspense>
-      </Pending>
-    </Page>
+          <Pending>
+            <Suspense
+              fallback={<ProductsTableSkeleton />}
+              key={JSON.stringify(listQuery(query))}
+            >
+              <Await resolve={products}>
+                {() => (
+                  <ProductsTable
+                    categories={categories}
+                    facets={facets}
+                    query={query}
+                  />
+                )}
+              </Await>
+            </Suspense>
+          </Pending>
+        </Page>
+      </QuickEditProvider>
+    </ProductsQueryProvider>
   ));
 
-/** The current page stays until the next one has loaded: show the skeleton meanwhile. */
 function Pending({ children }: { children: ReactNode }) {
-  return useRouter().isNavigating ? <ProductsTableSkeleton /> : children;
+  const { isNavigating } = useRouter();
+  return (
+    <div
+      aria-busy={isNavigating}
+      className="transition-opacity aria-busy:opacity-60"
+    >
+      {children}
+    </div>
+  );
 }

@@ -1,4 +1,4 @@
-import { eq, isNotNull, sql } from "drizzle-orm";
+import { isNotNull, sql } from "drizzle-orm";
 import { reset, seed } from "drizzle-seed";
 
 import * as schema from "../drizzle/schema";
@@ -87,7 +87,25 @@ async function seedCategories() {
     await tx.insert(attributeTable).values(attributes);
     await tx.insert(attributeValueTable).values(values);
   });
-  return categories.map(({ id }) => id);
+  // Every attribute value combination of each category, one row per value: variants pick combos by index
+  const combos = categories.flatMap(({ id: categoryId }) => {
+    const all = attributes
+      .filter((a) => a.categoryId === categoryId)
+      .map((a) => values.filter((v) => v.attributeId === a.id).map((v) => v.id))
+      .reduce<string[][]>(
+        (acc, ids) => acc.flatMap((c) => ids.map((id) => [...c, id])),
+        [[]],
+      );
+    return all.flatMap((valueIds, idx) =>
+      valueIds.map((valueId) => ({
+        categoryId,
+        idx,
+        total: all.length,
+        valueId,
+      })),
+    );
+  });
+  return { categoryIds: categories.map(({ id }) => id), combos };
 }
 
 // Uniqueness is only guaranteed within one seed() call: cross-batch unique columns use uuid().
@@ -157,8 +175,10 @@ async function step(label: string, query: PromiseLike<unknown>) {
 }
 
 // Invariants drizzle-seed can't express: derived slug, one thumbnail per product,
-// one value per category attribute for each variant.
-function fixInvariants() {
+// one distinct attribute value combination per variant within a product.
+function fixInvariants(
+  combos: Awaited<ReturnType<typeof seedCategories>>["combos"],
+) {
   return db.transaction(async (tx) => {
     await step(
       "slugs",
@@ -181,27 +201,28 @@ function fixInvariants() {
     );
     await step(
       "variant attribute values",
-      tx.insert(attributeValueToProductVariantTable).select(
-        tx
-          .selectDistinctOn([productVariantTable.id, attributeTable.id], {
-            a: attributeValueTable.id,
-            b: productVariantTable.id,
-          })
-          .from(productVariantTable)
-          .innerJoin(
-            productTable,
-            eq(productTable.id, productVariantTable.productId),
-          )
-          .innerJoin(
-            attributeTable,
-            eq(attributeTable.categoryId, productTable.categoryId),
-          )
-          .innerJoin(
-            attributeValueTable,
-            eq(attributeValueTable.attributeId, attributeTable.id),
-          )
-          .orderBy(productVariantTable.id, attributeTable.id, sql`random()`),
-      ),
+      // (variant rank + per-product offset) % category combo count (≥ 20 > 5 variants): no duplicates.
+      // idx is computed before joining so the join is an equi-join on (category_id, idx).
+      tx.execute(sql`
+        insert into ${attributeValueToProductVariantTable}
+        with c(category_id, idx, total, value_id) as (values ${sql.join(
+          combos.map(
+            (c) =>
+              sql`(${c.categoryId}, ${c.idx}::int, ${c.total}::int, ${c.valueId})`,
+          ),
+          sql`, `,
+        )})
+        select c.value_id, v.id
+        from (
+          select ${productVariantTable.id} as id, t.category_id,
+            (row_number() over (partition by ${productVariantTable.productId} order by ${productVariantTable.id}) - 1
+              + abs(hashtext(${productVariantTable.productId})::bigint)) % t.total as idx
+          from ${productVariantTable}
+          join ${productTable} on ${productTable.id} = ${productVariantTable.productId}
+          join (select distinct category_id, total from c) t on t.category_id = ${productTable.categoryId}
+        ) v
+        join c on c.category_id = v.category_id and c.idx = v.idx
+      `),
     );
   });
 }
@@ -209,7 +230,7 @@ function fixInvariants() {
 async function main() {
   const start = performance.now();
   await reset(db, schema);
-  const categoryIds = await seedCategories();
+  const { categoryIds, combos } = await seedCategories();
   console.log(`✓ Seeded ${CATEGORY_NAMES.length} categories with attributes`);
 
   for (let offset = 0; offset < NUM_PRODUCTS; offset += BATCH_SIZE) {
@@ -226,7 +247,7 @@ async function main() {
   }
 
   console.log("Linking variants to attribute values, thumbnails, slugs...");
-  await fixInvariants();
+  await fixInvariants(combos);
   console.log(
     `✓ Seeded ${NUM_PRODUCTS.toLocaleString()} products in ${((performance.now() - start) / 1000).toFixed(1)}s`,
   );

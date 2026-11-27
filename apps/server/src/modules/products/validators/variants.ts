@@ -148,20 +148,20 @@ function validateCount(
 function validateCombinations(
   variants: VariantState[],
 ): ProductModel.subError[] {
-  const combinations = new Map<string, string>();
-  for (const { id = "new variant", attributeValueIds } of variants) {
+  const combinations = new Map<string, number>();
+  for (const [index, { attributeValueIds }] of variants.entries()) {
     const key = attributeValueIds.toSorted().join("|");
     const duplicate = combinations.get(key);
     if (duplicate) {
       return [
         {
           code: "VVA4",
-          message: `Duplicate attribute combination found in variants ${duplicate} and ${id}`,
+          message: `Variants ${duplicate} and ${index + 1} have the same attribute values. Each variant needs a distinct combination.`,
           field: "variants.attributeValueIds",
         },
       ];
     }
-    combinations.set(key, id);
+    combinations.set(key, index + 1);
   }
   return [];
 }

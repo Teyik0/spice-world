@@ -31,15 +31,21 @@ import {
 } from "@spice-world/ui/components/table";
 import { useInfiniteQuery } from "@teyik0/furin/client";
 import { Link } from "@teyik0/furin/link";
-import { ArrowDownIcon, ArrowUpIcon, ChevronDownIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ChevronDownIcon,
+  PencilIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import { api } from "../../../../lib/api";
 import { formatAgo, formatCount, formatPrice } from "../../../../lib/format";
 import { BulkActions } from "./bulk-actions";
+import { useQuickEditContext } from "./product-quick-edit";
 import type { ProductsQuery } from "./products-query";
-import { label, STATUSES, useUpdateQuery } from "./products-query";
+import { label, listQuery, STATUSES, useProductsQuery } from "./products-query";
 import {
   CategoryFilter,
   FilterGroup,
@@ -120,23 +126,20 @@ const STOCK_SORTS: SortOption[] = [
   ["totalStock", "desc", "Highest First"],
 ];
 
-/** A column title that opens its sort and filter options. */
 function ColumnHeader({
   align = "start",
   children,
   filtered = false,
-  query,
   sorts = [],
   title,
 }: {
   align?: "start" | "end";
   children?: ReactNode;
   filtered?: boolean;
-  query: ProductsQuery;
   sorts?: SortOption[];
   title: string;
 }) {
-  const update = useUpdateQuery(query);
+  const [query, update] = useProductsQuery();
   const sortBy = query.sortBy ?? "name";
   const sortDir = query.sortDir ?? "asc";
   const sorted = sorts.some(([by]) => by === sortBy);
@@ -213,16 +216,22 @@ export function ProductsTable({
   query: ProductsQuery;
 }) {
   const total = facets.status[query.status ?? "ALL"];
-  const update = useUpdateQuery(query);
+  /** Headers show the query as just set; the rows stay on the loaded one. */
+  const [current, update] = useProductsQuery();
   const { pages, fetchNext, hasNext, isFetching, error } = useInfiniteQuery(
     (index) =>
       api.products.get.live({
-        query: { ...query, skip: index * PAGE_SIZE, take: PAGE_SIZE },
+        query: {
+          ...listQuery(query),
+          skip: index * PAGE_SIZE,
+          take: PAGE_SIZE,
+        },
       }),
     { next: (last) => last.length === PAGE_SIZE },
   );
   const products = pages.flat();
   const [selected, setSelected] = useState(new Set<string>());
+  const quickEdit = useQuickEditContext();
   const sentinel = useRef<HTMLDivElement>(null);
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
 
@@ -270,7 +279,7 @@ export function ProductsTable({
             <TableRow className="hover:bg-transparent">
               <TableHead className="w-10 pl-3">
                 <Checkbox
-                  aria-label="Select all products"
+                  aria-label={`Select ${products.length} loaded products`}
                   checked={allSelected}
                   indeterminate={selected.size > 0 && !allSelected}
                   onCheckedChange={(checked) =>
@@ -281,24 +290,16 @@ export function ProductsTable({
                 />
               </TableHead>
               <TableHead>
-                <ColumnHeader
-                  query={query}
-                  sorts={NAME_SORTS}
-                  title="Product"
-                />
+                <ColumnHeader sorts={NAME_SORTS} title="Product" />
               </TableHead>
               <TableHead>
-                <ColumnHeader
-                  filtered={Boolean(query.status)}
-                  query={query}
-                  title="Status"
-                >
+                <ColumnHeader filtered={Boolean(current.status)} title="Status">
                   <FilterGroup>
                     <DropdownMenuRadioGroup
                       onValueChange={(value) =>
                         update({ status: STATUSES.find((s) => s === value) })
                       }
-                      value={query.status ?? "ALL"}
+                      value={current.status ?? "ALL"}
                     >
                       {(["ALL", ...STATUSES] as const).map((status) => (
                         <DropdownMenuRadioItem
@@ -316,30 +317,22 @@ export function ProductsTable({
               </TableHead>
               <TableHead className="hidden md:table-cell">
                 <ColumnHeader
-                  filtered={Boolean(query.categories)}
-                  query={query}
+                  filtered={Boolean(current.categories)}
                   title="Category"
                 >
                   <CategoryFilter
                     categories={categories}
                     counts={facets.category}
-                    query={query}
                   />
                 </ColumnHeader>
               </TableHead>
               <TableHead className="text-right">
-                <ColumnHeader
-                  align="end"
-                  query={query}
-                  sorts={PRICE_SORTS}
-                  title="Price"
-                />
+                <ColumnHeader align="end" sorts={PRICE_SORTS} title="Price" />
               </TableHead>
               <TableHead className="text-right">
                 <ColumnHeader
                   align="end"
-                  filtered={Boolean(query.stock)}
-                  query={query}
+                  filtered={Boolean(current.stock)}
                   sorts={STOCK_SORTS}
                   title="Stock"
                 >
@@ -353,7 +346,7 @@ export function ProductsTable({
                               : undefined,
                         })
                       }
-                      value={query.stock ?? "any"}
+                      value={current.stock ?? "any"}
                     >
                       <DropdownMenuRadioItem className={MENU_ITEM} value="any">
                         Any Stock
@@ -370,19 +363,21 @@ export function ProductsTable({
                   </FilterGroup>
                 </ColumnHeader>
               </TableHead>
-              <TableHead className="hidden pr-4 lg:table-cell">
-                <ColumnHeader
-                  query={query}
-                  sorts={UPDATED_SORTS}
-                  title="Updated"
-                />
+              <TableHead className="hidden lg:table-cell">
+                <ColumnHeader sorts={UPDATED_SORTS} title="Updated" />
+              </TableHead>
+              <TableHead className="w-12 pr-3">
+                <span className="sr-only">Actions</span>
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {products.map((product) => (
               <TableRow
-                className="data-[state=selected]:bg-primary/10 relative"
+                className="group/row data-[state=selected]:bg-primary/10 relative data-peeked:shadow-[inset_2px_0_0_var(--primary)]"
+                data-peeked={
+                  quickEdit.open && quickEdit.id === product.id ? "" : undefined
+                }
                 data-state={selected.has(product.id) ? "selected" : undefined}
                 key={product.id}
               >
@@ -446,13 +441,24 @@ export function ProductsTable({
                 <TableCell className="text-right tabular-nums">
                   <Stock {...product} />
                 </TableCell>
-                <TableCell className="text-muted-foreground hidden pr-4 text-sm lg:table-cell">
+                <TableCell className="text-muted-foreground hidden text-sm lg:table-cell">
                   <time
                     dateTime={new Date(product.updatedAt).toISOString()}
                     suppressHydrationWarning
                   >
                     {formatAgo(product.updatedAt)}
                   </time>
+                </TableCell>
+                <TableCell className="pr-3">
+                  <Button
+                    aria-label={`Quick edit ${product.name}`}
+                    className="relative z-10 opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
+                    onClick={() => quickEdit.edit(product.id)}
+                    size="icon-sm"
+                    variant="ghost"
+                  >
+                    <PencilIcon />
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}

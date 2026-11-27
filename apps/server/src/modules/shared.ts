@@ -12,6 +12,7 @@ export const nameLowerPattern = t.String({
   pattern: "^[a-zà-öø-ÿœ]+(?: [a-zà-öø-ÿœ]+)*$",
   minLength: 3,
   maxLength: 100,
+  error: "Use 3 to 100 lowercase letters, with single spaces between words.",
 });
 
 /** Same as nameLowerPattern, digits allowed. */

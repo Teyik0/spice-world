@@ -24,8 +24,7 @@ import { api } from "../../../../lib/api";
 import type { ProductsQuery } from "./products-query";
 import { label, STATUSES } from "./products-query";
 
-// Ghost buttons on the inverted bar.
-const ON_DARK =
+export const ON_DARK =
   "text-background hover:bg-background/15 hover:text-background dark:hover:bg-background/15 aria-expanded:bg-background/15 aria-expanded:text-background";
 
 type Change =
@@ -74,6 +73,10 @@ export function BulkActions({
     >
       <span className="mr-2 text-sm font-medium whitespace-nowrap tabular-nums">
         {ids.length} selected
+        <span className="text-background/60 font-normal">
+          {" "}
+          · loaded rows only
+        </span>
       </span>
       <DropdownMenu>
         <DropdownMenuTrigger

@@ -615,59 +615,40 @@ describe.concurrent("products bulk", () => {
   });
 
   it("applies the patch rules to a category change", async () => {
-    const { product } = await setup(2);
-    const { data: published } = await api
-      .products({ id: product.id })
-      .patch(
-        { status: "PUBLISHED" },
-        { headers: { "x-version": product.version } },
-      );
-    expectDefined(published);
-    expect(published.status).toBe("PUBLISHED");
-    const [target, bare] = await Promise.all([
-      createTestCategory({ testDb, attributeCount: 2 }),
+    const [bare, { product: draft }, { product: several }] = await Promise.all([
       createTestCategory({ testDb }),
+      setup(),
+      setup(2),
     ]);
-    const { product: draft } = await setup();
+    const ids = [draft.id, several.id];
 
-    const ids = [draft.id, product.id];
-    const [unpublishable, tooMany] = await Promise.all([
-      api.products.bulk.patch({ ids, categoryId: target.id }),
-      api.products.bulk.patch({
-        ids,
-        categoryId: bare.id,
-        status: "DRAFT",
-      }),
-    ]);
-    const message = expect.stringContaining(product.name);
-    expect(unpublishable.error).toMatchObject({
-      status: 400,
-      value: { code: "PUB2", message },
+    // Cleared values would leave its two variants identical.
+    const { error } = await api.products.bulk.patch({
+      ids,
+      categoryId: bare.id,
     });
-    expect(tooMany.error).toMatchObject({
+    expect(error).toMatchObject({
       status: 400,
       value: {
         code: "VARIANTS_VALIDATION_FAILED",
-        message,
-        details: { subErrors: [{ code: "VVA3" }] },
+        message: expect.stringContaining(several.name),
+        details: { subErrors: [{ code: "VVA3" }, { code: "VVA4" }] },
       },
     });
     const unchanged = await Promise.all(
       ids.map((id) => api.products({ id }).get()),
     );
-    expect(unchanged.map((result) => result.data)).toEqual([draft, published]);
+    expect(unchanged.map((result) => result.data)).toEqual([draft, several]);
 
     const { data } = await api.products.bulk.patch({
-      ids,
-      categoryId: target.id,
-      status: "DRAFT",
+      ids: [draft.id],
+      categoryId: bare.id,
     });
-    expect(data).toEqual({ count: 2 });
-    const moved = await api.products({ id: product.id }).get();
+    expect(data).toEqual({ count: 1 });
+    const moved = await api.products({ id: draft.id }).get();
     expect(moved.data).toMatchObject({
-      status: "DRAFT",
-      categoryId: target.id,
-      variants: [{ attributeValues: [] }, { attributeValues: [] }],
+      categoryId: bare.id,
+      variants: [{ attributeValues: [] }],
     });
   });
 });

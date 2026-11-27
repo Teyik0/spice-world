@@ -1,44 +1,146 @@
 import type { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
 import type { AnyFormApi } from "@tanstack/react-form";
 import { createFormHook, createFormHookContexts } from "@tanstack/react-form";
+import { ChevronDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
-import { Field, FieldError, FieldLabel } from "./field";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "./dropdown-menu";
+import { Field, FieldDescription, FieldError, FieldLabel } from "./field";
 import { Input } from "./input";
 import { Spinner } from "./spinner";
+import { Textarea } from "./textarea";
 
 const { fieldContext, formContext, useFieldContext } = createFormHookContexts();
 
+const isInvalid = ({
+  meta,
+}: {
+  meta: { isTouched: boolean; isValid: boolean };
+}) => meta.isTouched && !meta.isValid;
+
 // shadcn's TanStack Form pattern (data-invalid on Field, aria-invalid on the
 // control, FieldError under it), written once instead of in every form.
+function LabeledField({
+  children,
+  description,
+  label,
+  labelEnd,
+}: {
+  children: ReactNode;
+  description?: ReactNode;
+  label: ReactNode;
+  labelEnd?: ReactNode;
+}) {
+  const { name, state } = useFieldContext<unknown>();
+  return (
+    <Field data-invalid={isInvalid(state)}>
+      <div className="flex items-center">
+        <FieldLabel htmlFor={name}>{label}</FieldLabel>
+        {labelEnd}
+      </div>
+      {children}
+      {description ? <FieldDescription>{description}</FieldDescription> : null}
+      {isInvalid(state) ? <FieldError errors={state.meta.errors} /> : null}
+    </Field>
+  );
+}
+
+type Labels = Omit<ComponentProps<typeof LabeledField>, "children">;
+
+/** The props every text control takes from its field. */
+function useTextControl() {
+  const field = useFieldContext<string>();
+  return {
+    "aria-invalid": isInvalid(field.state),
+    id: field.name,
+    name: field.name,
+    onBlur: field.handleBlur,
+    onChange: (e: { target: { value: string } }) =>
+      field.handleChange(e.target.value),
+    value: field.state.value,
+  };
+}
+
 function TextField({
+  description,
   label,
   labelEnd,
   ...props
-}: ComponentProps<typeof Input> & { label: ReactNode; labelEnd?: ReactNode }) {
-  const field = useFieldContext<string>();
-  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+}: ComponentProps<typeof Input> & Labels) {
   return (
-    <Field data-invalid={isInvalid}>
-      <div className="flex items-center">
-        <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
-        {labelEnd}
-      </div>
-      <Input
-        aria-invalid={isInvalid}
-        id={field.name}
-        name={field.name}
-        onBlur={field.handleBlur}
-        onChange={(e) => field.handleChange(e.target.value)}
-        value={field.state.value}
-        {...props}
-      />
-      {isInvalid ? <FieldError errors={field.state.meta.errors} /> : null}
-    </Field>
+    <LabeledField description={description} label={label} labelEnd={labelEnd}>
+      <Input {...useTextControl()} {...props} />
+    </LabeledField>
+  );
+}
+
+function TextareaField({
+  description,
+  label,
+  ...props
+}: ComponentProps<typeof Textarea> & Labels) {
+  return (
+    <LabeledField description={description} label={label}>
+      <Textarea {...useTextControl()} {...props} />
+    </LabeledField>
+  );
+}
+
+function SelectField({
+  description,
+  itemClassName,
+  items,
+  label,
+}: Labels & {
+  itemClassName?: string;
+  items: { label: string; value: string }[];
+}) {
+  const field = useFieldContext<string>();
+  return (
+    <LabeledField description={description} label={label}>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              aria-invalid={isInvalid(field.state)}
+              className="w-full justify-between font-normal"
+              id={field.name}
+              onBlur={field.handleBlur}
+              variant="outline"
+            />
+          }
+        >
+          {items.find(({ value }) => value === field.state.value)?.label}
+          <ChevronDownIcon className="text-muted-foreground" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuRadioGroup
+            onValueChange={(value: string) => field.handleChange(value)}
+            value={field.state.value}
+          >
+            {items.map(({ label: text, value }) => (
+              <DropdownMenuRadioItem
+                className={itemClassName}
+                key={value}
+                value={value}
+              >
+                {text}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </LabeledField>
   );
 }
 
@@ -105,6 +207,6 @@ export function focusFirstError({ formApi }: { formApi: AnyFormApi }) {
 export const { useAppForm } = createFormHook({
   fieldContext,
   formContext,
-  fieldComponents: { TextField, CheckboxField },
+  fieldComponents: { CheckboxField, SelectField, TextareaField, TextField },
   formComponents: {},
 });

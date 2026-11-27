@@ -23,7 +23,7 @@
       "dependencies": {
         "@elysia/eden": "catalog:",
         "@spice-world/ui": "workspace:*",
-        "@teyik0/furin": "0.9.0-alpha.4",
+        "@teyik0/furin": "0.9.0-alpha.5",
         "better-auth": "catalog:",
         "elysia": "catalog:",
         "evlog": "catalog:",
@@ -777,7 +777,7 @@
 
     "@tanstack/store": ["@tanstack/store@0.11.3", "", {}, "sha512-/Mt3h2Qe67HmRMc5SJ+8jM2Fp7O4fBbwOlS0ujUvx34KgAvkvdLSHrJatv0PJG5fbvlDsACTawMMY4ptCpVI8w=="],
 
-    "@teyik0/furin": ["@teyik0/furin@0.9.0-alpha.4", "", { "dependencies": { "@elysia/eden": "^2.0.0-rc.1", "@elysia/static": "^2.0.0-rc.0", "@jridgewell/trace-mapping": "^0.3.31", "@vercel/functions": "^3.10.1", "cjs-module-lexer": "^2.3.0", "magic-string": "^1.4.3", "react-server-dom-webpack": "~19.3.1", "seroval": "^1.6.11", "typescript": "^7.0.2", "yuku-ast": "0.13.0", "yuku-parser": "0.13.0" }, "peerDependencies": { "@types/bun": ">=1.4.0", "drizzle-orm": "^1.0.0-rc.4", "elysia": "^2.0.0-rc.1", "evlog": "^2.33.1", "exact-mirror": ">=1.2.6", "react": "^19.3.1", "react-dom": "^19.3.1", "typebox": "^1.3.34" }, "optionalPeers": ["drizzle-orm"], "bin": { "furin": "src/cli/index.ts", "furin-sync-postgres-migrate": "dist/server/sync/postgres/migrate.js" } }, "sha512-phnVY0ZGGOc1u95fBf9Bdl3vQz+5jM1VfunsFWIjKcE9RK7FJSPWwPzxqhEgJrQsIdP/33C8g/mEYkcC/RmX3Q=="],
+    "@teyik0/furin": ["@teyik0/furin@0.9.0-alpha.5", "", { "dependencies": { "@elysia/eden": "^2.0.0-rc.1", "@elysia/static": "^2.0.0-rc.0", "@jridgewell/trace-mapping": "^0.3.31", "@vercel/functions": "^3.10.1", "cjs-module-lexer": "^2.3.0", "magic-string": "^1.4.3", "react-server-dom-webpack": "~19.3.1", "seroval": "^1.6.11", "typescript": "^7.0.2", "yuku-ast": "0.13.0", "yuku-parser": "0.13.0" }, "peerDependencies": { "@types/bun": ">=1.4.0", "drizzle-orm": "^1.0.0-rc.4", "elysia": "^2.0.0-rc.1", "evlog": "^2.33.1", "exact-mirror": ">=1.2.6", "react": "^19.3.1", "react-dom": "^19.3.1", "typebox": "^1.3.34" }, "optionalPeers": ["drizzle-orm"], "bin": { "furin": "src/cli/index.ts", "furin-sync-postgres-migrate": "dist/server/sync/postgres/migrate.js" } }, "sha512-QPs4YQZw4X2eSlPrR7K11LGWKDGZqZj+ap2haXW15XnbG/kD1O0t4W6QCGk9D24dyezSOKgPUND8Yk7vgWBDDA=="],
 
     "@tokenizer/inflate": ["@tokenizer/inflate@0.6.0", "", { "dependencies": { "debug": "^4.4.3", "strtok3": "^10.6.2", "token-types": "^6.1.2" } }, "sha512-+0RDxhBkyT9xMnGdJAwmats9yxRLR8ypJrQgrnLqOu4Gv/aHlnxYgdGVy2QTwvBl6IF/w2Hr+ZNirH+iMUbVZA=="],
 
@@ -1948,6 +1948,10 @@
     "@shadcn/registry/cn": ["cn@0.2.6", "", { "bin": { "cn": "bin/cn.mjs" } }, "sha512-+i4L0zUGgRcEnhsxueVrP7iBGxBx5iD0WOTYg1MwFEu2ZyCmH5Ov2V1cul2Ht5UchRQQgftCf4be/RxspuW6QQ=="],
 
     "@shadcn/registry/execa": ["execa@9.6.1", "", { "dependencies": { "@sindresorhus/merge-streams": "^4.0.0", "cross-spawn": "^7.0.6", "figures": "^6.1.0", "get-stream": "^9.0.0", "human-signals": "^8.0.1", "is-plain-obj": "^4.1.0", "is-stream": "^4.0.1", "npm-run-path": "^6.0.0", "pretty-ms": "^9.2.0", "signal-exit": "^4.1.0", "strip-final-newline": "^4.0.0", "yoctocolors": "^2.1.1" } }, "sha512-9Be3ZoN4LmYR90tUoVu2te2BsbzHfhJyfEiAVfz7N5/zv+jduIfLrV2xdQXOHbaD6KgpGdO9PRPM1Y4Q9QkPkA=="],
+
+    "@spice-world/server/@teyik0/furin": ["@teyik0/furin@0.9.0-alpha.4", "", { "dependencies": { "@elysia/eden": "^2.0.0-rc.1", "@elysia/static": "^2.0.0-rc.0", "@jridgewell/trace-mapping": "^0.3.31", "@vercel/functions": "^3.10.1", "cjs-module-lexer": "^2.3.0", "magic-string": "^1.4.3", "react-server-dom-webpack": "~19.3.1", "seroval": "^1.6.11", "typescript": "^7.0.2", "yuku-ast": "0.13.0", "yuku-parser": "0.13.0" }, "peerDependencies": { "@types/bun": ">=1.4.0", "drizzle-orm": "^1.0.0-rc.4", "elysia": "^2.0.0-rc.1", "evlog": "^2.33.1", "exact-mirror": ">=1.2.6", "react": "^19.3.1", "react-dom": "^19.3.1", "typebox": "^1.3.34" }, "optionalPeers": ["drizzle-orm"], "bin": { "furin": "src/cli/index.ts", "furin-sync-postgres-migrate": "dist/server/sync/postgres/migrate.js" } }, "sha512-phnVY0ZGGOc1u95fBf9Bdl3vQz+5jM1VfunsFWIjKcE9RK7FJSPWwPzxqhEgJrQsIdP/33C8g/mEYkcC/RmX3Q=="],
+
+    "@spice-world/storefront/@teyik0/furin": ["@teyik0/furin@0.9.0-alpha.4", "", { "dependencies": { "@elysia/eden": "^2.0.0-rc.1", "@elysia/static": "^2.0.0-rc.0", "@jridgewell/trace-mapping": "^0.3.31", "@vercel/functions": "^3.10.1", "cjs-module-lexer": "^2.3.0", "magic-string": "^1.4.3", "react-server-dom-webpack": "~19.3.1", "seroval": "^1.6.11", "typescript": "^7.0.2", "yuku-ast": "0.13.0", "yuku-parser": "0.13.0" }, "peerDependencies": { "@types/bun": ">=1.4.0", "drizzle-orm": "^1.0.0-rc.4", "elysia": "^2.0.0-rc.1", "evlog": "^2.33.1", "exact-mirror": ">=1.2.6", "react": "^19.3.1", "react-dom": "^19.3.1", "typebox": "^1.3.34" }, "optionalPeers": ["drizzle-orm"], "bin": { "furin": "src/cli/index.ts", "furin-sync-postgres-migrate": "dist/server/sync/postgres/migrate.js" } }, "sha512-phnVY0ZGGOc1u95fBf9Bdl3vQz+5jM1VfunsFWIjKcE9RK7FJSPWwPzxqhEgJrQsIdP/33C8g/mEYkcC/RmX3Q=="],
 
     "@spice-world/web/lucide-react": ["lucide-react@1.80.0", "", { "peerDependencies": { "@types/react": "*", "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" }, "optionalPeers": ["@types/react"] }, "sha512-f9cQkUMFp2ZrOek9FucpRqQVI67gT09clXcHs3yCvdhJnsK4RW4og/rqoC0YAHd6FV/GPkeiIR3Rdxr2pPRwHA=="],
 

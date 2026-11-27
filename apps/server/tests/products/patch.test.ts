@@ -2,7 +2,6 @@ import { describe, expect, it } from "bun:test";
 
 import { treaty } from "@elysia/eden";
 import { productsRouter } from "@spice-world/server/modules/products";
-import type * as ProductModel from "@spice-world/server/modules/products/model";
 
 import { testDb } from "../setup";
 import {
@@ -356,73 +355,52 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       });
     });
 
-    it("should reject a category change that leaves a published product unpublishable, unless DRAFT is requested", async () => {
+    it("should reject a category change that leaves variants with the same attribute values", async () => {
       const spicesCategory = await createTestCategory({
         testDb,
-        attributeCount: 2,
+        attributeCount: 1,
+        attributeValueCount: 2,
       });
       const herbsCategory = await createTestCategory({
         testDb,
-        attributeCount: 2,
+        attributeCount: 1,
       });
       expectDefined(spicesCategory);
       expectDefined(herbsCategory);
+      const values = spicesCategory.attributes[0]?.values ?? [];
 
-      const spicesAttributes = spicesCategory.attributes;
-
-      const { data: createdProduct, status: createStatus } =
-        await api.products.post({
-          name: "product for category change test",
-          description: "Testing category change",
-          categoryId: spicesCategory.id,
-          status: "PUBLISHED",
-          variants: {
-            create: [
-              {
-                price: 1000,
-                sku: "CAT-CHG-TEST",
-                stock: 10,
-                attributeValueIds: [
-                  spicesAttributes[0]?.values[0]?.id as string,
-                ],
-              },
-              {
-                price: 12,
-                sku: "CAT-CGG-TEST",
-                stock: 14,
-                attributeValueIds: [
-                  spicesAttributes[1]?.values[0]?.id as string,
-                ],
-              },
-            ],
-          },
-          images: { create: [{ isThumbnail: true, file: file(filePath1) }] },
-        });
-
-      expect(createStatus).toBe(201);
+      const { data: createdProduct } = await api.products.post({
+        name: "product for duplicate category change test",
+        description: "Two variants that would both lose their values",
+        categoryId: spicesCategory.id,
+        status: "DRAFT",
+        variants: {
+          create: values.map(({ id }) => ({
+            price: 1000,
+            stock: 5,
+            attributeValueIds: [id],
+          })),
+        },
+        images: { create: [{ isThumbnail: true, file: file(filePath1) }] },
+      });
       expectDefined(createdProduct);
 
-      const patch = (body: ProductModel.patchBody) =>
-        api
-          .products({ id: createdProduct.id })
-          .patch(body, { headers: { "x-version": createdProduct.version } });
-
-      const { error } = await patch({ categoryId: herbsCategory.id });
-      expect(error).toMatchObject({ status: 400, value: { code: "PUB2" } });
+      const { error } = await api
+        .products({ id: createdProduct.id })
+        .patch(
+          { categoryId: herbsCategory.id },
+          { headers: { "x-version": createdProduct.version } },
+        );
+      expect(error).toMatchObject({
+        status: 400,
+        value: {
+          code: "VARIANTS_VALIDATION_FAILED",
+          details: { subErrors: [{ code: "VVA4" }] },
+        },
+      });
       expect(
         (await api.products({ id: createdProduct.id }).get()).data,
       ).toEqual(createdProduct);
-
-      const { data, status } = await patch({
-        categoryId: herbsCategory.id,
-        status: "DRAFT",
-      });
-      expect(status).toBe(200);
-      expect(data).toMatchObject({
-        status: "DRAFT",
-        categoryId: herbsCategory.id,
-        variants: [{ attributeValues: [] }, { attributeValues: [] }],
-      });
     });
 
     it("should change category successfully with atomic variant replacement", async () => {

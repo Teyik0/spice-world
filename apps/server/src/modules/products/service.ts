@@ -237,19 +237,19 @@ function validateChange({
   requestedStatus?: ProductModel.productStatus;
   vOps?: ProductModel.variantOperations;
 }) {
-  const states = product.variants.map(({ id, price, attributeValues }) => ({
-    id,
-    price,
-    attributeValueIds: attributeValues.map((value) => value.id),
-  }));
+  const variants = applyVariantOperations(
+    product.variants.map(({ id, price, attributeValues }) => ({
+      id,
+      price,
+      attributeValueIds: categoryChanged
+        ? []
+        : attributeValues.map((value) => value.id),
+    })),
+    vOps,
+  );
   const invalid =
     categoryChanged || vOps
-      ? validateVariants({
-          category,
-          variants: applyVariantOperations(states, vOps),
-          vOps,
-          label,
-        })
+      ? validateVariants({ category, variants, vOps, label })
       : undefined;
   if (
     invalid ||
@@ -259,13 +259,7 @@ function validateChange({
     return invalid;
   }
   return validatePublish({
-    // The values of the old category do not apply to the new one.
-    variants: applyVariantOperations(
-      categoryChanged
-        ? states.map((state) => ({ ...state, attributeValueIds: [] }))
-        : states,
-      vOps,
-    ),
+    variants,
     categoryHasAttributes: category.attributes.length > 0,
     label,
   });

@@ -75,7 +75,7 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarMenu>
+          <SidebarMenu className="gap-1">
             {NAV.map((item) => (
               <SidebarMenuItem key={item.to}>
                 <SidebarMenuButton
