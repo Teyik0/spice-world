@@ -1,0 +1,58 @@
+apps/server/src/modules/orders/model.ts
+  s_58bd8031a78a2c::t_16909bb16e691c 166-167
+  s_58bd8031a78a2c::t_0a93cd08e1f4aa 152
+apps/server/src/plugins/cdn.plugin.ts
+  s_58bd8031a78a2c::t_c8f1c2bc56e2cd 43-44
+apps/server/src/modules/orders/index.ts
+  s_d896da36b53ec3::t_f6f0b46e7c101a 1-5
+apps/server/src/plugins/auth.plugin.tsx
+  s_d896da36b53ec3::t_f6f0b46e7c101a 152-155
+  s_d896da36b53ec3::t_369cc1ca63b175 173,190
+  s_d896da36b53ec3::t_e4e443ff6169aa 81
+  s_d896da36b53ec3::t_e986052128d6d1 189
+  s_d896da36b53ec3::t_26e3d839c67f66 191-192
+apps/server/src/modules/orders/service.ts
+  s_58bd8031a78a2c::t_16909bb16e691c 236-245,247-248,251-258,262-267,397,406-423
+  s_b34c0a7459d173::t_a1b802b3366753 119-125
+  s_58bd8031a78a2c::t_a36030abb5cf39 62,81-83,85-86,88,90
+  s_58bd8031a78a2c::t_123130c78a1d77 446,448
+  s_58bd8031a78a2c::t_19b8cb9f39c793 10,50-53,178-179,182,184,428-432,439,441,444-445
+  s_b34c0a7459d173::t_b6483787aa03c2 100-104,259-261,353-356,375-382,390-394,398-405
+  s_58bd8031a78a2c::t_0a93cd08e1f4aa 5-6,63-78,91-94,97-99,105-107,114-116,132-134,291-318,320-352,358-363,368-370,372-374,383-389,395-396
+  s_58bd8031a78a2c::t_4d6f9dabb86483 289-290,319,364-367
+  s_58bd8031a78a2c::t_8ac60f9f09073d 16,447
+  s_d896da36b53ec3::t_89d99394ac3631 89,189,357,371,436
+  s_d896da36b53ec3::t_3aba3380137832 424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "423c0590d4506d4f0d2dc913fcdca352604607a9",
+  "prompts": {},
+  "sessions": {
+    "s_58bd8031a78a2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa3c6f78-dd09-4a8e-8b1b-ae6f0fe6e90b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_b34c0a7459d173": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87a16b1e-0056-42ea-afd9-5db85350bbca",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_d896da36b53ec3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8eadf476-a56b-4f22-b486-d535e1c9f56c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
