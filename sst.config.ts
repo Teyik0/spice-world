@@ -40,6 +40,7 @@ export default $config({
         projectId: process.env.VERCEL_WEB_PROJECT_ID as string,
         ref: process.env.PR_SHA as string,
         production: false,
+        projectSettings: { rootDirectory: "apps/dashboard" },
         environment: { API_URL: $interpolate`https://${server.url}` },
         deleteOnDestroy: true,
       });
