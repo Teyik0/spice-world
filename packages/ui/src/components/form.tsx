@@ -36,8 +36,6 @@ const isInvalid = ({
   meta: { isTouched: boolean; isValid: boolean };
 }) => meta.isTouched && !meta.isValid;
 
-// shadcn's TanStack Form pattern (data-invalid on Field, aria-invalid on the
-// control, FieldError under it), written once instead of in every form.
 function LabeledField({
   children,
   description,
@@ -67,10 +65,6 @@ function LabeledField({
 
 type Labels = Omit<ComponentProps<typeof LabeledField>, "children" | "htmlFor">;
 
-/**
- * The props every text control takes from its field. The id is generated: two
- * forms on a page (a dialog over an editor) may both have a `name` field.
- */
 function useTextControl() {
   const field = useFieldContext<string>();
   return {
@@ -116,8 +110,7 @@ function TextareaField({
   );
 }
 
-/** A single choice, in the dashboard menu look (trigger-wide, titled with the label). */
-function SelectField({
+export function SelectField({
   description,
   items,
   label,
@@ -188,7 +181,12 @@ function CheckboxField({
   );
 }
 
-/** Pending state of the React form action: `<form action={() => form.handleSubmit()}>`. */
+export const submitOnce = (form: AnyFormApi) => async () => {
+  if (!form.state.isSubmitting) {
+    await form.handleSubmit();
+  }
+};
+
 export function SubmitButton({
   children,
   ...props
@@ -202,10 +200,6 @@ export function SubmitButton({
   );
 }
 
-/**
- * Adapts an app action (resolves an error message, or nothing on success) to
- * TanStack's `onSubmit`, keeping its outcome for the form to render.
- */
 export function useActionResult<Values>(
   action: (values: Values) => Promise<string | undefined>,
 ) {
@@ -217,10 +211,6 @@ export function useActionResult<Values>(
   return [result, onSubmit] as const;
 }
 
-/**
- * `onSubmitInvalid` handler: moves focus to the first invalid field, by its
- * `name` (or `id`), in the form being submitted.
- */
 export function focusFirstError({ formApi }: { formApi: AnyFormApi }) {
   const invalid = Object.entries(formApi.state.fieldMeta).find(
     ([, meta]) => meta && !meta.isValid,

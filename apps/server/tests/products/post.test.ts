@@ -252,8 +252,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
       const category = await createTestCategory({ testDb, attributeCount: 3 });
       expectDefined(category.attributes[0]);
 
-      const [firstAttribute, secondAttribute, thirdAttribute] =
-        category.attributes;
+      const [firstAttribute, secondAttribute] = category.attributes;
       expect(category.attributes.length).toBeGreaterThanOrEqual(2);
 
       const { data, status } = await api.products.post({
@@ -267,19 +266,28 @@ describe.concurrent("POST /products - Integration Tests", () => {
             price: 599,
             sku: "MULTI-VAR-001",
             inventory: { quantity: 50 },
-            attributeValueIds: [firstAttribute?.values[0]?.id as string],
+            attributeValueIds: [
+              firstAttribute?.values[0]?.id as string,
+              secondAttribute?.values[0]?.id as string,
+            ],
           },
           {
             price: 999,
             sku: "MULTI-VAR-002",
             inventory: { quantity: 30 },
-            attributeValueIds: [secondAttribute?.values[0]?.id as string],
+            attributeValueIds: [
+              firstAttribute?.values[1]?.id as string,
+              secondAttribute?.values[0]?.id as string,
+            ],
           },
           {
             price: 1499,
             sku: "MULTI-VAR-003",
             inventory: { quantity: 20 },
-            attributeValueIds: [thirdAttribute?.values[0]?.id as string],
+            attributeValueIds: [
+              firstAttribute?.values[0]?.id as string,
+              secondAttribute?.values[1]?.id as string,
+            ],
           },
         ],
         images: [
@@ -597,6 +605,79 @@ describe.concurrent("POST /products - Integration Tests", () => {
               code: "ATTRIBUTE_VALUED_TWICE",
             }),
           ]),
+        },
+      });
+    });
+
+    it("should create variants that all use the same subset of the category attributes", async () => {
+      const category = await createTestCategory({
+        testDb,
+        attributeCount: 2,
+        attributeValueCount: 2,
+      });
+      const [weight] = category.attributes;
+      expectDefined(weight);
+
+      const { data, status } = await api.products.post({
+        name: `subset product ${randomLowerString(8)}`,
+        description: "Every variant only uses the first attribute",
+        status: "PUBLISHED",
+        categoryId: category.id,
+        stockMode: "VARIANT",
+        variants: weight.values.map(({ id }, index) => ({
+          price: 500 + index,
+          inventory: { quantity: 5 },
+          attributeValueIds: [id],
+        })),
+        images: [{ position: 0, file: file(filePath1) }],
+      });
+
+      expect(status).toBe(201);
+      expectDefined(data);
+      expect(data.variants.map((v) => v.attributeValues.length)).toEqual([
+        1, 1,
+      ]);
+    });
+
+    it("should throw VARIANT_ATTRIBUTES_MISMATCH when variants use different attributes", async () => {
+      const category = await createTestCategory({
+        testDb,
+        attributeCount: 2,
+        attributeValueCount: 2,
+      });
+      const [weight, origin] = category.attributes;
+      expectDefined(weight?.values[0]);
+      expectDefined(origin?.values[0]);
+
+      const { error } = await api.products.post({
+        name: `mixed product ${randomLowerString(8)}`,
+        description: "One variant has an origin, the other does not",
+        status: "DRAFT",
+        categoryId: category.id,
+        stockMode: "VARIANT",
+        variants: [
+          {
+            price: 500,
+            inventory: { quantity: 5 },
+            attributeValueIds: [weight.values[0].id],
+          },
+          {
+            price: 600,
+            inventory: { quantity: 5 },
+            attributeValueIds: [weight.values[0].id, origin.values[0].id],
+          },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
+      });
+
+      expectDefined(error);
+      expect(error.status).toBe(400);
+      expect(error.value).toMatchObject({
+        code: "VARIANTS_VALIDATION_FAILED",
+        details: {
+          subErrors: [
+            expect.objectContaining({ code: "VARIANT_ATTRIBUTES_MISMATCH" }),
+          ],
         },
       });
     });

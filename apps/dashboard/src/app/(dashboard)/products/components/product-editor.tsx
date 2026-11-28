@@ -24,7 +24,9 @@ import {
 import { FieldGroup } from "@spice-world/ui/components/field";
 import {
   focusFirstError,
+  SelectField,
   SubmitButton,
+  submitOnce,
   useAppForm,
   validateOnSubmitThenChange,
 } from "@spice-world/ui/components/form";
@@ -41,6 +43,7 @@ import { standardSchema } from "@spice-world/ui/lib/schema";
 import { useNavigate } from "@teyik0/furin/link";
 import { t } from "elysia";
 import { CheckIcon, CircleAlertIcon, InfoIcon, PlusIcon } from "lucide-react";
+import type { ComponentProps, Dispatch, SetStateAction } from "react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -64,6 +67,7 @@ import type { StockDraft } from "./stock";
 import {
   newRow,
   postBodyOf,
+  replacesStock,
   stockDraft,
   stockDraftOf,
   variantOperations,
@@ -82,11 +86,13 @@ const AVAILABILITY = {
 const DESCRIPTION_MIN = 80;
 const editorBody = t.Object({
   ...t.Omit(ProductModel.patchBody, [
+    "categoryId",
     "images",
     "variants",
     "stockMode",
     "inventory",
   ]).properties,
+  categoryId: t.String({ format: "uuid", error: "Pick a category." }),
   stock: stockDraft,
 });
 
@@ -384,17 +390,20 @@ export function ProductEditor({
   const [categories, setCategories] = useState(initialCategories);
   const [collections, setCollections] = useState(initialCollections);
   const [confirming, setConfirming] = useState(false);
+  const [blank] = useState(() => fieldsOf());
+  const [discards, setDiscards] = useState(0);
   const confirmed = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const form = useAppForm({
-    defaultValues: fieldsOf(saved),
+    defaultValues: saved ? fieldsOf(saved) : blank,
     validationLogic: validateOnSubmitThenChange,
     validators: {
       onDynamic: standardSchema(editorBody),
     },
     onSubmitInvalid: focusFirstError,
     onSubmit: async ({ value, formApi }) => {
-      if (saved && value.stock.mode !== saved.stockMode && !confirmed.current) {
+      if (replacesStock(saved, value.stock) && !confirmed.current) {
         setConfirming(true);
         return;
       }
@@ -437,9 +446,10 @@ export function ProductEditor({
 
   return (
     <form
-      action={() => form.handleSubmit()}
+      action={submitOnce(form)}
       className="mx-auto grid w-full max-w-6xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]"
       noValidate
+      ref={formRef}
     >
       {saved ? (
         <>
@@ -511,57 +521,29 @@ export function ProductEditor({
           </CardContent>
         </Card>
 
-        <Card>
-          <form.Field name="stock">
-            {(field) => (
-              <CardHeader>
-                <CardTitle>Variants & Stock</CardTitle>
-                <CardDescription>
-                  {MODES[field.state.value.mode].text}
-                </CardDescription>
-                <CardAction>
-                  <StockModeToggle
-                    onChange={field.handleChange}
-                    product={saved}
-                    value={field.state.value}
-                  />
-                </CardAction>
-              </CardHeader>
-            )}
-          </form.Field>
-          <CardContent>
-            <form.Subscribe
-              selector={(state) =>
-                [state.values.categoryId, state.submissionAttempts] as const
-              }
-            >
-              {([categoryId, attempts]) => {
-                const category =
-                  categories.find(({ id }) => id === categoryId) ??
-                  saved?.category;
-                return category ? (
-                  <form.Field name="stock">
-                    {(field) => (
-                      <ProductVariants
-                        category={category}
-                        key={saved?.version}
-                        onChange={field.handleChange}
-                        product={saved}
-                        showErrors={attempts > 0}
-                        value={field.state.value}
-                      />
-                    )}
-                  </form.Field>
-                ) : (
-                  <p className="text-muted-foreground text-sm">
-                    Pick a category first: it sets the attributes your variants
-                    choose from.
-                  </p>
-                );
-              }}
-            </form.Subscribe>
-          </CardContent>
-        </Card>
+        <form.Subscribe
+          selector={(state) =>
+            [state.values.categoryId, state.submissionAttempts] as const
+          }
+        >
+          {([categoryId, attempts]) => (
+            <form.Field name="stock">
+              {(field) => (
+                <VariantsCard
+                  category={
+                    categories.find(({ id }) => id === categoryId) ??
+                    saved?.category
+                  }
+                  onChange={field.handleChange}
+                  product={saved}
+                  resetKey={`${saved?.version}:${discards}`}
+                  showErrors={attempts > 0}
+                  value={field.state.value}
+                />
+              )}
+            </form.Field>
+          )}
+        </form.Subscribe>
       </div>
 
       <aside className="grid gap-6 lg:sticky lg:top-16">
@@ -574,120 +556,66 @@ export function ProductEditor({
           )}
         </form.Field>
 
-        <Card>
-          <CardContent>
-            <form.AppField
-              listeners={{
-                onChange: ({ value: categoryId }) => {
-                  const savedIds = new Map(
-                    stockDraftOf(saved).variants.map((row) => [
-                      row.id,
-                      row.attributeValueIds,
-                    ]),
-                  );
-                  form.setFieldValue("stock", (stock) =>
-                    withPicks(stock, (row) =>
-                      categoryId === saved?.categoryId
-                        ? (savedIds.get(row.id) ?? [])
-                        : [],
-                    ),
-                  );
-                },
-              }}
-              name="categoryId"
-            >
-              {(field) => {
-                const selected = categories.find(
-                  ({ id }) => id === field.state.value,
-                );
-                return (
-                  <div className="grid gap-3">
-                    <field.SelectField
-                      description={categoryHint(saved, field.state.value)}
-                      items={categories.map(({ id, name }) => ({
-                        label: name,
-                        value: id,
-                      }))}
-                      label="Category"
-                      labelEnd={
-                        <CategoryActions
-                          category={selected}
-                          onCategories={setCategories}
-                          onSelect={field.handleChange}
-                          onValues={(ids) =>
-                            form.setFieldValue("stock", (stock) =>
-                              withPicks(stock, (row) =>
-                                row.attributeValueIds.filter((id) =>
-                                  ids.has(id),
-                                ),
-                              ),
-                            )
-                          }
-                          savedId={saved?.categoryId ?? ""}
-                        />
-                      }
-                    />
-                    {selected ? (
-                      <CategoryAttributes category={selected} />
-                    ) : null}
-                  </div>
-                );
-              }}
-            </form.AppField>
-          </CardContent>
-        </Card>
+        <form.AppField
+          listeners={{
+            onChange: ({ value: categoryId }) => {
+              const savedIds = new Map(
+                stockDraftOf(saved).variants.map((row) => [
+                  row.id,
+                  row.attributeValueIds,
+                ]),
+              );
+              form.setFieldValue("stock", (stock) =>
+                withPicks(stock, (row) =>
+                  categoryId === saved?.categoryId
+                    ? (savedIds.get(row.id) ?? [])
+                    : [],
+                ),
+              );
+            },
+          }}
+          name="categoryId"
+        >
+          {(field) => (
+            <CategoryCard
+              categories={categories}
+              hint={categoryHint(saved, field.state.value)}
+              onCategories={setCategories}
+              onSelect={field.handleChange}
+              onValues={(ids) =>
+                form.setFieldValue("stock", (stock) =>
+                  withPicks(stock, (row) =>
+                    row.attributeValueIds.filter((id) => ids.has(id)),
+                  ),
+                )
+              }
+              savedId={saved?.categoryId ?? ""}
+              value={field.state.value}
+            />
+          )}
+        </form.AppField>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Collections</CardTitle>
-            <CardDescription>Curated lists the store shows.</CardDescription>
-            <CardAction>
-              <CollectionDialog
-                onSaved={(created) => {
-                  setCollections((list) => [...list, created]);
-                  form.setFieldValue("collectionIds", (ids) => [
-                    ...ids,
-                    created.id,
-                  ]);
-                }}
-                trigger={
-                  <Button size="xs" type="button" variant="ghost">
-                    <PlusIcon data-icon="inline-start" />
-                    New
-                  </Button>
-                }
-              />
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            <form.Field name="collectionIds">
-              {(field) => (
-                <ProductCollections
-                  collections={collections}
-                  onChange={field.handleChange}
-                  onCollection={(updated) =>
-                    setCollections((list) =>
-                      list.map((c) => (c.id === updated.id ? updated : c)),
-                    )
-                  }
-                  onDeleted={(id) => {
-                    setCollections((list) => list.filter((c) => c.id !== id));
-                    setSaved(
-                      (current) =>
-                        current && {
-                          ...current,
-                          collectionIds: current.collectionIds.filter(
-                            (other) => other !== id,
-                          ),
-                        },
-                    );
-                  }}
-                  value={field.state.value}
-                />
-              )}
-            </form.Field>
-          </CardContent>
-        </Card>
+        <form.Field name="collectionIds">
+          {(field) => (
+            <CollectionsCard
+              collections={collections}
+              onChange={field.handleChange}
+              onCollections={setCollections}
+              onDeleted={(id) =>
+                setSaved(
+                  (current) =>
+                    current && {
+                      ...current,
+                      collectionIds: current.collectionIds.filter(
+                        (other) => other !== id,
+                      ),
+                    },
+                )
+              }
+              value={field.state.value}
+            />
+          )}
+        </form.Field>
 
         <form.Subscribe selector={(state) => state.values}>
           {(values) => <Readiness product={saved} values={values} />}
@@ -699,10 +627,10 @@ export function ProductEditor({
       {saved ? (
         <ReplaceStockDialog
           draft={draftStock(form.getFieldValue("stock"))}
-          onConfirm={async () => {
+          onConfirm={() => {
             confirmed.current = true;
             setConfirming(false);
-            await form.handleSubmit();
+            formRef.current?.requestSubmit();
           }}
           onOpenChange={setConfirming}
           open={confirming}
@@ -715,12 +643,154 @@ export function ProductEditor({
           saved && isDefault ? null : (
             <UnsavedBar
               creating={!saved}
-              onDiscard={isDefault ? undefined : () => form.reset()}
+              onDiscard={
+                isDefault
+                  ? undefined
+                  : () => {
+                      form.reset();
+                      setDiscards((n) => n + 1);
+                    }
+              }
             />
           )
         }
       </form.Subscribe>
     </form>
+  );
+}
+
+function VariantsCard({
+  category,
+  onChange,
+  product,
+  resetKey,
+  showErrors,
+  value,
+}: Omit<ComponentProps<typeof ProductVariants>, "category"> & {
+  category?: ComponentProps<typeof ProductVariants>["category"];
+  resetKey: string;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Variants & Stock</CardTitle>
+        <CardDescription>{MODES[value.mode].text}</CardDescription>
+        <CardAction>
+          <StockModeToggle
+            onChange={onChange}
+            product={product}
+            value={value}
+          />
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        {category ? (
+          <ProductVariants
+            category={category}
+            key={`${resetKey}:${category.id}`}
+            onChange={onChange}
+            product={product}
+            showErrors={showErrors}
+            value={value}
+          />
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            Pick a category first: it sets the attributes your variants choose
+            from.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function CategoryCard({
+  categories,
+  hint,
+  onCategories,
+  onSelect,
+  onValues,
+  savedId,
+  value,
+}: Omit<ComponentProps<typeof CategoryActions>, "category"> & {
+  categories: CategoryModel.categoryResult[];
+  hint: string;
+  value: string;
+}) {
+  const selected = categories.find(({ id }) => id === value);
+  return (
+    <Card>
+      <CardContent className="grid gap-3">
+        <SelectField
+          description={hint}
+          items={categories.map(({ id, name }) => ({ label: name, value: id }))}
+          label="Category"
+          labelEnd={
+            <CategoryActions
+              category={selected}
+              onCategories={onCategories}
+              onSelect={onSelect}
+              onValues={onValues}
+              savedId={savedId}
+            />
+          }
+        />
+        {selected ? <CategoryAttributes category={selected} /> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function CollectionsCard({
+  collections,
+  onChange,
+  onCollections,
+  onDeleted,
+  value,
+}: {
+  collections: CollectionModel.collectionResult[];
+  onChange: (ids: string[]) => void;
+  onCollections: Dispatch<SetStateAction<CollectionModel.collectionResult[]>>;
+  onDeleted: (id: string) => void;
+  value: string[];
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Collections</CardTitle>
+        <CardDescription>Curated lists the store shows.</CardDescription>
+        <CardAction>
+          <CollectionDialog
+            onSaved={(created) => {
+              onCollections((list) => [...list, created]);
+              onChange([...value, created.id]);
+            }}
+            trigger={
+              <Button size="xs" type="button" variant="ghost">
+                <PlusIcon data-icon="inline-start" />
+                New
+              </Button>
+            }
+          />
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <ProductCollections
+          collections={collections}
+          onChange={onChange}
+          onCollection={(updated) =>
+            onCollections((list) =>
+              list.map((c) => (c.id === updated.id ? updated : c)),
+            )
+          }
+          onDeleted={(id) => {
+            onCollections((list) => list.filter((c) => c.id !== id));
+            onDeleted(id);
+          }}
+          value={value}
+        />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -850,7 +920,7 @@ function ReplaceStockDialog({
   saved,
 }: {
   draft: string;
-  onConfirm: () => Promise<void>;
+  onConfirm: () => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   saved: string;

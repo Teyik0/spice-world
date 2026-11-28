@@ -21,6 +21,7 @@ import {
 import {
   focusFirstError,
   SubmitButton,
+  submitOnce,
   useAppForm,
 } from "@spice-world/ui/components/form";
 import { Input } from "@spice-world/ui/components/input";
@@ -52,7 +53,6 @@ import { formatCount } from "../../../../lib/format";
 import type { ProductsQuery } from "./products-query";
 import { label, STATUSES, useProductsQuery } from "./products-query";
 import {
-  mergeUpdates,
   stockDraft,
   stockDraftOf,
   StockInput,
@@ -60,7 +60,9 @@ import {
 } from "./stock";
 
 const quickEditBody = t.Object({
-  ...t.Omit(ProductModel.patchBody, ["stockMode", "inventory"]).properties,
+  ...t.Required(
+    t.Pick(ProductModel.patchBody, ["name", "description", "status"]),
+  ).properties,
   stock: stockDraft,
 });
 
@@ -189,6 +191,10 @@ function Loaded({
   onDone: () => void;
 }) {
   const { data, error } = useQuery(api.products({ id }).get.live());
+  const [held, setHeld] = useState(data);
+  if (data && data.version !== held?.version && !(held && dirty.current)) {
+    setHeld(data);
+  }
   if (error) {
     return (
       <SheetHeader>
@@ -199,7 +205,7 @@ function Loaded({
       </SheetHeader>
     );
   }
-  if (!data) {
+  if (!held) {
     return (
       <div aria-busy="true" className="flex flex-col gap-4 p-4">
         <SheetTitle className="sr-only">Loading product</SheetTitle>
@@ -213,9 +219,10 @@ function Loaded({
   return (
     <QuickEditForm
       dirty={dirty}
-      key={`${data.id}:${data.version}`}
+      key={`${held.id}:${held.version}`}
       onDone={onDone}
-      product={ProductModel.adminView(data)}
+      product={ProductModel.adminView(held)}
+      stale={data !== undefined && data.version !== held.version}
     />
   );
 }
@@ -231,9 +238,6 @@ const fieldsOf = (product: ProductModel.productResult) => ({
   name: product.name,
   description: product.description,
   status: product.status,
-  variants: {
-    update: product.variants.map(({ id, price }) => ({ id, price })),
-  },
   stock: stockDraftOf(product),
 });
 
@@ -241,34 +245,35 @@ function QuickEditForm({
   dirty,
   onDone,
   product,
+  stale,
 }: {
   dirty: RefObject<boolean>;
   onDone: () => void;
   product: ProductModel.productResult;
+  stale: boolean;
 }) {
   const [failure, setFailure] = useState<{ message: string }[]>([]);
   const failureRef = useRef<HTMLDivElement>(null);
-  const initial = fieldsOf(product);
   const form = useAppForm({
-    defaultValues: initial,
+    defaultValues: fieldsOf(product),
     validators: { onSubmit: standardSchema(quickEditBody) },
-    onSubmitInvalid: focusFirstError,
+    onSubmitInvalid: (props) => {
+      setFailure([
+        {
+          message:
+            "Fix the highlighted fields: prices of 0 or more, stock in whole units.",
+        },
+      ]);
+      focusFirstError(props);
+    },
     listeners: {
       onChange: ({ formApi }) => {
         dirty.current = !formApi.state.isDefaultValue;
       },
     },
     onSubmit: async ({ value }) => {
-      const { update: updates, ...stock } = variantOperations(
-        product,
-        value.stock,
-      );
-      const update = mergeUpdates(
-        value.variants.update.filter(
-          (v, i) => v.price !== initial.variants.update[i]?.price,
-        ),
-        updates,
-      );
+      setFailure([]);
+      const { update, ...stock } = variantOperations(product, value.stock);
       const { error } = await api.products({ id: product.id }).patch(
         {
           ...(value.name === product.name ? {} : { name: value.name }),
@@ -310,7 +315,7 @@ function QuickEditForm({
 
   return (
     <form
-      action={() => form.handleSubmit()}
+      action={submitOnce(form)}
       className="flex min-h-0 flex-1 flex-col"
       noValidate
     >
@@ -412,7 +417,7 @@ function QuickEditForm({
               key={variant.id}
             >
               <span className="truncate text-sm">{variantName(variant)}</span>
-              <form.Field name={`variants.update[${i}].price`}>
+              <form.Field name={`stock.variants[${i}].price`}>
                 {(field) => (
                   <Input
                     aria-invalid={!field.state.meta.isValid}
@@ -459,6 +464,14 @@ function QuickEditForm({
             </div>
           ))}
         </FieldSet>
+        <p
+          aria-live="polite"
+          className="bg-warning/10 text-warning rounded-lg px-3 py-2 text-sm text-pretty empty:hidden"
+        >
+          {stale
+            ? "Someone else saved this product while you edited it: saving will be refused. Close and reopen it to load their version."
+            : null}
+        </p>
         <FieldError aria-live="polite" errors={failure} ref={failureRef} />
       </div>
 

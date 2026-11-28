@@ -103,6 +103,9 @@ export const switchMode = (
       : { quantity: mode === "SHARED" ? Number.NaN : 0, lowStockAt: 0 }),
     mode,
     variants: draft.variants.map((row) => {
+      if (row.deleted) {
+        return row;
+      }
       const was = row.id ? savedRows.get(row.id) : undefined;
       return back && was
         ? {
@@ -112,6 +115,45 @@ export const switchMode = (
             lowStockAt: was.lowStockAt,
           }
         : needs(row, mode);
+    }),
+  };
+};
+
+export const replacesStock = (
+  product: Product | undefined,
+  draft: StockDraft,
+) =>
+  product !== undefined &&
+  (draft.mode !== product.stockMode ||
+    (draft.mode === "SHARED" &&
+      draft.dimension !== stockDraftOf(product).dimension));
+
+export const switchDimension = (
+  product: Product | undefined,
+  draft: StockDraft,
+  dimension: ProductModel.stockDimension,
+): StockDraft => {
+  const saved = stockDraftOf(product);
+  if (product?.stockMode !== "SHARED" || dimension !== saved.dimension) {
+    return {
+      ...draft,
+      dimension,
+      quantity: Number.NaN,
+      lowStockAt: 0,
+      variants: draft.variants.map((row) =>
+        row.deleted ? row : { ...row, stockUsage: Number.NaN },
+      ),
+    };
+  }
+  const savedRows = new Map(saved.variants.map((row) => [row.id, row]));
+  return {
+    ...draft,
+    dimension,
+    quantity: saved.quantity,
+    lowStockAt: saved.lowStockAt,
+    variants: draft.variants.map((row) => {
+      const was = row.id ? savedRows.get(row.id) : undefined;
+      return row.deleted || !was ? row : { ...row, stockUsage: was.stockUsage };
     }),
   };
 };
@@ -147,7 +189,7 @@ export function variantOperations(product: Product, draft: StockDraft) {
   const saved = new Map(
     stockDraftOf(product).variants.map((row) => [row.id, row]),
   );
-  const changed = draft.mode !== product.stockMode;
+  const changed = replacesStock(product, draft);
   const shared = draft.mode === "SHARED";
   const { dimension, quantity, lowStockAt } = draft;
   const inventory =
@@ -183,7 +225,7 @@ export function variantOperations(product: Product, draft: StockDraft) {
     id && deleted ? [id] : [],
   );
   return {
-    ...(changed && { stockMode: draft.mode }),
+    ...(draft.mode !== product.stockMode && { stockMode: draft.mode }),
     ...(inventory && { inventory }),
     update,
     ...(create.length && { create }),
@@ -215,14 +257,6 @@ export const postBodyOf = (
           inventory: { quantity: row.quantity, lowStockAt: row.lowStockAt },
         })),
       };
-
-export const mergeUpdates = (...lists: Update[][]) => {
-  const byId = new Map<string, Update>();
-  for (const update of lists.flat()) {
-    byId.set(update.id, { ...byId.get(update.id), ...update });
-  }
-  return [...byId.values()];
-};
 
 const unitFor = (value: number, dimension: ProductModel.stockDimension) => {
   const units = unitsOf(dimension);

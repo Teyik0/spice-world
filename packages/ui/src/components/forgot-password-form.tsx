@@ -6,6 +6,7 @@ import { FieldDescription, FieldError, FieldGroup } from "./field";
 import {
   focusFirstError,
   SubmitButton,
+  submitOnce,
   useActionResult,
   useAppForm,
 } from "./form";
@@ -44,7 +45,7 @@ export function ForgotPasswordForm({ action }: ForgotPasswordFormProps) {
     );
   }
   return (
-    <form action={() => form.handleSubmit()} noValidate>
+    <form action={submitOnce(form)} noValidate>
       <FieldGroup>
         <form.AppField name="email">
           {(field) => (

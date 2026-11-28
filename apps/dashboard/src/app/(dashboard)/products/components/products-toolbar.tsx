@@ -201,6 +201,7 @@ export function ProductsToolbar({
       <Chip
         key="name"
         onRemove={() => {
+          clearTimeout(debounce.current);
           setName("");
           update({ name: undefined });
         }}
@@ -336,7 +337,11 @@ export function ProductsToolbar({
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button className="ml-auto" render={<Link to="/products/new" />}>
+        <Button
+          className="ml-auto"
+          nativeButton={false}
+          render={<Link to="/products/new" />}
+        >
           <PlusIcon data-icon="inline-start" />
           New Product
         </Button>
@@ -353,6 +358,7 @@ export function ProductsToolbar({
             <Button
               className="text-muted-foreground underline underline-offset-3"
               onClick={() => {
+                clearTimeout(debounce.current);
                 setName("");
                 update({
                   name: undefined,

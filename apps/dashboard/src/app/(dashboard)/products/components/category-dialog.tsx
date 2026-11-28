@@ -35,6 +35,7 @@ import {
 import {
   focusFirstError,
   SubmitButton,
+  submitOnce,
   useAppForm,
 } from "@spice-world/ui/components/form";
 import { Input } from "@spice-world/ui/components/input";
@@ -311,7 +312,7 @@ function CategoryForm({
   });
 
   return (
-    <form action={() => form.handleSubmit()} className="grid gap-6" noValidate>
+    <form action={submitOnce(form)} className="grid gap-6" noValidate>
       <DialogHeader>
         <DialogTitle className="first-letter:uppercase">
           {category ? category.name : "New Category"}

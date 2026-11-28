@@ -153,18 +153,16 @@ describe.concurrent("products", () => {
   });
 
   it("rolls back everything on a SKU conflict and leaves the uploads to the cleanup", async () => {
-    const { product, category } = await setup();
+    const { product, category, values } = await setup();
     const sku = crypto.randomUUID();
-    const create = [
-      { price: 1, inventory: { quantity: 0 }, sku, attributeValueIds: [] },
-    ];
+    const variant = { price: 1, inventory: { quantity: 0 }, sku };
     const { data: owner } = await api.products.post({
       name: `sku owner ${randomLowerString()}`,
       description: "owner",
       status: "DRAFT",
       categoryId: category.id,
       stockMode: "VARIANT",
-      variants: create,
+      variants: [{ ...variant, attributeValueIds: [] }],
       images: [{ position: 0, file: file(filePath) }],
     });
     expectDefined(owner);
@@ -173,7 +171,9 @@ describe.concurrent("products", () => {
     const { error } = await api.products({ id: product.id }).patch(
       {
         name,
-        variants: { create },
+        variants: {
+          create: [{ ...variant, attributeValueIds: values.slice(1, 2) }],
+        },
         images: { create: [{ position: 2, file: file(filePath) }] },
       },
       { headers: { "x-version": product.version } },
@@ -414,14 +414,21 @@ describe.concurrent("products", () => {
       attributeValueCount: 3,
     });
     const [first, second] = product.variants;
-    const valueId = category.attributes[0]?.values[0]?.id;
+    const [valueId, otherId] =
+      category.attributes[0]?.values.map(({ id }) => id) ?? [];
     expectDefined(first);
     expectDefined(second);
     expectDefined(valueId);
+    expectDefined(otherId);
     const { data } = await api.products({ id: product.id }).patch(
       {
         categoryId: category.id,
-        variants: { update: [{ id: first.id, attributeValueIds: [valueId] }] },
+        variants: {
+          update: [
+            { id: first.id, attributeValueIds: [valueId] },
+            { id: second.id, attributeValueIds: [otherId] },
+          ],
+        },
       },
       { headers: { "x-version": product.version } },
     );
@@ -430,9 +437,42 @@ describe.concurrent("products", () => {
       category: { id: category.id },
       variants: [
         { id: first.id, attributeValues: [{ id: valueId }] },
-        { id: second.id, attributeValues: [] },
+        { id: second.id, attributeValues: [{ id: otherId }] },
       ],
     });
+  });
+
+  it("rejects a category change that leaves some variants without values", async () => {
+    const { product } = await setup(2);
+    const category = await createTestCategory({
+      testDb,
+      attributeCount: 1,
+      attributeValueCount: 3,
+    });
+    const [first] = product.variants;
+    const valueId = category.attributes[0]?.values[0]?.id;
+    expectDefined(first);
+    expectDefined(valueId);
+    const { error } = await api.products({ id: product.id }).patch(
+      {
+        categoryId: category.id,
+        variants: { update: [{ id: first.id, attributeValueIds: [valueId] }] },
+      },
+      { headers: { "x-version": product.version } },
+    );
+    expect(error).toMatchObject({
+      status: 400,
+      value: {
+        details: {
+          subErrors: [
+            expect.objectContaining({ code: "VARIANT_ATTRIBUTES_MISMATCH" }),
+          ],
+        },
+      },
+    });
+    expect((await api.products({ id: product.id }).get()).data).toEqual(
+      product,
+    );
   });
 
   it("rejects an unpublishable product instead of drafting it", async () => {

@@ -1,4 +1,4 @@
-import type * as ProductModel from "@spice-world/server/modules/products/model";
+import * as ProductModel from "@spice-world/server/modules/products/model";
 import { Button } from "@spice-world/ui/components/button";
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import {
 } from "@spice-world/ui/components/dropdown-menu";
 import {
   Field,
+  FieldDescription,
   FieldGroup,
   FieldLabel,
 } from "@spice-world/ui/components/field";
@@ -23,6 +24,9 @@ import {
 } from "@spice-world/ui/components/toggle-group";
 import { ChevronDownIcon, PlusIcon, Trash2Icon, Undo2Icon } from "lucide-react";
 import type { ComponentProps } from "react";
+import { useState } from "react";
+import type { TSchema } from "typebox";
+import { Value } from "typebox/value";
 
 import { formatCount, formatStock } from "../../../../lib/format";
 import { variantName } from "./product-quick-edit";
@@ -32,8 +36,10 @@ import {
   DIMENSIONS,
   needs,
   newRow,
+  replacesStock,
   stockDraftOf,
   StockInput,
+  switchDimension,
   switchMode,
 } from "./stock";
 
@@ -78,18 +84,32 @@ const availableOf = (quantity: number, stockUsage: number) => {
   return Number.isFinite(available) ? formatCount(available) : "—";
 };
 
+const PRICE = ProductModel.variantCreate.properties.price;
+const { stockAmount: AMOUNT, stockUsage: USAGE } = ProductModel;
+
+const fits = (schema: TSchema, amounts: number[]) =>
+  amounts.every((n) => Value.Check(schema, n));
+
 const incomplete = (draft: StockDraft) => {
-  const shared = draft.mode === "SHARED";
   const rows = draft.variants.filter((row) => !row.deleted);
-  const amounts = [
-    ...(shared ? [draft.quantity, draft.lowStockAt] : []),
-    ...rows.flatMap((row) =>
-      shared
-        ? [row.price, row.stockUsage]
-        : [row.price, row.quantity, row.lowStockAt],
-    ),
-  ];
-  return amounts.some((n) => !Number.isInteger(n));
+  const stock =
+    draft.mode === "SHARED"
+      ? fits(AMOUNT, [draft.quantity, draft.lowStockAt]) &&
+        fits(
+          USAGE,
+          rows.map((row) => row.stockUsage),
+        )
+      : fits(
+          AMOUNT,
+          rows.flatMap((row) => [row.quantity, row.lowStockAt]),
+        );
+  return !(
+    stock &&
+    fits(
+      PRICE,
+      rows.map((row) => row.price),
+    )
+  );
 };
 
 function PriceInput({
@@ -149,7 +169,7 @@ function AttributePicker({
     return clashes < free;
   };
   if (!attributes.length) {
-    return <span className="text-muted-foreground text-sm">New variant</span>;
+    return null;
   }
   return (
     <div className="flex min-w-0 flex-wrap gap-1.5" id={path}>
@@ -209,6 +229,66 @@ function AttributePicker({
   );
 }
 
+function StockCells({
+  dimension,
+  invalid,
+  name,
+  onChange,
+  path,
+  quantity,
+  row,
+  shared,
+  unitKey,
+}: {
+  dimension: ProductModel.stockDimension;
+  invalid: (n: number, schema?: TSchema) => boolean;
+  name: string;
+  onChange: (patch: Partial<Row>) => void;
+  path: string;
+  quantity: number;
+  row: Row;
+  shared: boolean;
+  unitKey: string;
+}) {
+  if (row.deleted) {
+    return (
+      <>
+        <span className="text-muted-foreground text-sm">—</span>
+        <span className="text-muted-foreground text-sm">—</span>
+      </>
+    );
+  }
+  if (shared) {
+    return (
+      <>
+        <StockInput
+          aria-invalid={invalid(row.stockUsage, USAGE)}
+          dimension={dimension}
+          id={`${path}.stockUsage`}
+          key={unitKey}
+          label={`${name} per sale`}
+          onChange={(stockUsage) => onChange({ stockUsage })}
+          value={row.stockUsage}
+        />
+        <span className="text-muted-foreground text-right text-sm tabular-nums">
+          {availableOf(quantity, row.stockUsage)}
+        </span>
+      </>
+    );
+  }
+  return (["quantity", "lowStockAt"] as const).map((key) => (
+    <StockInput
+      aria-invalid={invalid(row[key])}
+      dimension="COUNT"
+      id={`${path}.${key}`}
+      key={`${unitKey}:${key}`}
+      label={`${name} ${key === "quantity" ? "in stock" : "low stock at"}`}
+      onChange={(n) => onChange({ [key]: n })}
+      value={row[key]}
+    />
+  ));
+}
+
 function VariantRow({
   attributes,
   cols,
@@ -230,7 +310,7 @@ function VariantRow({
   cols: string;
   dimension: ProductModel.stockDimension;
   index: number;
-  invalid: (n: number) => boolean;
+  invalid: (n: number, schema?: TSchema) => boolean;
   onChange: (patch: Partial<Row>) => void;
   onToggle: () => void;
   pick: boolean;
@@ -275,48 +355,24 @@ function VariantRow({
         </span>
       )}
       <PriceInput
-        aria-invalid={invalid(row.price)}
+        aria-invalid={invalid(row.price, PRICE)}
         aria-label={`${name} price`}
         disabled={deleted}
         id={`${path}.price`}
         onChange={(price) => onChange({ price })}
         value={row.price}
       />
-      {deleted ? (
-        <>
-          <span className="text-muted-foreground text-sm">—</span>
-          <span className="text-muted-foreground text-sm">—</span>
-        </>
-      ) : null}
-      {!deleted && shared ? (
-        <>
-          <StockInput
-            aria-invalid={invalid(row.stockUsage)}
-            dimension={dimension}
-            id={`${path}.stockUsage`}
-            key={unitKey}
-            label={`${name} per sale`}
-            onChange={(stockUsage) => onChange({ stockUsage })}
-            value={row.stockUsage}
-          />
-          <span className="text-muted-foreground text-right text-sm tabular-nums">
-            {availableOf(quantity, row.stockUsage)}
-          </span>
-        </>
-      ) : null}
-      {deleted || shared
-        ? null
-        : (["quantity", "lowStockAt"] as const).map((key) => (
-            <StockInput
-              aria-invalid={invalid(row[key])}
-              dimension="COUNT"
-              id={`${path}.${key}`}
-              key={`${unitKey}:${key}`}
-              label={`${name} ${key === "quantity" ? "in stock" : "low stock at"}`}
-              onChange={(n) => onChange({ [key]: n })}
-              value={row[key]}
-            />
-          ))}
+      <StockCells
+        dimension={dimension}
+        invalid={invalid}
+        name={name}
+        onChange={onChange}
+        path={path}
+        quantity={quantity}
+        row={row}
+        shared={shared}
+        unitKey={unitKey}
+      />
       <Button
         aria-label={deleted ? `Keep ${name}` : `Delete ${name}`}
         onClick={onToggle}
@@ -328,6 +384,216 @@ function VariantRow({
         {deleted ? <Undo2Icon /> : <Trash2Icon />}
       </Button>
     </div>
+  );
+}
+
+const attributesInUse = (category: Product["category"], product?: Product) => {
+  const changed = product !== undefined && category.id !== product.categoryId;
+  const used = new Set(
+    changed
+      ? []
+      : product?.variants.flatMap(({ attributeValues }) =>
+          attributeValues.map(({ attributeId }) => attributeId),
+        ),
+  );
+  return {
+    pickable: used.size
+      ? category.attributes.filter(({ id }) => used.has(id))
+      : category.attributes,
+    repick: changed || (!used.size && category.attributes.length > 0),
+  };
+};
+
+type Attribute = Product["category"]["attributes"][number];
+
+const LIST = new Intl.ListFormat("en");
+
+const names = (attributes: Attribute[]) =>
+  LIST.format(attributes.map(({ name }) => name));
+
+const hasValueOf = (row: Row) => (attribute: Attribute) =>
+  attribute.values.some(({ id }) => row.attributeValueIds.includes(id));
+
+const initialShape = (attributes: Attribute[], rows: Row[], bare: boolean) => {
+  const picked = attributes.filter((attribute) =>
+    rows.some((row) => hasValueOf(row)(attribute)),
+  );
+  return (picked.length || bare ? picked : attributes).map(({ id }) => id);
+};
+
+function VariantAttributes({
+  attributes,
+  onChange,
+  relabels,
+  shape,
+}: {
+  attributes: Attribute[];
+  onChange: (ids: string[]) => void;
+  relabels: boolean;
+  shape: Attribute[];
+}) {
+  if (!attributes.length) {
+    return null;
+  }
+  return (
+    <Field>
+      <FieldLabel id="variant-attributes">Vary By</FieldLabel>
+      <ToggleGroup
+        aria-labelledby="variant-attributes"
+        className="flex-wrap"
+        multiple
+        onValueChange={onChange}
+        size="sm"
+        spacing={1.5}
+        value={shape.map(({ id }) => id)}
+        variant="outline"
+      >
+        {attributes.map(({ id, name }) => (
+          <ToggleGroupItem
+            className="data-pressed:border-primary data-pressed:bg-primary data-pressed:text-primary-foreground"
+            key={id}
+            value={id}
+          >
+            {label(name)}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+      <FieldDescription>
+        {relabels
+          ? "Saving renames the existing variants. Paid orders keep the name they were sold under; a variant in a pending checkout keeps its values until the order is paid or cancelled."
+          : "Every variant takes one value for each attribute picked here, so customers choose them the same way."}
+      </FieldDescription>
+    </Field>
+  );
+}
+
+const fullText = (
+  category: Product["category"],
+  shape: Attribute[],
+  rows: number,
+) => {
+  if (!category.attributes.length) {
+    return `${label(category.name)} has no attributes: its products have a single variant.`;
+  }
+  if (shape.length) {
+    return `Every combination of ${names(shape)} has its variant.`;
+  }
+  return rows > 1 ? null : "Pick what the variants vary by to add more.";
+};
+
+function useVariantShape(
+  category: Product["category"],
+  onChange: (value: StockDraft) => void,
+  value: StockDraft,
+  product?: Product,
+) {
+  const { attributes } = category;
+  const active = value.variants.filter((row) => !row.deleted);
+  const { pickable, repick } = attributesInUse(category, product);
+  const [chosen, setChosen] = useState(() =>
+    initialShape(
+      attributes,
+      active,
+      product !== undefined && category.id === product.categoryId,
+    ),
+  );
+  const shape = attributes.filter(({ id }) => chosen.includes(id));
+  const reshaped =
+    repick ||
+    shape.length !== pickable.length ||
+    shape.some((attribute) => !pickable.includes(attribute)) ||
+    active.some((row) => row.id && !shape.every(hasValueOf(row)));
+  const varyBy = (ids: string[]) => {
+    setChosen(ids);
+    const saved = new Map(
+      product?.variants.map(({ id, attributeValues }) => [
+        id,
+        attributeValues.map(({ id: valueId }) => valueId),
+      ]),
+    );
+    onChange({
+      ...value,
+      variants: value.variants.map((row) =>
+        row.deleted
+          ? row
+          : {
+              ...row,
+              attributeValueIds: attributes
+                .filter(({ id }) => ids.includes(id))
+                .flatMap(({ values }) => {
+                  const own =
+                    values.find(({ id }) =>
+                      row.attributeValueIds.includes(id),
+                    ) ??
+                    values.find(({ id }) =>
+                      saved.get(row.id ?? "")?.includes(id),
+                    );
+                  return own ? [own.id] : [];
+                }),
+            },
+      ),
+    });
+  };
+  const unpicked = active.filter(
+    (row) => (!row.id || reshaped) && !shape.every(hasValueOf(row)),
+  ).length;
+  const duplicates =
+    active.length -
+    new Set(
+      active.map(({ attributeValueIds }) =>
+        attributeValueIds.toSorted().join(),
+      ),
+    ).size;
+  return {
+    duplicates,
+    relabels: product !== undefined && reshaped,
+    repick: reshaped,
+    shape,
+    unpicked,
+    varyBy,
+  };
+}
+
+const missingText = (
+  count: number,
+  duplicates: number,
+  rows: number,
+  shape: Attribute[],
+) => {
+  if (!shape.length) {
+    return rows > 1
+      ? "Pick what the variants vary by, or keep a single variant: without an attribute they cannot be told apart."
+      : null;
+  }
+  if (count) {
+    return `Pick ${names(shape)} for ${count === 1 ? "1 variant" : `${count} variants`}: every variant varies by the same attributes.`;
+  }
+  return duplicates
+    ? `${duplicates === 1 ? "1 variant has" : `${duplicates} variants have`} the same values as another: change a value or delete one.`
+    : null;
+};
+
+function MissingValues({
+  count,
+  duplicates,
+  rows,
+  shape,
+  showErrors,
+}: {
+  count: number;
+  duplicates: number;
+  rows: number;
+  shape: Attribute[];
+  showErrors: boolean;
+}) {
+  const text = missingText(count, duplicates, rows, shape);
+  return (
+    <p
+      aria-live="polite"
+      className={`text-sm text-pretty empty:hidden ${showErrors ? "text-destructive" : "text-warning"}`}
+    >
+      {text || null}
+    </p>
   );
 }
 
@@ -366,6 +632,92 @@ export function StockModeToggle({
   );
 }
 
+function SharedStock({
+  invalid,
+  onChange,
+  product,
+  value,
+}: {
+  product?: Product;
+  invalid: (n: number) => boolean;
+  onChange: (value: StockDraft) => void;
+  value: StockDraft;
+}) {
+  const unitKey = `${value.mode}:${value.dimension}`;
+  return (
+    <div className="grid gap-4 sm:grid-cols-3">
+      <Field>
+        <FieldLabel htmlFor="stock.dimension">Counted By</FieldLabel>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                className="w-full justify-between font-normal"
+                id="stock.dimension"
+                type="button"
+                variant="outline"
+              />
+            }
+          >
+            {label(value.dimension)}
+            <ChevronDownIcon className="text-muted-foreground" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className={MENU_LABEL}>
+                Counted By
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                onValueChange={(next: string) => {
+                  const dimension = DIMENSIONS.find((d) => d === next);
+                  if (dimension && dimension !== value.dimension) {
+                    onChange(switchDimension(product, value, dimension));
+                  }
+                }}
+                value={value.dimension}
+              >
+                {DIMENSIONS.map((dimension) => (
+                  <DropdownMenuRadioItem
+                    className={MENU_ITEM}
+                    key={dimension}
+                    value={dimension}
+                  >
+                    {label(dimension)}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="stock.quantity">In Stock</FieldLabel>
+        <StockInput
+          aria-invalid={invalid(value.quantity)}
+          dimension={value.dimension}
+          id="stock.quantity"
+          key={unitKey}
+          label="In stock"
+          onChange={(quantity) => onChange({ ...value, quantity })}
+          value={value.quantity}
+        />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="stock.lowStockAt">Low Stock At</FieldLabel>
+        <StockInput
+          aria-invalid={invalid(value.lowStockAt)}
+          dimension={value.dimension}
+          id="stock.lowStockAt"
+          key={unitKey}
+          label="Low stock at"
+          onChange={(lowStockAt) => onChange({ ...value, lowStockAt })}
+          value={value.lowStockAt}
+        />
+      </Field>
+    </div>
+  );
+}
+
 export function ProductVariants({
   category,
   onChange,
@@ -380,7 +732,7 @@ export function ProductVariants({
   value: StockDraft;
 }) {
   const shared = value.mode === "SHARED";
-  const modeChanged = product !== undefined && value.mode !== product.stockMode;
+  const replaced = replacesStock(product, value);
   const byId = new Map(
     product?.variants.map((variant) => [variant.id, variant]),
   );
@@ -388,7 +740,8 @@ export function ProductVariants({
   const categoryChanged =
     product !== undefined && category.id !== product.categoryId;
   const unitKey = `${value.mode}:${value.dimension}`;
-  const invalid = (n: number) => showErrors && !Number.isInteger(n);
+  const invalid = (n: number, schema: TSchema = AMOUNT) =>
+    showErrors && !Value.Check(schema, n);
   const setRow = (index: number, patch: Partial<Row>) =>
     onChange({
       ...value,
@@ -416,7 +769,7 @@ export function ProductVariants({
       index,
       row.deleted
         ? {
-            ...(modeChanged ? needs(was, value.mode) : was),
+            ...(replaced ? needs(was, value.mode) : was),
             attributeValueIds,
             deleted: false,
           }
@@ -424,18 +777,17 @@ export function ProductVariants({
     );
   };
   const active = value.variants.filter((row) => !row.deleted);
-  const complete = active.filter(({ attributeValueIds: ids }) =>
-    attributes.every(({ values }) => values.some(({ id }) => ids.includes(id))),
-  );
+  const { duplicates, relabels, repick, shape, unpicked, varyBy } =
+    useVariantShape(category, onChange, value, product);
 
   const full =
-    active.length >= attributes.reduce((n, { values }) => n * values.length, 1);
+    active.length >= shape.reduce((n, { values }) => n * values.length, 1);
   const cols =
     "grid grid-cols-[minmax(10rem,1fr)_7rem_9rem_9rem_2rem] items-center gap-x-4 gap-y-2";
 
   return (
     <FieldGroup>
-      {product && modeChanged ? (
+      {product && replaced ? (
         <p
           aria-live="polite"
           className="bg-warning/10 text-warning rounded-lg px-3 py-2 text-sm text-pretty"
@@ -446,93 +798,20 @@ export function ProductVariants({
       ) : null}
 
       {shared ? (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field>
-            <FieldLabel htmlFor="stock.dimension">Counted By</FieldLabel>
-            {product && !modeChanged ? (
-              <p className="text-sm leading-8" id="stock.dimension">
-                {label(value.dimension)}
-              </p>
-            ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      className="w-full justify-between font-normal"
-                      id="stock.dimension"
-                      type="button"
-                      variant="outline"
-                    />
-                  }
-                >
-                  {label(value.dimension)}
-                  <ChevronDownIcon className="text-muted-foreground" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuGroup>
-                    <DropdownMenuLabel className={MENU_LABEL}>
-                      Counted By
-                    </DropdownMenuLabel>
-                    <DropdownMenuRadioGroup
-                      onValueChange={(next: string) => {
-                        const dimension = DIMENSIONS.find((d) => d === next);
-                        if (dimension && dimension !== value.dimension) {
-                          onChange({
-                            ...value,
-                            dimension,
-                            quantity: Number.NaN,
-                            lowStockAt: 0,
-                            variants: value.variants.map((row) =>
-                              row.deleted
-                                ? row
-                                : { ...row, stockUsage: Number.NaN },
-                            ),
-                          });
-                        }
-                      }}
-                      value={value.dimension}
-                    >
-                      {DIMENSIONS.map((dimension) => (
-                        <DropdownMenuRadioItem
-                          className={MENU_ITEM}
-                          key={dimension}
-                          value={dimension}
-                        >
-                          {label(dimension)}
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="stock.quantity">In Stock</FieldLabel>
-            <StockInput
-              aria-invalid={invalid(value.quantity)}
-              dimension={value.dimension}
-              id="stock.quantity"
-              key={unitKey}
-              label="In stock"
-              onChange={(quantity) => onChange({ ...value, quantity })}
-              value={value.quantity}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="stock.lowStockAt">Low Stock At</FieldLabel>
-            <StockInput
-              aria-invalid={invalid(value.lowStockAt)}
-              dimension={value.dimension}
-              id="stock.lowStockAt"
-              key={unitKey}
-              label="Low stock at"
-              onChange={(lowStockAt) => onChange({ ...value, lowStockAt })}
-              value={value.lowStockAt}
-            />
-          </Field>
-        </div>
+        <SharedStock
+          invalid={invalid}
+          onChange={onChange}
+          product={product}
+          value={value}
+        />
       ) : null}
+
+      <VariantAttributes
+        attributes={attributes}
+        onChange={varyBy}
+        relabels={relabels}
+        shape={shape}
+      />
 
       <div className="-mx-1 overflow-x-auto px-1">
         <div
@@ -551,7 +830,7 @@ export function ProductVariants({
           </div>
           {value.variants.map((row, i) => (
             <VariantRow
-              attributes={attributes}
+              attributes={shape}
               cols={cols}
               dimension={value.dimension}
               index={i}
@@ -559,13 +838,13 @@ export function ProductVariants({
               key={row.id ?? row.key}
               onChange={(patch) => setRow(i, patch)}
               onToggle={() => toggleRow(i)}
-              pick={!row.id || (categoryChanged && !row.deleted)}
+              pick={!row.id || (repick && !row.deleted)}
               quantity={value.quantity}
               row={row}
               saved={row.id ? byId.get(row.id) : undefined}
               shared={shared}
               showErrors={showErrors}
-              taken={complete
+              taken={active
                 .filter((other) => other !== row)
                 .map(({ attributeValueIds }) => attributeValueIds)}
               unitKey={unitKey}
@@ -573,19 +852,24 @@ export function ProductVariants({
           ))}
         </div>
       </div>
+      <MissingValues
+        count={unpicked}
+        duplicates={duplicates}
+        rows={active.length}
+        shape={shape}
+        showErrors={showErrors}
+      />
       {showErrors && incomplete(value) ? (
         <p className="text-destructive text-sm" role="alert">
           Fill in the highlighted fields to save: every variant needs a price
-          and its stock{shared ? " per sale" : ""}, in whole base units (pieces,
-          mg, ml, mm, mm²).
+          and its stock{shared ? " per sale (at least 1)" : ""}, in whole base
+          units (pieces, mg, ml, mm, mm²), none negative.
         </p>
       ) : null}
       <div className="flex flex-wrap items-center gap-3">
         {full ? (
           <span className="text-muted-foreground text-sm">
-            {attributes.length
-              ? `Every combination of ${category.name} values has its variant.`
-              : `${label(category.name)} has no attributes: its products have a single variant.`}
+            {fullText(category, shape, active.length)}
           </span>
         ) : (
           <Button

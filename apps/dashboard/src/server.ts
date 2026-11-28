@@ -9,9 +9,9 @@ const app = new Elysia()
     const path = pathname.startsWith("/api/auth/")
       ? pathname
       : pathname.slice(4);
-    return fetch(new Request(`${env.API_URL}${path}${search}`, request), {
-      decompress: false,
-    });
+    const proxied = new Request(`${env.API_URL}${path}${search}`, request);
+    proxied.headers.delete("host");
+    return fetch(proxied, { decompress: false });
   })
   .use(await furin({ style: "nextjs" }));
 

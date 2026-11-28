@@ -222,6 +222,33 @@ describe.concurrent("Order checkout amounts and stock", () => {
     expect(row?.city).toBe(shippingAddress.city);
   });
 
+  test("keeps the variant label it was sold under when its attribute values change later", async () => {
+    const [category, variant] = await Promise.all([
+      createTestCategory({ testDb, attributeCount: 2, attributeValueCount: 2 }),
+      createVariant(1000),
+    ]);
+    const values = category.attributes.flatMap(({ values: [first] }) =>
+      first ? [first] : [],
+    );
+    await testDb.db
+      .insert(attributeValueToProductVariantTable)
+      .values(values.map(({ id }) => ({ a: id, b: variant.id })));
+    const label = values
+      .toSorted((a, b) => a.id.localeCompare(b.id))
+      .map(({ value }) => value)
+      .join(" · ");
+
+    const { order } = await checkout([{ variantId: variant.id, quantity: 1 }]);
+    expect(order.items).toMatchObject([{ variantName: label }]);
+
+    await testDb.db
+      .delete(attributeValueToProductVariantTable)
+      .where(eq(attributeValueToProductVariantTable.b, variant.id));
+    expect(await orderService.getById({ id: order.id })).toMatchObject({
+      items: [{ variantName: label }],
+    });
+  });
+
   test("refuses insufficient stock and unavailable variants, and reserves nothing", async () => {
     const [enough, low, draft, archived] = await Promise.all([
       createVariant(1000, 5),

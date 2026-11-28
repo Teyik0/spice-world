@@ -102,6 +102,9 @@ const patch = (
     .products({ id: product.id })
     .patch(body, { headers: { "x-version": product.version } });
 
+const valuesOf = (product: ProductModel.productResult) =>
+  product.category.attributes[0]?.values.map(({ id }) => id) ?? [];
+
 const inventoriesOf = (productId: string) =>
   testDb.db
     .select()
@@ -305,9 +308,9 @@ describe.concurrent("Product stock", () => {
 
     it.each([
       {
-        case: "a new inventory without a mode change",
-        body: { inventory: { dimension: "MASS", quantity: 1 } },
-        field: "inventory",
+        case: "a new shared inventory that leaves a variant without its new stockUsage",
+        body: { inventory: { dimension: "VOLUME", quantity: 1 } },
+        field: "variants.update",
       },
       {
         case: "a variant inventory in SHARED stock",
@@ -536,6 +539,30 @@ describe.concurrent("Product stock", () => {
       ).toEqual(data.variants.map(({ inventory }) => inventory.id).toSorted());
     });
 
+    it("replaces a SHARED stock with one of another dimension, in one request", async () => {
+      const product = await sachets(200 * g);
+      const [old] = await inventoriesOf(product.id);
+      const { data } = await patch(product, {
+        inventory: { dimension: "VOLUME", quantity: 1000, lowStockAt: 100 },
+        variants: {
+          update: product.variants.map(({ id }, index) => ({
+            id,
+            stockUsage: 100 * (index + 1),
+          })),
+        },
+      });
+      expectDefined(data);
+      expect(data).toMatchObject({ stockMode: "SHARED", totalStock: 1000 });
+      expect(data.variants.map(({ available }) => available)).toEqual([
+        10, 5, 3,
+      ]);
+      const inventories = await inventoriesOf(product.id);
+      expect(inventories).toMatchObject([
+        { dimension: "VOLUME", quantity: 1000, lowStockAt: 100 },
+      ]);
+      expect(inventories[0]?.id).not.toBe(old?.id);
+    });
+
     it("changes VARIANT to SHARED with a new variant, in one request", async () => {
       const product = await units();
       const [first, second] = product.variants;
@@ -641,6 +668,130 @@ describe.concurrent("Product stock", () => {
         expect(deleted.status).toBe(200);
       },
     );
+
+    it("refuses to change the attribute values of a variant a pending order reserves, and writes nothing", async () => {
+      const product = await units();
+      const [reserved, free] = product.variants;
+      expectDefined(reserved);
+      expectDefined(free);
+      const values = valuesOf(product);
+      await orderOf(product, reserved);
+      const { status, error } = await patch(product, {
+        variants: {
+          update: [{ id: reserved.id, attributeValueIds: [values[2] ?? ""] }],
+        },
+      });
+      expect(status).toBe(409);
+      expect(error?.value).toMatchObject({ code: "VARIANT_RESERVED" });
+      expect((await api.products({ id: product.id }).get()).data).toEqual(
+        product,
+      );
+
+      const relabeled = await patch(product, {
+        variants: {
+          update: [{ id: free.id, attributeValueIds: [values[2] ?? ""] }],
+        },
+      });
+      expect(relabeled.status).toBe(200);
+    });
+
+    it("changes the attribute values of a variant whose orders are paid", async () => {
+      const product = await units();
+      const [variant] = product.variants;
+      expectDefined(variant);
+      const values = valuesOf(product);
+      await orderOf(product, variant, "PAID");
+      const { status } = await patch(product, {
+        variants: {
+          update: [{ id: variant.id, attributeValueIds: [values[2] ?? ""] }],
+        },
+      });
+      expect(status).toBe(200);
+    });
+
+    it("refuses to move a product a pending order reserves to another category", async () => {
+      const product = await units();
+      const [reserved, free] = product.variants;
+      expectDefined(reserved);
+      expectDefined(free);
+      const target = await category();
+      await orderOf(product, reserved);
+      const { status, error } = await patch(product, {
+        categoryId: target.id,
+        variants: {
+          update: [
+            { id: reserved.id, attributeValueIds: [target.values[0] ?? ""] },
+            { id: free.id, attributeValueIds: [target.values[1] ?? ""] },
+          ],
+        },
+      });
+      expect(status).toBe(409);
+      expect(error?.value).toMatchObject({ code: "VARIANT_RESERVED" });
+      expect((await api.products({ id: product.id }).get()).data).toEqual(
+        product,
+      );
+    });
+
+    it("refuses to move a product a pending order reserves to another category in bulk", async () => {
+      const { data: product } = await post({
+        stockMode: "VARIANT",
+        variants: [{ inventory: { quantity: 5 } }],
+      });
+      expectDefined(product);
+      const [variant] = product.variants;
+      expectDefined(variant);
+      const target = await category();
+      await orderOf(product, variant);
+      const { status, error } = await api.products.bulk.patch({
+        ids: [product.id],
+        categoryId: target.id,
+      });
+      expect(status).toBe(409);
+      expect(error?.value).toMatchObject({ code: "VARIANT_RESERVED" });
+      expect((await api.products({ id: product.id }).get()).data).toEqual(
+        product,
+      );
+    });
+
+    it("refuses to replace a SHARED stock a pending order reserves, and writes nothing", async () => {
+      const product = await sachets(200 * g);
+      const [variant] = product.variants;
+      expectDefined(variant);
+      await orderOf(product, variant);
+      const before = await inventoriesOf(product.id);
+      const { status, error } = await patch(product, {
+        inventory: { dimension: "VOLUME", quantity: 1000 },
+        variants: {
+          update: product.variants.map(({ id }) => ({ id, stockUsage: 100 })),
+        },
+      });
+      expect(status).toBe(409);
+      expect(error?.value).toMatchObject({ code: "STOCK_RESERVED" });
+      expect(await inventoriesOf(product.id)).toEqual(before);
+    });
+
+    it("replaces a SHARED stock whose orders are paid, and keeps what they sold", async () => {
+      const product = await sachets(200 * g);
+      const [variant] = product.variants;
+      expectDefined(variant);
+      const orderId = await orderOf(product, variant, "PAID");
+      const { status } = await patch(product, {
+        inventory: { dimension: "VOLUME", quantity: 1000 },
+        variants: {
+          update: product.variants.map(({ id }) => ({ id, stockUsage: 100 })),
+        },
+      });
+      expect(status).toBe(200);
+      expect(
+        await testDb.db
+          .select({
+            stockUsage: orderItemTable.stockUsage,
+            unitPrice: orderItemTable.unitPrice,
+          })
+          .from(orderItemTable)
+          .where(eq(orderItemTable.orderId, orderId)),
+      ).toEqual([{ stockUsage: variant.stockUsage, unitPrice: variant.price }]);
+    });
 
     it("deletes a variant whose orders are paid or cancelled", async () => {
       const product = await units();

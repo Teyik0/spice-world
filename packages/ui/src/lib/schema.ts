@@ -5,8 +5,6 @@ import { Compile } from "typebox/compile";
 const decode = (part: string) => part.replace(/~1/gu, "/").replace(/~0/gu, "~");
 const pointer = (path: string) => path.split("/").slice(1).map(decode);
 
-// TypeBox as a Standard Schema, for TanStack Form validators. A string `error`
-// on the failing sub-schema (Elysia's convention) replaces TypeBox's message.
 export function standardSchema<T extends TSchema>(
   schema: T,
 ): StandardSchemaV1<Static<T>> {
@@ -33,7 +31,6 @@ export function standardSchema<T extends TSchema>(
             if (issue.keyword !== "required") {
               return [{ message: message(at, issue.message), path }];
             }
-            // TypeBox reports missing keys on the parent object: split them per field.
             const { requiredProperties } = issue.params as {
               requiredProperties: string[];
             };

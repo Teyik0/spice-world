@@ -241,7 +241,7 @@ export function ProductsTable({
 
   useEffect(() => {
     const node = sentinel.current;
-    if (!(node && hasNext) || isFetching) {
+    if (!(node && hasNext) || isFetching || error) {
       return;
     }
     const observer = new IntersectionObserver(([entry]) => {
@@ -252,7 +252,7 @@ export function ProductsTable({
     });
     observer.observe(node);
     return () => observer.disconnect();
-  }, [fetchNext, hasNext, isFetching]);
+  }, [error, fetchNext, hasNext, isFetching]);
 
   if (products.length === 0) {
     return (

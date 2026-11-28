@@ -22,6 +22,7 @@ import { FieldGroup } from "@spice-world/ui/components/field";
 import {
   focusFirstError,
   SubmitButton,
+  submitOnce,
   useAppForm,
 } from "@spice-world/ui/components/form";
 import { standardSchema } from "@spice-world/ui/lib/schema";
@@ -121,7 +122,7 @@ function CollectionForm({
   });
 
   return (
-    <form action={() => form.handleSubmit()} className="grid gap-6" noValidate>
+    <form action={submitOnce(form)} className="grid gap-6" noValidate>
       <DialogHeader>
         <DialogTitle>
           {collection ? collection.name : "New Collection"}

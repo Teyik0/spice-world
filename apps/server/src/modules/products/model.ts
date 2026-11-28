@@ -456,6 +456,7 @@ export const subError = t.Object({
     t.Literal("ATTRIBUTE_VALUED_TWICE"),
     t.Literal("VARIANT_COUNT_OUT_OF_RANGE"),
     t.Literal("DUPLICATE_VARIANT_COMBINATION"),
+    t.Literal("VARIANT_ATTRIBUTES_MISMATCH"),
   ]),
   message: t.String(),
   field: t.String(),

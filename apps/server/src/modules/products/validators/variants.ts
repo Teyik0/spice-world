@@ -61,6 +61,7 @@ export function validateVariants({
     ),
     ...validateCount(variants.length, category),
     ...validateCombinations(variants),
+    ...validateAttributeSets(variants, attributeIds),
   ];
 
   if (subErrors.length) {
@@ -144,4 +145,29 @@ function validateCombinations(
     combinations.set(key, index + 1);
   }
   return [];
+}
+
+function validateAttributeSets(
+  variants: VariantState[],
+  attributeIds: Map<string, string>,
+): ProductModel.subError[] {
+  const sets = new Set(
+    variants.map(({ attributeValueIds }) =>
+      attributeValueIds
+        .map((id) => attributeIds.get(id))
+        .toSorted()
+        .join("|"),
+    ),
+  );
+  if (sets.size <= 1) {
+    return [];
+  }
+  return [
+    {
+      code: "VARIANT_ATTRIBUTES_MISMATCH",
+      message:
+        "Every variant must use the same attributes: give each one a value for the same attributes, or none.",
+      field: "variants.attributeValueIds",
+    },
+  ];
 }

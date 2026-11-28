@@ -432,10 +432,19 @@ async function lockStock(
   return new Set(reserved.map(({ variantId }) => variantId));
 }
 
+const replacesStock = (
+  currentMode: ProductModel.stockMode,
+  mode: ProductModel.stockMode,
+  inventory?: ProductModel.sharedInventory,
+) =>
+  mode !== currentMode ||
+  (mode === "SHARED" && inventory !== undefined && "quantity" in inventory);
+
 function reservedConflict(
   reserved: Set<string | null>,
   modeChanged: boolean,
   deleted: string[] = [],
+  relabeled: string[] = [],
 ) {
   if (modeChanged && reserved.size) {
     return new StockReserved();
@@ -444,6 +453,16 @@ function reservedConflict(
   if (variantId) {
     return new VariantReserved(
       `Pending orders reserve variant ${variantId}: it can be deleted once they are paid or cancelled`,
+    );
+  }
+  return relabeledConflict(reserved, relabeled);
+}
+
+function relabeledConflict(reserved: Set<string | null>, relabeled: string[]) {
+  const variantId = relabeled.find((id) => reserved.has(id));
+  if (variantId) {
+    return new VariantReserved(
+      `Pending orders reserve variant ${variantId}: its attribute values can change once they are paid or cancelled`,
     );
   }
 }
@@ -477,33 +496,57 @@ async function updateVariants(
   const inventoryOf = new Map(
     current.variants.map((variant) => [variant.id, variant.inventory.id]),
   );
-  await Promise.all(
-    updates.map(
-      async ({ id, price, sku, currency, stockUsage, inventory: own }) => {
-        const ownInventoryId =
-          own && "quantity" in own ? Bun.randomUUIDv7() : undefined;
-        if (own && ownInventoryId) {
-          await tx
-            .insert(inventoryTable)
-            .values({ ...own, id: ownInventoryId, productId: current.id });
-        } else if (own) {
-          await adjustInventory(tx, inventoryOf.get(id) as string, own);
-        }
-        await tx
-          .update(productVariantTable)
-          .set({
-            price,
-            sku,
-            currency,
-            stockUsage: ownInventoryId ? 1 : stockUsage,
-            inventoryId: ownInventoryId ?? sharedInventoryId,
-            updatedAt: sql`CURRENT_TIMESTAMP`,
-          })
-          .where(eq(productVariantTable.id, id));
-      },
-    ),
-  );
+  for (const {
+    id,
+    price,
+    sku,
+    currency,
+    stockUsage,
+    inventory: own,
+  } of updates) {
+    const ownInventoryId =
+      own && "quantity" in own ? Bun.randomUUIDv7() : undefined;
+    if (own && ownInventoryId) {
+      // biome-ignore lint/performance/noAwaitInLoops: a transaction runs its statements one at a time
+      await tx
+        .insert(inventoryTable)
+        .values({ ...own, id: ownInventoryId, productId: current.id });
+    } else if (own) {
+      await adjustInventory(tx, inventoryOf.get(id) as string, own);
+    }
+    await tx
+      .update(productVariantTable)
+      .set({
+        price,
+        sku,
+        currency,
+        stockUsage: ownInventoryId ? 1 : stockUsage,
+        inventoryId: ownInventoryId ?? sharedInventoryId,
+        updatedAt: sql`CURRENT_TIMESTAMP`,
+      })
+      .where(eq(productVariantTable.id, id));
+  }
   return mode === "SHARED" ? (sharedInventoryId ?? currentShared) : undefined;
+}
+
+async function updateImages(
+  tx: Tx,
+  images: NonNullable<ProductModel.imageOperations["update"]>,
+  replacements: Map<string, MultiSizeUploadData>,
+) {
+  for (const { id, altText, position } of images) {
+    const upload = replacements.get(id);
+    // biome-ignore lint/performance/noAwaitInLoops: a transaction runs its statements one at a time
+    await tx
+      .update(imageTable)
+      .set({
+        ...(upload && uploadColumns(upload)),
+        altText,
+        position,
+        updatedAt: sql`CURRENT_TIMESTAMP`,
+      })
+      .where(eq(imageTable.id, id));
+  }
 }
 
 async function setCollections(
@@ -837,7 +880,7 @@ export const productService = {
       return new ProductVersionConflict();
     }
     const mode = stockMode ?? current.stockMode;
-    const modeChanged = mode !== current.stockMode;
+    const modeChanged = replacesStock(current.stockMode, mode, inventory);
     const invalidOperations = validateOperations(current, {
       iOps,
       vOps,
@@ -909,6 +952,9 @@ export const productService = {
     const relinkedVariants = (vOps?.update ?? []).filter(
       ({ attributeValueIds }) => attributeValueIds,
     );
+    const relabeled = (
+      categoryChanged ? current.variants : relinkedVariants
+    ).map((variant) => variant.id);
 
     const outcome = await catchConstraints(
       [
@@ -925,6 +971,7 @@ export const productService = {
           await lockStock(tx, current),
           modeChanged,
           vOps?.delete,
+          relabeled,
         );
         if (reserved) {
           return reserved;
@@ -974,20 +1021,7 @@ export const productService = {
             .delete(imageTable)
             .where(inArray(imageTable.id, deletedImages));
         }
-        await Promise.all(
-          updatedImages.map(({ id: imageId, altText, position }) => {
-            const upload = replacements.get(imageId);
-            return tx
-              .update(imageTable)
-              .set({
-                ...(upload && uploadColumns(upload)),
-                altText,
-                position,
-                updatedAt: sql`CURRENT_TIMESTAMP`, // an update may only carry its id
-              })
-              .where(eq(imageTable.id, imageId));
-          }),
-        );
+        await updateImages(tx, updatedImages, replacements);
         await insertImages(tx, updated.id, createdImages, uploads);
 
         if (vOps?.delete?.length) {
@@ -1089,6 +1123,28 @@ export const productService = {
             return invalid;
           }
         }
+        const movedVariants = products
+          .filter(movesCategory)
+          .flatMap(({ variants }) => variants.map(({ id }) => id));
+        const pending = movedVariants.length
+          ? await tx
+              .selectDistinct({ variantId: orderItemTable.variantId })
+              .from(orderItemTable)
+              .innerJoin(orderTable, eq(orderTable.id, orderItemTable.orderId))
+              .where(
+                and(
+                  inArray(orderItemTable.variantId, movedVariants),
+                  eq(orderTable.status, "PENDING"),
+                ),
+              )
+          : [];
+        const reserved = relabeledConflict(
+          new Set(pending.map(({ variantId }) => variantId)),
+          movedVariants,
+        );
+        if (reserved) {
+          return reserved;
+        }
 
         await tx
           .update(productTable)
@@ -1098,14 +1154,8 @@ export const productService = {
             version: sql`${productTable.version} + 1`,
           })
           .where(inArray(productTable.id, ids));
-        const movedVariants = products
-          .filter(movesCategory)
-          .flatMap(({ variants }) => variants);
         if (movedVariants.length) {
-          await unlinkAttributeValues(
-            tx,
-            movedVariants.map((variant) => variant.id),
-          );
+          await unlinkAttributeValues(tx, movedVariants);
         }
         return { count: products.length };
       }),

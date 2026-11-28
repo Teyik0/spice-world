@@ -7,6 +7,8 @@ import { log } from "evlog";
 import { Resend } from "resend";
 
 import {
+  attributeValueTable,
+  attributeValueToProductVariantTable,
   inventoryTable,
   orderItemTable,
   orderTable,
@@ -287,6 +289,12 @@ const readCart = (tx: Tx | typeof db, variantIds: string[]) =>
     .select({
       id: productVariantTable.id,
       sku: productVariantTable.sku,
+      label: sql<string | null>`(
+        select string_agg(${attributeValueTable.value}, ' · ' order by ${attributeValueTable.id})
+        from ${attributeValueToProductVariantTable}
+        join ${attributeValueTable} on ${attributeValueTable.id} = ${attributeValueToProductVariantTable.a}
+        where ${attributeValueToProductVariantTable.b} = ${productVariantTable.id}
+      )`,
       price: productVariantTable.price,
       inventoryId: productVariantTable.inventoryId,
       stockUsage: productVariantTable.stockUsage,
@@ -333,7 +341,7 @@ function priceCart(
       productId: variant.productId,
       productName: variant.productName,
       variantId,
-      variantName: variant.sku,
+      variantName: variant.label,
       variantSku: variant.sku,
       inventoryId: variant.inventoryId,
       stockUsage: variant.stockUsage,

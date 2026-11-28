@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@spice-world/server": "workspace:*",
-    "@teyik0/furin": "0.9.0-alpha.4",
+    "@teyik0/furin": "0.9.0-alpha.6",
     "elysia": "catalog:",
     "evlog": "catalog:",
     "exact-mirror": "1.2.8",

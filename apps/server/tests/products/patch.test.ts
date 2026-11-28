@@ -118,6 +118,14 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         .patch(
           {
             variants: {
+              update: [
+                {
+                  id: product.variants[0]?.id as string,
+                  attributeValueIds: [
+                    category.attributes[0]?.values[1]?.id as string,
+                  ],
+                },
+              ],
               create: [
                 {
                   price: 1500,
@@ -153,6 +161,53 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
               code: "VARIANT_COUNT_OUT_OF_RANGE",
             }),
           ]),
+        },
+      });
+    });
+
+    it("should reject a new variant that uses other attributes than the existing ones", async () => {
+      const { product, category } = await setupProduct({
+        attributeCount: 2,
+        attributeValueCount: 2,
+        variants: [
+          { price: 1000, inventory: { quantity: 10 }, attributeValueIds: [] },
+        ],
+        imagesCreate: [{ position: 0, file: file(filePath1) }],
+      });
+      const [weight, origin] = category.attributes;
+      expectDefined(weight?.values[0]);
+      expectDefined(weight.values[1]);
+      expectDefined(origin?.values[0]);
+
+      const { error } = await api.products({ id: product.id }).patch(
+        {
+          variants: {
+            update: [
+              {
+                id: product.variants[0]?.id as string,
+                attributeValueIds: [weight.values[0].id],
+              },
+            ],
+            create: [
+              {
+                price: 1500,
+                inventory: { quantity: 15 },
+                attributeValueIds: [weight.values[1].id, origin.values[0].id],
+              },
+            ],
+          },
+        },
+        { headers: { "x-version": product.version } },
+      );
+
+      expectDefined(error);
+      expect(error.status).toBe(400);
+      expect(error.value).toMatchObject({
+        code: "VARIANTS_VALIDATION_FAILED",
+        details: {
+          subErrors: [
+            expect.objectContaining({ code: "VARIANT_ATTRIBUTES_MISMATCH" }),
+          ],
         },
       });
     });
@@ -791,6 +846,15 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       const { data, status } = await api.products({ id: product.id }).patch(
         {
           variants: {
+            update: [
+              {
+                id: product.variants[0]?.id as string,
+                attributeValueIds: [
+                  category.attributes[2]?.values[1]?.id as string,
+                  category.attributes[3]?.values[1]?.id as string,
+                ],
+              },
+            ],
             create: [
               {
                 price: 1500,
@@ -798,6 +862,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
                 inventory: { quantity: 20 },
                 attributeValueIds: [
                   category.attributes[2]?.values[0]?.id as string,
+                  category.attributes[3]?.values[0]?.id as string,
                 ],
               },
               {
@@ -805,7 +870,8 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
                 sku: "NEW-VARIANT-2",
                 inventory: { quantity: 25 },
                 attributeValueIds: [
-                  category.attributes[3]?.values[0]?.id as string,
+                  category.attributes[2]?.values[0]?.id as string,
+                  category.attributes[3]?.values[1]?.id as string,
                 ],
               },
             ],
@@ -840,6 +906,14 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         .patch(
           {
             variants: {
+              update: [
+                {
+                  id: product.variants[0]?.id as string,
+                  attributeValueIds: [
+                    category.attributes[0]?.values[1]?.id as string,
+                  ],
+                },
+              ],
               create: [
                 {
                   price: 1500,
