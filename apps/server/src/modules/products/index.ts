@@ -94,7 +94,6 @@ export const productsRouter = new Elysia({
           ProductModel.validationFailed,
           ProductModel.publishError,
           ProductModel.invalidReference,
-          ProductModel.invalidStock,
           invalidImage,
         ]),
         404: categoryNotFound,

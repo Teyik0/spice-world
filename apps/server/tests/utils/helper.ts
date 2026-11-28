@@ -618,7 +618,7 @@ interface SetupProductOptions {
   imagesCreate: (Omit<UnwrapSchema<typeof ProductModel.imageCreate>, "file"> & {
     file: File;
   })[];
-  variants: UnwrapSchema<typeof ProductModel.variantCreate>[];
+  variants: Extract<ProductModel.postBody, { stockMode: "VARIANT" }>["variants"];
 }
 
 /**
@@ -664,12 +664,8 @@ export const createSetupProduct =
       status: "DRAFT",
       categoryId: category.id,
       stockMode: "VARIANT",
-      variants: {
-        create: variants,
-      },
-      images: {
-        create: imagesCreate,
-      },
+      variants,
+      images: imagesCreate,
     });
     expect(status).toBe(201);
     expectDefined(data);

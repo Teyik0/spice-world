@@ -3,6 +3,7 @@ import { afterAll, describe, expect, it } from "bun:test";
 import { treaty } from "@elysia/eden";
 import { db } from "@spice-world/server/lib/db";
 import { productsRouter } from "@spice-world/server/modules/products";
+import type * as ProductModel from "@spice-world/server/modules/products/model";
 import { eq, inArray } from "drizzle-orm";
 
 import {
@@ -85,12 +86,10 @@ describe.concurrent("products", () => {
       status: "DRAFT",
       categoryId: category.id,
       stockMode: "VARIANT",
-      variants: {
-        create: [
-          { price: 1, inventory: { quantity: 0 }, attributeValueIds: [] },
-        ],
-      },
-      images: { create: [{ position: 0, file: file(filePath) }] },
+      variants: [
+        { price: 1, inventory: { quantity: 0 }, attributeValueIds: [] },
+      ],
+      images: [{ position: 0, file: file(filePath) }],
     });
     expectDefined(posted);
     const [byId, bySlug, postedById] = await Promise.all([
@@ -112,12 +111,10 @@ describe.concurrent("products", () => {
       status: "DRAFT",
       categoryId: category.id,
       stockMode: "VARIANT",
-      variants: {
-        create: [
-          { price: 1, inventory: { quantity: 0 }, attributeValueIds: [] },
-        ],
-      },
-      images: { create: [{ position: 0, file: file(filePath) }] },
+      variants: [
+        { price: 1, inventory: { quantity: 0 }, attributeValueIds: [] },
+      ],
+      images: [{ position: 0, file: file(filePath) }],
     });
     expect(error).toMatchObject({
       status: 409,
@@ -165,8 +162,8 @@ describe.concurrent("products", () => {
       status: "DRAFT",
       categoryId: category.id,
       stockMode: "VARIANT",
-      variants: { create },
-      images: { create: [{ position: 0, file: file(filePath) }] },
+      variants: create,
+      images: [{ position: 0, file: file(filePath) }],
     });
     expectDefined(owner);
 
@@ -287,27 +284,32 @@ describe.concurrent("products", () => {
     ]);
     const own = product.variants[0]?.id as string;
     const foreign = other.variants[0]?.id as string;
-    const results = await Promise.all(
-      [
-        { update: [{ id: foreign, price: 1 }] },
-        { delete: [foreign] },
-        { update: [{ id: own, price: 1 }], delete: [own] },
-        {
+    const patch = (variants: ProductModel.variantOperations) =>
+      api
+        .products({ id: product.id })
+        .patch({ variants }, { headers: { "x-version": product.version } });
+    const [foreignUpdate, foreignDelete, updatedAndDeleted, updatedTwice] =
+      await Promise.all([
+        patch({ update: [{ id: foreign, price: 1 }] }),
+        patch({ delete: [foreign] }),
+        patch({ update: [{ id: own, price: 1 }], delete: [own] }),
+        patch({
           update: [
             { id: own, price: 1 },
             { id: own, price: 2 },
           ],
-        },
-      ].map((variants) =>
-        api
-          .products({ id: product.id })
-          .patch({ variants }, { headers: { "x-version": product.version } }),
-      ),
-    );
-    for (const { error } of results) {
+        }),
+      ]);
+    for (const { error } of [foreignUpdate, foreignDelete]) {
       expect(error).toMatchObject({
         status: 422,
         value: { code: "INVALID_VARIANT_OPERATIONS", field: "variants" },
+      });
+    }
+    for (const { error } of [updatedAndDeleted, updatedTwice]) {
+      expect(error).toMatchObject({
+        status: 422,
+        value: { type: "validation", property: "/variants" },
       });
     }
     expect((await api.products({ id: other.id }).get()).data).toEqual(other);
@@ -336,7 +338,7 @@ describe.concurrent("products", () => {
       status: 400,
       value: {
         code: "VARIANTS_VALIDATION_FAILED",
-        details: { subErrors: [{ code: "VVA4" }] },
+        details: { subErrors: [{ code: "DUPLICATE_VARIANT_COMBINATION" }] },
       },
     });
   });
@@ -448,16 +450,14 @@ describe.concurrent("products", () => {
         status: "PUBLISHED",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 0,
-              inventory: { quantity: 0 },
-              attributeValueIds: values.slice(0, 1),
-            },
-          ],
-        },
-        images: { create: [{ position: 0, file: file(filePath) }] },
+        variants: [
+          {
+            price: 0,
+            inventory: { quantity: 0 },
+            attributeValueIds: values.slice(0, 1),
+          },
+        ],
+        images: [{ position: 0, file: file(filePath) }],
       }),
       api
         .products({ id: product.id })
@@ -475,7 +475,7 @@ describe.concurrent("products", () => {
       ),
     ]);
     for (const { error } of results) {
-      expect(error).toMatchObject({ status: 400, value: { code: "PUB1" } });
+      expect(error).toMatchObject({ status: 400, value: { code: "PUBLISH_PRICE_REQUIRED" } });
     }
     expect((await api.products({ id: product.id }).get()).data).toEqual(
       product,
@@ -502,7 +502,7 @@ describe.concurrent("products", () => {
         { variants: { update: [{ id: variant.id, price: 0 }] } },
         { headers: { "x-version": product.version + 1 } },
       );
-    expect(error).toMatchObject({ status: 400, value: { code: "PUB1" } });
+    expect(error).toMatchObject({ status: 400, value: { code: "PUBLISH_PRICE_REQUIRED" } });
   });
 
   it("keeps the status on a category change", async () => {
@@ -624,7 +624,7 @@ describe.concurrent("products bulk", () => {
     });
     expect(error).toMatchObject({
       status: 400,
-      value: { code: "PUB1", message: expect.stringContaining(free.name) },
+      value: { code: "PUBLISH_PRICE_REQUIRED", message: expect.stringContaining(free.name) },
     });
     const { data } = await api.products({ id: product.id }).get();
     expect(data).toEqual(product);
@@ -677,7 +677,7 @@ describe.concurrent("products bulk", () => {
       value: {
         code: "VARIANTS_VALIDATION_FAILED",
         message: expect.stringContaining(several.name),
-        details: { subErrors: [{ code: "VVA3" }, { code: "VVA4" }] },
+        details: { subErrors: [{ code: "VARIANT_COUNT_OUT_OF_RANGE" }, { code: "DUPLICATE_VARIANT_COMBINATION" }] },
       },
     });
     const unchanged = await Promise.all(

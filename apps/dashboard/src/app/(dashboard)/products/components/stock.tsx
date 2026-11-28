@@ -23,23 +23,21 @@ type Mode = ProductModel.stockMode;
 
 export const DIMENSIONS = ProductModel.stockDimension.anyOf.map((d) => d.const);
 
-const amount = t.Integer({ minimum: 0 });
-
 export const stockDraft = t.Object({
   mode: ProductModel.stockMode,
   dimension: ProductModel.stockDimension,
-  quantity: amount,
-  lowStockAt: amount,
+  quantity: ProductModel.stockAmount,
+  lowStockAt: ProductModel.stockAmount,
   variants: t.Array(
     t.Object({
       id: t.Optional(t.String()),
       key: t.Optional(t.String()),
       deleted: t.Boolean(),
       attributeValueIds: t.Array(t.String()),
-      price: t.Integer({ minimum: 0 }),
-      stockUsage: t.Integer({ minimum: 1 }),
-      quantity: amount,
-      lowStockAt: amount,
+      price: ProductModel.variantCreate.properties.price,
+      stockUsage: ProductModel.stockUsage,
+      quantity: ProductModel.stockAmount,
+      lowStockAt: ProductModel.stockAmount,
     }),
   ),
 });

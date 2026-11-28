@@ -78,22 +78,18 @@ describe("Image positions", () => {
         status: "DRAFT",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            { price: 1000, inventory: { quantity: 1 }, attributeValueIds: [] },
-          ],
-        },
-        images: {
-          create: positions.map((position) => ({
-            position,
-            file: file(filePath1),
-          })),
-        },
+        variants: [
+          { price: 1000, inventory: { quantity: 1 }, attributeValueIds: [] },
+        ],
+        images: positions.map((position) => ({
+          position,
+          file: file(filePath1),
+        })),
       });
       expect(status).toBe(422);
       expect(error?.value).toMatchObject({
-        code: "INVALID_IMAGE_POSITIONS",
-        field: "images",
+        type: "validation",
+        property: "/images",
       });
       expect(
         await testDb.db.query.product.findFirst({ where: { name } }),
@@ -112,12 +108,10 @@ describe("Image positions", () => {
       status: "DRAFT",
       categoryId: category.id,
       stockMode: "VARIANT",
-      variants: {
-        create: [
-          { price: 1000, inventory: { quantity: 1 }, attributeValueIds: [] },
-        ],
-      },
-      images: { create: [image] },
+      variants: [
+        { price: 1000, inventory: { quantity: 1 }, attributeValueIds: [] },
+      ],
+      images: [image],
     });
     expect(status).toBe(422);
     expect(error?.value).toMatchObject({ type: "validation" });
@@ -290,7 +284,10 @@ describe("Image positions", () => {
       { headers: { "x-version": product.version } },
     );
     expect(status).toBe(422);
-    expect(error?.value).toMatchObject({ code: "INVALID_IMAGE_OPERATIONS" });
+    expect(error?.value).toMatchObject({
+      type: "validation",
+      property: "/images",
+    });
     await expectUnchanged(product);
   });
 
@@ -337,7 +334,7 @@ describe("Image positions", () => {
   });
 
   describe("Image Validation Errors", () => {
-    it("should throw error VIO1 for duplicate IDs in update and delete", async () => {
+    it("rejects an image both updated and deleted", async () => {
       const { product, first } = await setup();
       const { error } = await api.products({ id: product.id }).patch(
         {
@@ -349,15 +346,12 @@ describe("Image positions", () => {
         { headers: { "x-version": product.version } },
       );
       expect(error).toMatchObject({
-        status: 400,
-        value: {
-          code: "IMAGES_VALIDATION_FAILED",
-          details: { subErrors: [expect.objectContaining({ code: "VIO1" })] },
-        },
+        status: 422,
+        value: { type: "validation", property: "/images" },
       });
     });
 
-    it("should throw error VIO2 when try delete all images", async () => {
+    it("should throw error PRODUCT_IMAGE_REQUIRED when try delete all images", async () => {
       const { product, first, second, third } = await setup();
       const { error } = await api
         .products({ id: product.id })
@@ -369,7 +363,7 @@ describe("Image positions", () => {
         status: 400,
         value: {
           code: "IMAGES_VALIDATION_FAILED",
-          details: { subErrors: [expect.objectContaining({ code: "VIO2" })] },
+          details: { subErrors: [expect.objectContaining({ code: "PRODUCT_IMAGE_REQUIRED" })] },
         },
       });
     });

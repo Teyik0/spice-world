@@ -7,6 +7,7 @@ import {
   MAX_ATTRIBUTES,
   nameLowerPattern,
   nameLowerPatternWithNumber,
+  onceEach,
   uuid,
 } from "../shared";
 
@@ -85,11 +86,10 @@ export const attributeValueOperations = t.Refine(
     },
     { additionalProperties: false },
   ),
-  ({ create = [], update = [], delete: deleted = [] }) => {
-    const deletedIds = new Set(deleted);
+  (operations) => {
+    const { create = [], update = [] } = operations;
     return (
-      new Set(update.map(({ id }) => id)).size === update.length &&
-      !update.some(({ id }) => deletedIds.has(id)) &&
+      onceEach(operations) &&
       new Set([...create, ...update.map(({ value }) => value)]).size ===
         create.length + update.length
     );
@@ -128,17 +128,13 @@ export const attributeOperations = t.Refine(
     },
     { additionalProperties: false },
   ),
-  ({ create = [], update = [], delete: deleted = [] }) => {
+  (operations) => {
+    const { create = [], update = [] } = operations;
     const names = [
       ...create.map(({ name }) => name),
       ...update.flatMap(({ name }) => (name === undefined ? [] : [name])),
     ];
-    const deletedIds = new Set(deleted);
-    return (
-      new Set(update.map(({ id }) => id)).size === update.length &&
-      !update.some(({ id }) => deletedIds.has(id)) &&
-      new Set(names).size === names.length
-    );
+    return onceEach(operations) && new Set(names).size === names.length;
   },
   () =>
     "Attribute names must be unique and attributes can only be updated or deleted once per request",

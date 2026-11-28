@@ -61,17 +61,15 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
       categoryId: category.id,
       status: "DRAFT",
       stockMode: "VARIANT",
-      variants: {
-        create: [
-          {
-            price: 1000,
-            sku: "BULK-STATUS-1",
-            inventory: { quantity: 10 },
-            attributeValueIds: [categoryAttributes[0]?.values[0]?.id as string],
-          },
-        ],
-      },
-      images: { create: [{ file: files[0] as File, position: 0 }] },
+      variants: [
+        {
+          price: 1000,
+          sku: "BULK-STATUS-1",
+          inventory: { quantity: 10 },
+          attributeValueIds: [categoryAttributes[0]?.values[0]?.id as string],
+        },
+      ],
+      images: [{ file: files[0] as File, position: 0 }],
     });
 
     expect(s1).toBe(201);
@@ -117,17 +115,15 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
       categoryId: spicesCategory.id,
       status: "DRAFT",
       stockMode: "VARIANT",
-      variants: {
-        create: [
-          {
-            price: 1500,
-            sku: "BULK-CAT-1",
-            inventory: { quantity: 20 },
-            attributeValueIds: [spicesAttributes[0]?.values[0]?.id as string],
-          },
-        ],
-      },
-      images: { create: [{ file: files[0] as File, position: 0 }] },
+      variants: [
+        {
+          price: 1500,
+          sku: "BULK-CAT-1",
+          inventory: { quantity: 20 },
+          attributeValueIds: [spicesAttributes[0]?.values[0]?.id as string],
+        },
+      ],
+      images: [{ file: files[0] as File, position: 0 }],
     });
 
     expect(createStatus).toBe(201);

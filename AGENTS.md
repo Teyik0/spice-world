@@ -93,6 +93,7 @@ bun check -p apps/dashboard
 - MUST run the associated file(s) test when an endpoint is modified `bun run test tests/<test_file>`, don't rerun the whole tests suite on each pass
 - MUST ABSOLUTELY load and apply `elysia` skill for any backend change
 - MUST reject any bad input, no magic behavior (no thumbnail auto assign, no input normalization on server side...)
+- MUST express every rule that reads only the request body in the schema (`model.ts`: constraints, `t.Union`, `t.Refine`, shared helpers like `onceEach` in `modules/shared.ts`). Validators and services only check rules that need the database (current row, category, other products). A rule that needs the database on one route stays in its validator for every route: never implement the same rule twice
 
 ## Task involving frontend end change (apps/dashboard or apps/storefront)
 

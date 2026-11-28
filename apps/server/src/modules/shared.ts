@@ -29,6 +29,17 @@ export const MAX_ATTRIBUTES = 50;
 export const MAX_ATTRIBUTE_VALUES = 100;
 
 export const uuid = t.String({ format: "uuid" });
+
+export const onceEach = ({
+  update = [],
+  delete: deleted = [],
+}: {
+  update?: { id: string }[];
+  delete?: string[];
+}) => {
+  const ids = [...update.map(({ id }) => id), ...deleted];
+  return new Set(ids).size === ids.length;
+};
 export type uuid = UnwrapSchema<typeof uuid>;
 
 export const uuidGuard = t.Object({ id: uuid });

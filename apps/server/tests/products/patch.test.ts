@@ -56,17 +56,15 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         categoryId: category.id,
         status: "DRAFT",
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 1099,
-              sku: "first product variant",
-              inventory: { quantity: 10 },
-              attributeValueIds: [],
-            },
-          ],
-        },
-        images: { create: [{ position: 0, file: file(filePath1) }] },
+        variants: [
+          {
+            price: 1099,
+            sku: "first product variant",
+            inventory: { quantity: 10 },
+            attributeValueIds: [],
+          },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       const testId2 = randomLowerString(8);
@@ -78,17 +76,15 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         categoryId: category.id,
         status: "DRAFT",
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 1199,
-              sku: "second product variant",
-              inventory: { quantity: 11 },
-              attributeValueIds: [],
-            },
-          ],
-        },
-        images: { create: [{ position: 0, file: file(filePath1) }] },
+        variants: [
+          {
+            price: 1199,
+            sku: "second product variant",
+            inventory: { quantity: 11 },
+            attributeValueIds: [],
+          },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       expectDefined(product1);
@@ -154,7 +150,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
-              code: "VVA3",
+              code: "VARIANT_COUNT_OUT_OF_RANGE",
             }),
           ]),
         },
@@ -237,19 +233,15 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           categoryId: spicesCategory.id,
           status: "DRAFT",
           stockMode: "VARIANT",
-          variants: {
-            create: [
-              {
-                price: 1000,
-                sku: "ATTR-ERR-TEST",
-                inventory: { quantity: 10 },
-                attributeValueIds: [
-                  spicesAttributes[0]?.values[0]?.id as string,
-                ],
-              },
-            ],
-          },
-          images: { create: [{ position: 0, file: file(filePath1) }] },
+          variants: [
+            {
+              price: 1000,
+              sku: "ATTR-ERR-TEST",
+              inventory: { quantity: 10 },
+              attributeValueIds: [spicesAttributes[0]?.values[0]?.id as string],
+            },
+          ],
+          images: [{ position: 0, file: file(filePath1) }],
         });
 
       expect(createStatus).toBe(201);
@@ -281,7 +273,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
-              code: "VVA1",
+              code: "ATTRIBUTE_VALUE_NOT_IN_CATEGORY",
             }),
           ]),
         },
@@ -310,19 +302,15 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           categoryId: spicesCategory.id,
           status: "DRAFT",
           stockMode: "VARIANT",
-          variants: {
-            create: [
-              {
-                price: 1000,
-                sku: "ATTR-UPD-TEST",
-                inventory: { quantity: 10 },
-                attributeValueIds: [
-                  spicesAttributes[0]?.values[0]?.id as string,
-                ],
-              },
-            ],
-          },
-          images: { create: [{ position: 0, file: file(filePath1) }] },
+          variants: [
+            {
+              price: 1000,
+              sku: "ATTR-UPD-TEST",
+              inventory: { quantity: 10 },
+              attributeValueIds: [spicesAttributes[0]?.values[0]?.id as string],
+            },
+          ],
+          images: [{ position: 0, file: file(filePath1) }],
         });
 
       expect(createStatus).toBe(201);
@@ -355,7 +343,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
-              code: "VVA1",
+              code: "ATTRIBUTE_VALUE_NOT_IN_CATEGORY",
             }),
           ]),
         },
@@ -382,14 +370,12 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         categoryId: spicesCategory.id,
         status: "DRAFT",
         stockMode: "VARIANT",
-        variants: {
-          create: values.map(({ id }) => ({
-            price: 1000,
-            inventory: { quantity: 5 },
-            attributeValueIds: [id],
-          })),
-        },
-        images: { create: [{ position: 0, file: file(filePath1) }] },
+        variants: values.map(({ id }) => ({
+          price: 1000,
+          inventory: { quantity: 5 },
+          attributeValueIds: [id],
+        })),
+        images: [{ position: 0, file: file(filePath1) }],
       });
       expectDefined(createdProduct);
 
@@ -406,7 +392,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           details: {
             subErrors: [
               {
-                code: "VVA4",
+                code: "DUPLICATE_VARIANT_COMBINATION",
                 message: expect.stringContaining("a category change clears"),
               },
             ],
@@ -439,16 +425,14 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         categoryId: spicesCategory.id,
         status: "DRAFT",
         stockMode: "VARIANT",
-        variants: {
-          create: (spicesCategory.attributes[0]?.values ?? []).map(
-            ({ id }) => ({
-              price: 1000,
-              inventory: { quantity: 5 },
-              attributeValueIds: [id],
-            }),
-          ),
-        },
-        images: { create: [{ position: 0, file: file(filePath1) }] },
+        variants: (spicesCategory.attributes[0]?.values ?? []).map(
+          ({ id }) => ({
+            price: 1000,
+            inventory: { quantity: 5 },
+            attributeValueIds: [id],
+          }),
+        ),
+        images: [{ position: 0, file: file(filePath1) }],
       });
       expectDefined(createdProduct);
 
@@ -502,19 +486,15 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           categoryId: spicesCategory.id,
           status: "DRAFT",
           stockMode: "VARIANT",
-          variants: {
-            create: [
-              {
-                price: 1000,
-                sku: "CAT-ATOMIC-1",
-                inventory: { quantity: 10 },
-                attributeValueIds: [
-                  spicesAttributes[0]?.values[0]?.id as string,
-                ],
-              },
-            ],
-          },
-          images: { create: [{ position: 0, file: file(filePath1) }] },
+          variants: [
+            {
+              price: 1000,
+              sku: "CAT-ATOMIC-1",
+              inventory: { quantity: 10 },
+              attributeValueIds: [spicesAttributes[0]?.values[0]?.id as string],
+            },
+          ],
+          images: [{ position: 0, file: file(filePath1) }],
         });
 
       expect(createStatus).toBe(201);
@@ -599,7 +579,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
-              code: "VVA2",
+              code: "ATTRIBUTE_VALUED_TWICE",
             }),
           ]),
         },

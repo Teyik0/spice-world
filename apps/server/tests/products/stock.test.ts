@@ -9,6 +9,7 @@ import {
 } from "@spice-world/server/modules/products/model";
 import { refreshListing } from "@spice-world/server/modules/products/service";
 import { eq } from "drizzle-orm";
+import type { UnwrapSchema } from "elysia";
 
 import {
   inventoryTable,
@@ -49,33 +50,25 @@ const category = async () => {
 
 type PostBody = Parameters<typeof api.products.post>[0];
 
-const post = async (
-  body: Pick<PostBody, "stockMode" | "inventory"> & {
-    variants: (Omit<
-      PostBody["variants"]["create"][number],
-      "attributeValueIds" | "price"
-    > & {
-      price?: number;
-    })[];
-  },
-) => {
+const post = async (body: {
+  stockMode: ProductModel.stockMode;
+  inventory?: Extract<PostBody, { stockMode: "SHARED" }>["inventory"];
+  variants: Partial<UnwrapSchema<typeof ProductModel.variantCreate>>[];
+}) => {
   const { id: categoryId, values } = await category();
   return await api.products.post({
     name: `stock product ${randomLowerString(8)}`,
     description: "stock test",
     status: "PUBLISHED",
     categoryId,
-    stockMode: body.stockMode,
-    ...(body.inventory && { inventory: body.inventory }),
-    variants: {
-      create: body.variants.map((variant, index) => ({
-        price: 100 * (index + 1),
-        attributeValueIds: [values[index] ?? ""],
-        ...variant,
-      })),
-    },
-    images: { create: [{ position: 0, file: file(image) }] },
-  });
+    ...body,
+    variants: body.variants.map((variant, index) => ({
+      price: 100 * (index + 1),
+      attributeValueIds: [values[index] ?? ""],
+      ...variant,
+    })),
+    images: [{ position: 0, file: file(image) }],
+  } as PostBody);
 };
 
 const sachets = async (quantity: number, lowStockAt = 0) => {
@@ -214,12 +207,10 @@ describe.concurrent("Product stock", () => {
     const invalidPosts: {
       body: Parameters<typeof post>[0];
       case: string;
-      field: string;
     }[] = [
       {
         case: "SHARED without inventory",
         body: { stockMode: "SHARED", variants: [{ stockUsage: 1 }] },
-        field: "inventory",
       },
       {
         case: "SHARED variant with its own inventory",
@@ -228,7 +219,6 @@ describe.concurrent("Product stock", () => {
           inventory: { dimension: "MASS", quantity: 1 },
           variants: [{ stockUsage: 1, inventory: { quantity: 1 } }],
         },
-        field: "variants.create[0]",
       },
       {
         case: "SHARED variant without stockUsage",
@@ -237,7 +227,6 @@ describe.concurrent("Product stock", () => {
           inventory: { dimension: "MASS", quantity: 1 },
           variants: [{}],
         },
-        field: "variants.create[0]",
       },
       {
         case: "VARIANT with a product inventory",
@@ -246,7 +235,6 @@ describe.concurrent("Product stock", () => {
           inventory: { dimension: "COUNT", quantity: 1 },
           variants: [{ inventory: { quantity: 1 } }],
         },
-        field: "inventory",
       },
       {
         case: "VARIANT variant with stockUsage",
@@ -254,18 +242,16 @@ describe.concurrent("Product stock", () => {
           stockMode: "VARIANT",
           variants: [{ inventory: { quantity: 1 }, stockUsage: 2 }],
         },
-        field: "variants.create[0]",
       },
       {
         case: "VARIANT variant without inventory",
         body: { stockMode: "VARIANT", variants: [{}] },
-        field: "variants.create[0]",
       },
     ];
-    it.each(invalidPosts)("rejects $case", async ({ body, field }) => {
+    it.each(invalidPosts)("rejects $case", async ({ body }) => {
       const { status, error } = await post(body);
-      expect(status).toBe(400);
-      expect(error?.value).toMatchObject({ code: "INVALID_STOCK", field });
+      expect(status).toBe(422);
+      expect(error?.value).toMatchObject({ type: "validation", on: "body" });
     });
   });
 

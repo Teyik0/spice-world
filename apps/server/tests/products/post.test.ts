@@ -39,19 +39,15 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "PUBLISHED",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 1099,
-              sku: `sku${testId}one`,
-              inventory: { quantity: 100 },
-              attributeValueIds: [category.attributes[0].values[0].id],
-            },
-          ],
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath1) }],
-        },
+        variants: [
+          {
+            price: 1099,
+            sku: `sku${testId}one`,
+            inventory: { quantity: 100 },
+            attributeValueIds: [category.attributes[0].values[0].id],
+          },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       expect(status).toBe(201);
@@ -77,19 +73,15 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "PUBLISHED",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 1099,
-              sku: `sku${testId}one`,
-              inventory: { quantity: 100 },
-              attributeValueIds: [],
-            },
-          ],
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath1) }],
-        },
+        variants: [
+          {
+            price: 1099,
+            sku: `sku${testId}one`,
+            inventory: { quantity: 100 },
+            attributeValueIds: [],
+          },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       expect(status).toBe(201);
@@ -113,19 +105,15 @@ describe.concurrent("POST /products - Integration Tests", () => {
           categoryId: category.id,
           status: "PUBLISHED",
           stockMode: "VARIANT",
-          variants: {
-            create: [
-              {
-                price: 1099,
-                sku: `first${testId}`,
-                inventory: { quantity: 100 },
-                attributeValueIds: [],
-              },
-            ],
-          },
-          images: {
-            create: [{ position: 0, file: file(filePath1) }],
-          },
+          variants: [
+            {
+              price: 1099,
+              sku: `first${testId}`,
+              inventory: { quantity: 100 },
+              attributeValueIds: [],
+            },
+          ],
+          images: [{ position: 0, file: file(filePath1) }],
         });
 
       expect(firstStatus).toBe(201);
@@ -138,19 +126,15 @@ describe.concurrent("POST /products - Integration Tests", () => {
         categoryId: category.id,
         status: "PUBLISHED",
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 1099,
-              sku: `second${testId}`,
-              inventory: { quantity: 100 },
-              attributeValueIds: [],
-            },
-          ],
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath1) }],
-        },
+        variants: [
+          {
+            price: 1099,
+            sku: `second${testId}`,
+            inventory: { quantity: 100 },
+            attributeValueIds: [],
+          },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       expect(status).toBe(409);
@@ -167,19 +151,15 @@ describe.concurrent("POST /products - Integration Tests", () => {
         categoryId: nonExistentCategoryId,
         status: "PUBLISHED",
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 899,
-              sku: `invalid${testId}`,
-              inventory: { quantity: 20 },
-              attributeValueIds: [],
-            },
-          ],
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath1) }],
-        },
+        variants: [
+          {
+            price: 899,
+            sku: `invalid${testId}`,
+            inventory: { quantity: 20 },
+            attributeValueIds: [],
+          },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       expect(status).toBe(404);
@@ -200,34 +180,30 @@ describe.concurrent("POST /products - Integration Tests", () => {
         categoryId: category.id,
         status: "PUBLISHED",
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 599,
-              sku: "MULTI-VAR-001",
-              inventory: { quantity: 50 },
-              attributeValueIds: [firstAttribute?.values[0]?.id as string],
-            },
-            {
-              price: 999,
-              sku: "MULTI-VAR-002",
-              inventory: { quantity: 30 },
-              attributeValueIds: [secondAttribute?.values[0]?.id as string],
-            },
-            {
-              price: 1499,
-              sku: "MULTI-VAR-003",
-              inventory: { quantity: 20 },
-              attributeValueIds: [thirdAttribute?.values[0]?.id as string],
-            },
-          ],
-        },
-        images: {
-          create: [
-            { position: 0, file: file(filePath1) },
-            { position: 1, file: file(filePath2) },
-          ],
-        },
+        variants: [
+          {
+            price: 599,
+            sku: "MULTI-VAR-001",
+            inventory: { quantity: 50 },
+            attributeValueIds: [firstAttribute?.values[0]?.id as string],
+          },
+          {
+            price: 999,
+            sku: "MULTI-VAR-002",
+            inventory: { quantity: 30 },
+            attributeValueIds: [secondAttribute?.values[0]?.id as string],
+          },
+          {
+            price: 1499,
+            sku: "MULTI-VAR-003",
+            inventory: { quantity: 20 },
+            attributeValueIds: [thirdAttribute?.values[0]?.id as string],
+          },
+        ],
+        images: [
+          { position: 0, file: file(filePath1) },
+          { position: 1, file: file(filePath2) },
+        ],
       });
 
       expect(status).toBe(201);
@@ -256,22 +232,18 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "PUBLISHED",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 1999,
-              inventory: { quantity: 0 },
-              sku: `sku${testId}one`,
-              attributeValueIds: [
-                category.attributes[0].values[0].id,
-                category.attributes[1].values[1].id,
-              ],
-            },
-          ],
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath1) }],
-        },
+        variants: [
+          {
+            price: 1999,
+            inventory: { quantity: 0 },
+            sku: `sku${testId}one`,
+            attributeValueIds: [
+              category.attributes[0].values[0].id,
+              category.attributes[1].values[1].id,
+            ],
+          },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       expect(status).toBe(201);
@@ -301,37 +273,33 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "PUBLISHED",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            // Valid variant
-            {
-              price: 999,
-              inventory: { quantity: 0 },
-              sku: `valid-${testId}`,
-              attributeValueIds: [category.attributes[0].values[0].id],
-            },
-            // Duplicate combination (VVA4)
-            {
-              price: 1499,
-              inventory: { quantity: 0 },
-              sku: `dup-${testId}`,
-              attributeValueIds: [category.attributes[0].values[0].id],
-            },
-            // Exceeds capacity (VVA3)
-            {
-              price: 1999,
-              inventory: { quantity: 0 },
-              sku: `extra-${testId}`,
-              attributeValueIds: [category.attributes[0].values[1].id],
-            },
-          ],
-        },
-        images: {
-          create: [
-            { position: 0, file: file(filePath1) },
-            { position: 1, file: file(filePath2) },
-          ],
-        },
+        variants: [
+          // Valid variant
+          {
+            price: 999,
+            inventory: { quantity: 0 },
+            sku: `valid-${testId}`,
+            attributeValueIds: [category.attributes[0].values[0].id],
+          },
+          // Duplicate combination (DUPLICATE_VARIANT_COMBINATION)
+          {
+            price: 1499,
+            inventory: { quantity: 0 },
+            sku: `dup-${testId}`,
+            attributeValueIds: [category.attributes[0].values[0].id],
+          },
+          // Exceeds capacity (VARIANT_COUNT_OUT_OF_RANGE)
+          {
+            price: 1999,
+            inventory: { quantity: 0 },
+            sku: `extra-${testId}`,
+            attributeValueIds: [category.attributes[0].values[1].id],
+          },
+        ],
+        images: [
+          { position: 0, file: file(filePath1) },
+          { position: 1, file: file(filePath2) },
+        ],
       });
 
       expectDefined(error);
@@ -342,10 +310,10 @@ describe.concurrent("POST /products - Integration Tests", () => {
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
-              code: "VVA4",
+              code: "DUPLICATE_VARIANT_COMBINATION",
             }),
             expect.objectContaining({
-              code: "VVA3",
+              code: "VARIANT_COUNT_OUT_OF_RANGE",
             }),
           ]),
         },
@@ -368,7 +336,10 @@ describe.concurrent("POST /products - Integration Tests", () => {
       const testId = randomLowerString(8);
 
       // Create exactly maximum allowed variants (27)
-      const variants: ProductModel.postBody["variants"]["create"] = [];
+      const variants: Extract<
+        ProductModel.postBody,
+        { stockMode: "VARIANT" }
+      >["variants"] = [];
       for (const attr0 of category.attributes[0].values) {
         for (const attr1 of category.attributes[1].values) {
           for (const attr2 of category.attributes[2].values) {
@@ -388,14 +359,12 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "PUBLISHED",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: { create: variants },
-        images: {
-          create: Array.from({ length: 5 }, (_, i) => ({
-            file: file(filePath1),
-            position: i,
-            altText: `Image ${i + 1}`,
-          })),
-        },
+        variants,
+        images: Array.from({ length: 5 }, (_, i) => ({
+          file: file(filePath1),
+          position: i,
+          altText: `Image ${i + 1}`,
+        })),
       });
 
       expect(status).toBe(201);
@@ -409,7 +378,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
   });
 
   describe("POST /products - Variant Attribute Validations", () => {
-    it("should throw VVA1 for invalid attribute values", async () => {
+    it("should throw ATTRIBUTE_VALUE_NOT_IN_CATEGORY for invalid attribute values", async () => {
       const category = await createTestCategory({
         testDb,
         attributeCount: 1,
@@ -427,19 +396,15 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "DRAFT",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 999,
-              inventory: { quantity: 0 },
-              sku: `sku${testId}one`,
-              attributeValueIds: [crypto.randomUUID()], // does not exist in db
-            },
-          ],
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath1) }],
-        },
+        variants: [
+          {
+            price: 999,
+            inventory: { quantity: 0 },
+            sku: `sku${testId}one`,
+            attributeValueIds: [crypto.randomUUID()], // does not exist in db
+          },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       expectDefined(error);
@@ -450,14 +415,14 @@ describe.concurrent("POST /products - Integration Tests", () => {
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
-              code: "VVA1",
+              code: "ATTRIBUTE_VALUE_NOT_IN_CATEGORY",
             }),
           ]),
         },
       });
     });
 
-    it("should throw VVA1 for attribute value from different category", async () => {
+    it("should throw ATTRIBUTE_VALUE_NOT_IN_CATEGORY for attribute value from different category", async () => {
       const category = await createTestCategory({
         testDb,
         attributeCount: 1,
@@ -480,20 +445,16 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "DRAFT",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 999,
-              inventory: { quantity: 0 },
-              sku: `sku${testId}one`,
-              // Use attribute value from OTHER category
-              attributeValueIds: [otherCategory.attributes[0].values[0].id],
-            },
-          ],
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath) }],
-        },
+        variants: [
+          {
+            price: 999,
+            inventory: { quantity: 0 },
+            sku: `sku${testId}one`,
+            // Use attribute value from OTHER category
+            attributeValueIds: [otherCategory.attributes[0].values[0].id],
+          },
+        ],
+        images: [{ position: 0, file: file(filePath) }],
       });
 
       expectDefined(error);
@@ -504,14 +465,14 @@ describe.concurrent("POST /products - Integration Tests", () => {
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
-              code: "VVA1",
+              code: "ATTRIBUTE_VALUE_NOT_IN_CATEGORY",
             }),
           ]),
         },
       });
     });
 
-    it("should throw VVA2 for multiple values from same attribute", async () => {
+    it("should throw ATTRIBUTE_VALUED_TWICE for multiple values from same attribute", async () => {
       const category = await createTestCategory({
         testDb,
         attributeCount: 1,
@@ -529,22 +490,18 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "DRAFT",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 999,
-              inventory: { quantity: 0 },
-              sku: `sku${testId}one`,
-              attributeValueIds: [
-                category.attributes[0].values[0].id,
-                category.attributes[0].values[1].id,
-              ],
-            },
-          ],
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath1) }],
-        },
+        variants: [
+          {
+            price: 999,
+            inventory: { quantity: 0 },
+            sku: `sku${testId}one`,
+            attributeValueIds: [
+              category.attributes[0].values[0].id,
+              category.attributes[0].values[1].id,
+            ],
+          },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       expectDefined(error);
@@ -555,14 +512,14 @@ describe.concurrent("POST /products - Integration Tests", () => {
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
-              code: "VVA2",
+              code: "ATTRIBUTE_VALUED_TWICE",
             }),
           ]),
         },
       });
     });
 
-    it("should throw VVA3 when exceeding category capacity", async () => {
+    it("should throw VARIANT_COUNT_OUT_OF_RANGE when exceeding category capacity", async () => {
       const category = await createTestCategory({
         testDb,
         attributeCount: 1,
@@ -598,12 +555,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "DRAFT",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: variants,
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath1) }],
-        },
+        variants,
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       expectDefined(error);
@@ -614,14 +567,14 @@ describe.concurrent("POST /products - Integration Tests", () => {
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
-              code: "VVA3",
+              code: "VARIANT_COUNT_OUT_OF_RANGE",
             }),
           ]),
         },
       });
     });
 
-    it("should throw VVA4 for duplicate attribute combinations", async () => {
+    it("should throw DUPLICATE_VARIANT_COMBINATION for duplicate attribute combinations", async () => {
       const category = await createTestCategory({
         testDb,
         attributeCount: 1,
@@ -638,25 +591,21 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "DRAFT",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 999,
-              inventory: { quantity: 0 },
-              sku: `sku${testId}one`,
-              attributeValueIds: [category.attributes[0].values[0].id],
-            },
-            {
-              price: 1499,
-              inventory: { quantity: 0 },
-              sku: `sku${testId}two`,
-              attributeValueIds: [category.attributes[0].values[0].id],
-            },
-          ],
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath1) }],
-        },
+        variants: [
+          {
+            price: 999,
+            inventory: { quantity: 0 },
+            sku: `sku${testId}one`,
+            attributeValueIds: [category.attributes[0].values[0].id],
+          },
+          {
+            price: 1499,
+            inventory: { quantity: 0 },
+            sku: `sku${testId}two`,
+            attributeValueIds: [category.attributes[0].values[0].id],
+          },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       expectDefined(error);
@@ -667,14 +616,14 @@ describe.concurrent("POST /products - Integration Tests", () => {
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
-              code: "VVA4",
+              code: "DUPLICATE_VARIANT_COMBINATION",
             }),
           ]),
         },
       });
     });
 
-    it("should throw VVA4 for same combination in different order", async () => {
+    it("should throw DUPLICATE_VARIANT_COMBINATION for same combination in different order", async () => {
       const category = await createTestCategory({
         testDb,
         attributeCount: 2,
@@ -697,25 +646,21 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "DRAFT",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 999,
-              inventory: { quantity: 0 },
-              sku: `sku${testId}one`,
-              attributeValueIds: [attr1ValueId, attr2ValueId],
-            },
-            {
-              price: 1499,
-              inventory: { quantity: 0 },
-              sku: `sku${testId}two`,
-              attributeValueIds: [attr2ValueId, attr1ValueId],
-            },
-          ],
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath) }],
-        },
+        variants: [
+          {
+            price: 999,
+            inventory: { quantity: 0 },
+            sku: `sku${testId}one`,
+            attributeValueIds: [attr1ValueId, attr2ValueId],
+          },
+          {
+            price: 1499,
+            inventory: { quantity: 0 },
+            sku: `sku${testId}two`,
+            attributeValueIds: [attr2ValueId, attr1ValueId],
+          },
+        ],
+        images: [{ position: 0, file: file(filePath) }],
       });
 
       expectDefined(error);
@@ -726,14 +671,14 @@ describe.concurrent("POST /products - Integration Tests", () => {
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
-              code: "VVA4",
+              code: "DUPLICATE_VARIANT_COMBINATION",
             }),
           ]),
         },
       });
     });
 
-    it("should throw VVA4 for duplicate empty attributeValueIds", async () => {
+    it("should throw DUPLICATE_VARIANT_COMBINATION for duplicate empty attributeValueIds", async () => {
       const category = await createTestCategory({
         testDb,
         attributeCount: 1,
@@ -748,25 +693,21 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "DRAFT",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 999,
-              inventory: { quantity: 0 },
-              sku: `sku${testId}one`,
-              attributeValueIds: [],
-            },
-            {
-              price: 1499,
-              inventory: { quantity: 0 },
-              sku: `sku${testId}two`,
-              attributeValueIds: [], // Both empty = duplicate combination
-            },
-          ],
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath1) }],
-        },
+        variants: [
+          {
+            price: 999,
+            inventory: { quantity: 0 },
+            sku: `sku${testId}one`,
+            attributeValueIds: [],
+          },
+          {
+            price: 1499,
+            inventory: { quantity: 0 },
+            sku: `sku${testId}two`,
+            attributeValueIds: [], // Both empty = duplicate combination
+          },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       expectDefined(error);
@@ -777,7 +718,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
-              code: "VVA4",
+              code: "DUPLICATE_VARIANT_COMBINATION",
             }),
           ]),
         },
@@ -802,7 +743,10 @@ describe.concurrent("POST /products - Integration Tests", () => {
       const attr2Values = category.attributes[1].values.slice(0, 2);
       const maxCapacity = attr1Values.length * attr2Values.length; // 2 × 2 = 4
 
-      const variants: ProductModel.postBody["variants"]["create"] = [];
+      const variants: Extract<
+        ProductModel.postBody,
+        { stockMode: "VARIANT" }
+      >["variants"] = [];
       for (const attr1Val of attr1Values) {
         for (const attr2Val of attr2Values) {
           variants.push({
@@ -822,12 +766,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "PUBLISHED",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: variants,
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath1) }],
-        },
+        variants,
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       expect(status).toBe(201);
@@ -836,7 +776,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
       expect(data.status).toBe("PUBLISHED");
     });
 
-    it("should throw VVA3 with single attribute category", async () => {
+    it("should throw VARIANT_COUNT_OUT_OF_RANGE with single attribute category", async () => {
       const category = await createTestCategory({
         testDb,
         attributeCount: 1,
@@ -871,12 +811,8 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "DRAFT",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: variants,
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath1) }],
-        },
+        variants,
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       expectDefined(error);
@@ -887,14 +823,14 @@ describe.concurrent("POST /products - Integration Tests", () => {
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
-              code: "VVA3",
+              code: "VARIANT_COUNT_OUT_OF_RANGE",
             }),
           ]),
         },
       });
     });
 
-    it("should throw VVA3 with no-attribute category (max 1 variant)", async () => {
+    it("should throw VARIANT_COUNT_OUT_OF_RANGE with no-attribute category (max 1 variant)", async () => {
       const category = await createTestCategory({
         testDb,
         attributeCount: 0,
@@ -909,25 +845,21 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "DRAFT",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 999,
-              inventory: { quantity: 0 },
-              sku: `sku${testId}one`,
-              attributeValueIds: [],
-            },
-            {
-              price: 1499,
-              inventory: { quantity: 0 },
-              sku: `sku${testId}two`,
-              attributeValueIds: [],
-            },
-          ],
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath1) }],
-        },
+        variants: [
+          {
+            price: 999,
+            inventory: { quantity: 0 },
+            sku: `sku${testId}one`,
+            attributeValueIds: [],
+          },
+          {
+            price: 1499,
+            inventory: { quantity: 0 },
+            sku: `sku${testId}two`,
+            attributeValueIds: [],
+          },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       expectDefined(error);
@@ -938,14 +870,14 @@ describe.concurrent("POST /products - Integration Tests", () => {
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
-              code: "VVA3",
+              code: "VARIANT_COUNT_OUT_OF_RANGE",
             }),
           ]),
         },
       });
     });
 
-    it("should throw VVA4 for empty attributeValueIds (detected as equal attributeID) when category has required attributes", async () => {
+    it("should throw DUPLICATE_VARIANT_COMBINATION for empty attributeValueIds (detected as equal attributeID) when category has required attributes", async () => {
       const category = await createTestCategory({ testDb, attributeCount: 2 });
       expectDefined(category.attributes[0]);
       expectDefined(category.attributes[1]);
@@ -959,25 +891,21 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "PUBLISHED", // Force validation
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 999,
-              inventory: { quantity: 0 },
-              sku: `sku${testId}one`,
-              attributeValueIds: [], // Empty when category requires attributes
-            },
-            {
-              price: 1499,
-              inventory: { quantity: 0 },
-              sku: `sku${testId}two`,
-              attributeValueIds: [],
-            },
-          ],
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath1) }],
-        },
+        variants: [
+          {
+            price: 999,
+            inventory: { quantity: 0 },
+            sku: `sku${testId}one`,
+            attributeValueIds: [], // Empty when category requires attributes
+          },
+          {
+            price: 1499,
+            inventory: { quantity: 0 },
+            sku: `sku${testId}two`,
+            attributeValueIds: [],
+          },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       expectDefined(error);
@@ -988,14 +916,14 @@ describe.concurrent("POST /products - Integration Tests", () => {
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
-              code: "VVA4",
+              code: "DUPLICATE_VARIANT_COMBINATION",
             }),
           ]),
         },
       });
     });
 
-    it("should throw VVA2 for multiple occurrences of same value ID in attributeValueIds", async () => {
+    it("should throw ATTRIBUTE_VALUED_TWICE for multiple occurrences of same value ID in attributeValueIds", async () => {
       const category = await createTestCategory({ testDb, attributeCount: 1 });
       expectDefined(category.attributes[0]);
       expectDefined(category.attributes[0].values[0]);
@@ -1010,19 +938,15 @@ describe.concurrent("POST /products - Integration Tests", () => {
         status: "DRAFT",
         categoryId: category.id,
         stockMode: "VARIANT",
-        variants: {
-          create: [
-            {
-              price: 999,
-              inventory: { quantity: 0 },
-              sku: `sku${testId}one`,
-              attributeValueIds: [valueId, valueId], // Same ID twice
-            },
-          ],
-        },
-        images: {
-          create: [{ position: 0, file: file(filePath1) }],
-        },
+        variants: [
+          {
+            price: 999,
+            inventory: { quantity: 0 },
+            sku: `sku${testId}one`,
+            attributeValueIds: [valueId, valueId], // Same ID twice
+          },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
       });
 
       expectDefined(error);
@@ -1033,7 +957,7 @@ describe.concurrent("POST /products - Integration Tests", () => {
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
-              code: "VVA2",
+              code: "ATTRIBUTE_VALUED_TWICE",
             }),
           ]),
         },

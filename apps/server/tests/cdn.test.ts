@@ -277,16 +277,14 @@ describe.concurrent("CDN cache", () => {
           status: "DRAFT",
           categoryId: category.id,
           stockMode: "VARIANT",
-          variants: {
-            create: [
-              {
-                price: 1000,
-                inventory: { quantity: 1 },
-                attributeValueIds: [attribute.values[0]?.id ?? ""],
-              },
-            ],
-          },
-          images: { create: [{ position: 0, file: image }] },
+          variants: [
+            {
+              price: 1000,
+              inventory: { quantity: 1 },
+              attributeValueIds: [attribute.values[0]?.id ?? ""],
+            },
+          ],
+          images: [{ position: 0, file: image }],
         }),
       );
       expect(result.status).toBe(201);

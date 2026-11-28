@@ -1,7 +1,7 @@
 import { problem } from "elysia";
 
 import type * as ProductModel from "../model";
-import { hasInvalidIds } from "./operations";
+import { hasUnknownIds } from "./operations";
 
 /** Minimal shape shared by the category and product services. */
 interface VariantCategory {
@@ -38,22 +38,16 @@ export function validateVariantIds(
   current: { id: string }[],
   vOps: ProductModel.variantOperations,
 ) {
-  if (hasInvalidIds(current, vOps)) {
+  if (hasUnknownIds(current, vOps)) {
     return problem("Unprocessable Content", {
       code: "INVALID_VARIANT_OPERATIONS",
       message:
-        "Variant IDs must belong to this product and appear only once in update or delete.",
+        "Variant IDs to update or delete must belong to this product.",
       field: "variants",
     });
   }
 }
 
-/**
- * - VVA1: attribute values belong to the category
- * - VVA2: a variant has at most one value per attribute
- * - VVA3: 1 to (product of the attribute value counts) variants
- * - VVA4: no two variants have the same attribute values
- */
 export function validateVariants({
   category,
   vOps,
@@ -102,7 +96,7 @@ function validateAttributeValues(
     if (!attributeId) {
       return [
         {
-          code: "VVA1",
+          code: "ATTRIBUTE_VALUE_NOT_IN_CATEGORY",
           message: `${path}: Invalid attribute value "${valueId}". Attribute values should match product category.`,
           field: "attributeValueIds",
         },
@@ -111,7 +105,7 @@ function validateAttributeValues(
     if (seen.has(attributeId)) {
       return [
         {
-          code: "VVA2",
+          code: "ATTRIBUTE_VALUED_TWICE",
           message: `${path}: Multiple values for the same attribute (${attributeId}), including ${valueId}.`,
           field: "attributeValueIds",
         },
@@ -135,7 +129,7 @@ function validateCount(
   }
   return [
     {
-      code: "VVA3",
+      code: "VARIANT_COUNT_OUT_OF_RANGE",
       message:
         count < 1
           ? "Product must have at least 1 variant. Cannot delete all variants."
@@ -155,7 +149,7 @@ function validateCombinations(
     if (duplicate) {
       return [
         {
-          code: "VVA4",
+          code: "DUPLICATE_VARIANT_COMBINATION",
           message: `Variants ${duplicate} and ${index + 1} ${key ? "have the same attribute values" : "both have no attribute value (a category change clears them)"}. Each variant needs a distinct combination.`,
           field: "variants.attributeValueIds",
         },

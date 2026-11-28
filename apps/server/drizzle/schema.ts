@@ -510,7 +510,6 @@ export const productVariantTable = pgTable(
     id: text().primaryKey(),
     productId: text().notNull(),
     inventoryId: text().notNull(),
-    /** Base units of the inventory one sale takes: 100000 for a 100 g sachet. */
     stockUsage: bigint({ mode: "number" }).default(1).notNull(),
     sku: text(),
     price: integer().notNull(),

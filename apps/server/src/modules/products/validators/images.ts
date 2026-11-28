@@ -1,18 +1,13 @@
 import { problem } from "elysia";
 
 import type * as ProductModel from "../model";
-import { hasInvalidIds } from "./operations";
+import { hasUnknownIds } from "./operations";
 
 interface ValidateImages {
   currentImages?: { id: string; position: number }[];
   imagesOps: ProductModel.imageOperations;
 }
 
-/**
- * Validates the final state without assigning positions or changing operations.
- * - VIO1: an image cannot be both updated and deleted
- * - VIO2: a product keeps at least 1 image
- */
 export function validateImages({
   imagesOps,
   currentImages = [],
@@ -21,20 +16,12 @@ export function validateImages({
   const deletedIds = new Set(deleted);
   const subErrors: ProductModel.subError[] = [];
 
-  const overlapping = update.filter(({ id }) => deletedIds.has(id));
-  if (overlapping.length) {
-    subErrors.push({
-      code: "VIO1",
-      message: `Image IDs present in both update and delete: ${overlapping.map(({ id }) => id).join(", ")}`,
-      field: "images",
-    });
-  }
   if (
     currentImages.length &&
     currentImages.length - deleted.length + create.length < 1
   ) {
     subErrors.push({
-      code: "VIO2",
+      code: "PRODUCT_IMAGE_REQUIRED",
       message: "Product must have at least 1 image. Cannot delete all images.",
       field: "images",
     });
@@ -48,11 +35,11 @@ export function validateImages({
     });
   }
 
-  if (hasInvalidIds(currentImages, imagesOps)) {
+  if (hasUnknownIds(currentImages, imagesOps)) {
     return problem("Unprocessable Content", {
       code: "INVALID_IMAGE_OPERATIONS",
       message:
-        "Image IDs must belong to this product and appear only once in update or delete.",
+        "Image IDs to update or delete must belong to this product.",
       field: "images",
     });
   }

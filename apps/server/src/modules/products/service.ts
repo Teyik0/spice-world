@@ -733,33 +733,23 @@ export const productService = {
     };
   },
 
-  async post({
-    name,
-    status: requestedStatus,
-    description,
-    categoryId,
-    stockMode,
-    inventory,
-    variants: vOps,
-    images: iOps,
-  }: ProductModel.postBody) {
-    const invalidStock = validateStock({
-      mode: stockMode,
-      modeChanged: true,
-      inventory,
-      vOps,
-    });
-    if (invalidStock) {
-      return invalidStock;
-    }
+  async post(body: ProductModel.postBody) {
+    const {
+      name,
+      status: requestedStatus,
+      description,
+      categoryId,
+      stockMode,
+      variants,
+      images,
+    } = body;
+    const vOps = { create: variants };
     const category = await categoryService.getById({ id: categoryId });
     if (category instanceof ElysiaStatus) {
       return category;
     }
-    const variants = applyVariantOperations([], vOps);
     const invalid =
       validateVariants({ category, variants, vOps }) ??
-      validateImages({ imagesOps: iOps }) ??
       (requestedStatus === "PUBLISHED"
         ? validatePublish({
             variants,
@@ -778,9 +768,9 @@ export const productService = {
 
     const { data: uploads, error } = await uploadFiles(
       name,
-      iOps.create.map(({ file }) => file),
+      images.map(({ file }) => file),
     );
-    if (error || uploads?.length !== iOps.create.length) {
+    if (error || uploads?.length !== images.length) {
       return uploadFileErrStatus(error);
     }
 
@@ -796,14 +786,19 @@ export const productService = {
         status: requestedStatus,
         stockMode,
       });
-      const sharedInventoryId = inventory && Bun.randomUUIDv7();
-      if (inventory && sharedInventoryId) {
-        await tx
-          .insert(inventoryTable)
-          .values({ ...inventory, id: sharedInventoryId, productId: id });
-      }
-      await insertImages(tx, id, iOps.create, uploads);
-      await insertVariants(tx, id, vOps.create, sharedInventoryId);
+      const [shared] =
+        body.stockMode === "SHARED"
+          ? await tx
+              .insert(inventoryTable)
+              .values({
+                ...body.inventory,
+                id: Bun.randomUUIDv7(),
+                productId: id,
+              })
+              .returning({ id: inventoryTable.id })
+          : [];
+      await insertImages(tx, id, images, uploads);
+      await insertVariants(tx, id, variants, shared?.id);
       await refreshListing(tx, [id]);
       return await find({ id }, tx);
     });

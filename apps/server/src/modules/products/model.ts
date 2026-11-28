@@ -1,9 +1,9 @@
 import type { UnwrapSchema } from "elysia";
 import { t } from "elysia";
 
-import { imageResult, nameLowerPattern, uuid } from "../shared";
+import { imageResult, nameLowerPattern, onceEach, uuid } from "../shared";
 
-export const MAX_IMAGES_PER_PRODUCT = 5;
+export const MAX_IMAGES_PER_PRODUCT = 10;
 
 export const stockMode = t.Union([t.Literal("VARIANT"), t.Literal("SHARED")]);
 export type stockMode = UnwrapSchema<typeof stockMode>;
@@ -32,7 +32,7 @@ export const stockState = t.Union([
 export type stockState = UnwrapSchema<typeof stockState>;
 
 export const MAX_STOCK = 1_000_000_000_000;
-const stockAmount = t.Integer({ minimum: 0, maximum: MAX_STOCK });
+export const stockAmount = t.Integer({ minimum: 0, maximum: MAX_STOCK });
 
 const inventoryCreate = t.Object(
   { quantity: stockAmount, lowStockAt: t.Optional(stockAmount) },
@@ -58,7 +58,7 @@ const sharedInventoryCreate = t.Object(
 const sharedInventory = t.Union([sharedInventoryCreate, inventoryEdit]);
 export type sharedInventory = UnwrapSchema<typeof sharedInventory>;
 
-const stockUsage = t.Integer({ minimum: 1, maximum: MAX_STOCK });
+export const stockUsage = t.Integer({ minimum: 1, maximum: MAX_STOCK });
 
 export const productStatus = t.Union(
   [t.Literal("DRAFT"), t.Literal("PUBLISHED"), t.Literal("ARCHIVED")],
@@ -149,7 +149,8 @@ export const imageCreate = t.Object(
   { additionalProperties: false },
 );
 
-export const imageOperations = t.Object(
+export const imageOperations = t.Refine(
+  t.Object(
   {
     create: t.Optional(
       t.Array(imageCreate, { maxItems: MAX_IMAGES_PER_PRODUCT }),
@@ -171,17 +172,24 @@ export const imageOperations = t.Object(
     delete: t.Optional(t.Array(uuid)),
   },
   { additionalProperties: false },
+),
+  onceEach,
+  () => "An image can only be updated or deleted once per request",
 );
 export type imageOperations = UnwrapSchema<typeof imageOperations>;
 
+const variantCreateBase = {
+  price: t.Integer({ minimum: 0 }),
+  sku: t.Optional(t.String({ minLength: 3 })),
+  currency: t.Optional(t.String({ default: "EUR" })),
+  attributeValueIds: t.Array(uuid),
+};
+
 export const variantCreate = t.Object(
   {
-    price: t.Integer({ minimum: 0 }),
-    sku: t.Optional(t.String({ minLength: 3 })),
+    ...variantCreateBase,
     inventory: t.Optional(inventoryCreate),
     stockUsage: t.Optional(stockUsage),
-    currency: t.Optional(t.String({ default: "EUR" })),
-    attributeValueIds: t.Array(uuid),
   },
   { additionalProperties: false },
 );
@@ -199,40 +207,70 @@ const variantUpdate = t.Object(
   { additionalProperties: false },
 );
 
-export const variantOperations = t.Object(
-  {
-    create: t.Optional(t.Array(variantCreate)),
-    update: t.Optional(t.Array(variantUpdate)),
-    delete: t.Optional(t.Array(uuid)),
-  },
-  { additionalProperties: false },
+export const variantOperations = t.Refine(
+  t.Object(
+    {
+      create: t.Optional(t.Array(variantCreate)),
+      update: t.Optional(t.Array(variantUpdate)),
+      delete: t.Optional(t.Array(uuid)),
+    },
+    { additionalProperties: false },
+  ),
+  onceEach,
+  () => "A variant can only be updated or deleted once per request",
 );
 export type variantOperations = UnwrapSchema<typeof variantOperations>;
 
-export const postBody = t.Object(
-  {
-    name: nameLowerPattern,
-    description: t.String({ minLength: 1 }),
-    status: productStatus,
-    categoryId: uuid,
-    stockMode,
-    inventory: t.Optional(sharedInventoryCreate),
-    variants: t.Object(
-      { create: t.Array(variantCreate, { minItems: 1 }) },
-      { additionalProperties: false },
-    ),
-    images: t.Object(
-      {
-        create: t.Array(imageCreate, {
-          minItems: 1,
-          maxItems: MAX_IMAGES_PER_PRODUCT,
-        }),
-      },
-      { additionalProperties: false },
-    ),
-  },
-  { additionalProperties: false },
-);
+const productCreate = {
+  name: nameLowerPattern,
+  description: t.String({ minLength: 1 }),
+  status: productStatus,
+  categoryId: uuid,
+  images: t.Refine(
+    t.Array(imageCreate, {
+      minItems: 1,
+      maxItems: MAX_IMAGES_PER_PRODUCT,
+    }),
+    (images) =>
+      images
+        .map(({ position }) => position)
+        .toSorted((a, b) => a - b)
+        .every((position, index) => position === index),
+    () => "Image positions must be 0 to n-1, each used once",
+  ),
+};
+
+export const postBody = t.Union([
+  t.Object(
+    {
+      ...productCreate,
+      stockMode: t.Literal("VARIANT"),
+      variants: t.Array(
+        t.Object(
+          { ...variantCreateBase, inventory: inventoryCreate },
+          { additionalProperties: false },
+        ),
+        { minItems: 1 },
+      ),
+    },
+    { additionalProperties: false },
+  ),
+  t.Object(
+    {
+      ...productCreate,
+      stockMode: t.Literal("SHARED"),
+      inventory: sharedInventoryCreate,
+      variants: t.Array(
+        t.Object(
+          { ...variantCreateBase, stockUsage },
+          { additionalProperties: false },
+        ),
+        { minItems: 1 },
+      ),
+    },
+    { additionalProperties: false },
+  ),
+]);
 export type postBody = UnwrapSchema<typeof postBody>;
 export const patchBody = t.Object(
   {
@@ -450,18 +488,17 @@ export const invalidStock = t.Object({
 });
 
 export const publishError = t.Object({
-  code: t.Union([t.Literal("PUB1"), t.Literal("PUB2")]),
+  code: t.Union([t.Literal("PUBLISH_PRICE_REQUIRED"), t.Literal("PUBLISH_VARIANTS_INDISTINCT")]),
   message: t.String(),
 });
 
 export const subError = t.Object({
   code: t.Union([
-    t.Literal("VIO1"),
-    t.Literal("VIO2"),
-    t.Literal("VVA1"),
-    t.Literal("VVA2"),
-    t.Literal("VVA3"),
-    t.Literal("VVA4"),
+    t.Literal("PRODUCT_IMAGE_REQUIRED"),
+    t.Literal("ATTRIBUTE_VALUE_NOT_IN_CATEGORY"),
+    t.Literal("ATTRIBUTE_VALUED_TWICE"),
+    t.Literal("VARIANT_COUNT_OUT_OF_RANGE"),
+    t.Literal("DUPLICATE_VARIANT_COMBINATION"),
   ]),
   message: t.String(),
   field: t.String(),
