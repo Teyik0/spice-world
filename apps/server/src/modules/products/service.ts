@@ -43,6 +43,7 @@ import { uploadFileErrStatus } from "../shared";
 import {
   InsufficientStock,
   ProductCategoryNotFound,
+  ProductCollectionNotFound,
   ProductHasComments,
   ProductNameTaken,
   ProductNotFound,
@@ -264,22 +265,29 @@ async function find(
           },
         },
       },
+      collections: {
+        columns: { collectionId: true },
+        orderBy: { collectionId: "asc" },
+      },
     },
   });
-  return (
-    product && {
-      ...product,
-      variants: product.variants.map((variant) => {
-        const { quantity, lowStockAt } = variant.inventory;
-        const available = Math.floor(quantity / variant.stockUsage);
-        return {
-          ...variant,
-          available,
-          stockState: stockState(available, quantity, lowStockAt),
-        };
-      }),
-    }
-  );
+  if (!product) {
+    return;
+  }
+  const { collections, ...columns } = product;
+  return {
+    ...columns,
+    collectionIds: collections.map((c) => c.collectionId),
+    variants: product.variants.map((variant) => {
+      const { quantity, lowStockAt } = variant.inventory;
+      const available = Math.floor(quantity / variant.stockUsage);
+      return {
+        ...variant,
+        available,
+        stockState: stockState(available, quantity, lowStockAt),
+      };
+    }),
+  };
 }
 
 const stockState = (
@@ -498,6 +506,58 @@ async function updateVariants(
   return mode === "SHARED" ? (sharedInventoryId ?? currentShared) : undefined;
 }
 
+async function setCollections(
+  tx: Tx,
+  productId: string,
+  collectionIds: string[],
+) {
+  const { collectionId, position } = collectionProductTable;
+  const memberships = await tx
+    .select({ collectionId })
+    .from(collectionProductTable)
+    .where(eq(collectionProductTable.productId, productId));
+  const current = memberships.map((m) => m.collectionId);
+  const added = collectionIds.filter((id) => !current.includes(id));
+  const removed = current.filter((id) => !collectionIds.includes(id));
+  const changed = [...added, ...removed];
+  if (!changed.length) {
+    return;
+  }
+  await tx
+    .select({ id: collectionTable.id })
+    .from(collectionTable)
+    .where(inArray(collectionTable.id, changed))
+    .orderBy(asc(collectionTable.id))
+    .for("update");
+  await tx
+    .update(collectionTable)
+    .set({ version: sql`${collectionTable.version} + 1` })
+    .where(inArray(collectionTable.id, changed));
+  await tx
+    .delete(collectionProductTable)
+    .where(
+      and(
+        eq(collectionProductTable.productId, productId),
+        inArray(collectionId, removed),
+      ),
+    );
+  if (!added.length) {
+    return;
+  }
+  const tails = await tx
+    .select({ collectionId, next: sql<number>`max(${position}) + 1` })
+    .from(collectionProductTable)
+    .where(inArray(collectionId, added))
+    .groupBy(collectionId);
+  await tx.insert(collectionProductTable).values(
+    added.map((id) => ({
+      collectionId: id,
+      productId,
+      position: tails.find((tail) => tail.collectionId === id)?.next ?? 0,
+    })),
+  );
+}
+
 async function deleteUnusedInventories(tx: Tx, productId: string) {
   await tx
     .delete(inventoryTable)
@@ -676,6 +736,7 @@ export const productService = {
     categoryId,
     variants,
     images,
+    collectionIds,
     ...body
   }: ProductModel.postBody) {
     const category = await categoryService.getById({ id: categoryId });
@@ -712,6 +773,7 @@ export const productService = {
         ProductNameTaken,
         VariantSkuTaken,
         ProductCategoryNotFound,
+        ProductCollectionNotFound,
         VariantAttributeValueNotFound,
       ],
       db.transaction(async (tx) => {
@@ -739,6 +801,9 @@ export const productService = {
         await insertImages(tx, id, images, uploads);
         await insertVariants(tx, id, variants, shared?.id);
         await refreshListing(tx, [id]);
+        if (collectionIds) {
+          await setCollections(tx, id, collectionIds);
+        }
         return await find({ id }, tx);
       }),
     );
@@ -761,6 +826,7 @@ export const productService = {
     inventory,
     images: iOps,
     variants: vOps,
+    collectionIds,
     expectedVersion,
   }: ProductModel.patchBody & uuidGuard & ExpectedVersion) {
     const current = await find({ id });
@@ -793,6 +859,7 @@ export const productService = {
           inventory,
           iOps,
           vOps,
+          collectionIds,
         },
         currentProduct: current,
       })
@@ -848,6 +915,7 @@ export const productService = {
         ProductNameTaken,
         VariantSkuTaken,
         ProductCategoryNotFound,
+        ProductCollectionNotFound,
         VariantAttributeValueNotFound,
         InsufficientStock,
         StockLimitExceeded,
@@ -945,6 +1013,9 @@ export const productService = {
         await insertVariants(tx, id, createdVariants, sharedInventoryId);
         await deleteUnusedInventories(tx, id);
         await refreshListing(tx, [id]);
+        if (collectionIds) {
+          await setCollections(tx, id, collectionIds);
+        }
 
         return (await find({ id }, tx)) as ProductModel.productResult;
       }),

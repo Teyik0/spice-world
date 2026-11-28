@@ -44,15 +44,15 @@ export const stockDraft = t.Object({
 export type StockDraft = UnwrapSchema<typeof stockDraft>;
 type Row = StockDraft["variants"][number];
 
-export const stockDraftOf = (product: Product): StockDraft => {
-  const pool = product.variants[0]?.inventory;
-  const shared = product.stockMode === "SHARED" && pool;
+export const stockDraftOf = (product?: Product): StockDraft => {
+  const pool = product?.variants[0]?.inventory;
+  const shared = product?.stockMode === "SHARED" && pool;
   return {
-    mode: product.stockMode,
+    mode: product?.stockMode ?? "VARIANT",
     dimension: shared ? pool.dimension : "COUNT",
     quantity: shared ? pool.quantity : 0,
     lowStockAt: shared ? pool.lowStockAt : 0,
-    variants: product.variants.map(
+    variants: (product?.variants ?? []).map(
       ({ id, price, stockUsage, inventory, attributeValues }) => ({
         id,
         deleted: false,
@@ -68,7 +68,7 @@ export const stockDraftOf = (product: Product): StockDraft => {
 
 export const needs = (row: Row, mode: Mode): Row =>
   mode === "SHARED"
-    ? { ...row, stockUsage: Number.NaN }
+    ? { ...row, stockUsage: Number.NaN, quantity: 0, lowStockAt: 0 }
     : { ...row, stockUsage: 1, quantity: Number.NaN, lowStockAt: 0 };
 
 export const newRow = (mode: Mode): Row =>
@@ -85,13 +85,13 @@ export const newRow = (mode: Mode): Row =>
   );
 
 export const switchMode = (
-  product: Product,
+  product: Product | undefined,
   draft: StockDraft,
   mode: Mode,
 ): StockDraft => {
   const saved = stockDraftOf(product);
   const savedRows = new Map(saved.variants.map((row) => [row.id, row]));
-  const back = mode === product.stockMode;
+  const back = mode === product?.stockMode;
   return {
     ...draft,
     ...(back
@@ -190,6 +190,31 @@ export function variantOperations(product: Product, draft: StockDraft) {
     ...(remove.length && { delete: remove }),
   };
 }
+
+export const postBodyOf = (
+  fields: Omit<ProductModel.postBody, "stockMode" | "variants" | "inventory">,
+  { dimension, lowStockAt, mode, quantity, variants }: StockDraft,
+): ProductModel.postBody =>
+  mode === "SHARED"
+    ? {
+        ...fields,
+        stockMode: mode,
+        inventory: { dimension, quantity, lowStockAt },
+        variants: variants.map(({ attributeValueIds, price, stockUsage }) => ({
+          attributeValueIds,
+          price,
+          stockUsage,
+        })),
+      }
+    : {
+        ...fields,
+        stockMode: mode,
+        variants: variants.map((row) => ({
+          attributeValueIds: row.attributeValueIds,
+          price: row.price,
+          inventory: { quantity: row.quantity, lowStockAt: row.lowStockAt },
+        })),
+      };
 
 export const mergeUpdates = (...lists: Update[][]) => {
   const byId = new Map<string, Update>();

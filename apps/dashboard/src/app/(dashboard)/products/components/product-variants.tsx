@@ -51,9 +51,6 @@ export const MODES = {
   },
 } as const;
 
-const SELECT =
-  "border-input bg-background text-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-destructive h-8 min-w-0 rounded-lg border px-2 text-sm outline-none focus-visible:ring-3";
-
 export const savedStock = (product: Product) => {
   const [first] = product.variants;
   if (product.stockMode === "SHARED" && first) {
@@ -340,7 +337,7 @@ export function StockModeToggle({
   value,
 }: {
   onChange: (value: StockDraft) => void;
-  product: Product;
+  product?: Product;
   value: StockDraft;
 }) {
   return (
@@ -378,17 +375,18 @@ export function ProductVariants({
 }: {
   category: Product["category"];
   onChange: (value: StockDraft) => void;
-  product: Product;
+  product?: Product;
   showErrors: boolean;
   value: StockDraft;
 }) {
   const shared = value.mode === "SHARED";
-  const modeChanged = value.mode !== product.stockMode;
+  const modeChanged = product !== undefined && value.mode !== product.stockMode;
   const byId = new Map(
-    product.variants.map((variant) => [variant.id, variant]),
+    product?.variants.map((variant) => [variant.id, variant]),
   );
   const { attributes } = category;
-  const categoryChanged = category.id !== product.categoryId;
+  const categoryChanged =
+    product !== undefined && category.id !== product.categoryId;
   const unitKey = `${value.mode}:${value.dimension}`;
   const invalid = (n: number) => showErrors && !Number.isInteger(n);
   const setRow = (index: number, patch: Partial<Row>) =>
@@ -437,7 +435,7 @@ export function ProductVariants({
 
   return (
     <FieldGroup>
-      {modeChanged ? (
+      {product && modeChanged ? (
         <p
           aria-live="polite"
           className="bg-warning/10 text-warning rounded-lg px-3 py-2 text-sm text-pretty"
@@ -451,39 +449,62 @@ export function ProductVariants({
         <div className="grid gap-4 sm:grid-cols-3">
           <Field>
             <FieldLabel htmlFor="stock.dimension">Counted By</FieldLabel>
-            {modeChanged ? (
-              <select
-                className={SELECT}
-                defaultValue={value.dimension}
-                id="stock.dimension"
-                key={value.dimension}
-                onChange={(e) => {
-                  const dimension = DIMENSIONS.find(
-                    (d) => d === e.target.value,
-                  );
-                  if (dimension) {
-                    onChange({
-                      ...value,
-                      dimension,
-                      quantity: Number.NaN,
-                      lowStockAt: 0,
-                      variants: value.variants.map((row) =>
-                        row.deleted ? row : { ...row, stockUsage: Number.NaN },
-                      ),
-                    });
-                  }
-                }}
-              >
-                {DIMENSIONS.map((dimension) => (
-                  <option key={dimension} value={dimension}>
-                    {label(dimension)}
-                  </option>
-                ))}
-              </select>
-            ) : (
+            {product && !modeChanged ? (
               <p className="text-sm leading-8" id="stock.dimension">
                 {label(value.dimension)}
               </p>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      className="w-full justify-between font-normal"
+                      id="stock.dimension"
+                      type="button"
+                      variant="outline"
+                    />
+                  }
+                >
+                  {label(value.dimension)}
+                  <ChevronDownIcon className="text-muted-foreground" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel className={MENU_LABEL}>
+                      Counted By
+                    </DropdownMenuLabel>
+                    <DropdownMenuRadioGroup
+                      onValueChange={(next: string) => {
+                        const dimension = DIMENSIONS.find((d) => d === next);
+                        if (dimension && dimension !== value.dimension) {
+                          onChange({
+                            ...value,
+                            dimension,
+                            quantity: Number.NaN,
+                            lowStockAt: 0,
+                            variants: value.variants.map((row) =>
+                              row.deleted
+                                ? row
+                                : { ...row, stockUsage: Number.NaN },
+                            ),
+                          });
+                        }
+                      }}
+                      value={value.dimension}
+                    >
+                      {DIMENSIONS.map((dimension) => (
+                        <DropdownMenuRadioItem
+                          className={MENU_ITEM}
+                          key={dimension}
+                          value={dimension}
+                        >
+                          {label(dimension)}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </Field>
           <Field>

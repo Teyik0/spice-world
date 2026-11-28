@@ -1,9 +1,17 @@
 import type { UnwrapSchema } from "elysia";
 import { t } from "elysia";
 
-import { imageResult, nameLowerPattern, onceEach, uuid } from "../shared";
+import { imageResult, onceEach, uuid } from "../shared";
 
 export const MAX_IMAGES_PER_PRODUCT = 10;
+
+const productName = t.String({
+  pattern: "^(?!new$)[a-zà-öø-ÿœ]+(?: [a-zà-öø-ÿœ]+)*$",
+  minLength: 3,
+  maxLength: 100,
+  error:
+    "Use 3 to 100 lowercase letters, with single spaces between words. A product cannot be named new.",
+});
 
 export const stockMode = t.Union([t.Literal("VARIANT"), t.Literal("SHARED")]);
 export type stockMode = UnwrapSchema<typeof stockMode>;
@@ -222,7 +230,7 @@ export const variantOperations = t.Refine(
 export type variantOperations = UnwrapSchema<typeof variantOperations>;
 
 const productCreate = {
-  name: nameLowerPattern,
+  name: productName,
   description: t.String({ minLength: 1 }),
   status: productStatus,
   categoryId: uuid,
@@ -238,6 +246,7 @@ const productCreate = {
         .every((position, index) => position === index),
     () => "Image positions must be 0 to n-1, each used once",
   ),
+  collectionIds: t.Optional(t.Array(uuid, { uniqueItems: true })),
 };
 
 export const postBody = t.Union([
@@ -274,7 +283,7 @@ export const postBody = t.Union([
 export type postBody = UnwrapSchema<typeof postBody>;
 export const patchBody = t.Object(
   {
-    name: t.Optional(nameLowerPattern),
+    name: t.Optional(productName),
     description: t.Optional(t.String({ minLength: 1 })),
     status: t.Optional(productStatus),
     categoryId: t.Optional(uuid),
@@ -282,6 +291,7 @@ export const patchBody = t.Object(
     inventory: t.Optional(sharedInventory),
     images: t.Optional(imageOperations),
     variants: t.Optional(variantOperations),
+    collectionIds: t.Optional(t.Array(uuid, { uniqueItems: true })),
   },
   { additionalProperties: false },
 );
@@ -385,6 +395,7 @@ export const productResult = t.Object(
     ),
     images: t.Array(imageResult),
     variants: t.Array(variantResult),
+    collectionIds: t.Array(uuid),
   },
   { additionalProperties: false },
 );

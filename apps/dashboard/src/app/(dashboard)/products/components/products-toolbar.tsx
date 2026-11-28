@@ -20,9 +20,11 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@spice-world/ui/components/toggle-group";
+import { Link } from "@teyik0/furin/link";
 import {
   ArrowUpDownIcon,
   ListFilterIcon,
+  PlusIcon,
   SearchIcon,
   XIcon,
 } from "lucide-react";
@@ -334,6 +336,10 @@ export function ProductsToolbar({
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
+        <Button className="ml-auto" render={<Link to="/products/new" />}>
+          <PlusIcon data-icon="inline-start" />
+          New Product
+        </Button>
       </div>
 
       <div className="flex min-h-7 flex-wrap items-center gap-1.5">

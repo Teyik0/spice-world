@@ -1,6 +1,10 @@
 import type { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
 import type { AnyFormApi } from "@tanstack/react-form";
-import { createFormHook, createFormHookContexts } from "@tanstack/react-form";
+import {
+  createFormHook,
+  createFormHookContexts,
+  revalidateLogic,
+} from "@tanstack/react-form";
 import { ChevronDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { useId, useState } from "react";
@@ -230,6 +234,8 @@ export function focusFirstError({ formApi }: { formApi: AnyFormApi }) {
       ?.focus();
   }
 }
+
+export const validateOnSubmitThenChange = revalidateLogic();
 
 export const { useAppForm } = createFormHook({
   fieldContext,

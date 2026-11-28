@@ -118,6 +118,7 @@ export const relations = defineRelations(tables, (r) => ({
     }),
     variants: r.many.productVariant(),
     inventories: r.many.inventory(),
+    collections: r.many.collectionProduct(),
   },
   comment: {
     product: r.one.product({
@@ -164,6 +165,11 @@ export const relations = defineRelations(tables, (r) => ({
     collection: r.one.collection({
       from: r.collectionProduct.collectionId,
       to: r.collection.id,
+      optional: false,
+    }),
+    product: r.one.product({
+      from: r.collectionProduct.productId,
+      to: r.product.id,
       optional: false,
     }),
   },

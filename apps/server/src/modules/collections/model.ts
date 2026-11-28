@@ -32,7 +32,7 @@ export const collectionResult = t.Object(
     id: uuid,
     handle,
     name: t.String(),
-    productIds,
+    productIds: t.Array(uuid),
     version: t.Integer(),
     createdAt: t.Date(),
     updatedAt: t.Date(),

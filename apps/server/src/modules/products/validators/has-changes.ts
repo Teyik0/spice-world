@@ -13,6 +13,7 @@ export function hasProductChanges({
     inventory?: ProductModel.sharedInventory;
     iOps?: ProductModel.imageOperations;
     vOps?: ProductModel.variantOperations;
+    collectionIds?: string[];
   };
   currentProduct: ProductModel.productResult;
 }): boolean {
@@ -26,6 +27,8 @@ export function hasProductChanges({
       newData.categoryId !== currentProduct.categoryId) ||
     (newData.stockMode !== undefined &&
       newData.stockMode !== currentProduct.stockMode) ||
+    (newData.collectionIds !== undefined &&
+      !arraysEqual(newData.collectionIds, currentProduct.collectionIds)) ||
     (currentProduct.variants[0] !== undefined &&
       hasInventoryChange(
         newData.inventory,

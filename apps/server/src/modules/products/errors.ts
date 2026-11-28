@@ -43,6 +43,16 @@ export class ProductCategoryNotFound extends HTTPError.id(
   override readonly detail = "The selected category does not exist";
 }
 
+export class ProductCollectionNotFound extends HTTPError.id(
+  "PRODUCT_COLLECTION_NOT_FOUND",
+  "Bad Request",
+) {
+  static readonly constraints = [
+    "23503:CollectionProduct_collectionId_Collection_id_fkey",
+  ];
+  override readonly detail = "One or more collections do not exist";
+}
+
 export class VariantAttributeValueNotFound extends HTTPError.id(
   "VARIANT_ATTRIBUTE_VALUE_NOT_FOUND",
   "Bad Request",

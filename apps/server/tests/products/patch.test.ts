@@ -157,6 +157,26 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       });
     });
 
+    it("should reject renaming a product to the reserved name new", async () => {
+      const { product } = await setupProduct({
+        attributeCount: 1,
+        attributeValueCount: 1,
+        variants: [
+          { price: 100, inventory: { quantity: 1 }, attributeValueIds: [] },
+        ],
+        imagesCreate: [{ position: 0, file: file(filePath1) }],
+      });
+
+      const { error, status } = await api
+        .products({ id: product.id })
+        .patch({ name: "new" }, { headers: { "x-version": product.version } });
+
+      expect(status).toBe(422);
+      expect(error).toMatchObject({
+        value: expect.stringContaining("cannot be named new"),
+      });
+    });
+
     it("should reject wrong version (optimistic locking)", async () => {
       const { product } = await setupProduct({
         attributeCount: 2,

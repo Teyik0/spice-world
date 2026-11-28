@@ -1,4 +1,5 @@
 import type * as CategoryModel from "@spice-world/server/modules/categories/model";
+import type * as CollectionModel from "@spice-world/server/modules/collections/model";
 import * as ProductModel from "@spice-world/server/modules/products/model";
 import {
   AlertDialog,
@@ -25,6 +26,7 @@ import {
   focusFirstError,
   SubmitButton,
   useAppForm,
+  validateOnSubmitThenChange,
 } from "@spice-world/ui/components/form";
 import {
   ToggleGroup,
@@ -38,7 +40,7 @@ import {
 import { standardSchema } from "@spice-world/ui/lib/schema";
 import { useNavigate } from "@teyik0/furin/link";
 import { t } from "elysia";
-import { CheckIcon, CircleAlertIcon, InfoIcon } from "lucide-react";
+import { CheckIcon, CircleAlertIcon, InfoIcon, PlusIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -47,6 +49,7 @@ import { api } from "../../../../lib/api";
 import { formatAgo, formatStock } from "../../../../lib/format";
 import { ON_DARK } from "./bulk-actions";
 import { CategoryActions, CategoryAttributes } from "./category-dialog";
+import { CollectionDialog, ProductCollections } from "./collection-dialog";
 import { draftsOf, imageOperations, ProductImages } from "./product-images";
 import {
   draftStock,
@@ -58,7 +61,13 @@ import {
 import { label, STATUSES } from "./products-query";
 import { Price, STATUS_BADGE } from "./products-table";
 import type { StockDraft } from "./stock";
-import { stockDraft, stockDraftOf, variantOperations } from "./stock";
+import {
+  newRow,
+  postBodyOf,
+  stockDraft,
+  stockDraftOf,
+  variantOperations,
+} from "./stock";
 
 const STATUS_HINTS = {
   DRAFT: "Hidden from the store.",
@@ -82,10 +91,10 @@ const editorBody = t.Object({
 });
 
 const categoryHint = (
-  product: ProductModel.productResult,
+  product: ProductModel.productResult | undefined,
   categoryId: string,
 ) =>
-  categoryId === product.categoryId
+  !product || categoryId === product.categoryId
     ? "Sets the attributes its variants can use."
     : "Its variants take values of this category: pick them below.";
 
@@ -100,14 +109,81 @@ const withPicks = (
   })),
 });
 
-const fieldsOf = (product: ProductModel.productResult) => ({
-  name: product.name,
-  description: product.description,
-  status: product.status,
-  categoryId: product.categoryId,
-  images: draftsOf(product.images),
-  stock: stockDraftOf(product),
+const fieldsOf = (product?: ProductModel.productResult) => ({
+  name: product?.name ?? "",
+  description: product?.description ?? "",
+  status: product?.status ?? "DRAFT",
+  categoryId: product?.categoryId ?? "",
+  images: draftsOf(product?.images ?? []),
+  stock: product
+    ? stockDraftOf(product)
+    : {
+        ...stockDraftOf(),
+        variants: [{ ...newRow("VARIANT"), key: crypto.randomUUID() }],
+      },
+  collectionIds: product?.collectionIds ?? [],
 });
+
+const sameIds = (a: string[], b: string[]) =>
+  a.length === b.length && a.every((id) => b.includes(id));
+
+function patchOf(
+  saved: ProductModel.productResult,
+  value: ReturnType<typeof fieldsOf>,
+): ProductModel.patchBody {
+  const initial = fieldsOf(saved);
+  const { collectionIds, stock: stockValue, ...fields } = value;
+  const {
+    update,
+    create,
+    delete: remove,
+    ...stock
+  } = variantOperations(saved, stockValue);
+  const variants = {
+    ...(update.length && { update }),
+    ...(create && { create }),
+    ...(remove && { delete: remove }),
+  };
+  return Object.fromEntries(
+    Object.entries({
+      ...fields,
+      ...stock,
+      collectionIds: sameIds(collectionIds, saved.collectionIds)
+        ? undefined
+        : collectionIds,
+      images: imageOperations(saved.images, value.images),
+      variants: Object.keys(variants).length ? variants : undefined,
+    }).filter(
+      ([key, field]) =>
+        field !== undefined && field !== initial[key as keyof typeof initial],
+    ),
+  );
+}
+
+const problemMessage = (
+  problem:
+    | string
+    | { detail?: string; title: string }
+    | { details: { subErrors: { message: string }[] } },
+) => {
+  if (typeof problem === "string") {
+    return problem;
+  }
+  return "details" in problem
+    ? problem.details.subErrors.map((sub) => sub.message).join("\n")
+    : (problem.detail ?? problem.title);
+};
+
+function postOf({
+  images,
+  stock,
+  ...fields
+}: ReturnType<typeof fieldsOf>): ProductModel.postBody {
+  return postBodyOf(
+    { ...fields, images: imageOperations([], images)?.create ?? [] },
+    stock,
+  );
+}
 
 function ProductHeader({
   categoryName,
@@ -202,7 +278,7 @@ function Readiness({
   product,
   values,
 }: {
-  product: ProductModel.productResult;
+  product?: ProductModel.productResult;
   values: ReturnType<typeof fieldsOf>;
 }) {
   const { description, images, name, stock } = values;
@@ -242,8 +318,10 @@ function Readiness({
     },
     {
       label: "Stock",
-      ok: product.stockState === "in",
-      detail: AVAILABILITY[product.stockState][1],
+      ok: product?.stockState === "in",
+      detail: product
+        ? AVAILABILITY[product.stockState][1]
+        : "Checked on first save",
     },
   ];
   const done = checks.filter(({ ok }) => ok).length;
@@ -294,74 +372,60 @@ function Readiness({
 
 export function ProductEditor({
   initialCategories,
+  initialCollections,
   product,
 }: {
   initialCategories: CategoryModel.categoryResult[];
-  product: ProductModel.productResult;
+  initialCollections: CollectionModel.collectionResult[];
+  product?: ProductModel.productResult;
 }) {
   const navigate = useNavigate();
   const [saved, setSaved] = useState(product);
   const [categories, setCategories] = useState(initialCategories);
+  const [collections, setCollections] = useState(initialCollections);
   const [confirming, setConfirming] = useState(false);
   const confirmed = useRef(false);
 
   const form = useAppForm({
     defaultValues: fieldsOf(saved),
+    validationLogic: validateOnSubmitThenChange,
     validators: {
-      onSubmit: standardSchema(editorBody),
+      onDynamic: standardSchema(editorBody),
     },
     onSubmitInvalid: focusFirstError,
     onSubmit: async ({ value, formApi }) => {
-      if (value.stock.mode !== saved.stockMode && !confirmed.current) {
+      if (saved && value.stock.mode !== saved.stockMode && !confirmed.current) {
         setConfirming(true);
         return;
       }
       confirmed.current = false;
-      const initial = fieldsOf(saved);
-      const { stock: stockValue, ...fields } = value;
-      const {
-        update,
-        create,
-        delete: remove,
-        ...stock
-      } = variantOperations(saved, stockValue);
-      const variants = {
-        ...(update.length && { update }),
-        ...(create && { create }),
-        ...(remove && { delete: remove }),
-      };
-      const changed = Object.fromEntries(
-        Object.entries({
-          ...fields,
-          ...stock,
-          images: imageOperations(saved.images, value.images),
-          variants: Object.keys(variants).length ? variants : undefined,
-        }).filter(
-          ([key, field]) =>
-            field !== undefined &&
-            field !== initial[key as keyof typeof initial],
-        ),
-      );
-
-      const { data, error } = await api
-        .products({ id: saved.id })
-        .patch(changed, { headers: { "x-version": saved.version } });
+      const changed = saved && patchOf(saved, value);
+      const { data, error } =
+        saved && changed
+          ? await api
+              .products({ id: saved.id })
+              .patch(changed, { headers: { "x-version": saved.version } })
+          : await api.products.post(postOf(value));
 
       if (error) {
-        const { value: problem } = error;
-        toast.error(
-          "details" in problem
-            ? problem.details.subErrors.map((sub) => sub.message).join("\n")
-            : (problem.detail ?? problem.title),
-        );
+        toast.error(problemMessage(error.value));
         return;
       }
 
       setSaved(data);
       formApi.reset(fieldsOf(data));
-      toast.success("Product saved.");
+      toast.success(saved ? "Product saved." : "Product created.");
 
-      if (data.slug !== saved.slug) {
+      if (changed?.collectionIds) {
+        const list = await api.collections.get();
+        if (list.error) {
+          toast.error(list.error.value.detail ?? list.error.value.title);
+        } else {
+          setCollections(list.data);
+        }
+      }
+
+      if (data.slug !== saved?.slug) {
         await navigate({
           to: "/products/:slug",
           params: { slug: data.slug },
@@ -377,14 +441,22 @@ export function ProductEditor({
       className="mx-auto grid w-full max-w-6xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]"
       noValidate
     >
-      <ProductHeader
-        categoryName={
-          categories.find(({ id }) => id === saved.categoryId)?.name ??
-          saved.category.name
-        }
-        product={saved}
-      />
-      <ListingSummary product={saved} />
+      {saved ? (
+        <>
+          <ProductHeader
+            categoryName={
+              categories.find(({ id }) => id === saved.categoryId)?.name ??
+              saved.category.name
+            }
+            product={saved}
+          />
+          <ListingSummary product={saved} />
+        </>
+      ) : (
+        <h1 className="text-2xl font-semibold tracking-tight lg:col-span-2">
+          New Product
+        </h1>
+      )}
 
       <div className="grid gap-6">
         <Card>
@@ -463,23 +535,30 @@ export function ProductEditor({
                 [state.values.categoryId, state.submissionAttempts] as const
               }
             >
-              {([categoryId, attempts]) => (
-                <form.Field name="stock">
-                  {(field) => (
-                    <ProductVariants
-                      category={
-                        categories.find(({ id }) => id === categoryId) ??
-                        saved.category
-                      }
-                      key={saved.version}
-                      onChange={field.handleChange}
-                      product={saved}
-                      showErrors={attempts > 0}
-                      value={field.state.value}
-                    />
-                  )}
-                </form.Field>
-              )}
+              {([categoryId, attempts]) => {
+                const category =
+                  categories.find(({ id }) => id === categoryId) ??
+                  saved?.category;
+                return category ? (
+                  <form.Field name="stock">
+                    {(field) => (
+                      <ProductVariants
+                        category={category}
+                        key={saved?.version}
+                        onChange={field.handleChange}
+                        product={saved}
+                        showErrors={attempts > 0}
+                        value={field.state.value}
+                      />
+                    )}
+                  </form.Field>
+                ) : (
+                  <p className="text-muted-foreground text-sm">
+                    Pick a category first: it sets the attributes your variants
+                    choose from.
+                  </p>
+                );
+              }}
             </form.Subscribe>
           </CardContent>
         </Card>
@@ -508,7 +587,7 @@ export function ProductEditor({
                   );
                   form.setFieldValue("stock", (stock) =>
                     withPicks(stock, (row) =>
-                      categoryId === saved.categoryId
+                      categoryId === saved?.categoryId
                         ? (savedIds.get(row.id) ?? [])
                         : [],
                     ),
@@ -544,7 +623,7 @@ export function ProductEditor({
                               ),
                             )
                           }
-                          savedId={saved.categoryId}
+                          savedId={saved?.categoryId ?? ""}
                         />
                       }
                     />
@@ -558,28 +637,87 @@ export function ProductEditor({
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>Collections</CardTitle>
+            <CardDescription>Curated lists the store shows.</CardDescription>
+            <CardAction>
+              <CollectionDialog
+                onSaved={(created) => {
+                  setCollections((list) => [...list, created]);
+                  form.setFieldValue("collectionIds", (ids) => [
+                    ...ids,
+                    created.id,
+                  ]);
+                }}
+                trigger={
+                  <Button size="xs" type="button" variant="ghost">
+                    <PlusIcon data-icon="inline-start" />
+                    New
+                  </Button>
+                }
+              />
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            <form.Field name="collectionIds">
+              {(field) => (
+                <ProductCollections
+                  collections={collections}
+                  onChange={field.handleChange}
+                  onCollection={(updated) =>
+                    setCollections((list) =>
+                      list.map((c) => (c.id === updated.id ? updated : c)),
+                    )
+                  }
+                  onDeleted={(id) => {
+                    setCollections((list) => list.filter((c) => c.id !== id));
+                    setSaved(
+                      (current) =>
+                        current && {
+                          ...current,
+                          collectionIds: current.collectionIds.filter(
+                            (other) => other !== id,
+                          ),
+                        },
+                    );
+                  }}
+                  value={field.state.value}
+                />
+              )}
+            </form.Field>
+          </CardContent>
+        </Card>
+
         <form.Subscribe selector={(state) => state.values}>
           {(values) => <Readiness product={saved} values={values} />}
         </form.Subscribe>
 
-        <DeleteProductCard product={saved} />
+        {saved ? <DeleteProductCard product={saved} /> : null}
       </aside>
 
-      <ReplaceStockDialog
-        draft={draftStock(form.getFieldValue("stock"))}
-        onConfirm={async () => {
-          confirmed.current = true;
-          setConfirming(false);
-          await form.handleSubmit();
-        }}
-        onOpenChange={setConfirming}
-        open={confirming}
-        saved={savedStock(saved)}
-      />
+      {saved ? (
+        <ReplaceStockDialog
+          draft={draftStock(form.getFieldValue("stock"))}
+          onConfirm={async () => {
+            confirmed.current = true;
+            setConfirming(false);
+            await form.handleSubmit();
+          }}
+          onOpenChange={setConfirming}
+          open={confirming}
+          saved={savedStock(saved)}
+        />
+      ) : null}
 
       <form.Subscribe selector={(state) => state.isDefaultValue}>
         {(isDefault) =>
-          isDefault ? null : <UnsavedBar onDiscard={() => form.reset()} />
+          saved && isDefault ? null : (
+            <UnsavedBar
+              creating={!saved}
+              onDiscard={isDefault ? undefined : () => form.reset()}
+            />
+          )
         }
       </form.Subscribe>
     </form>
@@ -668,30 +806,37 @@ function DeleteProductCard({
   );
 }
 
-function UnsavedBar({ onDiscard }: { onDiscard: () => void }) {
+function UnsavedBar({
+  creating,
+  onDiscard,
+}: {
+  creating: boolean;
+  onDiscard?: () => void;
+}) {
+  const text = creating ? "New product" : "Unsaved changes";
   return (
     <div
-      aria-label="Unsaved changes"
+      aria-label={text}
       className="bg-foreground text-background fixed inset-x-0 bottom-6 z-20 mx-auto flex w-fit items-center gap-1 rounded-xl p-1.5 pl-4 shadow-lg"
       role="region"
     >
-      <span className="mr-2 text-sm font-medium whitespace-nowrap">
-        Unsaved changes
-      </span>
-      <Button
-        className={ON_DARK}
-        onClick={onDiscard}
-        size="sm"
-        type="button"
-        variant="ghost"
-      >
-        Discard
-      </Button>
+      <span className="mr-2 text-sm font-medium whitespace-nowrap">{text}</span>
+      {onDiscard ? (
+        <Button
+          className={ON_DARK}
+          onClick={onDiscard}
+          size="sm"
+          type="button"
+          variant="ghost"
+        >
+          Discard
+        </Button>
+      ) : null}
       <SubmitButton
         className="bg-background text-foreground hover:bg-background/90"
         size="sm"
       >
-        Save
+        {creating ? "Create Product" : "Save"}
       </SubmitButton>
     </div>
   );

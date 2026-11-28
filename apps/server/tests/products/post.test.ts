@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "bun:test";
 
 import { treaty } from "@elysia/eden";
+import { collectionRouter } from "@spice-world/server/modules/collections";
 import { productsRouter } from "@spice-world/server/modules/products";
 import type * as ProductModel from "@spice-world/server/modules/products/model";
 
@@ -16,9 +17,9 @@ import {
 } from "../utils/helper";
 
 await mockUtapi();
-const api = treaty(productsRouter, {
-  headers: { cookie: await createSessionCookie(testDb) },
-});
+const headers = { cookie: await createSessionCookie(testDb) };
+const api = treaty(productsRouter, { headers });
+const collectionsApi = treaty(collectionRouter, { headers });
 
 describe.concurrent("POST /products - Integration Tests", () => {
   const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
@@ -139,6 +140,87 @@ describe.concurrent("POST /products - Integration Tests", () => {
 
       expect(status).toBe(409);
       expectDefined(error);
+    });
+
+    it("should reject the reserved name new", async () => {
+      const category = await createTestCategory({ testDb, attributeCount: 0 });
+
+      const { error, status } = await api.products.post({
+        name: "new",
+        description: "A product whose slug would shadow the create page",
+        categoryId: category.id,
+        status: "DRAFT",
+        stockMode: "VARIANT",
+        variants: [
+          { price: 100, inventory: { quantity: 1 }, attributeValueIds: [] },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
+      });
+
+      expect(status).toBe(422);
+      expect(error).toMatchObject({
+        value: expect.stringContaining("cannot be named new"),
+      });
+    });
+
+    it("should create a product in its collections, the same object as getById", async () => {
+      const category = await createTestCategory({ testDb, attributeCount: 0 });
+      const collection = await collectionsApi.collections.post({
+        handle: `test-${randomLowerString(10)}`,
+        name: "Created with product",
+      });
+      expectDefined(collection.data);
+
+      const { data, status } = await api.products.post({
+        name: `collected product ${randomLowerString(8)}`,
+        description: "A product created inside a collection",
+        categoryId: category.id,
+        status: "DRAFT",
+        stockMode: "VARIANT",
+        variants: [
+          { price: 100, inventory: { quantity: 1 }, attributeValueIds: [] },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
+        collectionIds: [collection.data.id],
+      });
+
+      expect(status).toBe(201);
+      expectDefined(data);
+      expect(data.collectionIds).toEqual([collection.data.id]);
+      expect((await api.products({ id: data.id }).get()).data).toEqual(data);
+      expect(
+        (await collectionsApi.collections({ id: collection.data.id }).get())
+          .data,
+      ).toMatchObject({
+        productIds: [data.id],
+        version: collection.data.version + 1,
+      });
+    });
+
+    it("should create nothing when a collection does not exist", async () => {
+      const category = await createTestCategory({ testDb, attributeCount: 0 });
+      const name = `orphan product ${randomLowerString(8)}`;
+
+      const { error, status } = await api.products.post({
+        name,
+        description: "A product pointing at a missing collection",
+        categoryId: category.id,
+        status: "DRAFT",
+        stockMode: "VARIANT",
+        variants: [
+          { price: 100, inventory: { quantity: 1 }, attributeValueIds: [] },
+        ],
+        images: [{ position: 0, file: file(filePath1) }],
+        collectionIds: ["00000000-0000-4000-8000-000000000000"],
+      });
+
+      expect(status).toBe(400);
+      expect(error).toMatchObject({
+        value: { code: "PRODUCT_COLLECTION_NOT_FOUND" },
+      });
+      expect(
+        (await api.products.get({ query: { name } })).data?.length ?? 0,
+      ).toBe(0);
     });
 
     it("should validate category exists", async () => {
