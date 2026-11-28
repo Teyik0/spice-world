@@ -1,0 +1,21 @@
+sst.config.ts
+  s_922c2a4ff4e9c1::t_1db37e8fe0db8f 43
+.github/workflows/preview.yaml
+  s_922c2a4ff4e9c1::t_1db37e8fe0db8f 49,55,60,64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fcbc6dccdcc0c6944f9cfa796b0c89acb167515f",
+  "prompts": {},
+  "sessions": {
+    "s_922c2a4ff4e9c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d840e5b-5ee7-46cc-ab06-5a152b191359",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
