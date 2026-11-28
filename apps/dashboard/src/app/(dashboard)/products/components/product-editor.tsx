@@ -45,6 +45,7 @@ import { t } from "elysia";
 import { CheckIcon, CircleAlertIcon, InfoIcon, PlusIcon } from "lucide-react";
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
 import { useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { toast } from "sonner";
 
 import { ConfirmDelete } from "../../../../components/confirm-delete";
@@ -602,14 +603,16 @@ export function ProductEditor({
               onChange={field.handleChange}
               onCollections={setCollections}
               onDeleted={(id) =>
-                setSaved(
-                  (current) =>
-                    current && {
-                      ...current,
-                      collectionIds: current.collectionIds.filter(
-                        (other) => other !== id,
-                      ),
-                    },
+                flushSync(() =>
+                  setSaved(
+                    (current) =>
+                      current && {
+                        ...current,
+                        collectionIds: current.collectionIds.filter(
+                          (other) => other !== id,
+                        ),
+                      },
+                  ),
                 )
               }
               value={field.state.value}

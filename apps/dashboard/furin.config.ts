@@ -4,6 +4,6 @@ import tailwind from "bun-plugin-tailwind";
 
 export default defineConfig({
   serverEntry: "src/server.ts",
-  targets: ["bun", vercel({ regions: ["fra1"] })], // same region as the API and Neon DB
+  targets: ["bun", vercel({ regions: ["fra1"] })],
   plugins: [{ ...tailwind, buildOnly: true }],
 });

@@ -40,15 +40,14 @@ function useOptimisticQuery(query: ProductsQuery) {
   useEffect(() => {
     latest.current = optimistic;
   });
-  const update = (patch: Partial<ProductsQuery>) =>
+  const update = (patch: Partial<ProductsQuery>) => {
+    const search = { ...latest.current, ...patch };
+    latest.current = search;
     startTransition(async () => {
       setOptimistic(patch);
-      await navigate({
-        to: "/products",
-        search: { ...latest.current, ...patch },
-        replace: true,
-      });
+      await navigate({ to: "/products", search, replace: true });
     });
+  };
   return [optimistic, update] as const;
 }
 

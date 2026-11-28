@@ -178,6 +178,13 @@ export function ProductsToolbar({
     prefetch({ status: STATUSES.find((s) => s === status) });
 
   const [name, setName] = useState(query.name ?? "");
+  const [shown, setShown] = useState(query.name);
+  if (query.name !== shown) {
+    setShown(query.name);
+    if (query.name !== (name.trim() || undefined)) {
+      setName(query.name ?? "");
+    }
+  }
   const debounce = useRef<ReturnType<typeof setTimeout>>(undefined);
   const search = useRef<HTMLInputElement>(null);
 
@@ -202,7 +209,6 @@ export function ProductsToolbar({
         key="name"
         onRemove={() => {
           clearTimeout(debounce.current);
-          setName("");
           update({ name: undefined });
         }}
         text={`Search: “${query.name}”`}

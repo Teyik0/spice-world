@@ -11,11 +11,10 @@ const app = new Elysia()
       : pathname.slice(4);
     const proxied = new Request(`${env.API_URL}${path}${search}`, request);
     proxied.headers.delete("host");
-    return fetch(proxied, { decompress: false });
+    return fetch(proxied, { decompress: false, redirect: "manual" });
   })
   .use(await furin({ style: "nextjs" }));
 
-// Read by the compiled Bun entry when PORT is unset.
 export const port = Number(Bun.env.PORT ?? 5174);
 
 if (import.meta.main) {

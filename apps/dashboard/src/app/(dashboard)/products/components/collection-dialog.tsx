@@ -241,8 +241,8 @@ export function ProductCollections({
               <CollectionDialog
                 collection={collection}
                 onDeleted={(id) => {
-                  onChange(value.filter((other) => other !== id));
                   onDeleted(id);
+                  onChange(value.filter((other) => other !== id));
                 }}
                 onSaved={onCollection}
                 trigger={

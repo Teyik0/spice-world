@@ -8,7 +8,6 @@ import { adminClient, inferAdditionalFields } from "better-auth/client/plugins";
 
 import { env } from "./env";
 
-// The admin must read its own writes, never a CDN copy.
 const headers = { "x-cache-bypass": "1" };
 
 export const api = createIsomorphicFn()
@@ -19,7 +18,6 @@ export const api = createIsomorphicFn()
 
 const plugins = [adminClient(), inferAdditionalFields<typeof auth>()];
 
-// Browser: no baseURL, so /api/auth/* goes through the same-origin relay.
 export const authClient = createIsomorphicFn()
   .server(() => createAuthClient({ baseURL: env.API_URL, plugins }))
   .client(() => createAuthClient({ plugins }))();

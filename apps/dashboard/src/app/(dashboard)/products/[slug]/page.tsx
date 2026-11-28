@@ -26,8 +26,20 @@ export const route = defineRoute("/(dashboard)/products/$slug/")
     if (collections.error) {
       throw collections.error;
     }
+    const current = categories.data.some(
+      ({ id }) => id === product.data.categoryId,
+    )
+      ? undefined
+      : await api
+          .categories({ id: product.data.categoryId })
+          .get({ headers: { cookie } });
+    if (current?.error) {
+      throw current.error;
+    }
     return {
-      categories: categories.data,
+      categories: current
+        ? [...categories.data, current.data]
+        : categories.data,
       collections: collections.data,
       product: adminView(product.data),
     };

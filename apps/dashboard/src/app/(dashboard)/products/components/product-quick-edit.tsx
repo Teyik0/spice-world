@@ -147,7 +147,12 @@ function ProductQuickEdit({
           overlay={false}
         >
           {id ? (
-            <Loaded dirty={dirty} id={id} onDone={() => setOpen(false)} />
+            <Loaded
+              dirty={dirty}
+              id={id}
+              key={id}
+              onDone={() => setOpen(false)}
+            />
           ) : null}
         </SheetContent>
       </Sheet>
@@ -260,8 +265,7 @@ function QuickEditForm({
     onSubmitInvalid: (props) => {
       setFailure([
         {
-          message:
-            "Fix the highlighted fields: prices of 0 or more, stock in whole units.",
+          message: "Fix the highlighted fields.",
         },
       ]);
       focusFirstError(props);

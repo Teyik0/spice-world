@@ -2,8 +2,7 @@ import "@teyik0/furin/server-only";
 import { t } from "elysia";
 import { Value } from "typebox/value";
 
-// Fails at boot, not on the first request, when the API origin is missing.
 export const env = Value.Parse(
-  t.Object({ API_URL: t.String({ format: "uri" }) }),
+  t.Object({ API_URL: t.String({ format: "uri", pattern: "[^/]$" }) }),
   { API_URL: process.env.API_URL },
 );

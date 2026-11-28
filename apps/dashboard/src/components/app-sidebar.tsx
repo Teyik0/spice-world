@@ -35,7 +35,6 @@ import { authClient } from "../lib/api";
 import { Logo } from "./logo";
 import { useTheme } from "./theme";
 
-// Each section joins this list when its pages are migrated.
 const NAV = [
   { title: "Dashboard", to: "/", icon: ChartSplineIcon },
   { title: "Products", to: "/products", icon: BoxesIcon },

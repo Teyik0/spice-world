@@ -20,7 +20,7 @@ export const route = defineRoute("/(dashboard)")
     if (session?.user.role !== "admin") {
       throw redirect("/signin");
     }
-    const sidebarOpen = String(cookie.sidebar_state?.value) !== "false"; // shadcn's SidebarProvider persists its open state in this cookie.
+    const sidebarOpen = String(cookie.sidebar_state?.value) !== "false";
     return { user: session.user, sidebarOpen };
   })
   .layout(({ children, sidebarOpen, user }) => (
