@@ -2,8 +2,8 @@ import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
 
 import { treaty } from "@elysia/eden";
 import { ordersRouter } from "@spice-world/server/modules/orders";
+import * as stripeCheckoutModule from "@spice-world/server/modules/orders/stripe";
 import { productsRouter } from "@spice-world/server/modules/products";
-import * as stripeCheckoutModule from "@spice-world/server/modules/stripe-checkout";
 import { auth } from "@spice-world/server/plugins/auth.plugin";
 
 import { testDb } from "../setup";

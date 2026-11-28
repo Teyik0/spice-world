@@ -97,7 +97,6 @@ export const attributeService = {
             .update(attributeTable)
             .set({ name })
             .where(eq(attributeTable.id, id));
-          // Separate statement: RETURNING would read values as of before the lock wait.
           const attribute = await tx.query.attribute.findFirst({
             where: { id },
             ...this.findOptions,
