@@ -41,23 +41,26 @@ jobs:
         shell: bash # -eo pipefail: fail on the first Neon API error instead of polling blindly
         run: |
           neon() { curl -sSf -H "Authorization: Bearer $NEON_API_KEY" -H 'Content-Type: application/json' "$@"; }
-          neon "$NEON_API/branches" | jq -r --arg n "$STAGE" '.branches[] | select(.name == $n) | .id' \
-            | xargs -r -I{} curl -sSf -X DELETE -H "Authorization: Bearer $NEON_API_KEY" "$NEON_API/branches/{}" > /dev/null
+          drop() {
+            neon "$NEON_API/branches" | jq -r --arg n "$STAGE" '.branches[] | select(.name == $n) | .id' \
+              | xargs -r -I{} curl -sSf -X DELETE -H "Authorization: Bearer $NEON_API_KEY" "$NEON_API/branches/{}" > /dev/null
+          }
+          drop
           id=$(jq --arg n "$STAGE" --arg admin "$ADMIN_EMAIL" --arg q "'" '{ branch_create: { branch: { name: $n } }, start_anonymization: true,
                  masking_rules: map({ database_name: "neondb", schema_name: "public" } + .
                    | if .table_name == "user" and .column_name == "email" and $admin != ""
-                     then .masking_function = "CASE WHEN email = \($q)\($admin | gsub($q; $q + $q))\($q) THEN email ELSE \(.masking_function) END"
+                     then .masking_function = "pg_catalog.regexp_replace(email, \($q)^(?!\($admin | gsub("(?<c>[.+*?^$()\\[\\]{}|\\\\])"; "\\\(.c)") | gsub($q; $q + $q))$).*$\($q), \(.masking_function))"
                      else . end) }' .github/neon/masking-rules.json \
-            | neon -X POST "$NEON_API/branch_anonymized" -d @- | jq -r .branch.id)
+            | neon -X POST "$NEON_API/branch_anonymized" -d @- | jq -r .branch.id) || { drop; exit 1; }
           for _ in $(seq 60); do
             state=$(neon "$NEON_API/branches/$id/anonymized_status" | jq -r .state)
             case $state in
               anonymized) break ;;
-              error|initialization_error) echo "Anonymization failed"; exit 1 ;;
+              error|initialization_error) echo "Anonymization failed"; drop; exit 1 ;;
             esac
             sleep 10
           done
-          test "$state" = anonymized || { echo "Anonymization timed out ($state)"; exit 1; }
+          test "$state" = anonymized || { echo "Anonymization timed out ($state)"; drop; exit 1; }
           # Anonymized branches get their own role password: ask Neon for the URI.
           url=$(neon "$NEON_API/connection_uri?branch_id=$id&database_name=neondb&role_name=neondb_owner" | jq -r .uri)
           echo "::add-mask::$url"
