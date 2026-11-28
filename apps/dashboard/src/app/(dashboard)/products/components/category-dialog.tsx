@@ -80,12 +80,8 @@ const emptyAttribute = (): Draft => ({
 const ROW =
   "grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)_2rem] items-start gap-2";
 
-const toastProblem = (
-  problem: { message: string } | { detail?: string; title: string },
-) =>
-  toast.error(
-    "message" in problem ? problem.message : (problem.detail ?? problem.title),
-  );
+const toastProblem = (problem: { detail?: string; title: string }) =>
+  toast.error(problem.detail ?? problem.title);
 
 function attributeOperations(
   saved: Category["attributes"],

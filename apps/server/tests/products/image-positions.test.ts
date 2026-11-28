@@ -363,7 +363,11 @@ describe("Image positions", () => {
         status: 400,
         value: {
           code: "IMAGES_VALIDATION_FAILED",
-          details: { subErrors: [expect.objectContaining({ code: "PRODUCT_IMAGE_REQUIRED" })] },
+          details: {
+            subErrors: [
+              expect.objectContaining({ code: "PRODUCT_IMAGE_REQUIRED" }),
+            ],
+          },
         },
       });
     });

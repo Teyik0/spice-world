@@ -1,5 +1,4 @@
-import { problem } from "elysia";
-
+import { InvalidStock } from "../errors";
 import type * as ProductModel from "../model";
 
 type Update = NonNullable<ProductModel.variantOperations["update"]>[number];
@@ -77,7 +76,7 @@ export function validateStock({
 }) {
   const shared = mode === "SHARED";
   const invalid = (field: string, message: string) =>
-    problem("Bad Request", { code: "INVALID_STOCK", message, field });
+    new InvalidStock(field, message);
 
   const ownError = productInventoryError(shared, modeChanged, inventory);
   if (ownError) {

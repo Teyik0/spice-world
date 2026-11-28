@@ -433,7 +433,7 @@ describe.concurrent("category PATCH", () => {
     } else {
       expect(await operation).toMatchObject({
         status: 400,
-        response: { code: "ATTRIBUTE_VALUE_LAST_VALUE" },
+        code: "ATTRIBUTE_VALUE_LAST_VALUE",
       });
     }
     expect(
@@ -465,7 +465,7 @@ describe.concurrent("category PATCH", () => {
     });
     expect(rejected).toMatchObject({
       status: 404,
-      response: { code: "CATEGORY_ATTRIBUTE_NOT_FOUND" },
+      code: "CATEGORY_ATTRIBUTE_NOT_FOUND",
     });
     expect(
       await db.query.category.findFirst({ where: { id: category.id } }),
@@ -536,7 +536,7 @@ describe.concurrent("category PATCH", () => {
     ).toMatchObject({ name: untouched.name });
 
     expect(
-      categoryService.patch({
+      await categoryService.patch({
         id: category.id,
         name: `${category.name} conflict`,
         attributes: {
@@ -546,7 +546,7 @@ describe.concurrent("category PATCH", () => {
           ],
         },
       }),
-    ).rejects.toBeDefined();
+    ).toMatchObject({ status: 409, code: "ATTRIBUTE_NAME_ALREADY_EXISTS" });
     expect(
       await db.query.category.findFirst({ where: { id: category.id } }),
     ).toMatchObject({ name: categoryName });
@@ -599,21 +599,21 @@ describe.concurrent("category PATCH", () => {
     });
     expect(rejected).toMatchObject({
       status: 404,
-      response: { code: "CATEGORY_ATTRIBUTE_NOT_FOUND" },
+      code: "CATEGORY_ATTRIBUTE_NOT_FOUND",
     });
     expect(
       await db.query.attribute.findMany({ where: { categoryId: category.id } }),
     ).toHaveLength(input.length);
 
     expect(
-      categoryService.patch({
+      await categoryService.patch({
         id: category.id,
         name: `${category.name} conflict`,
         attributes: {
           create: [{ name: "rollback", values: ["duplicate", "duplicate"] }],
         },
       }),
-    ).rejects.toBeDefined();
+    ).toMatchObject({ status: 409, code: "ATTRIBUTE_VALUE_ALREADY_EXISTS" });
     expect(
       await db.query.attribute.findMany({ where: { categoryId: category.id } }),
     ).toHaveLength(input.length);
@@ -672,7 +672,7 @@ describe.concurrent("category PATCH", () => {
       ]),
     );
     expect(
-      categoryService.patch({
+      await categoryService.patch({
         id: category.id,
         name: `${category.name} conflict`,
         attributes: {
@@ -687,7 +687,7 @@ describe.concurrent("category PATCH", () => {
           ],
         },
       }),
-    ).rejects.toBeDefined();
+    ).toMatchObject({ status: 409, code: "ATTRIBUTE_VALUE_ALREADY_EXISTS" });
     expect(
       await db.query.attributeValue.findMany({
         where: { attributeId: attribute.id },

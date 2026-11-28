@@ -9,7 +9,7 @@ import { stripeClient } from "@spice-world/server/lib/stripe";
 import { betterAuth } from "better-auth/minimal";
 import { admin, oAuthProxy, openAPI } from "better-auth/plugins";
 import type { MacroTypeLambda } from "elysia";
-import { Elysia, ElysiaStatus, macroType } from "elysia";
+import { Elysia, macroType } from "elysia";
 import { Resend } from "resend";
 import type Stripe from "stripe";
 
@@ -128,8 +128,8 @@ export const auth = betterAuth({
                 metadata.orderId,
                 typeof payment_intent === "string" ? payment_intent : null,
               );
-              if (order instanceof ElysiaStatus) {
-                throw new Error(order.response.message); // Better Auth answers 400: Stripe retries
+              if (order instanceof Error) {
+                throw new Error(order.detail); // Better Auth answers 400: Stripe retries
               }
             }
             break;

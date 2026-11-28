@@ -1,7 +1,8 @@
 import type { UnwrapSchema } from "elysia";
-import { problem, t } from "elysia";
+import { t } from "elysia";
 
 import type { UploadError } from "../lib/images";
+import { InvalidImage, UploadFailed } from "./errors";
 
 /*
 [a-zà-öø-ÿœ]+        : lowercase latin letters with accents (÷ is excluded)
@@ -29,6 +30,10 @@ export const MAX_ATTRIBUTES = 50;
 export const MAX_ATTRIBUTE_VALUES = 100;
 
 export const uuid = t.String({ format: "uuid" });
+export type uuid = UnwrapSchema<typeof uuid>;
+
+export const uuidGuard = t.Object({ id: uuid });
+export type uuidGuard = UnwrapSchema<typeof uuidGuard>;
 
 export const onceEach = ({
   update = [],
@@ -40,10 +45,6 @@ export const onceEach = ({
   const ids = [...update.map(({ id }) => id), ...deleted];
   return new Set(ids).size === ids.length;
 };
-export type uuid = UnwrapSchema<typeof uuid>;
-
-export const uuidGuard = t.Object({ id: uuid });
-export type uuidGuard = UnwrapSchema<typeof uuidGuard>;
 
 /** The `version` the client last read, to reject stale writes. */
 export const versionHeaders = t.Object({
@@ -59,25 +60,8 @@ export const imageUrl = t.String({
   pattern: "^https://",
 });
 
-export const invalidImage = t.Object({
-  code: t.Literal("INVALID_IMAGE"),
-  message: t.String(),
-});
-export const uploadFailed = t.Object({
-  code: t.Literal("UPLOAD_FAILED"),
-  message: t.String(),
-});
-
 export const uploadFileErrStatus = (error: UploadError | null) =>
-  error === "INVALID_IMAGE"
-    ? problem("Bad Request", {
-        code: "INVALID_IMAGE",
-        message: "Image cannot be decoded",
-      })
-    : problem("Bad Gateway", {
-        code: "UPLOAD_FAILED",
-        message: "Image upload failed",
-      });
+  error === "INVALID_IMAGE" ? new InvalidImage() : new UploadFailed();
 
 export const imageResult = t.Object(
   {

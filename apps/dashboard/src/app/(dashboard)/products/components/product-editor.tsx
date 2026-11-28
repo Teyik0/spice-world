@@ -352,7 +352,7 @@ export function ProductEditor({
         toast.error(
           "details" in problem
             ? problem.details.subErrors.map((sub) => sub.message).join("\n")
-            : problem.message,
+            : (problem.detail ?? problem.title),
         );
         return;
       }
@@ -655,11 +655,7 @@ function DeleteProductCard({
             const { error } = await api.products({ id: product.id }).delete();
             if (error) {
               const { value } = error;
-              toast.error(
-                "message" in value
-                  ? value.message
-                  : (value.detail ?? value.title),
-              );
+              toast.error(value.detail ?? value.title);
               return;
             }
             toast.success("Product deleted.");

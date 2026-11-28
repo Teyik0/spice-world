@@ -1,5 +1,4 @@
 import { env } from "@spice-world/server/lib/env";
-import { ElysiaStatus } from "elysia";
 import { log } from "evlog";
 
 /**
@@ -126,7 +125,7 @@ export async function purge({ stale = [], gone = [] }: Purge) {
 
 /** Purges once `result` is a success, then returns it. */
 export async function purgeOnSuccess<T>(result: T, tags: Purge) {
-  if (!(result instanceof ElysiaStatus) || result.status < 300) {
+  if (!(result instanceof Error)) {
     await purge(tags);
   }
   return result;

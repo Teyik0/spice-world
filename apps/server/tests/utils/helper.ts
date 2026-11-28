@@ -233,19 +233,6 @@ export const ATTRIBUTE_NAMES = Object.keys(ATTRIBUTE_VALUES) as Array<
   keyof typeof ATTRIBUTE_VALUES
 >;
 
-export const CATEGORY_NAMES = [
-  "Electronics",
-  "Clothing",
-  "Food & Beverages",
-  "Home & Garden",
-  "Sports & Outdoors",
-  "Books & Media",
-  "Health & Beauty",
-  "Toys & Games",
-  "Automotive",
-  "Office Supplies",
-];
-
 interface CreateTestCategoryOptions {
   attributeCount?: number;
   attributeValueCount?: number;
@@ -618,7 +605,10 @@ interface SetupProductOptions {
   imagesCreate: (Omit<UnwrapSchema<typeof ProductModel.imageCreate>, "file"> & {
     file: File;
   })[];
-  variants: Extract<ProductModel.postBody, { stockMode: "VARIANT" }>["variants"];
+  variants: Extract<
+    ProductModel.postBody,
+    { stockMode: "VARIANT" }
+  >["variants"];
 }
 
 /**

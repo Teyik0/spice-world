@@ -54,11 +54,11 @@ describe.concurrent("Order checkout amounts and stock", () => {
     orderService.createCheckout({ userId, items, shippingAddress });
 
   const checkout = async (...args: Parameters<typeof tryCheckout>) => {
-    const { response } = await tryCheckout(...args);
-    if (!("order" in response)) {
-      throw new Error(response.message);
+    const result = await tryCheckout(...args);
+    if (result instanceof Error) {
+      throw result;
     }
-    return response;
+    return result.response;
   };
 
   const stockOf = (variantId: string) => helperStockOf(testDb, variantId);
@@ -164,7 +164,7 @@ describe.concurrent("Order checkout amounts and stock", () => {
     stripe.statuses.set(order.stripeSessionId, "complete");
     expect(
       await orderService.updateStatus({ id: order.id, status: "CANCELLED" }),
-    ).toMatchObject({ status: 409, response: { code: "ORDER_ALREADY_PAID" } });
+    ).toMatchObject({ status: 409, code: "ORDER_ALREADY_PAID" });
     expect(
       await testDb.db.query.order.findFirst({ where: { id: order.id } }),
     ).toMatchObject({ status: "PENDING" });
@@ -186,7 +186,7 @@ describe.concurrent("Order checkout amounts and stock", () => {
         await orderService.updateStatus({ id: order.id, status: "CANCELLED" }),
       ).toMatchObject({
         status: 409,
-        response: { code: "ORDER_REQUIRES_REFUND" },
+        code: "ORDER_REQUIRES_REFUND",
       });
       expect(
         await testDb.db.query.order.findFirst({ where: { id: order.id } }),
@@ -247,7 +247,7 @@ describe.concurrent("Order checkout amounts and stock", () => {
         "VARIANT_NOT_AVAILABLE",
         "VARIANT_NOT_AVAILABLE",
         "VARIANT_NOT_AVAILABLE",
-      ].map((code) => ({ status: 409, response: { code } })),
+      ].map((code) => ({ status: 409, code })),
     );
     expect([await stockOf(enough.id), await stockOf(low.id)]).toEqual([5, 1]);
   });
@@ -290,7 +290,7 @@ describe.concurrent("Order checkout amounts and stock", () => {
     const result = await tryCheckout([{ variantId: variant.id, quantity: 1 }]);
     expect(result).toMatchObject({
       status: 502,
-      response: { code: "STRIPE_UNAVAILABLE" },
+      code: "STRIPE_UNAVAILABLE",
     });
     expect(await stockOf(variant.id)).toBe(10);
   });
@@ -300,7 +300,7 @@ describe.concurrent("Order checkout amounts and stock", () => {
     const { order } = await checkout([{ variantId: variant.id, quantity: 2 }]);
     expect(
       await orderService.handleOrderPaid("cs_other", order.id, null),
-    ).toMatchObject({ status: 404, response: { code: "ORDER_NOT_FOUND" } });
+    ).toMatchObject({ status: 404, code: "ORDER_NOT_FOUND" });
     expect(
       await orderService.handleOrderPaid(
         order.stripeSessionId,
@@ -376,7 +376,7 @@ describe.concurrent("Order checkout amounts and stock", () => {
       ]);
       expect(tooMuch).toMatchObject({
         status: 409,
-        response: { code: "INSUFFICIENT_STOCK" },
+        code: "INSUFFICIENT_STOCK",
       });
       expect(await stockOf(small.id)).toBe(700 * g);
 
@@ -567,7 +567,7 @@ describe.concurrent("Order checkout amounts and stock", () => {
         }
         expect(result.status).toBe(409);
         expect(["INSUFFICIENT_STOCK", "PRICE_CHANGED"]).toContain(
-          (result.response as { code: string }).code,
+          (result as { code: string }).code,
         );
       }
       const left = variants.map(
@@ -703,7 +703,7 @@ describe.concurrent("Order checkout amounts and stock", () => {
       );
       expect(result).toMatchObject({
         status: 409,
-        response: { code: "VARIANT_NOT_AVAILABLE" },
+        code: "VARIANT_NOT_AVAILABLE",
       });
       const product = await testDb.db.query.product.findFirst({
         where: { id: small.productId },
@@ -728,7 +728,7 @@ describe.concurrent("Order checkout amounts and stock", () => {
       );
       expect(result).toMatchObject({
         status: 409,
-        response: { code: "VARIANT_NOT_AVAILABLE" },
+        code: "VARIANT_NOT_AVAILABLE",
       });
       expect(await stockOf(variant.id)).toBe(10);
     });
@@ -749,7 +749,7 @@ describe.concurrent("Order checkout amounts and stock", () => {
       );
       expect(result).toMatchObject({
         status: 409,
-        response: { code: "PRICE_CHANGED" },
+        code: "PRICE_CHANGED",
       });
       const product = await testDb.db.query.product.findFirst({
         where: { id: variant.productId },
@@ -782,7 +782,7 @@ describe.concurrent("Order checkout amounts and stock", () => {
       );
       expect(result).toMatchObject({
         status: 409,
-        response: { code: "VARIANT_NOT_AVAILABLE" },
+        code: "VARIANT_NOT_AVAILABLE",
       });
       expect(await stockOf(variant.id)).toBe(5);
     });

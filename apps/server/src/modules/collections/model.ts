@@ -40,16 +40,3 @@ export const collectionResult = t.Object(
   { additionalProperties: false },
 );
 export type collectionResult = UnwrapSchema<typeof collectionResult>;
-
-export const collectionNotFound = t.Object({
-  code: t.Literal("COLLECTION_NOT_FOUND"),
-  message: t.Literal("Collection not found"),
-});
-
-export const collectionConflict = t.Object({
-  code: t.Union([
-    t.Literal("VERSION_CONFLICT"),
-    t.Literal("COLLECTION_HANDLE_ALREADY_EXISTS"),
-  ]),
-  message: t.String(),
-});

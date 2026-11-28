@@ -88,6 +88,19 @@ export interface MultiSizeUploadData {
   thumb: UploadedFileData;
 }
 
+export const uploadColumns = ({
+  thumb,
+  medium,
+  large,
+}: MultiSizeUploadData) => ({
+  keyThumb: thumb.key,
+  urlThumb: thumb.ufsUrl,
+  keyMedium: medium.key,
+  urlMedium: medium.ufsUrl,
+  keyLarge: large.key,
+  urlLarge: large.ufsUrl,
+});
+
 interface ImageVariant {
   file: UTFile & { customId: string };
   originalIndex: number;

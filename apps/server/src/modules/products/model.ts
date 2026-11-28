@@ -151,28 +151,28 @@ export const imageCreate = t.Object(
 
 export const imageOperations = t.Refine(
   t.Object(
-  {
-    create: t.Optional(
-      t.Array(imageCreate, { maxItems: MAX_IMAGES_PER_PRODUCT }),
-    ),
-    update: t.Optional(
-      t.Array(
-        t.Object(
-          {
-            id: uuid,
-            file: t.Optional(t.File({ type: "image/*", maxSize: "7m" })),
-            altText: t.Optional(t.String()),
-            position: t.Optional(imagePosition),
-          },
-          { additionalProperties: false },
-        ),
-        { maxItems: MAX_IMAGES_PER_PRODUCT },
+    {
+      create: t.Optional(
+        t.Array(imageCreate, { maxItems: MAX_IMAGES_PER_PRODUCT }),
       ),
-    ),
-    delete: t.Optional(t.Array(uuid)),
-  },
-  { additionalProperties: false },
-),
+      update: t.Optional(
+        t.Array(
+          t.Object(
+            {
+              id: uuid,
+              file: t.Optional(t.File({ type: "image/*", maxSize: "7m" })),
+              altText: t.Optional(t.String()),
+              position: t.Optional(imagePosition),
+            },
+            { additionalProperties: false },
+          ),
+          { maxItems: MAX_IMAGES_PER_PRODUCT },
+        ),
+      ),
+      delete: t.Optional(t.Array(uuid)),
+    },
+    { additionalProperties: false },
+  ),
   onceEach,
   () => "An image can only be updated or deleted once per request",
 );
@@ -438,60 +438,6 @@ export const commentsResult = t.Object(
 );
 export type commentsResult = UnwrapSchema<typeof commentsResult>;
 
-export const productNotFound = t.Object({
-  code: t.Literal("PRODUCT_NOT_FOUND"),
-  message: t.Literal("Product not found"),
-});
-
-export const nameConflict = t.Object({
-  code: t.Union([
-    t.Literal("PRODUCT_NAME_ALREADY_EXISTS"),
-    t.Literal("VARIANT_SKU_ALREADY_EXISTS"),
-  ]),
-  message: t.String(),
-});
-
-export const patchConflict = t.Object({
-  code: t.Union([
-    t.Literal("VERSION_CONFLICT"),
-    t.Literal("STOCK_RESERVED"),
-    t.Literal("VARIANT_RESERVED"),
-    t.Literal("STOCK_LIMIT_EXCEEDED"),
-    t.Literal("INSUFFICIENT_STOCK"),
-    t.Literal("PRODUCT_NAME_ALREADY_EXISTS"),
-    t.Literal("VARIANT_SKU_ALREADY_EXISTS"),
-  ]),
-  message: t.String(),
-});
-
-export const deleteConflict = t.Object({
-  code: t.Union([
-    t.Literal("PRODUCT_HAS_COMMENTS"),
-    t.Literal("PRODUCT_RESERVED"),
-  ]),
-  message: t.String(),
-});
-
-/** Concurrently deleted while the request was running. */
-export const invalidReference = t.Object({
-  code: t.Union([
-    t.Literal("PRODUCT_CATEGORY_NOT_FOUND"),
-    t.Literal("VARIANT_ATTRIBUTE_VALUE_NOT_FOUND"),
-  ]),
-  message: t.String(),
-});
-
-export const invalidStock = t.Object({
-  code: t.Literal("INVALID_STOCK"),
-  message: t.String(),
-  field: t.String(),
-});
-
-export const publishError = t.Object({
-  code: t.Union([t.Literal("PUBLISH_PRICE_REQUIRED"), t.Literal("PUBLISH_VARIANTS_INDISTINCT")]),
-  message: t.String(),
-});
-
 export const subError = t.Object({
   code: t.Union([
     t.Literal("PRODUCT_IMAGE_REQUIRED"),
@@ -504,23 +450,3 @@ export const subError = t.Object({
   field: t.String(),
 });
 export type subError = UnwrapSchema<typeof subError>;
-
-export const validationFailed = t.Object({
-  code: t.Union([
-    t.Literal("IMAGES_VALIDATION_FAILED"),
-    t.Literal("VARIANTS_VALIDATION_FAILED"),
-  ]),
-  message: t.String(),
-  field: t.String(),
-  details: t.Object({ subErrors: t.Array(subError) }),
-});
-
-export const invalidOperations = t.Object({
-  code: t.Union([
-    t.Literal("INVALID_IMAGE_OPERATIONS"),
-    t.Literal("INVALID_VARIANT_OPERATIONS"),
-    t.Literal("INVALID_IMAGE_POSITIONS"),
-  ]),
-  message: t.String(),
-  field: t.String(),
-});

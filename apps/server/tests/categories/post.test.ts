@@ -1,12 +1,33 @@
 import { describe, expect, test } from "bun:test";
 
+import { treaty } from "@elysia/eden";
 import { db } from "@spice-world/server/lib/db";
+import { categoryRouter } from "@spice-world/server/modules/categories";
 
 import type * as CategoryModel from "../../src/modules/categories/model";
-import { expectDefined, file } from "../utils/helper";
+import { testDb } from "../setup";
+import { createSessionCookie, expectDefined, file } from "../utils/helper";
 import { api, filePath1, queuedImages, uploads } from "./setup";
 
 describe.concurrent("category POST", () => {
+  test("should type the access errors next to the imageCleanup macro", async () => {
+    const body = { name: "access errors", file: file(filePath1) };
+    const [anonymous, user] = await Promise.all([
+      treaty(categoryRouter).categories.post(body),
+      treaty(categoryRouter, {
+        headers: { cookie: await createSessionCookie(testDb, "user") },
+      }).categories.post(body),
+    ]);
+    expect(anonymous.error?.status).toBe(401);
+    expect(user.error?.status).toBe(403);
+    if (anonymous.error?.status === 401 && user.error?.status === 403) {
+      expect([anonymous.error.value.title, user.error.value.title]).toEqual([
+        "Unauthorized",
+        "Forbidden",
+      ]);
+    }
+  });
+
   test("should return nested values with timestamps", async () => {
     const attributes = [
       { name: "couleur", values: ["rouge", "jaune"] },
@@ -164,7 +185,7 @@ describe.concurrent("category POST", () => {
       status: 409,
       value: {
         code: "CATEGORY_NAME_ALREADY_EXISTS",
-        message: "A category with this name already exists",
+        detail: "A category with this name already exists",
       },
     });
     expect(

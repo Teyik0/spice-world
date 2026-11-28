@@ -1,5 +1,8 @@
-import { problem } from "elysia";
-
+import {
+  ImagesValidationFailed,
+  InvalidImageOperations,
+  InvalidImagePositions,
+} from "../errors";
 import type * as ProductModel from "../model";
 import { hasUnknownIds } from "./operations";
 
@@ -27,21 +30,14 @@ export function validateImages({
     });
   }
   if (subErrors.length) {
-    return problem("Bad Request", {
-      code: "IMAGES_VALIDATION_FAILED",
-      message: `Found ${subErrors.length} validation error(s) in image operations`,
-      field: "images",
-      details: { subErrors },
-    });
+    return new ImagesValidationFailed(
+      `Found ${subErrors.length} validation error(s) in image operations`,
+      subErrors,
+    );
   }
 
   if (hasUnknownIds(currentImages, imagesOps)) {
-    return problem("Unprocessable Content", {
-      code: "INVALID_IMAGE_OPERATIONS",
-      message:
-        "Image IDs to update or delete must belong to this product.",
-      field: "images",
-    });
+    return new InvalidImageOperations();
   }
 
   const updates = new Map(update.map((op) => [op.id, op.position]));
@@ -56,10 +52,8 @@ export function validateImages({
     positions.size !== count ||
     [...positions].some((position) => position >= count)
   ) {
-    return problem("Unprocessable Content", {
-      code: "INVALID_IMAGE_POSITIONS",
-      message: `Image positions must be 0 to ${count - 1}, each used once. Explicitly move the other images when adding, removing or reordering one.`,
-      field: "images",
-    });
+    return new InvalidImagePositions(
+      `Image positions must be 0 to ${count - 1}, each used once. Explicitly move the other images when adding, removing or reordering one.`,
+    );
   }
 }

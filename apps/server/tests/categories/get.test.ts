@@ -87,7 +87,7 @@ describe.concurrent("category GET", () => {
       .get();
     expect(result.error).toMatchObject({
       status: 404,
-      value: { code: "CATEGORY_NOT_FOUND", message: "Category not found" },
+      value: { code: "CATEGORY_NOT_FOUND", detail: "Category not found" },
     });
   });
 

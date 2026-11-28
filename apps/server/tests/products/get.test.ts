@@ -325,7 +325,7 @@ describe.concurrent("GET /products - Integration Tests", () => {
     for (const { error } of results) {
       expect(error).toMatchObject({
         status: 404,
-        value: { code: "PRODUCT_NOT_FOUND", message: "Product not found" },
+        value: { code: "PRODUCT_NOT_FOUND", detail: "Product not found" },
       });
     }
   });

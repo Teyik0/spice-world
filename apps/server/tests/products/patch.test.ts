@@ -146,7 +146,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       expect(error.status).toBe(400);
       expect(error.value).toMatchObject({
         code: "VARIANTS_VALIDATION_FAILED",
-        message: expect.any(String),
+        detail: expect.any(String),
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
@@ -269,7 +269,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       expect(error.status).toBe(400);
       expect(error.value).toMatchObject({
         code: "VARIANTS_VALIDATION_FAILED",
-        message: expect.any(String),
+        detail: expect.any(String),
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
@@ -339,7 +339,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       expect(error.status).toBe(400);
       expect(error.value).toMatchObject({
         code: "VARIANTS_VALIDATION_FAILED",
-        message: expect.any(String),
+        detail: expect.any(String),
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
@@ -575,7 +575,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
       expect(error.status).toBe(400);
       expect(error.value).toMatchObject({
         code: "VARIANTS_VALIDATION_FAILED",
-        message: expect.any(String),
+        detail: expect.any(String),
         details: {
           subErrors: expect.arrayContaining([
             expect.objectContaining({

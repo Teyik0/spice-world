@@ -1,0 +1,23 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreExportsUsedInFile": true,
+  "ignoreBinaries": ["bombardier", "stripe"],
+  "workspaces": {
+    "apps/server": {
+      "entry": ["tests/**/*.test.ts", "load/*.ts"],
+      "project": ["src/**/*.{ts,tsx}", "tests/**/*.ts", "load/*.ts"]
+    },
+    "apps/dashboard": {
+      "entry": ["furin.config.ts", "src/app/**/{page,layout}.tsx"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "apps/storefront": {
+      "entry": ["furin.config.ts", "src/app/**/{page,layout}.tsx"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/emails": {
+      "ignoreDependencies": ["css-tree"]
+    },
+    "packages/*": {}
+  }
+}

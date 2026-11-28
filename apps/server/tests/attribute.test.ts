@@ -442,8 +442,45 @@ describe.concurrent("Attribute routes test", () => {
       const { error, status } = await api.attributes.post(newAttrData);
 
       expect(status).toBe(400);
-      expect(error).toMatchObject({ status });
+      expect(error).toMatchObject({
+        status,
+        value: { code: "ATTRIBUTE_CATEGORY_NOT_FOUND" },
+      });
     });
+  });
+
+  test("should reject an attribute name already used in its category", async () => {
+    const category = await createTestCategory({ testDb, attributeCount: 2 });
+    const [taken, other] = category.attributes;
+    expectDefined(taken);
+    expectDefined(other);
+    const conflict = {
+      status: 409,
+      value: { code: "ATTRIBUTE_NAME_ALREADY_EXISTS" },
+    };
+
+    const [created, renamed] = await Promise.all([
+      api.attributes.post({
+        name: taken.name,
+        categoryId: category.id,
+        values: ["sample"],
+      }),
+      api.attributes({ id: other.id }).patch({ name: taken.name }),
+    ]);
+
+    expect(created.error).toMatchObject(conflict);
+    expect(renamed.error).toMatchObject(conflict);
+    expect(
+      await db.query.attribute.findMany({
+        where: { categoryId: category.id },
+        columns: { id: true, name: true },
+        orderBy: { id: "asc" },
+      }),
+    ).toEqual(
+      [taken, other]
+        .map(({ id, name }) => ({ id, name }))
+        .toSorted((a, b) => a.id.localeCompare(b.id)),
+    );
   });
 
   describe("PATCH /attributes/:id", () => {
@@ -627,7 +664,7 @@ describe.concurrent("Attribute routes test", () => {
         status: 400,
         value: {
           code: "ATTRIBUTE_VALUE_ATTRIBUTE_NOT_FOUND",
-          message: "The selected attribute does not exist",
+          detail: "The selected attribute does not exist",
         },
       });
     });

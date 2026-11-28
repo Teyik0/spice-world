@@ -194,7 +194,7 @@ function Loaded({
       <SheetHeader>
         <SheetTitle>Couldn’t load this product</SheetTitle>
         <SheetDescription>
-          {"message" in error.value ? error.value.message : error.value.title}
+          {error.value.detail ?? error.value.title}
         </SheetDescription>
       </SheetHeader>
     );
@@ -286,7 +286,7 @@ function QuickEditForm({
           setFailure(
             "details" in error.value
               ? error.value.details.subErrors
-              : [error.value],
+              : [{ message: error.value.detail ?? error.value.title }],
           ),
         );
         failureRef.current?.scrollIntoView({ block: "nearest" });

@@ -50,7 +50,6 @@ export const attributeRouter = new Elysia({
       cdn: "attribute",
       response: {
         200: AttributeModel.attributeResult,
-        404: AttributeModel.attributeNotFound,
       },
     },
     async ({ params }) => await attributeService.getById(params),
@@ -62,7 +61,6 @@ export const attributeRouter = new Elysia({
       body: AttributeModel.patchBody,
       response: {
         200: AttributeModel.attributeResult,
-        404: AttributeModel.attributeNotFound,
       },
     },
     async ({ params, body }) =>
@@ -77,7 +75,7 @@ export const attributeRouter = new Elysia({
     "/:id/values",
     {
       access: "admin",
-      body: AttributeValueModel.postBody,
+      body: AttributeValueModel.body,
       response: { 201: AttributeValueModel.attributeValueResult },
     },
     async ({ params, body }) =>
@@ -90,10 +88,9 @@ export const attributeRouter = new Elysia({
         "/:id",
         {
           access: "admin",
-          body: AttributeValueModel.patchBody,
+          body: AttributeValueModel.body,
           response: {
             200: AttributeValueModel.attributeValueResult,
-            404: AttributeValueModel.attributeValueNotFound,
           },
         },
         async ({ params, body }) =>

@@ -17,6 +17,10 @@ pre-commit:
       run: bun run ultracite check
       glob: "*.{js,jsx,ts,tsx,json,jsonc,css,svg}"
 
+    - name: unused code (knip)
+      run: bun run knip
+      glob: "*.{js,jsx,ts,tsx,json,jsonc}"
+
     - name: typescript check (monorepo)
       run: bun check
       glob: "*.{ts,tsx}"

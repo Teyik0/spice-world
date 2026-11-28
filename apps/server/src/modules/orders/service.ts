@@ -2,7 +2,7 @@ import { purge, purgeOnSuccess, tag } from "@spice-world/server/lib/cdn";
 import { db } from "@spice-world/server/lib/db";
 import { env } from "@spice-world/server/lib/env";
 import { and, asc, EmptyFilter, eq, inArray, sql } from "drizzle-orm";
-import { ElysiaStatus, problem, status } from "elysia";
+import { status } from "elysia";
 import { log } from "evlog";
 import { Resend } from "resend";
 
@@ -13,10 +13,21 @@ import {
   productTable,
   productVariantTable,
 } from "../../../drizzle/schema";
+import { InsufficientStock } from "../products/errors";
 import { refreshListing } from "../products/service";
 import type { uuidGuard } from "../shared";
-import { closeStripeCheckout, createStripeCheckout } from "../stripe-checkout";
+import {
+  InvalidStatusTransition,
+  OrderAlreadyPaid,
+  OrderNotFound,
+  OrderRequiresRefund,
+  OrderStatusChanged,
+  PriceChanged,
+  StripeUnavailable,
+  VariantNotAvailable,
+} from "./errors";
 import type * as OrderModel from "./model";
+import { closeStripeCheckout, createStripeCheckout } from "./stripe";
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
@@ -33,11 +44,6 @@ async function find(
 }
 
 export const orderService = {
-  orderNotFound: problem("Not Found", {
-    code: "ORDER_NOT_FOUND",
-    message: "Order not found",
-  }),
-
   findOptions: {
     with: {
       user: {
@@ -61,7 +67,7 @@ export const orderService = {
   }: OrderModel.checkoutBody & { userId: string }) {
     const variantIds = items.map(({ variantId }) => variantId);
     const quote = priceCart(items, await readCart(db, variantIds));
-    if (quote instanceof ElysiaStatus) {
+    if (quote instanceof Error) {
       return quote;
     }
     const orderId = Bun.randomUUIDv7();
@@ -70,10 +76,7 @@ export const orderService = {
       metadata: { orderId },
     });
     if (!checkout) {
-      return problem("Bad Gateway", {
-        code: "STRIPE_UNAVAILABLE",
-        message: "Stripe checkout could not be created",
-      });
+      return new StripeUnavailable();
     }
 
     let restocked: string[] = [];
@@ -94,7 +97,7 @@ export const orderService = {
         new Set(locked.map(({ id }) => id)),
       );
       // Nothing written yet: safe to return.
-      if (cart instanceof ElysiaStatus) {
+      if (cart instanceof Error) {
         return cart;
       }
       if (
@@ -102,10 +105,7 @@ export const orderService = {
           (line, i) => line.unitPrice !== quote.lines[i]?.unitPrice,
         )
       ) {
-        return problem("Conflict", {
-          code: "PRICE_CHANGED",
-          message: "A price changed during the checkout. Reload and retry.",
-        });
+        return new PriceChanged();
       }
       await tx.insert(orderTable).values({
         id: orderId,
@@ -129,7 +129,7 @@ export const orderService = {
         checkoutUrl: checkout.url,
       });
     });
-    if (result instanceof ElysiaStatus && result.status >= 300) {
+    if (result instanceof Error) {
       await expireUnused(checkout.id);
     }
     // stock shows in the listings (total, prices in stock) and on the product pages
@@ -155,7 +155,7 @@ export const orderService = {
           eq(orderTable.status, "PENDING"),
         ),
       );
-    return (await find({ id, stripeSessionId })) ?? this.orderNotFound;
+    return (await find({ id, stripeSessionId })) ?? new OrderNotFound();
   },
 
   async cancelPending(stripeSessionId: string, id: string) {
@@ -225,7 +225,7 @@ export const orderService = {
   },
 
   async getById(query: uuidGuard & { userId?: string }) {
-    return (await find(query)) ?? this.orderNotFound;
+    return (await find(query)) ?? new OrderNotFound();
   },
 
   async updateStatus({
@@ -235,7 +235,7 @@ export const orderService = {
   }: OrderModel.updateStatusBody & uuidGuard) {
     const current = await find({ id });
     if (!current) {
-      return this.orderNotFound;
+      return new OrderNotFound();
     }
     const refused = transitionError(current.status, orderStatus);
     if (refused) {
@@ -243,10 +243,7 @@ export const orderService = {
     }
     if (current.status === "PENDING") {
       if (!(await closeStripeCheckout(current.stripeSessionId))) {
-        return problem("Conflict", {
-          code: "ORDER_ALREADY_PAID",
-          message: "The checkout session is already completed",
-        });
+        return new OrderAlreadyPaid();
       }
       await this.cancelPending(current.stripeSessionId, id);
     } else {
@@ -261,15 +258,12 @@ export const orderService = {
         )
         .returning({ id: orderTable.id });
       if (!updated) {
-        return problem("Conflict", {
-          code: "ORDER_STATUS_CHANGED",
-          message: "The order changed meanwhile. Reload and retry.",
-        });
+        return new OrderStatusChanged();
       }
     }
     const order = await find({ id });
     if (!order) {
-      return this.orderNotFound;
+      return new OrderNotFound();
     }
 
     // Send email as post-commit side effect (after DB update succeeds)
@@ -323,18 +317,16 @@ function priceCart(
       variant?.productStatus !== "PUBLISHED" ||
       (lockedIds && !lockedIds.has(variant.inventoryId))
     ) {
-      return problem("Conflict", {
-        code: "VARIANT_NOT_AVAILABLE",
-        message: `Variant ${variantId} is not available for purchase`,
-      });
+      return new VariantNotAvailable(
+        `Variant ${variantId} is not available for purchase`,
+      );
     }
     const needed =
       (demand.get(variant.inventoryId) ?? 0) + quantity * variant.stockUsage;
     if (variant.quantity < needed) {
-      return problem("Conflict", {
-        code: "INSUFFICIENT_STOCK",
-        message: `Insufficient stock for variant ${variantId}`,
-      });
+      return new InsufficientStock(
+        `Insufficient stock for variant ${variantId}`,
+      );
     }
     demand.set(variant.inventoryId, needed);
     lines.push({
@@ -367,7 +359,7 @@ const stripeItems = ({
 }) => [
   ...lines.map(({ productName, unitPrice, quantity }) => ({
     name: productName,
-    price: unitPrice,
+    priceInCents: unitPrice,
     currency: "EUR",
     quantity,
   })),
@@ -375,7 +367,7 @@ const stripeItems = ({
     ? [
         {
           name: "Livraison",
-          price: shippingAmount,
+          priceInCents: shippingAmount,
           currency: "EUR",
           quantity: 1,
         },
@@ -412,14 +404,8 @@ function transitionError(
     return;
   }
   return to === "CANCELLED" && (from === "PAID" || from === "FULFILLED")
-    ? problem("Conflict", {
-        code: "ORDER_REQUIRES_REFUND",
-        message: "A paid order must be refunded, not cancelled",
-      })
-    : problem("Conflict", {
-        code: "INVALID_STATUS_TRANSITION",
-        message: `A ${from} order cannot become ${to}`,
-      });
+    ? new OrderRequiresRefund()
+    : new InvalidStatusTransition(`A ${from} order cannot become ${to}`);
 }
 
 async function moveStock(tx: Tx, orderId: string, direction: 1 | -1) {

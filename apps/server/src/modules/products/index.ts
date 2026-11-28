@@ -6,16 +6,10 @@ import {
 import { cdnPlugin } from "@spice-world/server/plugins/cdn.plugin";
 import { drizzleErrorPlugin } from "@spice-world/server/plugins/drizzle.plugin";
 import { furinInvalidate } from "@teyik0/furin";
-import { Elysia, ElysiaStatus, t } from "elysia";
+import { Elysia, t } from "elysia";
 
 import { imageCleanupPlugin } from "../../plugins/image.plugin";
-import { categoryNotFound } from "../categories/model";
-import {
-  invalidImage,
-  uploadFailed,
-  uuidGuard,
-  versionHeaders,
-} from "../shared";
+import { uuidGuard, versionHeaders } from "../shared";
 import * as ProductModel from "./model";
 import { productService } from "./service";
 
@@ -90,16 +84,6 @@ export const productsRouter = new Elysia({
       body: ProductModel.postBody,
       response: {
         201: ProductModel.productResult,
-        400: t.Union([
-          ProductModel.validationFailed,
-          ProductModel.publishError,
-          ProductModel.invalidReference,
-          invalidImage,
-        ]),
-        404: categoryNotFound,
-        409: ProductModel.nameConflict,
-        422: ProductModel.invalidOperations,
-        502: uploadFailed,
       },
       imageCleanup: true,
     },
@@ -112,12 +96,6 @@ export const productsRouter = new Elysia({
       body: ProductModel.bulkPatchBody,
       response: {
         200: ProductModel.bulkPatchResult,
-        400: t.Union([
-          ProductModel.validationFailed,
-          ProductModel.publishError,
-          ProductModel.invalidReference,
-        ]),
-        404: t.Union([ProductModel.productNotFound, categoryNotFound]),
       },
     },
     async ({ body, invalidate }) => {
@@ -135,7 +113,6 @@ export const productsRouter = new Elysia({
           ProductModel.productResult,
           ProductModel.publicProductResult,
         ]),
-        404: ProductModel.productNotFound,
       },
     },
     async ({ params, user }) => {
@@ -143,7 +120,7 @@ export const productsRouter = new Elysia({
         ...params,
         ...visibility(user),
       });
-      return product instanceof ElysiaStatus || isAdmin(user)
+      return product instanceof Error || isAdmin(user)
         ? product
         : publicProduct(product);
     },
@@ -158,7 +135,6 @@ export const productsRouter = new Elysia({
           ProductModel.productResult,
           ProductModel.publicProductResult,
         ]),
-        404: ProductModel.productNotFound,
       },
     },
     async ({ params, user }) => {
@@ -166,7 +142,7 @@ export const productsRouter = new Elysia({
         ...params,
         ...visibility(user),
       });
-      return product instanceof ElysiaStatus || isAdmin(user)
+      return product instanceof Error || isAdmin(user)
         ? product
         : publicProduct(product);
     },
@@ -178,7 +154,6 @@ export const productsRouter = new Elysia({
       query: ProductModel.commentsQuery,
       response: {
         200: ProductModel.commentsResult,
-        404: ProductModel.productNotFound,
       },
     },
     async ({ params, query, user }) =>
@@ -196,17 +171,6 @@ export const productsRouter = new Elysia({
       headers: versionHeaders,
       response: {
         200: ProductModel.productResult,
-        400: t.Union([
-          ProductModel.validationFailed,
-          ProductModel.publishError,
-          ProductModel.invalidReference,
-          ProductModel.invalidStock,
-          invalidImage,
-        ]),
-        404: t.Union([ProductModel.productNotFound, categoryNotFound]),
-        409: ProductModel.patchConflict,
-        422: ProductModel.invalidOperations,
-        502: uploadFailed,
       },
       imageCleanup: true,
     },
@@ -223,10 +187,6 @@ export const productsRouter = new Elysia({
     "/:id",
     {
       access: "admin",
-      response: {
-        404: ProductModel.productNotFound,
-        409: ProductModel.deleteConflict,
-      },
       imageCleanup: true,
     },
     async ({ params, invalidate }) => {

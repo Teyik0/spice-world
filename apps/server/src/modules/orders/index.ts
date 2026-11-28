@@ -26,8 +26,6 @@ export const ordersRouter = new Elysia({
       body: OrderModel.checkoutBody,
       response: {
         201: OrderModel.checkoutResult,
-        409: OrderModel.checkoutConflict,
-        502: OrderModel.stripeUnavailable,
       },
     },
     async ({ body, user }) =>
@@ -48,7 +46,7 @@ export const ordersRouter = new Elysia({
     "/by-id/:id",
     {
       access: "login",
-      response: { 200: OrderModel.orderResult, 404: OrderModel.orderNotFound },
+      response: { 200: OrderModel.orderResult },
     },
     async ({ params, user }) =>
       await orderService.getById({ ...params, ...visibility(user) }),
@@ -60,8 +58,6 @@ export const ordersRouter = new Elysia({
       body: OrderModel.updateStatusBody,
       response: {
         200: OrderModel.orderResult,
-        404: OrderModel.orderNotFound,
-        409: OrderModel.cancelConflict,
       },
     },
     async ({ params, body }) =>

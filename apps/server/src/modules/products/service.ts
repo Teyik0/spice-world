@@ -3,11 +3,12 @@ import {
   purgeOnSuccess,
   tag,
 } from "@spice-world/server/lib/cdn";
-import { db } from "@spice-world/server/lib/db";
+import { catchConstraints, db } from "@spice-world/server/lib/db";
 import type { MultiSizeUploadData } from "@spice-world/server/lib/images";
 import {
   claimUploads,
   enqueueImageCheck,
+  uploadColumns,
   uploadFiles,
 } from "@spice-world/server/lib/images";
 import {
@@ -21,7 +22,7 @@ import {
   notExists,
   sql,
 } from "drizzle-orm";
-import { ElysiaStatus, problem, status } from "elysia";
+import { status } from "elysia";
 
 import {
   attributeValueToProductVariantTable,
@@ -39,16 +40,26 @@ import {
 import { categoryService } from "../categories/service";
 import type { ExpectedVersion, uuidGuard } from "../shared";
 import { uploadFileErrStatus } from "../shared";
+import {
+  InsufficientStock,
+  ProductCategoryNotFound,
+  ProductHasComments,
+  ProductNameTaken,
+  ProductNotFound,
+  ProductReserved,
+  ProductVersionConflict,
+  StockLimitExceeded,
+  StockReserved,
+  VariantAttributeValueNotFound,
+  VariantReserved,
+  VariantSkuTaken,
+} from "./errors";
 import type * as ProductModel from "./model";
+import { validateChange } from "./validators/change";
 import { hasProductChanges } from "./validators/has-changes";
 import { validateImages } from "./validators/images";
-import { validatePublish } from "./validators/publish";
 import { validateStock } from "./validators/stock";
-import {
-  applyVariantOperations,
-  validateVariantIds,
-  validateVariants,
-} from "./validators/variants";
+import { validateVariantIds } from "./validators/variants";
 
 /*
 Examples ->
@@ -282,57 +293,6 @@ const stockState = (
   return quantity <= lowStockAt ? "low" : "in";
 };
 
-/** Rules shared by patch and bulkPatch, checked on the state the change would leave. */
-function validateChange({
-  product,
-  category,
-  categoryChanged,
-  requestedStatus,
-  vOps,
-  label,
-}: {
-  category: Parameters<typeof validateVariants>[0]["category"];
-  categoryChanged: boolean;
-  label?: string;
-  product: {
-    status: ProductModel.productStatus;
-    variants: {
-      id: string;
-      price: number;
-      attributeValues: { id: string }[];
-    }[];
-  };
-  requestedStatus?: ProductModel.productStatus;
-  vOps?: ProductModel.variantOperations;
-}) {
-  const variants = applyVariantOperations(
-    product.variants.map(({ id, price, attributeValues }) => ({
-      id,
-      price,
-      attributeValueIds: categoryChanged
-        ? []
-        : attributeValues.map((value) => value.id),
-    })),
-    vOps,
-  );
-  const invalid =
-    categoryChanged || vOps
-      ? validateVariants({ category, variants, vOps, label })
-      : undefined;
-  if (
-    invalid ||
-    (requestedStatus ?? product.status) !== "PUBLISHED" ||
-    !(requestedStatus || categoryChanged || vOps)
-  ) {
-    return invalid;
-  }
-  return validatePublish({
-    variants,
-    categoryHasAttributes: category.attributes.length > 0,
-    label,
-  });
-}
-
 function validateOperations(
   current: ProductModel.productResult,
   {
@@ -360,15 +320,6 @@ function validateOperations(
 }
 
 const slugOf = (name: string) => name.toLowerCase().replace(/\s+/gu, "-");
-
-const uploadColumns = ({ thumb, medium, large }: MultiSizeUploadData) => ({
-  keyThumb: thumb.key,
-  urlThumb: thumb.ufsUrl,
-  keyMedium: medium.key,
-  urlMedium: medium.ufsUrl,
-  keyLarge: large.key,
-  urlLarge: large.ufsUrl,
-});
 
 async function insertImages(
   tx: Tx,
@@ -479,18 +430,13 @@ function reservedConflict(
   deleted: string[] = [],
 ) {
   if (modeChanged && reserved.size) {
-    return problem("Conflict", {
-      code: "STOCK_RESERVED",
-      message:
-        "Pending orders reserve this stock: the stock mode can change once they are paid or cancelled",
-    });
+    return new StockReserved();
   }
   const variantId = deleted.find((id) => reserved.has(id));
   if (variantId) {
-    return problem("Conflict", {
-      code: "VARIANT_RESERVED",
-      message: `Pending orders reserve variant ${variantId}: it can be deleted once they are paid or cancelled`,
-    });
+    return new VariantReserved(
+      `Pending orders reserve variant ${variantId}: it can be deleted once they are paid or cancelled`,
+    );
   }
 }
 
@@ -569,16 +515,6 @@ async function deleteUnusedInventories(tx: Tx, productId: string) {
 }
 
 export const productService = {
-  productNotFound: problem("Not Found", {
-    code: "PRODUCT_NOT_FOUND",
-    message: "Product not found",
-  }),
-
-  versionConflict: problem("Conflict", {
-    code: "VERSION_CONFLICT",
-    message: "Product modified. Reload and retry.",
-  }),
-
   async get(query: ProductModel.getQuery) {
     const { skip, take, collection, sortBy, sortDir } = query;
     const stats = variantStats();
@@ -670,15 +606,15 @@ export const productService = {
         ),
       ),
     ]);
-    return visible ? { comments, total } : this.productNotFound;
+    return visible ? { comments, total } : new ProductNotFound();
   },
 
   async getById(query: uuidGuard & ProductModel.countQuery) {
-    return (await find(query)) ?? this.productNotFound;
+    return (await find(query)) ?? new ProductNotFound();
   },
 
   async getBySlug(query: { slug: string } & ProductModel.countQuery) {
-    return (await find(query)) ?? this.productNotFound;
+    return (await find(query)) ?? new ProductNotFound();
   },
 
   async count({ status: productStatus }: ProductModel.countQuery) {
@@ -733,37 +669,33 @@ export const productService = {
     };
   },
 
-  async post(body: ProductModel.postBody) {
-    const {
-      name,
-      status: requestedStatus,
-      description,
-      categoryId,
-      stockMode,
-      variants,
-      images,
-    } = body;
-    const vOps = { create: variants };
+  async post({
+    name,
+    status: requestedStatus,
+    description,
+    categoryId,
+    variants,
+    images,
+    ...body
+  }: ProductModel.postBody) {
     const category = await categoryService.getById({ id: categoryId });
-    if (category instanceof ElysiaStatus) {
+    if (category instanceof Error) {
       return category;
     }
-    const invalid =
-      validateVariants({ category, variants, vOps }) ??
-      (requestedStatus === "PUBLISHED"
-        ? validatePublish({
-            variants,
-            categoryHasAttributes: category.attributes.length > 0,
-          })
-        : undefined);
-    if (invalid) {
+
+    const invalid = validateChange({
+      product: { status: requestedStatus, variants: [] },
+      category,
+      categoryChanged: true,
+      requestedStatus,
+      vOps: { create: variants },
+    });
+    if (invalid instanceof Error) {
       return invalid;
     }
+
     if (await db.$count(productTable, eq(productTable.name, name))) {
-      return problem("Conflict", {
-        code: "PRODUCT_NAME_ALREADY_EXISTS",
-        message: "A product with this name already exists",
-      });
+      return new ProductNameTaken();
     }
 
     const { data: uploads, error } = await uploadFiles(
@@ -775,34 +707,44 @@ export const productService = {
     }
 
     const id = Bun.randomUUIDv7();
-    const product = await db.transaction(async (tx) => {
-      await claimUploads(tx, uploads);
-      await tx.insert(productTable).values({
-        id,
-        name,
-        slug: slugOf(name),
-        description,
-        categoryId,
-        status: requestedStatus,
-        stockMode,
-      });
-      const [shared] =
-        body.stockMode === "SHARED"
-          ? await tx
-              .insert(inventoryTable)
-              .values({
-                ...body.inventory,
-                id: Bun.randomUUIDv7(),
-                productId: id,
-              })
-              .returning({ id: inventoryTable.id })
-          : [];
-      await insertImages(tx, id, images, uploads);
-      await insertVariants(tx, id, variants, shared?.id);
-      await refreshListing(tx, [id]);
-      return await find({ id }, tx);
-    });
-    // no page to purge: a product URL is never cached before it exists
+    const product = await catchConstraints(
+      [
+        ProductNameTaken,
+        VariantSkuTaken,
+        ProductCategoryNotFound,
+        VariantAttributeValueNotFound,
+      ],
+      db.transaction(async (tx) => {
+        await claimUploads(tx, uploads);
+        await tx.insert(productTable).values({
+          id,
+          name,
+          slug: slugOf(name),
+          description,
+          categoryId,
+          status: requestedStatus,
+          stockMode: body.stockMode,
+        });
+        const [shared] =
+          body.stockMode === "SHARED"
+            ? await tx
+                .insert(inventoryTable)
+                .values({
+                  ...body.inventory,
+                  id: Bun.randomUUIDv7(),
+                  productId: id,
+                })
+                .returning({ id: inventoryTable.id })
+            : [];
+        await insertImages(tx, id, images, uploads);
+        await insertVariants(tx, id, variants, shared?.id);
+        await refreshListing(tx, [id]);
+        return await find({ id }, tx);
+      }),
+    );
+    if (product instanceof Error) {
+      return product;
+    }
     return purgeOnSuccess(
       status("Created", product as ProductModel.productResult),
       { stale: [tag.products] },
@@ -823,10 +765,10 @@ export const productService = {
   }: ProductModel.patchBody & uuidGuard & ExpectedVersion) {
     const current = await find({ id });
     if (!current) {
-      return this.productNotFound;
+      return new ProductNotFound();
     }
     if (current.version !== expectedVersion) {
-      return this.versionConflict;
+      return new ProductVersionConflict();
     }
     const mode = stockMode ?? current.stockMode;
     const modeChanged = mode !== current.stockMode;
@@ -863,7 +805,7 @@ export const productService = {
     const category = categoryChanged
       ? await categoryService.getById({ id: categoryId })
       : current.category;
-    if (category instanceof ElysiaStatus) {
+    if (category instanceof Error) {
       return category;
     }
     const invalidChange = validateChange({
@@ -901,102 +843,112 @@ export const productService = {
       ({ attributeValueIds }) => attributeValueIds,
     );
 
-    const outcome = await db.transaction(async (tx) => {
-      const reserved = reservedConflict(
-        await lockStock(tx, current),
-        modeChanged,
-        vOps?.delete,
-      );
-      if (reserved) {
-        return reserved;
-      }
-      const [updated] = await tx
-        .update(productTable)
-        .set({
-          ...(name && { name, slug: slugOf(name) }),
-          description,
-          categoryId,
-          status: requestedStatus,
-          stockMode,
-          version: expectedVersion + 1,
-        })
-        .where(
-          and(
-            eq(productTable.id, id),
-            eq(productTable.version, expectedVersion),
-          ),
-        )
-        .returning({ id: productTable.id, name: productTable.name });
-      // Everything above was validated against this version. Nothing written yet: safe to return.
-      if (!updated) {
-        return this.versionConflict;
-      }
-
-      if (uploads.length) {
-        await claimUploads(tx, uploads);
-      }
-      const deletedImages = iOps?.delete ?? [];
-      await enqueueImageCheck(
-        tx,
-        current.images
-          .filter(
-            (image) =>
-              deletedImages.includes(image.id) || replacements.has(image.id),
-          )
-          .flatMap((image) => [
-            image.keyThumb,
-            image.keyMedium,
-            image.keyLarge,
-          ]),
-        MAX_CDN_AGE_MINUTES, // a cached copy may still show the image
-      );
-      if (deletedImages.length) {
-        await tx
-          .delete(imageTable)
-          .where(inArray(imageTable.id, deletedImages));
-      }
-      await Promise.all(
-        updatedImages.map(({ id: imageId, altText, position }) => {
-          const upload = replacements.get(imageId);
-          return tx
-            .update(imageTable)
-            .set({
-              ...(upload && uploadColumns(upload)),
-              altText,
-              position,
-              updatedAt: sql`CURRENT_TIMESTAMP`, // an update may only carry its id
-            })
-            .where(eq(imageTable.id, imageId));
-        }),
-      );
-      await insertImages(tx, updated.id, createdImages, uploads);
-
-      if (vOps?.delete?.length) {
-        await tx
-          .delete(productVariantTable)
-          .where(inArray(productVariantTable.id, vOps.delete));
-      }
-      const sharedInventoryId = await updateVariants(tx, {
-        current,
-        mode,
-        modeChanged,
-        inventory,
-        updates: vOps?.update ?? [],
-      });
-      const unlinked = categoryChanged ? current.variants : relinkedVariants;
-      if (unlinked.length) {
-        await unlinkAttributeValues(
-          tx,
-          unlinked.map((variant) => variant.id),
+    const outcome = await catchConstraints(
+      [
+        ProductNameTaken,
+        VariantSkuTaken,
+        ProductCategoryNotFound,
+        VariantAttributeValueNotFound,
+        InsufficientStock,
+        StockLimitExceeded,
+      ],
+      db.transaction(async (tx) => {
+        const reserved = reservedConflict(
+          await lockStock(tx, current),
+          modeChanged,
+          vOps?.delete,
         );
-      }
-      await linkAttributeValues(tx, relinkedVariants);
-      await insertVariants(tx, id, createdVariants, sharedInventoryId);
-      await deleteUnusedInventories(tx, id);
-      await refreshListing(tx, [id]);
+        if (reserved) {
+          return reserved;
+        }
+        const [updated] = await tx
+          .update(productTable)
+          .set({
+            ...(name && { name, slug: slugOf(name) }),
+            description,
+            categoryId,
+            status: requestedStatus,
+            stockMode,
+            version: expectedVersion + 1,
+          })
+          .where(
+            and(
+              eq(productTable.id, id),
+              eq(productTable.version, expectedVersion),
+            ),
+          )
+          .returning({ id: productTable.id, name: productTable.name });
+        // Everything above was validated against this version. Nothing written yet: safe to return.
+        if (!updated) {
+          return new ProductVersionConflict();
+        }
 
-      return (await find({ id }, tx)) as ProductModel.productResult;
-    });
+        if (uploads.length) {
+          await claimUploads(tx, uploads);
+        }
+        const deletedImages = iOps?.delete ?? [];
+        await enqueueImageCheck(
+          tx,
+          current.images
+            .filter(
+              (image) =>
+                deletedImages.includes(image.id) || replacements.has(image.id),
+            )
+            .flatMap((image) => [
+              image.keyThumb,
+              image.keyMedium,
+              image.keyLarge,
+            ]),
+          MAX_CDN_AGE_MINUTES, // a cached copy may still show the image
+        );
+        if (deletedImages.length) {
+          await tx
+            .delete(imageTable)
+            .where(inArray(imageTable.id, deletedImages));
+        }
+        await Promise.all(
+          updatedImages.map(({ id: imageId, altText, position }) => {
+            const upload = replacements.get(imageId);
+            return tx
+              .update(imageTable)
+              .set({
+                ...(upload && uploadColumns(upload)),
+                altText,
+                position,
+                updatedAt: sql`CURRENT_TIMESTAMP`, // an update may only carry its id
+              })
+              .where(eq(imageTable.id, imageId));
+          }),
+        );
+        await insertImages(tx, updated.id, createdImages, uploads);
+
+        if (vOps?.delete?.length) {
+          await tx
+            .delete(productVariantTable)
+            .where(inArray(productVariantTable.id, vOps.delete));
+        }
+        const sharedInventoryId = await updateVariants(tx, {
+          current,
+          mode,
+          modeChanged,
+          inventory,
+          updates: vOps?.update ?? [],
+        });
+        const unlinked = categoryChanged ? current.variants : relinkedVariants;
+        if (unlinked.length) {
+          await unlinkAttributeValues(
+            tx,
+            unlinked.map((variant) => variant.id),
+          );
+        }
+        await linkAttributeValues(tx, relinkedVariants);
+        await insertVariants(tx, id, createdVariants, sharedInventoryId);
+        await deleteUnusedInventories(tx, id);
+        await refreshListing(tx, [id]);
+
+        return (await find({ id }, tx)) as ProductModel.productResult;
+      }),
+    );
     return purgeOnSuccess(
       outcome,
       productPurge([id], name !== undefined || requestedStatus !== undefined),
@@ -1011,80 +963,82 @@ export const productService = {
     const category = categoryId
       ? await categoryService.getById({ id: categoryId })
       : undefined;
-    if (category instanceof ElysiaStatus) {
+    if (category instanceof Error) {
       return category;
     }
 
-    const outcome = await db.transaction(async (tx) => {
-      await tx
-        .select({ id: inventoryTable.id })
-        .from(inventoryTable)
-        .where(inArray(inventoryTable.productId, ids))
-        .orderBy(asc(inventoryTable.id))
-        .for("update");
-      const locked = await tx
-        .select({ id: productTable.id })
-        .from(productTable)
-        .where(inArray(productTable.id, ids))
-        .orderBy(productTable.id)
-        .for("update");
-      if (locked.length !== ids.length) {
-        return this.productNotFound;
-      }
-      const products = await tx.query.product.findMany({
-        where: { id: { in: ids } },
-        columns: { id: true, name: true, categoryId: true, status: true },
-        with: {
-          category: {
-            with: {
-              attributes: {
-                columns: { id: true },
-                with: { values: { columns: { id: true } } },
+    const outcome = await catchConstraints(
+      [ProductCategoryNotFound],
+      db.transaction(async (tx) => {
+        await tx
+          .select({ id: inventoryTable.id })
+          .from(inventoryTable)
+          .where(inArray(inventoryTable.productId, ids))
+          .orderBy(asc(inventoryTable.id))
+          .for("update");
+        const locked = await tx
+          .select({ id: productTable.id })
+          .from(productTable)
+          .where(inArray(productTable.id, ids))
+          .orderBy(productTable.id)
+          .for("update");
+        if (locked.length !== ids.length) {
+          return new ProductNotFound();
+        }
+        const products = await tx.query.product.findMany({
+          where: { id: { in: ids } },
+          columns: { id: true, name: true, categoryId: true, status: true },
+          with: {
+            category: {
+              with: {
+                attributes: {
+                  columns: { id: true },
+                  with: { values: { columns: { id: true } } },
+                },
               },
             },
+            variants: {
+              columns: { id: true, price: true },
+              with: { attributeValues: { columns: { id: true } } },
+            },
           },
-          variants: {
-            columns: { id: true, price: true },
-            with: { attributeValues: { columns: { id: true } } },
-          },
-        },
-      });
-      const movesCategory = (product: { categoryId: string }) =>
-        categoryId !== undefined && categoryId !== product.categoryId;
-
-      // Nothing is written unless every product passes.
-      for (const product of products) {
-        const invalid = validateChange({
-          product,
-          category: category ?? product.category,
-          categoryChanged: movesCategory(product),
-          requestedStatus,
-          label: `Product "${product.name}": `,
         });
-        if (invalid) {
-          return invalid;
-        }
-      }
+        const movesCategory = (product: { categoryId: string }) =>
+          categoryId !== undefined && categoryId !== product.categoryId;
 
-      await tx
-        .update(productTable)
-        .set({
-          status: requestedStatus,
-          categoryId,
-          version: sql`${productTable.version} + 1`,
-        })
-        .where(inArray(productTable.id, ids));
-      const movedVariants = products
-        .filter(movesCategory)
-        .flatMap(({ variants }) => variants);
-      if (movedVariants.length) {
-        await unlinkAttributeValues(
-          tx,
-          movedVariants.map((variant) => variant.id),
-        );
-      }
-      return { count: products.length };
-    });
+        for (const product of products) {
+          const invalid = validateChange({
+            product,
+            category: category ?? product.category,
+            categoryChanged: movesCategory(product),
+            requestedStatus,
+            label: `Product "${product.name}": `,
+          });
+          if (invalid) {
+            return invalid;
+          }
+        }
+
+        await tx
+          .update(productTable)
+          .set({
+            status: requestedStatus,
+            categoryId,
+            version: sql`${productTable.version} + 1`,
+          })
+          .where(inArray(productTable.id, ids));
+        const movedVariants = products
+          .filter(movesCategory)
+          .flatMap(({ variants }) => variants);
+        if (movedVariants.length) {
+          await unlinkAttributeValues(
+            tx,
+            movedVariants.map((variant) => variant.id),
+          );
+        }
+        return { count: products.length };
+      }),
+    );
     return purgeOnSuccess(
       outcome,
       productPurge(ids, requestedStatus !== undefined),
@@ -1092,56 +1046,55 @@ export const productService = {
   },
 
   async delete({ id }: uuidGuard) {
-    const outcome = await db.transaction(async (tx) => {
-      await tx
-        .select({ id: inventoryTable.id })
-        .from(inventoryTable)
-        .where(eq(inventoryTable.productId, id))
-        .orderBy(asc(inventoryTable.id))
-        .for("update");
-      // Locked first: no image can be added before the cascade removes them.
-      const [locked] = await tx
-        .select({ id: productTable.id })
-        .from(productTable)
-        .where(eq(productTable.id, id))
-        .for("update");
-      if (!locked) {
-        return this.productNotFound;
-      }
-      const [reserved] = await tx
-        .select({ id: orderItemTable.id })
-        .from(orderItemTable)
-        .innerJoin(orderTable, eq(orderTable.id, orderItemTable.orderId))
-        .where(
-          and(
-            eq(orderItemTable.productId, id),
-            eq(orderTable.status, "PENDING"),
-          ),
-        )
-        .limit(1);
-      if (reserved) {
-        return problem("Conflict", {
-          code: "PRODUCT_RESERVED",
-          message:
-            "Pending orders reserve this product: it can be deleted once they are paid or cancelled",
-        });
-      }
-      const images = await tx
-        .delete(imageTable)
-        .where(eq(imageTable.productId, id))
-        .returning();
-      await tx.delete(productTable).where(eq(productTable.id, id));
-      await enqueueImageCheck(
-        tx,
-        images.flatMap((image) => [
-          image.keyThumb,
-          image.keyMedium,
-          image.keyLarge,
-        ]),
-        MAX_CDN_AGE_MINUTES, // a cached copy may still show the image
-      );
-      return status("OK");
-    });
+    const outcome = await catchConstraints(
+      [ProductHasComments],
+      db.transaction(async (tx) => {
+        await tx
+          .select({ id: inventoryTable.id })
+          .from(inventoryTable)
+          .where(eq(inventoryTable.productId, id))
+          .orderBy(asc(inventoryTable.id))
+          .for("update");
+        // Locked first: no image can be added before the cascade removes them.
+        const [locked] = await tx
+          .select({ id: productTable.id })
+          .from(productTable)
+          .where(eq(productTable.id, id))
+          .for("update");
+        if (!locked) {
+          return new ProductNotFound();
+        }
+        const [reserved] = await tx
+          .select({ id: orderItemTable.id })
+          .from(orderItemTable)
+          .innerJoin(orderTable, eq(orderTable.id, orderItemTable.orderId))
+          .where(
+            and(
+              eq(orderItemTable.productId, id),
+              eq(orderTable.status, "PENDING"),
+            ),
+          )
+          .limit(1);
+        if (reserved) {
+          return new ProductReserved();
+        }
+        const images = await tx
+          .delete(imageTable)
+          .where(eq(imageTable.productId, id))
+          .returning();
+        await tx.delete(productTable).where(eq(productTable.id, id));
+        await enqueueImageCheck(
+          tx,
+          images.flatMap((image) => [
+            image.keyThumb,
+            image.keyMedium,
+            image.keyLarge,
+          ]),
+          MAX_CDN_AGE_MINUTES, // a cached copy may still show the image
+        );
+        return status("OK");
+      }),
+    );
     return purgeOnSuccess(outcome, {
       stale: [tag.products],
       gone: [tag.product(id)],

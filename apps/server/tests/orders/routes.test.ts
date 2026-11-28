@@ -125,7 +125,7 @@ describe.concurrent("orders routes", () => {
     for (const { error } of results) {
       expect(error).toMatchObject({
         status: 404,
-        value: { code: "ORDER_NOT_FOUND", message: "Order not found" },
+        value: { code: "ORDER_NOT_FOUND", detail: "Order not found" },
       });
     }
   });

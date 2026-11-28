@@ -184,39 +184,3 @@ export const categoryResult = t.Object(
   { additionalProperties: false },
 );
 export type categoryResult = UnwrapSchema<typeof categoryResult>;
-export const categoryNotFound = t.Object({
-  code: t.Literal("CATEGORY_NOT_FOUND"),
-  message: t.Literal("Category not found"),
-});
-
-export const categoryInUse = t.Object({
-  code: t.Literal("CATEGORY_IN_USE"),
-  message: t.Literal("Category is used by products"),
-});
-
-export const nameConflict = t.Object({
-  code: t.Literal("CATEGORY_NAME_ALREADY_EXISTS"),
-  message: t.Literal("A category with this name already exists"),
-});
-
-export const patchValueError = t.Object({
-  code: t.Literal("ATTRIBUTE_VALUE_LAST_VALUE"),
-  message: t.String(),
-});
-export const patchConflict = t.Object({
-  code: t.Union([
-    t.Literal("CATEGORY_NAME_ALREADY_EXISTS"),
-    t.Literal("ATTRIBUTE_NAME_ALREADY_EXISTS"),
-    t.Literal("ATTRIBUTE_VALUE_ALREADY_EXISTS"),
-    t.Literal("ATTRIBUTE_VALUE_IN_USE"),
-  ]),
-  message: t.String(),
-});
-export const patchNotFound = t.Object({
-  code: t.Union([
-    t.Literal("CATEGORY_NOT_FOUND"),
-    t.Literal("CATEGORY_ATTRIBUTE_NOT_FOUND"),
-    t.Literal("CATEGORY_ATTRIBUTE_VALUE_NOT_FOUND"),
-  ]),
-  message: t.String(),
-});

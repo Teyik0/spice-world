@@ -1,10 +1,8 @@
-import { problem } from "elysia";
-
+import { InvalidVariantOperations, VariantsValidationFailed } from "../errors";
 import type * as ProductModel from "../model";
 import { hasUnknownIds } from "./operations";
 
-/** Minimal shape shared by the category and product services. */
-interface VariantCategory {
+export interface VariantCategory {
   attributes: { id: string; values: { id: string }[] }[];
 }
 
@@ -39,25 +37,18 @@ export function validateVariantIds(
   vOps: ProductModel.variantOperations,
 ) {
   if (hasUnknownIds(current, vOps)) {
-    return problem("Unprocessable Content", {
-      code: "INVALID_VARIANT_OPERATIONS",
-      message:
-        "Variant IDs to update or delete must belong to this product.",
-      field: "variants",
-    });
+    return new InvalidVariantOperations();
   }
 }
 
 export function validateVariants({
   category,
-  vOps,
   variants,
   label = "",
 }: {
   category: VariantCategory;
   label?: string;
   variants: VariantState[];
-  vOps?: ProductModel.variantOperations;
 }) {
   const attributeIds = new Map(
     category.attributes.flatMap(({ id, values }) =>
@@ -65,23 +56,18 @@ export function validateVariants({
     ),
   );
   const subErrors = [
-    ...(vOps?.create ?? []).flatMap((variant, index) =>
-      validateAttributeValues(`create[${index}]`, variant, attributeIds),
-    ),
-    ...(vOps?.update ?? []).flatMap((variant, index) =>
-      validateAttributeValues(`update[${index}]`, variant, attributeIds),
+    ...variants.flatMap((variant, index) =>
+      validateAttributeValues(`variants[${index}]`, variant, attributeIds),
     ),
     ...validateCount(variants.length, category),
     ...validateCombinations(variants),
   ];
 
   if (subErrors.length) {
-    return problem("Bad Request", {
-      code: "VARIANTS_VALIDATION_FAILED",
-      message: `${label}Found ${subErrors.length} validation error(s) across variants`,
-      field: "variants",
-      details: { subErrors },
-    });
+    return new VariantsValidationFailed(
+      `${label}Found ${subErrors.length} validation error(s) across variants`,
+      subErrors,
+    );
   }
 }
 

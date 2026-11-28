@@ -7,6 +7,8 @@ import type * as ProductModel from "@spice-world/server/modules/products/model";
 import { eq, inArray } from "drizzle-orm";
 
 import {
+  attributeValueTable,
+  categoryTable,
   commentTable,
   imageDeletionTable,
   productTable,
@@ -475,7 +477,10 @@ describe.concurrent("products", () => {
       ),
     ]);
     for (const { error } of results) {
-      expect(error).toMatchObject({ status: 400, value: { code: "PUBLISH_PRICE_REQUIRED" } });
+      expect(error).toMatchObject({
+        status: 400,
+        value: { code: "PUBLISH_PRICE_REQUIRED" },
+      });
     }
     expect((await api.products({ id: product.id }).get()).data).toEqual(
       product,
@@ -502,7 +507,10 @@ describe.concurrent("products", () => {
         { variants: { update: [{ id: variant.id, price: 0 }] } },
         { headers: { "x-version": product.version + 1 } },
       );
-    expect(error).toMatchObject({ status: 400, value: { code: "PUBLISH_PRICE_REQUIRED" } });
+    expect(error).toMatchObject({
+      status: 400,
+      value: { code: "PUBLISH_PRICE_REQUIRED" },
+    });
   });
 
   it("keeps the status on a category change", async () => {
@@ -587,6 +595,70 @@ describe.concurrent("products", () => {
     expect(data?.description).toBe(product.description);
     expect(data?.images).toEqual(product.images);
   });
+
+  it("returns PRODUCT_CATEGORY_NOT_FOUND when the new category is deleted during the request", async () => {
+    const { product } = await setup();
+    const target = await createTestCategory({ testDb });
+    const { error } = await runBlocked(
+      testDb,
+      (tx) => tx.delete(categoryTable).where(eq(categoryTable.id, target.id)),
+      () =>
+        api
+          .products({ id: product.id })
+          .patch(
+            { categoryId: target.id },
+            { headers: { "x-version": product.version } },
+          ),
+      async () => undefined,
+    );
+    expect(error).toMatchObject({
+      status: 400,
+      value: { code: "PRODUCT_CATEGORY_NOT_FOUND" },
+    });
+    const { data } = await api.products({ id: product.id }).get();
+    expect(data).toEqual(product);
+    await expectNoDrift(testDb);
+  });
+
+  it("returns VARIANT_ATTRIBUTE_VALUE_NOT_FOUND when a linked value is deleted during the request", async () => {
+    const { product, category, values } = await setup();
+    const [variant] = product.variants;
+    const deletedValue = category.attributes[1]?.values[0];
+    expectDefined(variant);
+    expectDefined(deletedValue);
+    const { error } = await runBlocked(
+      testDb,
+      (tx) =>
+        tx
+          .delete(attributeValueTable)
+          .where(eq(attributeValueTable.id, deletedValue.id)),
+      () =>
+        api.products({ id: product.id }).patch(
+          {
+            variants: {
+              update: [
+                {
+                  id: variant.id,
+                  attributeValueIds: [...values.slice(0, 1), deletedValue.id],
+                },
+              ],
+            },
+          },
+          { headers: { "x-version": product.version } },
+        ),
+      async () => undefined,
+    );
+    expect(error).toMatchObject({
+      status: 400,
+      value: { code: "VARIANT_ATTRIBUTE_VALUE_NOT_FOUND" },
+    });
+    const { data } = await api.products({ id: product.id }).get();
+    expect(data).toMatchObject({
+      version: product.version,
+      variants: product.variants,
+    });
+    await expectNoDrift(testDb);
+  });
 });
 
 describe.concurrent("products bulk", () => {
@@ -624,7 +696,10 @@ describe.concurrent("products bulk", () => {
     });
     expect(error).toMatchObject({
       status: 400,
-      value: { code: "PUBLISH_PRICE_REQUIRED", message: expect.stringContaining(free.name) },
+      value: {
+        code: "PUBLISH_PRICE_REQUIRED",
+        detail: expect.stringContaining(free.name),
+      },
     });
     const { data } = await api.products({ id: product.id }).get();
     expect(data).toEqual(product);
@@ -676,8 +751,13 @@ describe.concurrent("products bulk", () => {
       status: 400,
       value: {
         code: "VARIANTS_VALIDATION_FAILED",
-        message: expect.stringContaining(several.name),
-        details: { subErrors: [{ code: "VARIANT_COUNT_OUT_OF_RANGE" }, { code: "DUPLICATE_VARIANT_COMBINATION" }] },
+        detail: expect.stringContaining(several.name),
+        details: {
+          subErrors: [
+            { code: "VARIANT_COUNT_OUT_OF_RANGE" },
+            { code: "DUPLICATE_VARIANT_COMBINATION" },
+          ],
+        },
       },
     });
     const unchanged = await Promise.all(

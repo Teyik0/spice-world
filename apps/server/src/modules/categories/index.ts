@@ -4,7 +4,7 @@ import { drizzleErrorPlugin } from "@spice-world/server/plugins/drizzle.plugin";
 import { Elysia, status, t } from "elysia";
 
 import { imageCleanupPlugin } from "../../plugins/image.plugin";
-import { invalidImage, uploadFailed, uuidGuard } from "../shared";
+import { uuidGuard } from "../shared";
 import * as CategoryModel from "./model";
 import { categoryService } from "./service";
 
@@ -34,9 +34,6 @@ export const categoryRouter = new Elysia({
       body: CategoryModel.postBody,
       response: {
         201: CategoryModel.categoryResult,
-        400: invalidImage,
-        409: CategoryModel.nameConflict,
-        502: uploadFailed,
       },
       imageCleanup: true,
     },
@@ -55,7 +52,6 @@ export const categoryRouter = new Elysia({
       cdn: "category",
       response: {
         200: CategoryModel.categoryResult,
-        404: CategoryModel.categoryNotFound,
       },
     },
     async ({ params }) => await categoryService.getById(params),
@@ -64,15 +60,11 @@ export const categoryRouter = new Elysia({
     "/:id",
     {
       access: "admin",
-      response: {
-        400: CategoryModel.categoryInUse,
-        404: CategoryModel.categoryNotFound,
-      },
       imageCleanup: true,
     },
     async ({ params }) => {
       const result = await categoryService.delete(params);
-      return "status" in result ? result : status(200);
+      return result instanceof Error ? result : status(200);
     },
   )
   .patch(
@@ -82,10 +74,6 @@ export const categoryRouter = new Elysia({
       body: CategoryModel.patchBody,
       response: {
         200: CategoryModel.categoryResult,
-        400: t.Union([CategoryModel.patchValueError, invalidImage]),
-        404: CategoryModel.patchNotFound,
-        409: CategoryModel.patchConflict,
-        502: uploadFailed,
       },
       imageCleanup: true,
     },

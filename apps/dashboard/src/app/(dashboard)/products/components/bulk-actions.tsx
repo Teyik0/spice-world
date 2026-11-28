@@ -56,9 +56,7 @@ export function BulkActions({
       setChange(null);
       if (error) {
         const { value } = error;
-        toast.error(
-          "message" in value ? value.message : (value.detail ?? value.title),
-        );
+        toast.error(value.detail ?? value.title);
         return;
       }
       toast.success(`${data.count} products updated.`);
