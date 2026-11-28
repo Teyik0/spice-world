@@ -88,6 +88,7 @@ export default $config({
       "STRIPE_SUCCESS_URL",
       "STRIPE_CANCEL_URL",
       "WEB_ORIGINS",
+      "VERCEL_PURGE_TOKEN", // Vercel token allowed to purge the server project's CDN cache
     ].map((name) => new sst.Secret(name));
     const spiceWorldServer = new vercel.Project("spice-world-server", {
       name: "spice-world-server",
@@ -99,10 +100,10 @@ export default $config({
       },
       vercelAuthentication: { deploymentType: "none" }, // the web proxy calls it server side; Better Auth guards the API
     });
-    const spiceWorldWeb = new vercel.Project("spice-world-web", {
+    // Keeps the spice-world-web name: its domain is the auth and OAuth origin.
+    const spiceWorldDashboard = new vercel.Project("spice-world-web", {
       name: "spice-world-web",
-      framework: "nextjs",
-      rootDirectory: "apps/web",
+      rootDirectory: "apps/dashboard", // Furin Build Output API: see apps/dashboard/vercel.json
       resourceConfig: { functionDefaultRegions: ["fra1"] },
       gitRepository: {
         type: "github",
@@ -110,7 +111,7 @@ export default $config({
       },
     });
     new vercel.ProjectEnvironmentVariables("spice-world-web-env", {
-      projectId: spiceWorldWeb.id,
+      projectId: spiceWorldDashboard.id,
       variables: [
         {
           key: "API_URL",
@@ -135,6 +136,19 @@ export default $config({
           targets: ["production"],
           sensitive: true,
         },
+        // CDN purge through the REST API (apps/server/src/lib/cdn.ts)
+        {
+          key: "VERCEL_PROJECT_ID",
+          value: spiceWorldServer.id,
+          targets: ["production", "preview"], // a local write must not purge the deployed cache
+          sensitive: false,
+        },
+        {
+          key: "VERCEL_TEAM_ID",
+          value: "team_jKy3xXivkDGmI01SAr9Bo9d1",
+          targets: ["production", "preview"], // a local write must not purge the deployed cache
+          sensitive: false,
+        },
         {
           key: "DATABASE_URL",
           value: database.properties.devConnectionString,
@@ -156,15 +170,15 @@ export default $config({
       dev: {
         autostart: true,
         command: "sst shell bun run dev",
-        directory: "apps/web",
-        title: "Next.js Web",
+        directory: "apps/dashboard",
+        title: "Furin Dashboard",
       },
     });
     // Values to copy into GitHub (vars/secrets) for the preview workflow.
     return {
       NEON_PROJECT_ID: neonProject.id,
       VERCEL_SERVER_PROJECT_ID: spiceWorldServer.id,
-      VERCEL_WEB_PROJECT_ID: spiceWorldWeb.id,
+      VERCEL_WEB_PROJECT_ID: spiceWorldDashboard.id,
     };
   },
 });

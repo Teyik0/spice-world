@@ -9,7 +9,7 @@ import { stripeClient } from "@spice-world/server/lib/stripe";
 import { betterAuth } from "better-auth/minimal";
 import { admin, oAuthProxy, openAPI } from "better-auth/plugins";
 import type { MacroTypeLambda } from "elysia";
-import { Elysia, ElysiaStatus, macroType } from "elysia";
+import { Elysia, macroType } from "elysia";
 import { Resend } from "resend";
 import type Stripe from "stripe";
 
@@ -78,7 +78,7 @@ export const auth = betterAuth({
         type: "string",
         required: false,
         defaultValue: "user",
-        input: false, // don't allow user to set role
+        input: false,
         returned: true,
       },
     },
@@ -128,8 +128,8 @@ export const auth = betterAuth({
                 metadata.orderId,
                 typeof payment_intent === "string" ? payment_intent : null,
               );
-              if (order instanceof ElysiaStatus) {
-                throw new Error(order.response.message); // Better Auth answers 400: Stripe retries
+              if (order instanceof Error) {
+                throw new Error(order.detail); // Better Auth answers 400: Stripe retries
               }
             }
             break;
@@ -149,6 +149,10 @@ export const auth = betterAuth({
   ],
 });
 
+export type User = typeof auth.$Infer.Session.user;
+
+export const isAdmin = (user: User | null) => user?.role === "admin";
+
 interface AccessContext extends MacroTypeLambda {
   output: "optional" extends this["input"]
     ? {
@@ -166,7 +170,7 @@ export const betterAuthPlugin = new Elysia({
   .macro({
     access: (level: "optional" | "login" | "admin") => ({
       $type: macroType<AccessContext>(),
-      async derive({ log, request: { headers }, problem }) {
+      async derive({ log, request: { headers }, problem, set }) {
         const session = await auth.api.getSession({ headers });
         log.set({
           user: session
@@ -180,6 +184,10 @@ export const betterAuthPlugin = new Elysia({
 
         if (level === "admin" && session && session.user.role !== "admin") {
           return problem("Forbidden");
+        }
+
+        if (isAdmin(session?.user ?? null)) {
+          set.headers["cache-control"] = "private, no-store";
         }
 
         return {

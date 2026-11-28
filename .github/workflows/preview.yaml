@@ -19,11 +19,15 @@ env:
   VERCEL_SERVER_PROJECT_ID: ${{ vars.VERCEL_SERVER_PROJECT_ID }}
   VERCEL_WEB_PROJECT_ID: ${{ vars.VERCEL_WEB_PROJECT_ID }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Pulumi plugin downloads hit the GitHub API rate limit otherwise
+  ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }} # left unmasked so the admin can sign in to previews
 
 jobs:
   deploy:
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # preview URLs comment
     steps:
       - uses: actions/checkout@v6
 
@@ -37,12 +41,18 @@ jobs:
         shell: bash # -eo pipefail: fail on the first Neon API error instead of polling blindly
         run: |
           neon() { curl -sSf -H "Authorization: Bearer $NEON_API_KEY" -H 'Content-Type: application/json' "$@"; }
-          id=$(neon "$NEON_API/branches" | jq -r --arg n "$STAGE" '.branches[] | select(.name == $n) | .id')
-          if [ -z "$id" ]; then
-            id=$(jq --arg n "$STAGE" '{ branch_create: { branch: { name: $n } }, start_anonymization: true,
-                   masking_rules: map({ database_name: "neondb", schema_name: "public" } + .) }' .github/neon/masking-rules.json \
-              | neon -X POST "$NEON_API/branch_anonymized" -d @- | jq -r .branch.id)
-          fi
+          drop() {
+            neon "$NEON_API/branches" | jq -r --arg n "$STAGE" '.branches[] | select(.name == $n) | .id' \
+              | xargs -r -I{} curl -sSf -X DELETE -H "Authorization: Bearer $NEON_API_KEY" "$NEON_API/branches/{}" > /dev/null
+          }
+          drop
+          trap 'test $? = 0 || drop' EXIT
+          id=$(jq --arg n "$STAGE" --arg admin "$ADMIN_EMAIL" --arg q "'" '{ branch_create: { branch: { name: $n } }, start_anonymization: true,
+                 masking_rules: map({ database_name: "neondb", schema_name: "public" } + .
+                   | if .table_name == "user" and .column_name == "email" and $admin != ""
+                     then .masking_function = "pg_catalog.regexp_replace(email, \($q)^(?!\($admin | gsub("(?<c>[.+*?^$()\\[\\]{}|\\\\])"; "\\\(.c)") | gsub($q; $q + $q))$).*$\($q), \(.masking_function))"
+                     else . end) }' .github/neon/masking-rules.json \
+            | neon -X POST "$NEON_API/branch_anonymized" -d @- | jq -r .branch.id)
           for _ in $(seq 60); do
             state=$(neon "$NEON_API/branches/$id/anonymized_status" | jq -r .state)
             case $state in
@@ -63,6 +73,12 @@ jobs:
         run: DATABASE_URL=$PR_DATABASE_URL bun run db:migrate
 
       - run: bunx sst deploy --stage $STAGE --print-logs
+
+      - name: Comment preview URLs
+        run: |
+          gh pr comment ${{ github.event.number }} --edit-last --create-if-none --body "### Preview \`${PR_SHA::7}\`
+          - Web: https://$(jq -r .web .sst/outputs.json)
+          - Server: https://$(jq -r .server .sst/outputs.json)"
 
   remove:
     if: github.event.action == 'closed'

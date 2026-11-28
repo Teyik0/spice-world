@@ -1,7 +1,7 @@
 import { purgeOnSuccess, tag } from "@spice-world/server/lib/cdn";
-import { db } from "@spice-world/server/lib/db";
+import { catchConstraints, db } from "@spice-world/server/lib/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { problem, status } from "elysia";
+import { status } from "elysia";
 
 import {
   collectionProductTable,
@@ -9,6 +9,12 @@ import {
   productTable,
 } from "../../../drizzle/schema";
 import type { ExpectedVersion, uuidGuard } from "../shared";
+import {
+  CollectionHandleTaken,
+  CollectionNotFound,
+  CollectionProductNotFound,
+  CollectionVersionConflict,
+} from "./errors";
 import type * as CollectionModel from "./model";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -50,11 +56,6 @@ async function setProducts(tx: Tx, collectionId: string, productIds: string[]) {
 }
 
 export const collectionService = {
-  collectionNotFound: problem("Not Found", {
-    code: "COLLECTION_NOT_FOUND",
-    message: "Collection not found",
-  }),
-
   async get() {
     const rows = await db.query.collection.findMany({
       orderBy: { name: "asc" },
@@ -69,16 +70,22 @@ export const collectionService = {
   },
 
   async getById({ id }: uuidGuard) {
-    return (await find(id)) ?? this.collectionNotFound;
+    return (await find(id)) ?? new CollectionNotFound();
   },
 
   async post({ productIds = [], ...data }: CollectionModel.postBody) {
     const id = Bun.randomUUIDv7();
-    const collection = await db.transaction(async (tx) => {
-      await tx.insert(collectionTable).values({ id, ...data });
-      await setProducts(tx, id, productIds);
-      return find(id, tx);
-    });
+    const collection = await catchConstraints(
+      [CollectionHandleTaken, CollectionProductNotFound],
+      db.transaction(async (tx) => {
+        await tx.insert(collectionTable).values({ id, ...data });
+        await setProducts(tx, id, productIds);
+        return find(id, tx);
+      }),
+    );
+    if (collection instanceof Error) {
+      return collection;
+    }
     // product listings filter by collection; collections themselves are never cached
     return purgeOnSuccess(
       status("Created", collection as CollectionModel.collectionResult),
@@ -92,30 +99,30 @@ export const collectionService = {
     expectedVersion,
     ...data
   }: uuidGuard & CollectionModel.patchBody & ExpectedVersion) {
-    const result = await db.transaction(async (tx) => {
-      const [row] = await tx
-        .update(collectionTable)
-        .set({ ...data, version: sql`${collectionTable.version} + 1` })
-        .where(
-          and(
-            eq(collectionTable.id, id),
-            eq(collectionTable.version, expectedVersion),
-          ),
-        )
-        .returning({ id: collectionTable.id });
-      if (!row) {
-        return (await find(id, tx))
-          ? problem("Conflict", {
-              code: "VERSION_CONFLICT",
-              message: "Collection modified. Reload and retry.",
-            })
-          : this.collectionNotFound;
-      }
-      if (productIds) {
-        await setProducts(tx, id, productIds);
-      }
-      return (await find(id, tx)) as CollectionModel.collectionResult;
-    });
+    const result = await catchConstraints(
+      [CollectionHandleTaken, CollectionProductNotFound],
+      db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(collectionTable)
+          .set({ ...data, version: sql`${collectionTable.version} + 1` })
+          .where(
+            and(
+              eq(collectionTable.id, id),
+              eq(collectionTable.version, expectedVersion),
+            ),
+          )
+          .returning({ id: collectionTable.id });
+        if (!row) {
+          return (await find(id, tx))
+            ? new CollectionVersionConflict()
+            : new CollectionNotFound();
+        }
+        if (productIds) {
+          await setProducts(tx, id, productIds);
+        }
+        return (await find(id, tx)) as CollectionModel.collectionResult;
+      }),
+    );
     return purgeOnSuccess(result, { stale: [tag.products] });
   },
 
@@ -125,7 +132,7 @@ export const collectionService = {
       .where(eq(collectionTable.id, id))
       .returning({ id: collectionTable.id });
     if (!row) {
-      return this.collectionNotFound;
+      return new CollectionNotFound();
     }
     return purgeOnSuccess(status("OK"), { stale: [tag.products] });
   },

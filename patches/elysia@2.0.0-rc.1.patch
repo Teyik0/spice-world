@@ -1,0 +1,13 @@
+diff --git a/dist/types.d.ts b/dist/types.d.ts
+index 1579bc4ce67f60e04183bd11b95657119aaaaeb3..8605ea0033721b596f791e7e564855eeec926a32 100644
+--- a/dist/types.d.ts
++++ b/dist/types.d.ts
+@@ -903,7 +903,7 @@ type MacroLambdaContext<Value, HookValue> = NonNullable<Value> extends {
+ } ? Output : {} : {};
+ type UnionMacroContext<A> = UnionToIntersect<A extends unknown ? { [K in Exclude<keyof A, 'return'>]: A[K] } : never> & {
+   return: {
+-    _: A['return'];
++    _: A extends { return: infer R } ? R : never;
+   };
+ };
+ type MacroToContext<in out MacroFn extends Macro = {}, in out SelectedMacro extends BaseMacro = {}, in out Definitions extends DefinitionBase['typebox'] = {}, in out R extends 1[] = []> = Prettify<InnerMacroToContext<MacroFn, Pick<SelectedMacro, Extract<keyof MacroFn, keyof SelectedMacro>>, Definitions, R> extends infer A ? { [K in Exclude<keyof A, 'return'>]: K extends 'derive' ? UnionToIntersect<A[K]> : K extends 'meta' ? (A[K] & {

@@ -7,7 +7,12 @@ import { inArray } from "drizzle-orm";
 
 import { imageDeletionTable } from "../../drizzle/schema";
 import { testDb } from "../setup";
-import { createSessionCookie, mockUtapi, waitFor } from "../utils/helper";
+import {
+  createSessionCookie,
+  expireCdnCopies,
+  mockUtapi,
+  waitFor,
+} from "../utils/helper";
 
 export const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
 export const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
@@ -28,11 +33,13 @@ export const queuedImages = (keys: string[]) =>
     .orderBy(imageDeletionTable.fileKey);
 
 /** Each try sends a request to trigger the cleanup: it is skipped while another one runs. */
-export const expectDequeued = (keys: string[]) =>
-  waitFor(async () => {
+export const expectDequeued = async (keys: string[]) => {
+  await expireCdnCopies(testDb, keys);
+  await waitFor(async () => {
     await api.categories({ id: Bun.randomUUIDv7() }).delete();
     expect(await queuedImages(keys)).toEqual([]);
   });
+};
 
 export const expectDeleted = async (keys: string[]) => {
   await expectDequeued(keys);

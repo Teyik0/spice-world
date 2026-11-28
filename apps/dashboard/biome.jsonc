@@ -1,0 +1,9 @@
+{
+  "root": false,
+  "extends": ["../../biome.jsonc", "ultracite/biome/react"],
+  "linter": {
+    "rules": {
+      "performance": { "noJsxPropsBind": "off" },
+    },
+  },
+}

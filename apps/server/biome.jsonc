@@ -8,4 +8,14 @@
       },
     },
   },
+  "overrides": [
+    {
+      "includes": ["src/modules/**/errors.ts"],
+      "linter": {
+        "rules": {
+          "style": { "noExcessiveClassesPerFile": "off" },
+        },
+      },
+    },
+  ],
 }

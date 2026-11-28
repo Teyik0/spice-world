@@ -28,7 +28,7 @@ export function Vitrine({ products }: { products: ProductItem[] }) {
     () =>
       products.map((p, i) => {
         const look = lookOf(p);
-        const stock = stockOf(p.totalStock);
+        const stock = stockOf(p.stockState);
         const chips: [string, string][] = [
           ["Dès", `${price(p.priceMin)} · ${stock.label}`.toUpperCase()],
           look.facts

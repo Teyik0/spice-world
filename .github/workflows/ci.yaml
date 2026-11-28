@@ -37,6 +37,9 @@ jobs:
       - name: Run linting
         run: bun run ultracite check
 
+      - name: Check unused code
+        run: bun run knip
+
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
@@ -135,8 +138,8 @@ jobs:
         app:
           - name: server
             path: apps/server
-          - name: web
-            path: apps/web
+          - name: dashboard
+            path: apps/dashboard
           - name: storefront
             path: apps/storefront
 

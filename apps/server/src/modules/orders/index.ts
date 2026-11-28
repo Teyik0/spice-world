@@ -1,4 +1,8 @@
-import { betterAuthPlugin } from "@spice-world/server/plugins/auth.plugin";
+import type { User } from "@spice-world/server/plugins/auth.plugin";
+import {
+  betterAuthPlugin,
+  isAdmin,
+} from "@spice-world/server/plugins/auth.plugin";
 import { drizzleErrorPlugin } from "@spice-world/server/plugins/drizzle.plugin";
 import { Elysia } from "elysia";
 
@@ -6,9 +10,7 @@ import { uuidGuard } from "../shared";
 import * as OrderModel from "./model";
 import { orderService } from "./service";
 
-/** Only admins see the orders of other users. */
-const visibility = (user: { id: string; role?: string | null }) =>
-  user.role === "admin" ? {} : { userId: user.id };
+const visibility = (user: User) => (isAdmin(user) ? {} : { userId: user.id });
 
 export const ordersRouter = new Elysia({
   name: "orders",
@@ -24,8 +26,6 @@ export const ordersRouter = new Elysia({
       body: OrderModel.checkoutBody,
       response: {
         201: OrderModel.checkoutResult,
-        409: OrderModel.checkoutConflict,
-        502: OrderModel.stripeUnavailable,
       },
     },
     async ({ body, user }) =>
@@ -46,7 +46,7 @@ export const ordersRouter = new Elysia({
     "/by-id/:id",
     {
       access: "login",
-      response: { 200: OrderModel.orderResult, 404: OrderModel.orderNotFound },
+      response: { 200: OrderModel.orderResult },
     },
     async ({ params, user }) =>
       await orderService.getById({ ...params, ...visibility(user) }),
@@ -58,8 +58,6 @@ export const ordersRouter = new Elysia({
       body: OrderModel.updateStatusBody,
       response: {
         200: OrderModel.orderResult,
-        404: OrderModel.orderNotFound,
-        409: OrderModel.cancelConflict,
       },
     },
     async ({ params, body }) =>

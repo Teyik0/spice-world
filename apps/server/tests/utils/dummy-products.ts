@@ -1,9 +1,11 @@
 import {
   categoryTable,
   imageTable,
+  inventoryTable,
   productTable,
   productVariantTable,
 } from "../../drizzle/schema";
+import { refreshListing } from "../../src/modules/products/service";
 import type { TestDatabase } from "./db-manager";
 
 const categoriesData = [
@@ -18,7 +20,7 @@ const categoriesData = [
       urlMedium: "https://test-url.com/spices-medium.webp",
       urlLarge: "https://test-url.com/spices-large.webp",
       altText: "Spices",
-      isThumbnail: true,
+      position: 0,
     },
   },
   {
@@ -32,7 +34,7 @@ const categoriesData = [
       urlMedium: "https://test-url.com/herbs-medium.webp",
       urlLarge: "https://test-url.com/herbs-large.webp",
       altText: "Herbs",
-      isThumbnail: true,
+      position: 0,
     },
   },
   {
@@ -46,7 +48,7 @@ const categoriesData = [
       urlMedium: "https://test-url.com/seasonings-medium.webp",
       urlLarge: "https://test-url.com/seasonings-large.webp",
       altText: "Seasonings",
-      isThumbnail: true,
+      position: 0,
     },
   },
   {
@@ -60,7 +62,7 @@ const categoriesData = [
       urlMedium: "https://test-url.com/extracts-medium.webp",
       urlLarge: "https://test-url.com/extracts-large.webp",
       altText: "Extracts",
-      isThumbnail: true,
+      position: 0,
     },
   },
   {
@@ -74,7 +76,7 @@ const categoriesData = [
       urlMedium: "https://test-url.com/blends-medium.webp",
       urlLarge: "https://test-url.com/blends-large.webp",
       altText: "Blends",
-      isThumbnail: true,
+      position: 0,
     },
   },
 ];
@@ -260,16 +262,26 @@ export async function createDummyProducts({ db }: Pick<TestDatabase, "db">) {
       .insert(categoryTable)
       .values(categories.map(({ image, ...category }) => category));
     await tx.insert(productTable).values(products);
-    await tx.insert(productVariantTable).values(
-      products.flatMap(({ id: productId, slug }) =>
-        ["001", "002"].map((suffix) => ({
-          id: Bun.randomUUIDv7(),
-          productId,
-          price: Math.floor(Math.random() * 100),
-          sku: `${slug.toUpperCase()}-${suffix}`,
-          stock: Math.floor(Math.random() * 100),
-        })),
-      ),
+    const variants = products.flatMap(({ id: productId, slug }) =>
+      ["001", "002"].map((suffix) => ({
+        id: Bun.randomUUIDv7(),
+        productId,
+        inventoryId: Bun.randomUUIDv7(),
+        price: Math.floor(Math.random() * 100),
+        sku: `${slug.toUpperCase()}-${suffix}`,
+      })),
+    );
+    await tx.insert(inventoryTable).values(
+      variants.map(({ inventoryId: id, productId }) => ({
+        id,
+        productId,
+        quantity: Math.floor(Math.random() * 100),
+      })),
+    );
+    await tx.insert(productVariantTable).values(variants);
+    await refreshListing(
+      tx,
+      products.map(({ id }) => id),
     );
     await tx.insert(imageTable).values(
       products.flatMap(({ id: productId, name, slug }) =>
@@ -283,7 +295,7 @@ export async function createDummyProducts({ db }: Pick<TestDatabase, "db">) {
           urlMedium: `https://test-url.com/${slug}-image-${n}-medium.jpg`,
           urlLarge: `https://test-url.com/${slug}-image-${n}-large.jpg`,
           altText: `${name} Image ${n}`,
-          isThumbnail: n === 1,
+          position: n - 1,
         })),
       ),
     );

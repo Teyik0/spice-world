@@ -7,6 +7,7 @@ import {
   MAX_ATTRIBUTES,
   nameLowerPattern,
   nameLowerPatternWithNumber,
+  onceEach,
   uuid,
 } from "../shared";
 
@@ -20,24 +21,26 @@ export const getQuery = t.Object(
 );
 export type getQuery = UnwrapSchema<typeof getQuery>;
 
+export const postAttribute = t.Object(
+  {
+    name: nameLowerPattern,
+    values: t.Array(nameLowerPatternWithNumber, {
+      minItems: 1,
+      maxItems: MAX_ATTRIBUTE_VALUES,
+      uniqueItems: true,
+    }),
+  },
+  { additionalProperties: false },
+);
+export const uniqueAttributeNames = (attributes: { name: string }[]) =>
+  new Set(attributes.map(({ name }) => name)).size === attributes.length;
+export const uniqueAttributeNamesMessage = () =>
+  "Attribute names to create must be unique within a category";
+
 export const postAttributes = t.Refine(
-  t.Array(
-    t.Object(
-      {
-        name: nameLowerPattern,
-        values: t.Array(nameLowerPatternWithNumber, {
-          minItems: 1,
-          maxItems: MAX_ATTRIBUTE_VALUES,
-          uniqueItems: true,
-        }),
-      },
-      { additionalProperties: false },
-    ),
-    { minItems: 1, maxItems: MAX_ATTRIBUTES },
-  ),
-  (attributes) =>
-    new Set(attributes.map(({ name }) => name)).size === attributes.length,
-  () => "Attribute names to create must be unique within a category",
+  t.Array(postAttribute, { minItems: 1, maxItems: MAX_ATTRIBUTES }),
+  uniqueAttributeNames,
+  uniqueAttributeNamesMessage,
 );
 export type postAttribute = UnwrapSchema<typeof postAttributes>;
 
@@ -83,11 +86,10 @@ export const attributeValueOperations = t.Refine(
     },
     { additionalProperties: false },
   ),
-  ({ create = [], update = [], delete: deleted = [] }) => {
-    const deletedIds = new Set(deleted);
+  (operations) => {
+    const { create = [], update = [] } = operations;
     return (
-      new Set(update.map(({ id }) => id)).size === update.length &&
-      !update.some(({ id }) => deletedIds.has(id)) &&
+      onceEach(operations) &&
       new Set([...create, ...update.map(({ value }) => value)]).size ===
         create.length + update.length
     );
@@ -126,17 +128,13 @@ export const attributeOperations = t.Refine(
     },
     { additionalProperties: false },
   ),
-  ({ create = [], update = [], delete: deleted = [] }) => {
+  (operations) => {
+    const { create = [], update = [] } = operations;
     const names = [
       ...create.map(({ name }) => name),
       ...update.flatMap(({ name }) => (name === undefined ? [] : [name])),
     ];
-    const deletedIds = new Set(deleted);
-    return (
-      new Set(update.map(({ id }) => id)).size === update.length &&
-      !update.some(({ id }) => deletedIds.has(id)) &&
-      new Set(names).size === names.length
-    );
+    return onceEach(operations) && new Set(names).size === names.length;
   },
   () =>
     "Attribute names must be unique and attributes can only be updated or deleted once per request",
@@ -186,34 +184,3 @@ export const categoryResult = t.Object(
   { additionalProperties: false },
 );
 export type categoryResult = UnwrapSchema<typeof categoryResult>;
-export const categoryNotFound = t.Object({
-  code: t.Literal("CATEGORY_NOT_FOUND"),
-  message: t.Literal("Category not found"),
-});
-
-export const nameConflict = t.Object({
-  code: t.Literal("CATEGORY_NAME_ALREADY_EXISTS"),
-  message: t.Literal("A category with this name already exists"),
-});
-
-export const patchValueError = t.Object({
-  code: t.Literal("ATTRIBUTE_VALUE_LAST_VALUE"),
-  message: t.String(),
-});
-export const patchConflict = t.Object({
-  code: t.Union([
-    t.Literal("CATEGORY_NAME_ALREADY_EXISTS"),
-    t.Literal("ATTRIBUTE_NAME_ALREADY_EXISTS"),
-    t.Literal("ATTRIBUTE_VALUE_ALREADY_EXISTS"),
-    t.Literal("ATTRIBUTE_VALUE_IN_USE"),
-  ]),
-  message: t.String(),
-});
-export const patchNotFound = t.Object({
-  code: t.Union([
-    t.Literal("CATEGORY_NOT_FOUND"),
-    t.Literal("CATEGORY_ATTRIBUTE_NOT_FOUND"),
-    t.Literal("CATEGORY_ATTRIBUTE_VALUE_NOT_FOUND"),
-  ]),
-  message: t.String(),
-});

@@ -139,29 +139,3 @@ export const checkoutResult = t.Object(
   { order: orderResult, checkoutUrl: t.Nullable(t.String()) },
   { additionalProperties: false },
 );
-
-export const orderNotFound = t.Object({
-  code: t.Literal("ORDER_NOT_FOUND"),
-  message: t.Literal("Order not found"),
-});
-
-export const checkoutConflict = t.Object({
-  code: t.Union([
-    t.Literal("INSUFFICIENT_STOCK"),
-    t.Literal("VARIANT_NOT_AVAILABLE"),
-  ]),
-  message: t.String(),
-});
-
-export const stripeUnavailable = t.Object({
-  code: t.Literal("STRIPE_UNAVAILABLE"),
-  message: t.String(),
-});
-
-export const cancelConflict = t.Object({
-  code: t.Union([
-    t.Literal("ORDER_REQUIRES_REFUND"),
-    t.Literal("ORDER_ALREADY_PAID"),
-  ]),
-  message: t.String(),
-});

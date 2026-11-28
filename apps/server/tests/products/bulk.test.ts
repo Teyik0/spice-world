@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, describe, expect, it } from "bun:test";
 
 import { treaty } from "@elysia/eden";
 import { productsRouter } from "@spice-world/server/modules/products";
@@ -7,7 +7,9 @@ import { testDb } from "../setup";
 import {
   createSessionCookie,
   createTestCategory,
+  createTestProducts,
   expectDefined,
+  expectNoDrift,
   file,
   mockUtapi,
 } from "../utils/helper";
@@ -18,6 +20,27 @@ const api = treaty(productsRouter, {
 });
 
 describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
+  it("reports the product listings to refetch only when it succeeds", async () => {
+    const [product] = await createTestProducts(testDb, 1, "DRAFT");
+    expectDefined(product);
+
+    const updated = await api.products.bulk.patch({
+      ids: [product.id],
+      status: "ARCHIVED",
+    });
+    expect(updated.status).toBe(200);
+    expect(updated.response.headers.get("x-furin-queries")).toContain(
+      "/products",
+    );
+
+    const missing = await api.products.bulk.patch({
+      ids: [Bun.randomUUIDv7()],
+      status: "ARCHIVED",
+    });
+    expect(missing.status).toBe(404);
+    expect(missing.response.headers.get("x-furin-queries")).toBeNull();
+  });
+
   const filePath1 = `${import.meta.dir}/../public/cumin.webp`;
   const filePath2 = `${import.meta.dir}/../public/curcuma.jpg`;
   const files = [file(filePath1), file(filePath2)];
@@ -37,17 +60,16 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
       description: "Test product 1",
       categoryId: category.id,
       status: "DRAFT",
-      variants: {
-        create: [
-          {
-            price: 1000,
-            sku: "BULK-STATUS-1",
-            stock: 10,
-            attributeValueIds: [categoryAttributes[0]?.values[0]?.id as string],
-          },
-        ],
-      },
-      images: { create: [{ file: files[0] as File, isThumbnail: true }] },
+      stockMode: "VARIANT",
+      variants: [
+        {
+          price: 1000,
+          sku: "BULK-STATUS-1",
+          inventory: { quantity: 10 },
+          attributeValueIds: [categoryAttributes[0]?.values[0]?.id as string],
+        },
+      ],
+      images: [{ file: files[0] as File, position: 0 }],
     });
 
     expect(s1).toBe(201);
@@ -92,17 +114,16 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
       description: "Test product for bulk category change",
       categoryId: spicesCategory.id,
       status: "DRAFT",
-      variants: {
-        create: [
-          {
-            price: 1500,
-            sku: "BULK-CAT-1",
-            stock: 20,
-            attributeValueIds: [spicesAttributes[0]?.values[0]?.id as string],
-          },
-        ],
-      },
-      images: { create: [{ file: files[0] as File, isThumbnail: true }] },
+      stockMode: "VARIANT",
+      variants: [
+        {
+          price: 1500,
+          sku: "BULK-CAT-1",
+          inventory: { quantity: 20 },
+          attributeValueIds: [spicesAttributes[0]?.values[0]?.id as string],
+        },
+      ],
+      images: [{ file: files[0] as File, position: 0 }],
     });
 
     expect(createStatus).toBe(201);
@@ -124,3 +145,5 @@ describe.concurrent("PATCH /products/bulk - Integration Tests", () => {
     expect(updated.variants[0]?.attributeValues.length).toBe(0);
   });
 });
+
+afterAll(() => expectNoDrift(testDb));

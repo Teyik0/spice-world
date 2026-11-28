@@ -2,8 +2,9 @@ import type * as ProductModel from "@spice-world/server/modules/products/model";
 
 import { eur } from "./format";
 
-export type ProductItem = ProductModel.productListItem;
-export type ProductDetail = ProductModel.productResult;
+/** The public views: the stock as a state, never as counts. */
+export type ProductItem = ProductModel.publicListItem;
+export type ProductDetail = ProductModel.publicProductResult;
 
 /** Colour world of a jar: label, blob, fog, CSS accents (from the prototypes). */
 export interface Palette {
@@ -272,15 +273,16 @@ export const price = (cents: number | null | undefined) =>
 export const fromPrice = (min: number | null, max: number | null) =>
   min === max ? price(min) : `dès ${price(min)}`;
 
+const STOCK_LABELS = {
+  in: "En stock",
+  low: "Stock limité",
+  out: "Épuisé",
+} as const;
 /** No counts, no "real-time" claims: pages are cached up to 10 minutes. */
-export const stockOf = (n: number) => {
-  if (n <= 0) {
-    return { key: "out", label: "Épuisé" } as const;
-  }
-  return n <= 10
-    ? ({ key: "low", label: "Stock limité" } as const)
-    : ({ key: "in", label: "En stock" } as const);
-};
+export const stockOf = (key: keyof typeof STOCK_LABELS) => ({
+  key,
+  label: STOCK_LABELS[key],
+});
 
 const WEIGHT = /(?<n>\d+(?:[.,]\d+)?)\s*(?<u>kg|g)\b/iu;
 /** Price per kilo in cents, when one of the variant's values states a weight ("50 g", "1kg"). */
@@ -362,6 +364,7 @@ export const pickVariant = (
     ).length;
   return withValue.toSorted(
     (a, b) =>
-      Number(b.stock > 0) - Number(a.stock > 0) || shared(b) - shared(a),
+      Number(b.stockState !== "out") - Number(a.stockState !== "out") ||
+      shared(b) - shared(a),
   )[0];
 };

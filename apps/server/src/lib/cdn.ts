@@ -1,9 +1,5 @@
-import {
-  dangerouslyDeleteByTag,
-  invalidateByTag,
-  waitUntil,
-} from "@vercel/functions";
-import { ElysiaStatus } from "elysia";
+import { env } from "@spice-world/server/lib/env";
+import { log } from "evlog";
 
 /**
  * CDN cache tags. A list tag covers every listing and count of a resource. An entity tag
@@ -25,32 +21,81 @@ export const tag = {
 /** A request with this header always reaches the server, for read-your-writes (admin). */
 export const BYPASS_HEADER = "x-cache-bypass";
 
-const TAGS_PER_CALL = 16; // the only documented cap (REST API); calls are rate limited, not tags
-const ATTEMPTS = 3; // a rejected purge (429) leaves the cache unchanged: retry it
+const FRESH_SECONDS = 3600;
+const STALE_SECONDS = 86_400;
+export const CACHE_CONTROL = `public, s-maxage=${FRESH_SECONDS}, stale-while-revalidate=${STALE_SECONDS}`;
+/** After this, no CDN copy can still be served: a file it references can be deleted. */
+export const MAX_CDN_AGE_MINUTES = (FRESH_SECONDS + STALE_SECONDS) / 60;
 
-async function withRetry(
-  call: () => Promise<void>,
+const TAGS_PER_CALL = 16; // the documented cap of the REST API
+const ATTEMPTS = 3; // a rejected purge (429) leaves the cache unchanged: retry it
+const REPURGE_MS = 5000; // longer than a read that started before the commit
+const TIMEOUT_MS = 5000; // the write already committed: a stalled API must not hold its response
+
+const { VERCEL_PURGE_TOKEN, VERCEL_PROJECT_ID, VERCEL_TEAM_ID } = env;
+const configured = VERCEL_PURGE_TOKEN && VERCEL_PROJECT_ID && VERCEL_TEAM_ID;
+if (
+  !configured &&
+  (env.NODE_ENV === "production" || env.NODE_ENV === "preview")
+) {
+  // Without them every write would leave the CDN serving old data, silently.
+  throw new Error(
+    "VERCEL_PURGE_TOKEN, VERCEL_PROJECT_ID and VERCEL_TEAM_ID are required to purge the CDN",
+  );
+}
+
+type Action = "invalidate-by-tags" | "dangerously-delete-by-tags";
+
+/**
+ * The REST API, since the `@vercel/functions` purge is a no-op in the container runtime
+ * (tested in production: the cache stayed HIT after a write).
+ */
+async function send(
+  action: Action,
   tags: string[],
   attempt = 1,
 ): Promise<void> {
-  try {
-    await call();
-  } catch (error) {
-    if (attempt >= ATTEMPTS) {
-      console.error("CDN purge failed", tags, error);
-      return;
-    }
-    await Bun.sleep(1000 * attempt);
-    return withRetry(call, tags, attempt + 1);
+  const response = await fetch(
+    `https://api.vercel.com/v1/edge-cache/${action}?projectIdOrName=${VERCEL_PROJECT_ID}&teamId=${VERCEL_TEAM_ID}`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${VERCEL_PURGE_TOKEN}`,
+        "content-type": "application/json",
+      },
+      // A preview write must not purge production copies, and the other way round.
+      body: JSON.stringify({
+        tags,
+        target: env.NODE_ENV === "preview" ? "preview" : "production",
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    },
+  ).catch((error: unknown) => error);
+  if (response instanceof Response && response.ok) {
+    return;
   }
+  if (attempt < ATTEMPTS) {
+    await Bun.sleep(1000 * attempt);
+    return send(action, tags, attempt + 1);
+  }
+  log.error({
+    action: "cdn_purge",
+    purge: action,
+    tags,
+    error:
+      response instanceof Response
+        ? `${response.status} ${await response.text().catch(() => "")}`
+        : String(response),
+  });
 }
 
-function run(call: (tags: string[]) => Promise<void>, tags: string[]) {
+const sendAll = (action: Action, tags: string[]) => {
+  const batches: Promise<void>[] = [];
   for (let i = 0; i < tags.length; i += TAGS_PER_CALL) {
-    const batch = tags.slice(i, i + TAGS_PER_CALL);
-    waitUntil(withRetry(() => call(batch), batch));
+    batches.push(send(action, tags.slice(i, i + TAGS_PER_CALL)));
   }
-}
+  return Promise.all(batches);
+};
 
 interface Purge {
   gone?: string[];
@@ -62,17 +107,26 @@ interface Purge {
  * - `stale`: the content changed. The next request gets the old copy while it refreshes.
  * - `gone`: the URL may now be a 404 or another resource. Drop the copy, since the docs
  *   do not say a stale copy is dropped when its refresh is not cacheable.
- * No-op outside Vercel.
+ * Awaited, so the response leaves after the purge. No-op without the Vercel settings.
  */
-export function purge({ stale = [], gone = [] }: Purge) {
-  run(invalidateByTag, stale);
-  run((tags) => dangerouslyDeleteByTag(tags), gone);
+export async function purge({ stale = [], gone = [] }: Purge) {
+  if (!configured || stale.length + gone.length === 0) {
+    return;
+  }
+  const once = () =>
+    Promise.all([
+      sendAll("invalidate-by-tags", stale),
+      sendAll("dangerously-delete-by-tags", gone),
+    ]);
+  await once();
+  // A read that started before the commit can store old data after the first purge.
+  setTimeout(once, REPURGE_MS);
 }
 
 /** Purges once `result` is a success, then returns it. */
-export function purgeOnSuccess<T>(result: T, tags: Purge) {
-  if (!(result instanceof ElysiaStatus) || result.status < 300) {
-    purge(tags);
+export async function purgeOnSuccess<T>(result: T, tags: Purge) {
+  if (!(result instanceof Error)) {
+    await purge(tags);
   }
   return result;
 }

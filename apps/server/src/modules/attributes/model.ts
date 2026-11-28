@@ -73,7 +73,3 @@ export const attributeResult = t.Object(
   { additionalProperties: false },
 );
 export type attributeResult = UnwrapSchema<typeof attributeResult>;
-export const attributeNotFound = t.Object({
-  code: t.Literal("ATTRIBUTE_NOT_FOUND"),
-  message: t.Literal("Attribute not found"),
-});

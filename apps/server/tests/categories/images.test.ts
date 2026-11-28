@@ -9,6 +9,7 @@ import { testDb } from "../setup";
 import {
   createTestCategory,
   expectDefined,
+  expireCdnCopies,
   file,
   waitFor,
 } from "../utils/helper";
@@ -280,6 +281,7 @@ describe.concurrent("category images", () => {
       );
       const { status } = await api.categories({ id: category.id }).delete();
       expect(status).toBe(200);
+      await expireCdnCopies(testDb, keys);
       await waitFor(async () => {
         await api.categories({ id: Bun.randomUUIDv7() }).delete();
         const rows = await queuedImages(keys);

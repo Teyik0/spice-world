@@ -1,13 +1,14 @@
 import { expect, spyOn } from "bun:test";
-import { AsyncLocalStorage } from "node:async_hooks";
 import { basename } from "node:path";
 
 import type { treaty } from "@elysia/eden";
 import type * as OrderModel from "@spice-world/server/modules/orders/model";
 import type { productsRouter } from "@spice-world/server/modules/products";
 import type * as ProductModel from "@spice-world/server/modules/products/model";
-import { eq, sql } from "drizzle-orm";
+import { refreshListing } from "@spice-world/server/modules/products/service";
+import { eq, inArray, sql } from "drizzle-orm";
 import type { UnwrapSchema } from "elysia";
+import type Stripe from "stripe";
 import type { UploadedFileData, UploadFileResult } from "uploadthing/types";
 
 import {
@@ -15,7 +16,9 @@ import {
   attributeValueTable,
   attributeValueToProductVariantTable,
   categoryTable,
+  imageDeletionTable,
   imageTable,
+  inventoryTable,
   orderItemTable,
   orderTable,
   productTable,
@@ -154,22 +157,33 @@ export const createSessionCookie = async (
 export const mockStripe = async () => {
   const { stripeClient } = await import("@spice-world/server/lib/stripe");
   const statuses = new Map<string, "open" | "complete" | "expired">();
+  const beforeCreate = new Map<string, () => Promise<unknown>>();
+  const beforeExpire = new Map<string, () => Promise<unknown>>();
   const { sessions } = stripeClient.checkout;
-  const create = spyOn(sessions, "create").mockImplementation((() => {
+  const create = spyOn(sessions, "create").mockImplementation((async ({
+    line_items = [],
+  }: Stripe.Checkout.SessionCreateParams) => {
+    await Promise.all(
+      line_items.map(({ price_data }) =>
+        beforeCreate.get(price_data?.product_data?.name ?? "")?.(),
+      ),
+    );
     const id = `cs_test_${crypto.randomUUID()}`;
     statuses.set(id, "open");
-    return Promise.resolve({
-      id,
-      url: "https://checkout.example.com",
-      status: "open",
-    });
+    return { id, url: "https://checkout.example.com", status: "open" };
   }) as never);
   const retrieve = spyOn(sessions, "retrieve").mockImplementation(((
     id: string,
   ) => Promise.resolve({ id, status: statuses.get(id) })) as never);
-  const expire = spyOn(sessions, "expire").mockImplementation(((id: string) => {
+  const expire = spyOn(sessions, "expire").mockImplementation((async (
+    id: string,
+  ) => {
+    await beforeExpire.get(id)?.();
+    if (statuses.get(id) !== "open") {
+      throw new Error("Only an open Checkout Session can be expired");
+    }
     statuses.set(id, "expired");
-    return Promise.resolve({ id, status: "expired" });
+    return { id, status: "expired" };
   }) as never);
   const search = spyOn(stripeClient.customers, "search").mockImplementation(
     (() => Promise.resolve({ data: [] })) as never,
@@ -185,6 +199,8 @@ export const mockStripe = async () => {
   ).mockImplementation(((id: string) =>
     Promise.resolve({ id, deleted: true })) as never);
   return {
+    beforeCreate,
+    beforeExpire,
     create,
     expire,
     statuses,
@@ -230,19 +246,6 @@ const ATTRIBUTE_VALUES = {
 export const ATTRIBUTE_NAMES = Object.keys(ATTRIBUTE_VALUES) as Array<
   keyof typeof ATTRIBUTE_VALUES
 >;
-
-export const CATEGORY_NAMES = [
-  "Electronics",
-  "Clothing",
-  "Food & Beverages",
-  "Home & Garden",
-  "Sports & Outdoors",
-  "Books & Media",
-  "Health & Beauty",
-  "Toys & Games",
-  "Automotive",
-  "Office Supplies",
-];
 
 interface CreateTestCategoryOptions {
   attributeCount?: number;
@@ -334,7 +337,7 @@ export const createTestCategory = async ({
       urlMedium: `https://test-url.com/${testId}-medium.webp`,
       urlLarge: `https://test-url.com/${testId}-large.webp`,
       altText: categoryName,
-      isThumbnail: true,
+      position: 0,
     });
     const date = new Date();
     await tx.insert(categoryTable).values({
@@ -376,6 +379,41 @@ export const createTestCategory = async ({
   });
 };
 
+type Db = Pick<TestDatabase["db"], "transaction">;
+
+/**
+ * Inserts a variant with its own COUNT inventory of `stock` units, and refreshes its product,
+ * in one transaction (a savepoint inside one): as the API does, nothing in between is seen.
+ */
+export const insertVariant = async (
+  db: Db,
+  {
+    stock = 10,
+    lowStockAt = 0,
+    ...variant
+  }: Omit<typeof productVariantTable.$inferInsert, "id" | "inventoryId"> & {
+    lowStockAt?: number;
+    stock?: number;
+  },
+) => {
+  const inventoryId = Bun.randomUUIDv7();
+  return await db.transaction(async (tx) => {
+    await tx.insert(inventoryTable).values({
+      id: inventoryId,
+      productId: variant.productId,
+      quantity: stock,
+      lowStockAt,
+    });
+    const [inserted] = await tx
+      .insert(productVariantTable)
+      .values({ ...variant, id: Bun.randomUUIDv7(), inventoryId })
+      .returning();
+    expectDefined(inserted);
+    await refreshListing(tx, [variant.productId]);
+    return inserted;
+  });
+};
+
 /** Inserts a product with one variant using the given attribute values. */
 export const createProductUsingValues = async (
   testDb: TestDatabase,
@@ -383,7 +421,6 @@ export const createProductUsingValues = async (
   valueIds: string[],
 ) => {
   const id = Bun.randomUUIDv7();
-  const variantId = Bun.randomUUIDv7();
   await testDb.db.transaction(async (tx) => {
     await tx.insert(productTable).values({
       id,
@@ -392,12 +429,10 @@ export const createProductUsingValues = async (
       description: "uses attribute values",
       categoryId,
     });
-    await tx
-      .insert(productVariantTable)
-      .values({ id: variantId, productId: id, price: 100 });
+    const variant = await insertVariant(tx, { productId: id, price: 100 });
     await tx
       .insert(attributeValueToProductVariantTable)
-      .values(valueIds.map((a) => ({ a, b: variantId })));
+      .values(valueIds.map((a) => ({ a, b: variant.id })));
   });
   return id;
 };
@@ -434,8 +469,10 @@ export const createTestVariant = async (
   {
     price = 1099,
     stock = 10,
+    lowStockAt = 0,
     status = "PUBLISHED",
   }: {
+    lowStockAt?: number;
     price?: number;
     status?: ProductModel.productStatus;
     stock?: number;
@@ -443,18 +480,92 @@ export const createTestVariant = async (
 ) => {
   const [product] = await createTestProducts(testDb, 1, status);
   expectDefined(product);
-  const [variant] = await testDb.db
-    .insert(productVariantTable)
-    .values({
-      id: Bun.randomUUIDv7(),
+  return await insertVariant(testDb.db, {
+    productId: product.id,
+    price,
+    stock,
+    lowStockAt,
+    sku: crypto.randomUUID(),
+  });
+};
+
+/** Inserts a published SHARED product: one MASS inventory of `quantity` mg, a variant per stockUsage. */
+export const createSharedVariants = async (
+  testDb: TestDatabase,
+  { quantity, usages }: { quantity: number; usages: number[] },
+) => {
+  const [product] = await createTestProducts(testDb, 1);
+  expectDefined(product);
+  const inventoryId = Bun.randomUUIDv7();
+  return await testDb.db.transaction(async (tx) => {
+    await tx
+      .update(productTable)
+      .set({ stockMode: "SHARED" })
+      .where(eq(productTable.id, product.id));
+    await tx.insert(inventoryTable).values({
+      id: inventoryId,
       productId: product.id,
-      price,
-      stock,
-      sku: crypto.randomUUID(),
-    })
-    .returning();
+      dimension: "MASS",
+      quantity,
+    });
+    const variants = await tx
+      .insert(productVariantTable)
+      .values(
+        usages.map((stockUsage) => ({
+          id: Bun.randomUUIDv7(),
+          productId: product.id,
+          inventoryId,
+          stockUsage,
+          price: stockUsage / 100,
+        })),
+      )
+      .returning();
+    await refreshListing(tx, [product.id]);
+    return variants;
+  });
+};
+
+/**
+ * Products whose listing columns (stockState, totalStock, priceMin, priceMax) differ from
+ * their variants and inventories: always empty, since every write refreshes them in its
+ * transaction (refreshListing). Computed here independently, with no code of the API.
+ */
+export const listingDrift = async ({ db }: Pick<TestDatabase, "db">) => {
+  const rows = await db.execute<{ id: string }>(sql`
+    select p.id from "Product" p
+    cross join lateral (
+      select
+        -- no variant: no row to aggregate, the product keeps out
+        case when not coalesce(bool_or(i.quantity >= v."stockUsage"), false) then 'out'
+          when bool_or(i.quantity < v."stockUsage" or i.quantity <= i."lowStockAt") then 'low'
+          else 'in' end as state,
+        min(v.price) filter (where i.quantity >= v."stockUsage") as "priceMin",
+        max(v.price) filter (where i.quantity >= v."stockUsage") as "priceMax"
+      from "ProductVariant" v join "Inventory" i on i.id = v."inventoryId"
+      where v."productId" = p.id
+    ) l
+    cross join lateral (
+      select coalesce(sum(i.quantity), 0) as total from "Inventory" i where i."productId" = p.id
+    ) t
+    where p."stockState"::text <> l.state
+      or p."totalStock" <> t.total
+      or p."priceMin" is distinct from l."priceMin"
+      or p."priceMax" is distinct from l."priceMax"`);
+  return rows.map(({ id }) => id);
+};
+
+/** No product's listing columns drifted from its variants and inventories. */
+export const expectNoDrift = async (testDb: Pick<TestDatabase, "db">) =>
+  expect(await listingDrift(testDb)).toEqual([]);
+
+/** The quantity left in the inventory a variant draws from. */
+export const stockOf = async (testDb: TestDatabase, variantId: string) => {
+  const variant = await testDb.db.query.productVariant.findFirst({
+    where: { id: variantId },
+    with: { inventory: { columns: { quantity: true } } },
+  });
   expectDefined(variant);
-  return variant;
+  return variant.inventory.quantity;
 };
 
 export const shippingAddress = {
@@ -493,6 +604,8 @@ export const createTestOrder = async (
     productName: "test product",
     variantId: variant.id,
     variantSku: variant.sku,
+    inventoryId: variant.inventoryId,
+    stockUsage: variant.stockUsage,
     unitPrice: variant.price,
     quantity: 1,
     totalPrice: variant.price,
@@ -506,7 +619,10 @@ interface SetupProductOptions {
   imagesCreate: (Omit<UnwrapSchema<typeof ProductModel.imageCreate>, "file"> & {
     file: File;
   })[];
-  variants: UnwrapSchema<typeof ProductModel.variantCreate>[];
+  variants: Extract<
+    ProductModel.postBody,
+    { stockMode: "VARIANT" }
+  >["variants"];
 }
 
 /**
@@ -521,8 +637,8 @@ interface SetupProductOptions {
  * const { product, category } = await setupProduct({
  *   attributeCount: 2,
  *   attributeValueCount: 2,
- *   variants: [{ price: 1000, sku: "TEST", stock: 10, attributeValueIds: [] }],
- *   imagesCreate: [{ isThumbnail: true, file: file(filePath) }]
+ *   variants: [{ price: 1000, sku: "TEST", inventory: { quantity: 10 }, attributeValueIds: [] }],
+ *   imagesCreate: [{ position: 0, file: file(filePath) }]
  * });
  */
 export const createSetupProduct =
@@ -551,12 +667,9 @@ export const createSetupProduct =
       description: "Test product description",
       status: "DRAFT",
       categoryId: category.id,
-      variants: {
-        create: variants,
-      },
-      images: {
-        create: imagesCreate,
-      },
+      stockMode: "VARIANT",
+      variants,
+      images: imagesCreate,
     });
     expect(status).toBe(201);
     expectDefined(data);
@@ -597,35 +710,11 @@ export const runBlocked = async <T>(
 };
 
 /**
- * Vercel runtime (third party) stand-in: the request context `@vercel/functions` reads.
- * Records the purges made while `call` runs, isolated per call for concurrent tests.
+ * Makes the queued deletion of these files due now, as if every CDN copy that could show
+ * them had expired (a replaced or deleted image waits MAX_CDN_AGE_MINUTES).
  */
-const purges = new AsyncLocalStorage<{ stale: string[]; gone: string[] }>();
-Object.assign(globalThis, {
-  [Symbol.for("@vercel/request-context")]: {
-    get: () => {
-      const store = purges.getStore();
-      return (
-        store && {
-          waitUntil: () => undefined,
-          purge: {
-            invalidateByTag: (tags: string | string[]) => {
-              store.stale.push(...[tags].flat());
-              return Promise.resolve();
-            },
-            dangerouslyDeleteByTag: (tags: string | string[]) => {
-              store.gone.push(...[tags].flat());
-              return Promise.resolve();
-            },
-          },
-        }
-      );
-    },
-  },
-});
-
-export const recordPurges = async <T>(call: () => Promise<T>) => {
-  const store = { stale: [] as string[], gone: [] as string[] };
-  const result = await purges.run(store, call);
-  return { result, stale: store.stale.toSorted(), gone: store.gone.toSorted() };
-};
+export const expireCdnCopies = ({ db }: TestDatabase, keys: string[]) =>
+  db
+    .update(imageDeletionTable)
+    .set({ notBefore: sql`statement_timestamp()` })
+    .where(inArray(imageDeletionTable.fileKey, keys));

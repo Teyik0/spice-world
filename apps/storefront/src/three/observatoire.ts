@@ -1,7 +1,6 @@
 // "L'Observatoire des arômes" (proposals-refs/_src/d2.html), opening sequence
 // only: the jar on its plinth, the cap unscrews, the powder exhales and, when the
 // molecule is known, braids into a glowing double helix. Scroll drives it all.
-// biome-ignore lint/performance/noNamespaceImport: three is namespace-oriented; Bun tree-shakes ESM namespaces
 import * as THREE from "three";
 
 import type { Look } from "../lib/spice";

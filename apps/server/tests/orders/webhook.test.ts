@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { stripeClient } from "@spice-world/server/lib/stripe";
 import type { OrderStatus } from "@spice-world/server/modules/orders/model";
@@ -9,7 +9,9 @@ import {
   createTestOrder,
   createTestUser,
   expectDefined,
+  expectNoDrift,
 } from "../utils/helper";
+import { recordPurges } from "../utils/vercel";
 
 describe.concurrent("Stripe webhook", () => {
   let userId: string;
@@ -102,6 +104,16 @@ describe.concurrent("Stripe webhook", () => {
     await expectOrder(paid.id, { status: "PAID" });
   });
 
+  test("an expired checkout refreshes the CDN copies showing its stock", async () => {
+    const order = await createOrder();
+    const { result, stale } = await recordPurges(() =>
+      send("checkout.session.expired", sessionOf(order)),
+    );
+    expect(result).toBe(200);
+    // the ordered product page and the listings
+    expect(stale).toEqual([expect.stringContaining("product:"), "products"]);
+  });
+
   test("a duplicate completed event does not revert a refund", async () => {
     const order = await createOrder("REFUNDED");
     expect(await send("checkout.session.completed", sessionOf(order))).toBe(
@@ -135,3 +147,5 @@ describe.concurrent("Stripe webhook", () => {
     await expectOrder(order.id, { status: "PENDING" });
   });
 });
+
+afterAll(() => expectNoDrift(testDb));

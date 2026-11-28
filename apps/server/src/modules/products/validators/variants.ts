@@ -1,10 +1,8 @@
-import { problem } from "elysia";
-
+import { InvalidVariantOperations, VariantsValidationFailed } from "../errors";
 import type * as ProductModel from "../model";
-import { hasInvalidIds } from "./operations";
+import { hasUnknownIds } from "./operations";
 
-/** Minimal shape shared by the category and product services. */
-interface VariantCategory {
+export interface VariantCategory {
   attributes: { id: string; values: { id: string }[] }[];
 }
 
@@ -38,56 +36,46 @@ export function validateVariantIds(
   current: { id: string }[],
   vOps: ProductModel.variantOperations,
 ) {
-  if (hasInvalidIds(current, vOps)) {
-    return problem("Unprocessable Content", {
-      code: "INVALID_VARIANT_OPERATIONS",
-      message:
-        "Variant IDs must belong to this product and appear only once in update or delete.",
-      field: "variants",
-    });
+  if (hasUnknownIds(current, vOps)) {
+    return new InvalidVariantOperations();
   }
 }
 
-/**
- * - VVA1: attribute values belong to the category
- * - VVA2: a variant has at most one value per attribute
- * - VVA3: 1 to (product of the attribute value counts) variants
- * - VVA4: no two variants have the same attribute values
- */
 export function validateVariants({
   category,
-  vOps,
   variants,
   label = "",
 }: {
   category: VariantCategory;
   label?: string;
   variants: VariantState[];
-  vOps?: ProductModel.variantOperations;
 }) {
   const attributeIds = new Map(
     category.attributes.flatMap(({ id, values }) =>
       values.map((value) => [value.id, id] as const),
     ),
   );
+  const kept = variants.filter(({ id }) => id).length;
   const subErrors = [
-    ...(vOps?.create ?? []).flatMap((variant, index) =>
-      validateAttributeValues(`create[${index}]`, variant, attributeIds),
-    ),
-    ...(vOps?.update ?? []).flatMap((variant, index) =>
-      validateAttributeValues(`update[${index}]`, variant, attributeIds),
+    ...variants.flatMap((variant, index) =>
+      validateAttributeValues(
+        variant.id
+          ? `variant ${variant.id}`
+          : `new variant ${index - kept + 1}`,
+        variant,
+        attributeIds,
+      ),
     ),
     ...validateCount(variants.length, category),
     ...validateCombinations(variants),
+    ...validateAttributeSets(variants, attributeIds),
   ];
 
   if (subErrors.length) {
-    return problem("Bad Request", {
-      code: "VARIANTS_VALIDATION_FAILED",
-      message: `${label}Found ${subErrors.length} validation error(s) across variants`,
-      field: "variants",
-      details: { subErrors },
-    });
+    return new VariantsValidationFailed(
+      `${label}Found ${subErrors.length} validation error(s) across variants`,
+      subErrors,
+    );
   }
 }
 
@@ -102,7 +90,7 @@ function validateAttributeValues(
     if (!attributeId) {
       return [
         {
-          code: "VVA1",
+          code: "ATTRIBUTE_VALUE_NOT_IN_CATEGORY",
           message: `${path}: Invalid attribute value "${valueId}". Attribute values should match product category.`,
           field: "attributeValueIds",
         },
@@ -111,7 +99,7 @@ function validateAttributeValues(
     if (seen.has(attributeId)) {
       return [
         {
-          code: "VVA2",
+          code: "ATTRIBUTE_VALUED_TWICE",
           message: `${path}: Multiple values for the same attribute (${attributeId}), including ${valueId}.`,
           field: "attributeValueIds",
         },
@@ -135,7 +123,7 @@ function validateCount(
   }
   return [
     {
-      code: "VVA3",
+      code: "VARIANT_COUNT_OUT_OF_RANGE",
       message:
         count < 1
           ? "Product must have at least 1 variant. Cannot delete all variants."
@@ -148,20 +136,45 @@ function validateCount(
 function validateCombinations(
   variants: VariantState[],
 ): ProductModel.subError[] {
-  const combinations = new Map<string, string>();
-  for (const { id = "new variant", attributeValueIds } of variants) {
+  const combinations = new Map<string, number>();
+  for (const [index, { attributeValueIds }] of variants.entries()) {
     const key = attributeValueIds.toSorted().join("|");
     const duplicate = combinations.get(key);
     if (duplicate) {
       return [
         {
-          code: "VVA4",
-          message: `Duplicate attribute combination found in variants ${duplicate} and ${id}`,
+          code: "DUPLICATE_VARIANT_COMBINATION",
+          message: `Variants ${duplicate} and ${index + 1} ${key ? "have the same attribute values" : "both have no attribute value (a category change clears them)"}. Each variant needs a distinct combination.`,
           field: "variants.attributeValueIds",
         },
       ];
     }
-    combinations.set(key, id);
+    combinations.set(key, index + 1);
   }
   return [];
+}
+
+function validateAttributeSets(
+  variants: VariantState[],
+  attributeIds: Map<string, string>,
+): ProductModel.subError[] {
+  const sets = new Set(
+    variants.map(({ attributeValueIds }) =>
+      attributeValueIds
+        .map((id) => attributeIds.get(id))
+        .toSorted()
+        .join("|"),
+    ),
+  );
+  if (sets.size <= 1) {
+    return [];
+  }
+  return [
+    {
+      code: "VARIANT_ATTRIBUTES_MISMATCH",
+      message:
+        "Every variant must use the same attributes: give each one a value for the same attributes, or none.",
+      field: "variants.attributeValueIds",
+    },
+  ];
 }

@@ -328,14 +328,14 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
 
     describe("Orders Admin Access", () => {
       test("admin can update order status", async () => {
-        const order = await createTestOrder(testDb, normalUser.user.id);
+        const order = await createTestOrder(testDb, normalUser.user.id, "PAID");
 
         // Admin can update order status
         const { data, status } = await ordersApi.orders["by-id"]({
           id: order.id,
         }).status.patch(
           {
-            status: "PAID",
+            status: "FULFILLED",
             trackingNumber: "TRACK123",
           },
           {
@@ -348,7 +348,7 @@ describe.concurrent("BetterAuth Plugin Tests", () => {
         expect(status).toBe(200);
         expect(data).toMatchObject({
           id: order.id,
-          status: "PAID",
+          status: "FULFILLED",
           trackingNumber: "TRACK123",
           shippingStatus: "SHIPPED",
           user: { id: normalUser.user.id, email: normalUser.user.email },

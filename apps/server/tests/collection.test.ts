@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 
 import { treaty } from "@elysia/eden";
 import { collectionRouter } from "@spice-world/server/modules/collections";
@@ -11,6 +11,7 @@ import {
   createSessionCookie,
   createTestProducts,
   expectDefined,
+  expectNoDrift,
   mockUtapi,
   randomLowerString,
 } from "./utils/helper";
@@ -396,6 +397,134 @@ describe.concurrent("Collection routes test", () => {
     });
   });
 
+  describe("products PATCH collectionIds", () => {
+    const patchCollections = (
+      product: { id: string; version: number },
+      collectionIds: string[],
+    ) =>
+      productsApi
+        .products({ id: product.id })
+        .patch(
+          { collectionIds },
+          { headers: { "x-version": product.version } },
+        );
+
+    test("appends to new collections, leaves removed ones, the same object as getById", async () => {
+      const [a, b] = await createTestProducts(testDb, 2);
+      expectDefined(a);
+      expectDefined(b);
+      const kept = await api.collections.post({
+        handle: handle(),
+        name: "Kept",
+        productIds: [b.id],
+      });
+      const left = await api.collections.post({
+        handle: handle(),
+        name: "Left",
+        productIds: [a.id, b.id],
+      });
+      expectDefined(kept.data);
+      expectDefined(left.data);
+
+      const { data, status } = await patchCollections(a, [kept.data.id]);
+      expect(status).toBe(200);
+      expectDefined(data);
+      expect(data).toMatchObject({
+        collectionIds: [kept.data.id],
+        version: a.version + 1,
+      });
+      const byId = await productsApi.products({ id: a.id }).get();
+      expect(byId.data).toEqual(data);
+
+      const [keptAfter, leftAfter] = await Promise.all([
+        api.collections({ id: kept.data.id }).get(),
+        api.collections({ id: left.data.id }).get(),
+      ]);
+      expect(keptAfter.data).toMatchObject({
+        productIds: [b.id, a.id],
+        version: kept.data.version + 1,
+      });
+      expect(leftAfter.data).toMatchObject({
+        productIds: [b.id],
+        version: left.data.version + 1,
+      });
+    });
+
+    test("an unchanged selection writes nothing", async () => {
+      const [a] = await createTestProducts(testDb, 1);
+      expectDefined(a);
+      const created = await api.collections.post({
+        handle: handle(),
+        name: "Same",
+        productIds: [a.id],
+      });
+      expectDefined(created.data);
+      const { data } = await patchCollections(a, [created.data.id]);
+      expect(data).toMatchObject({ version: a.version });
+      expect(
+        (await api.collections({ id: created.data.id }).get()).data,
+      ).toEqual(created.data);
+    });
+
+    test("with an unknown collection writes nothing", async () => {
+      const [a] = await createTestProducts(testDb, 1);
+      expectDefined(a);
+      const created = await api.collections.post({
+        handle: handle(),
+        name: "Atomic product",
+      });
+      expectDefined(created.data);
+      const { error, status } = await productsApi.products({ id: a.id }).patch(
+        {
+          name: `renamed ${randomLowerString(8)}`,
+          collectionIds: [created.data.id, missingId],
+        },
+        { headers: { "x-version": a.version } },
+      );
+      expect(status).toBe(400);
+      expect(error).toMatchObject({
+        value: { code: "PRODUCT_COLLECTION_NOT_FOUND" },
+      });
+      const after = await productsApi.products({ id: a.id }).get();
+      expect(after.data).toMatchObject({
+        name: a.name,
+        version: a.version,
+        collectionIds: [],
+      });
+      expect(
+        (await api.collections({ id: created.data.id }).get()).data,
+      ).toEqual(created.data);
+    });
+
+    test("rejects duplicate collection ids", async () => {
+      const [a] = await createTestProducts(testDb, 1);
+      expectDefined(a);
+      const { status } = await patchCollections(a, [missingId, missingId]);
+      expect(status).toBe(422);
+    });
+
+    test("concurrent products join the same collection in distinct positions", async () => {
+      const products = await createTestProducts(testDb, 6);
+      const created = await api.collections.post({
+        handle: handle(),
+        name: "Crowded",
+      });
+      expectDefined(created.data);
+      const collectionId = created.data.id;
+      const results = await Promise.all(
+        products.map((product) => patchCollections(product, [collectionId])),
+      );
+      expect(results.map(({ status }) => status)).toEqual(
+        new Array(products.length).fill(200),
+      );
+      const { data } = await api.collections({ id: collectionId }).get();
+      expect(data?.productIds.toSorted()).toEqual(
+        products.map(({ id }) => id).toSorted(),
+      );
+      expect(data?.version).toBe(created.data.version + products.length);
+    });
+  });
+
   describe("products GET ?collection", () => {
     test("lists the collection in its order, filters and sorts", async () => {
       const [a, b, c] = await createTestProducts(testDb, 3);
@@ -435,3 +564,5 @@ describe.concurrent("Collection routes test", () => {
     });
   });
 });
+
+afterAll(() => expectNoDrift(testDb));

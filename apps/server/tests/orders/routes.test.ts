@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { treaty } from "@elysia/eden";
 import { ordersRouter } from "@spice-world/server/modules/orders";
+import { orderService } from "@spice-world/server/modules/orders/service";
 
 import { testDb } from "../setup";
 import {
@@ -10,6 +11,7 @@ import {
   createTestUser,
   createTestVariant,
   expectDefined,
+  expectNoDrift,
   mockStripe,
   shippingAddress,
 } from "../utils/helper";
@@ -49,16 +51,44 @@ describe.concurrent("orders routes", () => {
     expect(byId.data).toEqual(order);
     expect(list.data?.items).toContainEqual(order);
 
+    await orderService.handleOrderPaid(order.stripeSessionId, order.id, null);
     const patched = await admin.orders["by-id"]({ id: order.id }).status.patch({
-      status: "PAID",
+      status: "FULFILLED",
     });
     expectDefined(patched.data);
     expect(patched.data).toEqual({
       ...order,
-      status: "PAID",
+      status: "FULFILLED",
       updatedAt: patched.data.updatedAt,
     });
   });
+
+  test.each([
+    ["PENDING", "PAID"],
+    ["PENDING", "FULFILLED"],
+    ["CANCELLED", "PENDING"],
+    ["CANCELLED", "PAID"],
+    ["FULFILLED", "PAID"],
+  ] as const)(
+    "refuses an admin turning a %s order %s, and writes nothing",
+    async (from, to) => {
+      const order = await createTestOrder(
+        testDb,
+        await createTestUser(testDb),
+        from,
+      );
+      const { status, error } = await admin.orders["by-id"]({
+        id: order.id,
+      }).status.patch({
+        status: to,
+      });
+      expect(status).toBe(409);
+      expect(error?.value).toMatchObject({ code: "INVALID_STATUS_TRANSITION" });
+      expect(
+        await testDb.db.query.order.findFirst({ where: { id: order.id } }),
+      ).toMatchObject({ status: from });
+    },
+  );
 
   test("hides the orders of other users, except from admins", async () => {
     const order = await createTestOrder(testDb, await createTestUser(testDb));
@@ -95,7 +125,7 @@ describe.concurrent("orders routes", () => {
     for (const { error } of results) {
       expect(error).toMatchObject({
         status: 404,
-        value: { code: "ORDER_NOT_FOUND", message: "Order not found" },
+        value: { code: "ORDER_NOT_FOUND", detail: "Order not found" },
       });
     }
   });
@@ -138,3 +168,5 @@ describe.concurrent("orders routes", () => {
     expect(status).toBe(401);
   });
 });
+
+afterAll(() => expectNoDrift(testDb));

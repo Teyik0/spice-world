@@ -1,7 +1,9 @@
 import { sql } from "drizzle-orm";
 import type { PgTableExtraConfigValue } from "drizzle-orm/pg-core";
 import {
+  bigint,
   boolean,
+  check,
   foreignKey,
   index,
   integer,
@@ -45,6 +47,17 @@ export const shippingStatus = pgEnum("ShippingStatus", [
   "SHIPPED",
   "DELIVERED",
 ]);
+export const stockMode = pgEnum("StockMode", ["VARIANT", "SHARED"]);
+/** What a stock counts, each in a fixed integer base unit: piece, mg, ml, mm, mm². */
+export const stockDimension = pgEnum("StockDimension", [
+  "COUNT",
+  "MASS",
+  "VOLUME",
+  "LENGTH",
+  "AREA",
+]);
+/** In this order, so that sorting by it lists sold out products first. */
+export const stockState = pgEnum("StockState", ["out", "low", "in"]);
 export const orderStatus = pgEnum("OrderStatus", [
   "PENDING",
   "PAID",
@@ -225,7 +238,7 @@ export const imageTable = pgTable(
   {
     id: text().primaryKey(),
     altText: text(),
-    isThumbnail: boolean().default(false).notNull(),
+    position: integer().notNull(),
     productId: text(),
     keyThumb: text().notNull(),
     keyMedium: text().notNull(),
@@ -256,10 +269,10 @@ export const imageTable = pgTable(
       "btree",
       table.keyThumb.asc().nullsLast(),
     ),
-    index("Image_productId_isThumbnail_idx").using(
+    index("Image_productId_position_idx").using(
       "btree",
       table.productId.asc().nullsLast(),
-      table.isThumbnail.asc().nullsLast(),
+      table.position.asc().nullsLast(),
     ),
   ],
 );
@@ -329,6 +342,9 @@ export const orderItemTable = pgTable(
     variantId: text(),
     variantName: text(),
     variantSku: text(),
+    inventoryId: text(),
+    /** Snapshot of the variant's stockUsage: a cancel restores what was reserved. */
+    stockUsage: bigint({ mode: "number" }).notNull(),
     unitPrice: integer().notNull(),
     quantity: integer().notNull(),
     totalPrice: integer().notNull(),
@@ -350,6 +366,17 @@ export const orderItemTable = pgTable(
     })
       .onUpdate("cascade")
       .onDelete("set null"),
+    foreignKey({
+      columns: [table.inventoryId],
+      foreignColumns: [inventoryTable.id],
+      name: "OrderItem_inventoryId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("set null"),
+    index("OrderItem_inventoryId_idx").using(
+      "btree",
+      table.inventoryId.asc().nullsLast(),
+    ),
     index("OrderItem_orderId_idx").using(
       "btree",
       table.orderId.asc().nullsLast(),
@@ -374,6 +401,16 @@ export const productTable = pgTable(
     description: text().notNull(),
     version: integer().notNull().default(1),
     status: productStatus().default("DRAFT").notNull(),
+    stockMode: stockMode().default("VARIANT").notNull(),
+    /**
+     * Derived from the variants and inventories (refreshListing), kept here so that
+     * listings filter, sort and count without joining every variant.
+     * The price range covers the variants that can be sold: null when none can.
+     */
+    stockState: stockState().default("out").notNull(),
+    totalStock: bigint({ mode: "number" }).default(0).notNull(),
+    priceMin: integer(),
+    priceMax: integer(),
     categoryId: text().notNull(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -403,6 +440,67 @@ export const productTable = pgTable(
       table.slug.asc().nullsLast(),
     ),
     index("Product_status_idx").using("btree", table.status.asc().nullsLast()),
+    // the listing's price sorts: cheapest first, most expensive first, empty ranges last
+    index("Product_priceMin_id_idx").using(
+      "btree",
+      table.priceMin.asc().nullsLast(),
+      table.id.asc().nullsLast(),
+    ),
+    index("Product_priceMax_id_idx").using(
+      "btree",
+      table.priceMax.desc().nullsLast(),
+      table.id.asc().nullsLast(),
+    ),
+    index("Product_stockState_totalStock_idx").using(
+      "btree",
+      table.stockState.asc().nullsLast(),
+      table.totalStock.asc().nullsLast(),
+    ),
+  ],
+);
+
+/**
+ * A stock that variants draw from: one per variant (VARIANT) or one per product (SHARED).
+ * `quantity` and `lowStockAt` are in the base unit of `dimension`.
+ */
+export const inventoryTable = pgTable(
+  "Inventory",
+  {
+    id: text().primaryKey(),
+    productId: text().notNull(),
+    dimension: stockDimension().default("COUNT").notNull(),
+    quantity: bigint({ mode: "number" }).default(0).notNull(),
+    lowStockAt: bigint({ mode: "number" }).default(0).notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.productId],
+      foreignColumns: [productTable.id],
+      name: "Inventory_productId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    index("Inventory_productId_idx").using(
+      "btree",
+      table.productId.asc().nullsLast(),
+    ),
+    uniqueIndex("Inventory_id_productId_key").using(
+      "btree",
+      table.id.asc().nullsLast(),
+      table.productId.asc().nullsLast(),
+    ),
+    // 0 to MAX_STOCK (products/model.ts): an adjust cannot leave these bounds
+    check("Inventory_quantity_check", sql`${table.quantity} >= 0`),
+    check(
+      "Inventory_quantity_max_check",
+      sql`${table.quantity} <= 1000000000000`,
+    ),
+    check(
+      "Inventory_lowStockAt_check",
+      sql`${table.lowStockAt} between 0 and 1000000000000`,
+    ),
   ],
 );
 
@@ -411,10 +509,11 @@ export const productVariantTable = pgTable(
   {
     id: text().primaryKey(),
     productId: text().notNull(),
+    inventoryId: text().notNull(),
+    stockUsage: bigint({ mode: "number" }).default(1).notNull(),
     sku: text(),
     price: integer().notNull(),
     currency: text().default("EUR").notNull(),
-    stock: integer().default(0).notNull(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -426,15 +525,24 @@ export const productVariantTable = pgTable(
     })
       .onUpdate("cascade")
       .onDelete("cascade"),
+    foreignKey({
+      columns: [table.inventoryId, table.productId],
+      foreignColumns: [inventoryTable.id, inventoryTable.productId],
+      name: "ProductVariant_inventoryId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("no action"), // checked at the end of the statement: a product delete cascades to both
     index("ProductVariant_productId_idx").using(
       "btree",
       table.productId.asc().nullsLast(),
     ),
-    index("ProductVariant_productId_stock_price_idx").using(
+    index("ProductVariant_inventoryId_idx").using(
       "btree",
-      table.productId.asc().nullsLast(),
-      table.stock.asc().nullsLast(),
-      table.price.asc().nullsLast(),
+      table.inventoryId.asc().nullsLast(),
+    ),
+    check(
+      "ProductVariant_stockUsage_check",
+      sql`${table.stockUsage} between 1 and 1000000000000`,
     ),
     uniqueIndex("ProductVariant_sku_key").using(
       "btree",

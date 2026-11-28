@@ -37,7 +37,6 @@ export const collectionRouter = new Elysia({
       access: "admin",
       response: {
         200: CollectionModel.collectionResult,
-        404: CollectionModel.collectionNotFound,
       },
     },
     async ({ params }) => await collectionService.getById(params),
@@ -50,8 +49,6 @@ export const collectionRouter = new Elysia({
       headers: versionHeaders,
       response: {
         200: CollectionModel.collectionResult,
-        404: CollectionModel.collectionNotFound,
-        409: CollectionModel.collectionConflict,
       },
     },
     async ({ body, headers, params }) =>
@@ -65,7 +62,6 @@ export const collectionRouter = new Elysia({
     "/:id",
     {
       access: "admin",
-      response: { 404: CollectionModel.collectionNotFound },
     },
     async ({ params }) => await collectionService.delete(params),
   );

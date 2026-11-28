@@ -3,16 +3,13 @@ import { t } from "elysia";
 
 import { nameLowerPatternWithNumber, uuid } from "../shared";
 
-export const postBody = t.Object(
+export const body = t.Object(
   {
     name: nameLowerPatternWithNumber,
   },
   { additionalProperties: false },
 );
-export type postBody = UnwrapSchema<typeof postBody>;
-
-export const patchBody = postBody;
-export type patchBody = UnwrapSchema<typeof postBody>;
+export type body = UnwrapSchema<typeof body>;
 
 export const attributeValueResult = t.Object(
   {
@@ -25,7 +22,3 @@ export const attributeValueResult = t.Object(
   { additionalProperties: false },
 );
 export type attributeValueResult = UnwrapSchema<typeof attributeValueResult>;
-export const attributeValueNotFound = t.Object({
-  code: t.Literal("ATTRIBUTE_VALUE_NOT_FOUND"),
-  message: t.Literal("Attribute value not found"),
-});

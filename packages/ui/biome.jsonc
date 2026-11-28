@@ -1,0 +1,20 @@
+{
+  "root": false,
+  "extends": ["../../biome.jsonc", "ultracite/biome/react"],
+  "linter": {
+    "rules": {
+      "performance": { "noJsxPropsBind": "off" },
+    },
+  },
+  "overrides": [
+    {
+      "includes": [
+        "src/components/**",
+        "src/hooks/**",
+        "!src/components/form.tsx",
+        "!src/components/*-form.tsx",
+      ],
+      "linter": { "enabled": false },
+    },
+  ],
+}

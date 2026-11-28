@@ -25,7 +25,8 @@ const envSchema = t.Object({
   PORT: t.String({ default: "3001" }),
   WEB_ORIGINS: t.String({
     pattern: "^https?://[^/,\\s*]+(,https?://[^/,\\s*]+)*$",
-    default: "http://localhost:3000,http://localhost:3001",
+    default:
+      "http://localhost:3000,http://localhost:3001,http://localhost:5174",
   }),
   STRIPE_SECRET_KEY: t.String({ minLength: 1 }),
   STRIPE_WEBHOOK_SECRET: t.String({ minLength: 1 }),
@@ -37,6 +38,11 @@ const envSchema = t.Object({
   GOOGLE_CLIENT_ID: t.String({ minLength: 1 }),
   GOOGLE_CLIENT_SECRET: t.String({ minLength: 1 }),
   AXIOM_TOKEN: t.String({ minLength: 1 }),
+
+  // CDN purge through the Vercel REST API: required when deployed (lib/cdn.ts)
+  VERCEL_PURGE_TOKEN: t.Optional(t.String({ minLength: 1 })),
+  VERCEL_PROJECT_ID: t.Optional(t.String({ minLength: 1 })),
+  VERCEL_TEAM_ID: t.Optional(t.String({ minLength: 1 })),
 });
 export type EnvSchema = UnwrapSchema<typeof envSchema>;
 
@@ -66,6 +72,9 @@ function validateEnv(): EnvSchema {
       NODE_ENV: process.env.NODE_ENV,
       PORT: process.env.PORT,
       WEB_ORIGINS: process.env.WEB_ORIGINS,
+      VERCEL_PURGE_TOKEN: process.env.VERCEL_PURGE_TOKEN,
+      VERCEL_PROJECT_ID: process.env.VERCEL_PROJECT_ID,
+      VERCEL_TEAM_ID: process.env.VERCEL_TEAM_ID,
     }),
   );
 

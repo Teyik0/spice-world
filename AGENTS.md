@@ -10,19 +10,20 @@ Key features: product management, categories with dynamic attributes, user authe
 - `/src/modules`: Business logic (products, categories, orders)
 - `/drizzle/schema.ts`: Database models
 
-**apps/web** (port 5173): React/Next.js admin dashboard
+**apps/dashboard** (port 5174): React/Furin admin dashboard
 
 - Uses Eden Treaty for type-safe API calls
 - TanStack Form for form management
 - shadcn/ui components
 
-**apps/storefront** (port 3002): React/Furin admin dashboard
+**apps/storefront** (port 4172): React/Furin storefront
 
 - Uses Eden Treaty for type-safe API calls
 - TanStack Form for form management
 - shadcn/ui components
 
 **packages/emails**: React Email templates
+**packages/ui**: UI shadcn shared components
 
 # Relevant code sample
 
@@ -35,12 +36,16 @@ const { data, status, error } = await api.attributes({ id: testAttr.id }).get();
 const { data, status, error } = await api.attributes.post(newAttrData);
 ```
 
+- MUST NOT wrap Eden calls in helpers (`unwrap`, etc.): destructure `{ data, error }` and handle the error inline, right where the call is made (loader, action...)
+
 # Code rules
 
 - GUIDELINE correctness > completeness > speed. each phase must be thorough before proceeding
 - MUST always create the feature using the fewest possible lines of code. The best code you can produce is the one you never write.
 - MUST always use Bun, not npm/node/pnpm
 - MUST reuse backend models in frontend, no type duplication
+- MUST always use async/await, never `.then()`/`.catch()` chains
+- MUST NOT write any comment (`//`, `/* */`, JSDoc, JSX `{/* */}`): 0 comments allowed. Names and code must explain themselves. Only tool directives (`biome-ignore`, `@ts-expect-error`) are allowed
 - MUST ABSOLUTELY propose YOUR recommendations (considering production-grade / industry standard apps) AND alternatives, regardless of what the user prompts
 - MUST check for type error after diff: `bun check <file_path>`
 - MUST check for lint error after diff: `bun run biome check <file_path>`
@@ -62,7 +67,8 @@ const { data, status, error } = await api.attributes.post(newAttrData);
 
 ```sh
 cd apps/server && bun dev
-cd apps/web && bun dev
+cd apps/dashboard && bun dev
+cd apps/storefront && bun dev
 ```
 
 **Formatting, linting and typechecking**
@@ -71,14 +77,15 @@ cd apps/web && bun dev
 bun fmt
 bun run biome check
 bun check -p apps/server
-bun check -p apps/web
 bun check -p apps/storefront
+bun check -p apps/dashboard
 ```
 
 ## Task involving backend end change (apps/server)
 
 - MUST ensure for any services that post, patch and getById return the same object, output type should be the same
 - MUST strictly follow atomicity principle: one transaction = many change. E.g. creating a product with attributes and category in one API call. Revert all if any part fails
+- MUST keep derived (denormalized) columns exact by design, never by repair: recompute them through their single refresh function (e.g. `refreshListing` for `Product.stockState`, `totalStock`, `priceMin`, `priceMax`), in the same transaction as every write to their source, after taking the locks in the shared order (inventories, then products, each by id). No periodic sync job. Tests assert there is no drift (`expectNoDrift` in tests/utils/helper.ts), including under concurrent writes
 - MUST create test that run concurrently and in parallel, each test should be isolated
 - MUST use tests/utils/helper.ts pattern when needed
 - MUST use expect().toMatchObject() when doing asserting api error call (to avoid type issue)
@@ -86,7 +93,9 @@ bun check -p apps/storefront
 - MUST run the associated file(s) test when an endpoint is modified `bun run test tests/<test_file>`, don't rerun the whole tests suite on each pass
 - MUST ABSOLUTELY load and apply `elysia` skill for any backend change
 - MUST reject any bad input, no magic behavior (no thumbnail auto assign, no input normalization on server side...)
+- MUST express every rule that reads only the request body in the schema (`model.ts`: constraints, `t.Union`, `t.Refine`, shared helpers like `onceEach` in `modules/shared.ts`). Validators and services only check rules that need the database (current row, category, other products). A rule that needs the database on one route stays in its validator for every route: never implement the same rule twice
 
-## Task involving frontend end change (apps/web or apps/storefront)
+## Task involving frontend end change (apps/dashboard or apps/storefront)
 
 - MUST ABSOLUTELY load and apply `frontend-design` and `web-design-guidelines` skills for ANY task involving frontend/UI, regardless of what the user asks
+- MUST report to the users if the problem come from furin, we should fix furin first if the issue is in it. No workaround

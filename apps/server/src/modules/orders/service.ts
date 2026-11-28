@@ -2,18 +2,34 @@ import { purge, purgeOnSuccess, tag } from "@spice-world/server/lib/cdn";
 import { db } from "@spice-world/server/lib/db";
 import { env } from "@spice-world/server/lib/env";
 import { and, asc, EmptyFilter, eq, inArray, sql } from "drizzle-orm";
-import { problem, status } from "elysia";
+import { status } from "elysia";
+import { log } from "evlog";
 import { Resend } from "resend";
 
 import {
+  attributeValueTable,
+  attributeValueToProductVariantTable,
+  inventoryTable,
   orderItemTable,
   orderTable,
   productTable,
   productVariantTable,
 } from "../../../drizzle/schema";
+import { InsufficientStock } from "../products/errors";
+import { refreshListing } from "../products/service";
 import type { uuidGuard } from "../shared";
-import { closeStripeCheckout, createStripeCheckout } from "../stripe-checkout";
+import {
+  InvalidStatusTransition,
+  OrderAlreadyPaid,
+  OrderNotFound,
+  OrderRequiresRefund,
+  OrderStatusChanged,
+  PriceChanged,
+  StripeUnavailable,
+  VariantNotAvailable,
+} from "./errors";
 import type * as OrderModel from "./model";
+import { closeStripeCheckout, createStripeCheckout } from "./stripe";
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
@@ -30,11 +46,6 @@ async function find(
 }
 
 export const orderService = {
-  orderNotFound: problem("Not Found", {
-    code: "ORDER_NOT_FOUND",
-    message: "Order not found",
-  }),
-
   findOptions: {
     with: {
       user: {
@@ -44,7 +55,10 @@ export const orderService = {
           email: true as const,
         },
       },
-      items: { orderBy: { id: "asc" as const } },
+      items: {
+        columns: { inventoryId: false as const, stockUsage: false as const },
+        orderBy: { id: "asc" as const },
+      },
     },
   },
 
@@ -53,117 +67,73 @@ export const orderService = {
     items,
     shippingAddress,
   }: OrderModel.checkoutBody & { userId: string }) {
+    const variantIds = items.map(({ variantId }) => variantId);
+    const quote = priceCart(items, await readCart(db, variantIds));
+    if (quote instanceof Error) {
+      return quote;
+    }
+    const orderId = Bun.randomUUIDv7();
+    const checkout = await createStripeCheckout({
+      items: stripeItems(quote),
+      metadata: { orderId },
+    });
+    if (!checkout) {
+      return new StripeUnavailable();
+    }
+
     let restocked: string[] = [];
     const result = await db.transaction(async (tx) => {
-      const variants = await tx
-        .select({
-          id: productVariantTable.id,
-          sku: productVariantTable.sku,
-          price: productVariantTable.price,
-          stock: productVariantTable.stock,
-          productId: productTable.id,
-          productName: productTable.name,
-          productStatus: productTable.status,
-        })
-        .from(productVariantTable)
+      const locked = await tx
+        .select({ id: inventoryTable.id })
+        .from(inventoryTable)
         .innerJoin(
-          productTable,
-          eq(productTable.id, productVariantTable.productId),
+          productVariantTable,
+          eq(productVariantTable.inventoryId, inventoryTable.id),
         )
-        .where(
-          inArray(
-            productVariantTable.id,
-            items.map(({ variantId }) => variantId),
-          ),
-        )
-        .orderBy(asc(productVariantTable.id)) // Stable lock order
-        .for("update", { of: productVariantTable });
-      const variantsById = new Map(
-        variants.map((variant) => [variant.id, variant]),
+        .where(inArray(productVariantTable.id, variantIds))
+        .orderBy(asc(inventoryTable.id))
+        .for("update", { of: inventoryTable });
+      const cart = priceCart(
+        items,
+        await readCart(tx, variantIds),
+        new Set(locked.map(({ id }) => id)),
       );
-
-      const orderId = Bun.randomUUIDv7();
-      const lines: (typeof orderItemTable.$inferInsert)[] = [];
-      for (const { variantId, quantity } of items) {
-        const variant = variantsById.get(variantId);
-        if (variant?.productStatus !== "PUBLISHED") {
-          return problem("Conflict", {
-            code: "VARIANT_NOT_AVAILABLE",
-            message: `Variant ${variantId} is not available for purchase`,
-          });
-        }
-        if (variant.stock < quantity) {
-          return problem("Conflict", {
-            code: "INSUFFICIENT_STOCK",
-            message: `Insufficient stock for variant ${variantId}`,
-          });
-        }
-        lines.push({
-          id: Bun.randomUUIDv7(),
-          orderId,
-          productId: variant.productId,
-          productName: variant.productName,
-          variantId,
-          variantName: variant.sku,
-          variantSku: variant.sku,
-          unitPrice: variant.price,
-          quantity,
-          totalPrice: variant.price * quantity,
-        });
-      }
-
-      const subtotalAmount = lines.reduce(
-        (sum, { totalPrice }) => sum + totalPrice,
-        0,
-      );
-      const shippingAmount = subtotalAmount > 5000 ? 0 : 500; // Free above €50, else €5
-
       // Nothing written yet: safe to return.
-      const checkout = await createStripeCheckout({
-        items: [
-          ...lines.map(({ productName, unitPrice, quantity }) => ({
-            name: productName,
-            price: unitPrice,
-            currency: "EUR", // Default to EUR, can be made dynamic
-            quantity,
-          })),
-          ...(shippingAmount
-            ? [
-                {
-                  name: "Livraison",
-                  price: shippingAmount,
-                  currency: "EUR",
-                  quantity: 1,
-                },
-              ]
-            : []),
-        ],
-        metadata: { orderId },
-      });
-      if (!checkout) {
-        return problem("Bad Gateway", {
-          code: "STRIPE_UNAVAILABLE",
-          message: "Stripe checkout could not be created",
-        });
+      if (cart instanceof Error) {
+        return cart;
       }
-
+      if (
+        cart.lines.some(
+          (line, i) => line.unitPrice !== quote.lines[i]?.unitPrice,
+        )
+      ) {
+        return new PriceChanged();
+      }
       await tx.insert(orderTable).values({
         id: orderId,
         userId,
         stripeSessionId: checkout.id,
-        subtotalAmount,
-        shippingAmount,
-        totalAmount: subtotalAmount + shippingAmount,
+        subtotalAmount: cart.subtotalAmount,
+        shippingAmount: cart.shippingAmount,
+        totalAmount: cart.subtotalAmount + cart.shippingAmount,
         shippingAddress,
       });
-      await tx.insert(orderItemTable).values(lines);
+      await tx.insert(orderItemTable).values(
+        cart.lines.map((line) => ({
+          ...line,
+          id: Bun.randomUUIDv7(),
+          orderId,
+        })),
+      );
       restocked = await moveStock(tx, orderId, -1);
-
       return status("Created", {
         order: (await find({ id: orderId }, tx)) as OrderModel.orderResult,
         checkoutUrl: checkout.url,
       });
     });
+    if (result instanceof Error) {
+      await expireUnused(checkout.id);
+    }
     // stock shows in the listings (total, prices in stock) and on the product pages
     return purgeOnSuccess(result, {
       stale: [tag.products, ...restocked.map(tag.product)],
@@ -187,7 +157,7 @@ export const orderService = {
           eq(orderTable.status, "PENDING"),
         ),
       );
-    return (await find({ id, stripeSessionId })) ?? this.orderNotFound;
+    return (await find({ id, stripeSessionId })) ?? new OrderNotFound();
   },
 
   async cancelPending(stripeSessionId: string, id: string) {
@@ -207,23 +177,23 @@ export const orderService = {
         return [];
       }
       await tx
-        .select({ id: productVariantTable.id })
-        .from(productVariantTable)
+        .select({ id: inventoryTable.id })
+        .from(inventoryTable)
         .where(
           inArray(
-            productVariantTable.id,
+            inventoryTable.id,
             tx
-              .select({ id: orderItemTable.variantId })
+              .select({ id: orderItemTable.inventoryId })
               .from(orderItemTable)
               .where(eq(orderItemTable.orderId, id)),
           ),
         )
-        .orderBy(asc(productVariantTable.id)) // Stable lock order
+        .orderBy(asc(inventoryTable.id))
         .for("update");
       return await moveStock(tx, id, 1);
     });
     if (restocked.length) {
-      purge({ stale: [tag.products, ...restocked.map(tag.product)] });
+      await purge({ stale: [tag.products, ...restocked.map(tag.product)] });
     }
   },
 
@@ -257,7 +227,7 @@ export const orderService = {
   },
 
   async getById(query: uuidGuard & { userId?: string }) {
-    return (await find(query)) ?? this.orderNotFound;
+    return (await find(query)) ?? new OrderNotFound();
   },
 
   async updateStatus({
@@ -265,38 +235,37 @@ export const orderService = {
     status: orderStatus,
     trackingNumber,
   }: OrderModel.updateStatusBody & uuidGuard) {
-    if (orderStatus === "CANCELLED") {
-      const current = await find({ id });
-      if (!current) {
-        return this.orderNotFound;
+    const current = await find({ id });
+    if (!current) {
+      return new OrderNotFound();
+    }
+    const refused = transitionError(current.status, orderStatus);
+    if (refused) {
+      return refused;
+    }
+    if (current.status === "PENDING") {
+      if (!(await closeStripeCheckout(current.stripeSessionId))) {
+        return new OrderAlreadyPaid();
       }
-      if (current.status === "PAID" || current.status === "FULFILLED") {
-        return problem("Conflict", {
-          code: "ORDER_REQUIRES_REFUND",
-          message: "A paid order must be refunded, not cancelled",
-        });
-      }
-      if (current.status === "PENDING") {
-        if (!(await closeStripeCheckout(current.stripeSessionId))) {
-          return problem("Conflict", {
-            code: "ORDER_ALREADY_PAID",
-            message: "The checkout session is already completed",
-          });
-        }
-        await this.cancelPending(current.stripeSessionId, id);
+      await this.cancelPending(current.stripeSessionId, id);
+    } else {
+      const [updated] = await db
+        .update(orderTable)
+        .set({
+          status: orderStatus,
+          ...(trackingNumber && { trackingNumber, shippingStatus: "SHIPPED" }),
+        })
+        .where(
+          and(eq(orderTable.id, id), eq(orderTable.status, current.status)),
+        )
+        .returning({ id: orderTable.id });
+      if (!updated) {
+        return new OrderStatusChanged();
       }
     }
-
-    await db
-      .update(orderTable)
-      .set({
-        status: orderStatus,
-        ...(trackingNumber && { trackingNumber, shippingStatus: "SHIPPED" }),
-      })
-      .where(eq(orderTable.id, id));
     const order = await find({ id });
     if (!order) {
-      return this.orderNotFound;
+      return new OrderNotFound();
     }
 
     // Send email as post-commit side effect (after DB update succeeds)
@@ -313,29 +282,162 @@ export const orderService = {
   },
 };
 
-/**
- * Reserves (-1) or restores (1) the stock of an order. Lock its variants first.
- * Returns the ids of the products whose stock moved.
- */
+type CartLine = Omit<typeof orderItemTable.$inferInsert, "id" | "orderId">;
+
+const readCart = (tx: Tx | typeof db, variantIds: string[]) =>
+  tx
+    .select({
+      id: productVariantTable.id,
+      sku: productVariantTable.sku,
+      label: sql<string | null>`(
+        select string_agg(${attributeValueTable.value}, ' · ' order by ${attributeValueTable.id})
+        from ${attributeValueToProductVariantTable}
+        join ${attributeValueTable} on ${attributeValueTable.id} = ${attributeValueToProductVariantTable.a}
+        where ${attributeValueToProductVariantTable.b} = ${productVariantTable.id}
+      )`,
+      price: productVariantTable.price,
+      inventoryId: productVariantTable.inventoryId,
+      stockUsage: productVariantTable.stockUsage,
+      quantity: inventoryTable.quantity,
+      productId: productTable.id,
+      productName: productTable.name,
+      productStatus: productTable.status,
+    })
+    .from(productVariantTable)
+    .innerJoin(productTable, eq(productTable.id, productVariantTable.productId))
+    .innerJoin(
+      inventoryTable,
+      eq(inventoryTable.id, productVariantTable.inventoryId),
+    )
+    .where(inArray(productVariantTable.id, variantIds));
+
+function priceCart(
+  items: OrderModel.checkoutBody["items"],
+  rows: Awaited<ReturnType<typeof readCart>>,
+  lockedIds?: Set<string>,
+) {
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const demand = new Map<string, number>();
+  const lines: CartLine[] = [];
+  for (const { variantId, quantity } of items) {
+    const variant = byId.get(variantId);
+    if (
+      variant?.productStatus !== "PUBLISHED" ||
+      (lockedIds && !lockedIds.has(variant.inventoryId))
+    ) {
+      return new VariantNotAvailable(
+        `Variant ${variantId} is not available for purchase`,
+      );
+    }
+    const needed =
+      (demand.get(variant.inventoryId) ?? 0) + quantity * variant.stockUsage;
+    if (variant.quantity < needed) {
+      return new InsufficientStock(
+        `Insufficient stock for variant ${variantId}`,
+      );
+    }
+    demand.set(variant.inventoryId, needed);
+    lines.push({
+      productId: variant.productId,
+      productName: variant.productName,
+      variantId,
+      variantName: variant.label,
+      variantSku: variant.sku,
+      inventoryId: variant.inventoryId,
+      stockUsage: variant.stockUsage,
+      unitPrice: variant.price,
+      quantity,
+      totalPrice: variant.price * quantity,
+    });
+  }
+  const subtotalAmount = lines.reduce(
+    (sum, { totalPrice }) => sum + totalPrice,
+    0,
+  );
+  const shippingAmount = subtotalAmount > 5000 ? 0 : 500;
+  return { lines, subtotalAmount, shippingAmount };
+}
+
+const stripeItems = ({
+  lines,
+  shippingAmount,
+}: {
+  lines: CartLine[];
+  shippingAmount: number;
+}) => [
+  ...lines.map(({ productName, unitPrice, quantity }) => ({
+    name: productName,
+    priceInCents: unitPrice,
+    currency: "EUR",
+    quantity,
+  })),
+  ...(shippingAmount
+    ? [
+        {
+          name: "Livraison",
+          priceInCents: shippingAmount,
+          currency: "EUR",
+          quantity: 1,
+        },
+      ]
+    : []),
+];
+
+async function expireUnused(sessionId: string) {
+  try {
+    await closeStripeCheckout(sessionId);
+  } catch (error) {
+    log.warn({
+      message: "Unused Stripe session not expired",
+      sessionId,
+      error,
+    });
+  }
+}
+
+const NEXT_STATUSES: Record<OrderModel.OrderStatus, OrderModel.OrderStatus[]> =
+  {
+    PENDING: ["CANCELLED"],
+    PAID: ["PAID", "FULFILLED", "REFUNDED"],
+    FULFILLED: ["FULFILLED", "REFUNDED"],
+    CANCELLED: [],
+    REFUNDED: [],
+  };
+
+function transitionError(
+  from: OrderModel.OrderStatus,
+  to: OrderModel.OrderStatus,
+) {
+  if (NEXT_STATUSES[from].includes(to)) {
+    return;
+  }
+  return to === "CANCELLED" && (from === "PAID" || from === "FULFILLED")
+    ? new OrderRequiresRefund()
+    : new InvalidStatusTransition(`A ${from} order cannot become ${to}`);
+}
+
 async function moveStock(tx: Tx, orderId: string, direction: 1 | -1) {
   const ordered = tx
     .select({
-      variantId: orderItemTable.variantId,
-      quantity: sql<number>`sum(${orderItemTable.quantity})::int`.as(
-        "quantity",
-      ),
+      inventoryId: orderItemTable.inventoryId,
+      quantity:
+        sql`sum(${orderItemTable.quantity} * ${orderItemTable.stockUsage})`.as(
+          "quantity",
+        ),
     })
     .from(orderItemTable)
     .where(eq(orderItemTable.orderId, orderId))
-    .groupBy(orderItemTable.variantId) // old orders may repeat a variant
+    .groupBy(orderItemTable.inventoryId)
     .as("ordered");
   const moved = await tx
-    .update(productVariantTable)
+    .update(inventoryTable)
     .set({
-      stock: sql`${productVariantTable.stock} + ${direction}::int * ${ordered.quantity}`,
+      quantity: sql`${inventoryTable.quantity} + ${direction}::int * ${ordered.quantity}`,
     })
     .from(ordered)
-    .where(eq(ordered.variantId, productVariantTable.id))
-    .returning({ productId: productVariantTable.productId });
-  return [...new Set(moved.map(({ productId }) => productId))];
+    .where(eq(ordered.inventoryId, inventoryTable.id))
+    .returning({ productId: inventoryTable.productId });
+  const productIds = [...new Set(moved.map(({ productId }) => productId))];
+  await refreshListing(tx, productIds);
+  return productIds;
 }

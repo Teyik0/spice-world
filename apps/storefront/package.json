@@ -9,9 +9,9 @@
   },
   "dependencies": {
     "@spice-world/server": "workspace:*",
-    "@teyik0/furin": "0.9.0-alpha.2",
+    "@teyik0/furin": "0.9.0-alpha.6",
     "elysia": "catalog:",
-    "evlog": "2.37.1",
+    "evlog": "catalog:",
     "exact-mirror": "1.2.8",
     "lenis": "1.3.28",
     "postprocessing": "6.39.6",

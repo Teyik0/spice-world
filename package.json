@@ -10,7 +10,8 @@
     "build": "bun run --parallel --filter './apps/*' build",
     "start": "bun run --parallel --filter './apps/*' start stripe",
     "cache:clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules && bun pm cache rm",
-    "iup": "bun update --interactive --recursive"
+    "iup": "bun update --interactive --recursive",
+    "knip": "knip"
   },
   "workspaces": [
     "apps/*",
@@ -23,20 +24,25 @@
     "typebox": "^1.4.7",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "@elysia/eden": "2.0.0-rc.1"
+    "@elysia/eden": "2.0.0-rc.1",
+    "@better-auth/drizzle-adapter": "1.7.28",
+    "@better-auth/stripe": "1.7.28",
+    "better-auth": "1.7.28",
+    "evlog": "2.37.1"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.9",
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
-    "@sinclair/typebox": "^0.34.52",
     "@types/bun": "^1.4.5",
+    "knip": "^6.49.0",
     "lefthook": "^2.2.3",
     "typescript": "^7.0.2",
     "ultracite": "8.3.1"
   },
   "patchedDependencies": {
-    "@elysia/eden@2.0.0-rc.1": "patches/@elysia%2Feden@2.0.0-rc.1.patch"
+    "@elysia/eden@2.0.0-rc.1": "patches/@elysia%2Feden@2.0.0-rc.1.patch",
+    "elysia@2.0.0-rc.1": "patches/elysia@2.0.0-rc.1.patch"
   },
   "dependencies": {
     "sst": "^4.17.2"

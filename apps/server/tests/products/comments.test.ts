@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, describe, expect, it } from "bun:test";
 
 import { treaty } from "@elysia/eden";
 import { db } from "@spice-world/server/lib/db";
@@ -10,6 +10,7 @@ import {
   createSessionCookie,
   createSetupProduct,
   expectDefined,
+  expectNoDrift,
   file,
   mockUtapi,
   randomLowerString,
@@ -33,13 +34,13 @@ describe.concurrent("GET /products/:id/comments", () => {
         {
           price: 1000,
           sku: crypto.randomUUID(),
-          stock: 1,
+          inventory: { quantity: 1 },
           attributeValueIds: [],
         },
       ],
       imagesCreate: [
         {
-          isThumbnail: true,
+          position: 0,
           file: file(`${import.meta.dir}/../public/cumin.webp`),
         },
       ],
@@ -125,3 +126,5 @@ describe.concurrent("GET /products/:id/comments", () => {
     expect(status).toBe(422);
   });
 });
+
+afterAll(() => expectNoDrift(testDb));

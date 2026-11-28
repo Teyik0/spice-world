@@ -1,12 +1,19 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { treaty } from "@elysia/eden";
+import { MAX_CDN_AGE_MINUTES } from "@spice-world/server/lib/cdn";
+import { db } from "@spice-world/server/lib/db";
+import { origins } from "@spice-world/server/lib/env";
 import { attributeRouter } from "@spice-world/server/modules/attributes";
 import { categoryRouter } from "@spice-world/server/modules/categories";
 import { collectionRouter } from "@spice-world/server/modules/collections";
 import { orderService } from "@spice-world/server/modules/orders/service";
 import { productsRouter } from "@spice-world/server/modules/products";
+import { corsPlugin } from "@spice-world/server/plugins/cors.plugin";
+import { eq, inArray } from "drizzle-orm";
+import { Elysia } from "elysia";
 
+import { imageDeletionTable, imageTable } from "../drizzle/schema";
 import { testDb } from "./setup";
 import {
   createSessionCookie,
@@ -16,13 +23,14 @@ import {
   createTestUser,
   createTestVariant,
   expectDefined,
+  expectNoDrift,
   file,
   mockStripe,
   mockUtapi,
   randomLowerString,
-  recordPurges,
   shippingAddress,
 } from "./utils/helper";
+import { recordPurges } from "./utils/vercel";
 
 await mockUtapi();
 const stripe = await mockStripe();
@@ -66,10 +74,11 @@ describe.concurrent("CDN cache", () => {
   });
 
   describe("tags of the shared responses", () => {
-    test("product listings only when restricted to published", async () => {
+    test("product listings only when restricted to published, and never an admin's view", async () => {
       const results = await Promise.all([
+        products.get({ query: { status: "PUBLISHED" }, ...visitor }),
+        products.count.get({ query: { status: "PUBLISHED" }, ...visitor }),
         products.get({ query: { status: "PUBLISHED" } }),
-        products.count.get({ query: { status: "PUBLISHED" } }),
         products.get({ query: {} }),
         products.get({ query: { status: "DRAFT" } }),
         products.count.get({ query: {} }),
@@ -80,7 +89,11 @@ describe.concurrent("CDN cache", () => {
         null,
         null,
         null,
+        null,
       ]);
+      expect(results[2]?.response.headers.get("cache-control")).toBe(
+        "private, no-store",
+      );
     });
 
     test("a product page only when published", async () => {
@@ -91,13 +104,15 @@ describe.concurrent("CDN cache", () => {
       expectDefined(published);
       expectDefined(draft);
       const results = await Promise.all([
+        products.slug({ slug: published.slug }).get(visitor),
         products.slug({ slug: published.slug }).get(),
         products.slug({ slug: draft.slug }).get(),
         products.slug({ slug: draft.slug }).get(visitor),
       ]);
-      expect(results.map(({ status }) => status)).toEqual([200, 200, 404]);
+      expect(results.map(({ status }) => status)).toEqual([200, 200, 200, 404]);
       expect(results.map(tagOf)).toEqual([
         `product:${published.id},category:${published.categoryId}`,
+        null,
         null,
         null,
       ]);
@@ -107,14 +122,14 @@ describe.concurrent("CDN cache", () => {
       const { category, attribute } = await catalog();
       const missing = Bun.randomUUIDv7();
       const results = await Promise.all([
-        categories.get({ query: {} }),
-        categories.count.get(),
-        categories({ id: category.id }).get(),
-        categories({ id: missing }).get(),
-        attributes.get({ query: {} }),
-        attributes.count.get(),
-        attributes({ id: attribute.id }).get(),
-        attributes({ id: missing }).get(),
+        categories.get({ query: {}, ...visitor }),
+        categories.count.get(visitor),
+        categories({ id: category.id }).get(visitor),
+        categories({ id: missing }).get(visitor),
+        attributes.get({ query: {}, ...visitor }),
+        attributes.count.get(visitor),
+        attributes({ id: attribute.id }).get(visitor),
+        attributes({ id: missing }).get(visitor),
       ]);
       expect(results.map(tagOf)).toEqual([
         "categories",
@@ -131,7 +146,7 @@ describe.concurrent("CDN cache", () => {
     test("never with the bypass header, which the shared copies vary on", async () => {
       const { category } = await catalog();
       const [shared, ...bypassed] = await Promise.all([
-        categories({ id: category.id }).get(),
+        categories({ id: category.id }).get(visitor),
         categories({ id: category.id }).get(bypass),
         products.get({ query: { status: "PUBLISHED" }, ...bypass }),
       ]);
@@ -140,9 +155,73 @@ describe.concurrent("CDN cache", () => {
         "public, s-maxage=",
       );
       for (const { response } of bypassed) {
-        expect(response.headers.get("cache-control")).toBeNull();
+        expect(response.headers.get("cache-control") ?? "").not.toStartWith(
+          "public",
+        );
+        expect(tagOf({ response })).toBeNull();
       }
     });
+
+    test("with the CORS vary kept and no request header copied", async () => {
+      const app = new Elysia().use(corsPlugin).use(categoryRouter);
+      const response = await app.handle(
+        new Request("http://localhost/categories", {
+          headers: { origin: String(origins[0]), "x-private-name": "1" },
+        }),
+      );
+      expect(response.headers.get("vercel-cache-tag")).toBe("categories");
+      expect(response.headers.get("vary")).toBe("Origin, x-cache-bypass");
+      expect(response.headers.get("access-control-allow-origin")).toBe(
+        String(origins[0]),
+      );
+      expect(
+        response.headers.get("access-control-expose-headers") ?? "",
+      ).not.toContain("x-private-name");
+    });
+  });
+
+  test("repeats each purge once the reads started before the commit are done", async () => {
+    const [product] = await createTestProducts(testDb, 1);
+    expectDefined(product);
+    const { result, stale, all } = await recordPurges(() =>
+      products({ id: product.id }).patch(
+        { description: "repeated purge" },
+        { headers: { ...admin.headers, "x-version": product.version } },
+      ),
+    );
+    expect(result.status).toBe(200);
+    expect(stale).toEqual([`product:${product.id}`, "products"]);
+    await Bun.sleep(5500);
+    expect(all().stale).toEqual([...stale, ...stale].toSorted());
+  });
+
+  test("keeps a replaced image file as long as a CDN copy can show it", async () => {
+    const { category } = await catalog();
+    const [old] = await db
+      .select()
+      .from(imageTable)
+      .where(eq(imageTable.id, category.imageId));
+    expectDefined(old);
+    const { result } = await recordPurges(() =>
+      categories({ id: category.id }).patch({ file: image }),
+    );
+    expect(result.status).toBe(200);
+    const queued = await db
+      .select({ notBefore: imageDeletionTable.notBefore })
+      .from(imageDeletionTable)
+      .where(
+        inArray(imageDeletionTable.fileKey, [
+          old.keyThumb,
+          old.keyMedium,
+          old.keyLarge,
+        ]),
+      );
+    expect(queued).toHaveLength(3);
+    for (const { notBefore } of queued) {
+      expect(notBefore.getTime()).toBeGreaterThan(
+        Date.now() + (MAX_CDN_AGE_MINUTES - 1) * 60_000,
+      );
+    }
   });
 
   describe("purges after a product write", () => {
@@ -197,16 +276,15 @@ describe.concurrent("CDN cache", () => {
           description: "description",
           status: "DRAFT",
           categoryId: category.id,
-          variants: {
-            create: [
-              {
-                price: 1000,
-                stock: 1,
-                attributeValueIds: [attribute.values[0]?.id ?? ""],
-              },
-            ],
-          },
-          images: { create: [{ isThumbnail: true, file: image }] },
+          stockMode: "VARIANT",
+          variants: [
+            {
+              price: 1000,
+              inventory: { quantity: 1 },
+              attributeValueIds: [attribute.values[0]?.id ?? ""],
+            },
+          ],
+          images: [{ position: 0, file: image }],
         }),
       );
       expect(result.status).toBe(201);
@@ -277,6 +355,26 @@ describe.concurrent("CDN cache", () => {
         `category:${category.id}`,
         "products",
       ]);
+    });
+
+    test("a change without a new name leaves the product listings alone", async () => {
+      const { category } = await catalog();
+      const { result, stale, gone } = await recordPurges(() =>
+        categories({ id: category.id }).patch({
+          attributes: {
+            create: [
+              { name: `origin ${randomLowerString(6)}`, values: ["inde"] },
+            ],
+          },
+        }),
+      );
+      expect(result.status).toBe(200);
+      expect(stale).toEqual([
+        "attributes",
+        "categories",
+        `category:${category.id}`,
+      ]);
+      expect(gone).toEqual([]);
     });
 
     test("a deleted attribute drops its page", async () => {
@@ -434,3 +532,5 @@ describe.concurrent("CDN cache", () => {
     });
   });
 });
+
+afterAll(() => expectNoDrift(testDb));

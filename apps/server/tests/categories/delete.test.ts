@@ -42,7 +42,7 @@ describe.concurrent("category DELETE", () => {
       status: 400,
       value: {
         code: "CATEGORY_IN_USE",
-        message: "Category is used by products",
+        detail: "Category is used by products",
       },
     });
     expect(

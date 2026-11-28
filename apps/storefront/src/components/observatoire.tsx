@@ -10,6 +10,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useTransition,
 } from "react";
 
 import { clearHandoff, peekHandoff } from "../lib/handoff";
@@ -52,7 +53,7 @@ export function Observatoire({
 }) {
   const look = useMemo(() => lookOf(product), [product]);
   const { facts, palette } = look;
-  const image = product.images.find((i) => i.isThumbnail) ?? product.images[0];
+  const [image] = product.images; // ordered by position: the cover first
   const chapters: Chapter[] = [
     "intro",
     "open",
@@ -62,7 +63,8 @@ export function Observatoire({
   ];
   const [sel, setSel] = useState(
     () =>
-      product.variants.find((x) => x.stock > 0)?.id ?? product.variants[0]?.id,
+      product.variants.find((x) => x.stockState !== "out")?.id ??
+      product.variants[0]?.id,
   );
   // the carousel's last frame, when we arrive from it (client navigation only)
   const [handoff] = useState(peekHandoff);
@@ -242,20 +244,19 @@ function Avis({
   productId: string;
 }) {
   const [list, setList] = useState(first.comments);
-  const [busy, setBusy] = useState(false);
+  const [busy, startTransition] = useTransition();
   const n = list.length;
-  const more = useCallback(async () => {
-    setBusy(true);
-    try {
-      const res = await fetch(`/_avis/${productId}?skip=${n}`);
-      if (res.ok) {
-        const page: Reviews = await res.json();
-        setList((l) => [...l, ...page.comments]);
-      }
-    } finally {
-      setBusy(false);
-    }
-  }, [n, productId]);
+  const more = useCallback(
+    () =>
+      startTransition(async () => {
+        const res = await fetch(`/_avis/${productId}?skip=${n}`);
+        if (res.ok) {
+          const page: Reviews = await res.json();
+          setList((l) => [...l, ...page.comments]);
+        }
+      }),
+    [n, productId],
+  );
   return (
     <section aria-labelledby="r-h" className="sec story">
       <div className="txt">
@@ -294,7 +295,7 @@ const stateOf = (exact: ProductDetail["variants"][number] | undefined) => {
   if (!exact) {
     return "none";
   }
-  return exact.stock > 0 ? "" : "out";
+  return exact.stockState === "out" ? "out" : "";
 };
 
 function Order({
@@ -371,8 +372,8 @@ function Order({
       </div>
       <p className="note" id={`${name}-soon`}>
         {v ? (
-          <span className="st" data-state={stockOf(v.stock).key}>
-            {stockOf(v.stock).label}
+          <span className="st" data-state={v.stockState}>
+            {stockOf(v.stockState).label}
           </span>
         ) : null}
         {kilo === null ? "" : ` · ${price(kilo)} / kg`} · Commande en ligne

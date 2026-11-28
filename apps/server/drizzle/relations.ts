@@ -14,6 +14,7 @@ const tables = {
   orderItem: schema.orderItemTable,
   product: schema.productTable,
   productVariant: schema.productVariantTable,
+  inventory: schema.inventoryTable,
   session: schema.sessionTable,
   user: schema.userTable,
   verification: schema.verificationTable,
@@ -43,6 +44,18 @@ export const relations = defineRelations(tables, (r) => ({
       from: r.productVariant.productId,
       to: r.product.id,
     }),
+    inventory: r.one.inventory({
+      from: r.productVariant.inventoryId,
+      to: r.inventory.id,
+      optional: false,
+    }),
+  },
+  inventory: {
+    product: r.one.product({
+      from: r.inventory.productId,
+      to: r.product.id,
+    }),
+    variants: r.many.productVariant(),
   },
   attributeValueToProductVariant: {
     attributeValue: r.one.attributeValue({
@@ -104,6 +117,8 @@ export const relations = defineRelations(tables, (r) => ({
       optional: false,
     }),
     variants: r.many.productVariant(),
+    inventories: r.many.inventory(),
+    collections: r.many.collectionProduct(),
   },
   comment: {
     product: r.one.product({
@@ -150,6 +165,11 @@ export const relations = defineRelations(tables, (r) => ({
     collection: r.one.collection({
       from: r.collectionProduct.collectionId,
       to: r.collection.id,
+      optional: false,
+    }),
+    product: r.one.product({
+      from: r.collectionProduct.productId,
+      to: r.product.id,
       optional: false,
     }),
   },

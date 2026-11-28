@@ -13,7 +13,6 @@ import {
   ToneMappingMode,
   VignetteEffect,
 } from "postprocessing";
-// biome-ignore lint/performance/noNamespaceImport: three is namespace-oriented; Bun tree-shakes ESM namespaces
 import * as THREE from "three";
 
 import type { Look } from "../lib/spice";
