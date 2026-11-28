@@ -1,0 +1,131 @@
+apps/dashboard/src/app/(dashboard)/products/components/collection-dialog.tsx
+  s_f2ff3ac4b59940::t_482986b09aa50a 126-128
+  s_612452fb2904d2::t_87c02953b29083 34,43,48,59-65,78,82,156-174,190,196,242,244-245
+  s_612452fb2904d2::t_a283433c65911b 1-33,35-42,44-47,49-58,66-77,79-81,83-125,129-155,175-189,191-195,197-241,246-282
+  s_f2ff3ac4b59940::t_53fcf40c4b987d 243
+apps/dashboard/src/app/(dashboard)/products/components/stock.tsx
+  s_f2ff3ac4b59940::t_482986b09aa50a 195
+  s_f2ff3ac4b59940::t_ceebd059796b92 47-49,51,55,88,94,194,196-217
+  s_b6316f4583f2d7::t_50b32396f6fb13 71
+  s_f2ff3ac4b59940::t_1ee881a55c3b70 218
+apps/server/src/modules/products/validators/has-changes.ts
+  s_612452fb2904d2::t_e185f80f486962 16,30-31
+apps/server/src/modules/collections/model.ts
+  s_612452fb2904d2::t_e185f80f486962 35
+apps/server/tests/products/patch.test.ts
+  s_612452fb2904d2::t_e185f80f486962 160-161,164-174,177-179
+  s_f2ff3ac4b59940::t_9ae7bd62a57026 162-163
+  s_f2ff3ac4b59940::t_4673a606096b2e 175-176
+patches/@elysia%2Feden@2.0.0-rc.1.patch
+  s_f2ff3ac4b59940::t_080c37ce9a8042 2,11,14,34,43,46,66,75,78,98,107,110,130,139,142
+  s_f2ff3ac4b59940::t_627ea1c1e7c399 5,37,69,101,133
+apps/server/src/modules/products/errors.ts
+  s_612452fb2904d2::t_e185f80f486962 46-55
+apps/dashboard/src/app/(dashboard)/products/new/page.tsx
+  s_f2ff3ac4b59940::t_482986b09aa50a 24-27
+  s_f2ff3ac4b59940::t_c1c471ad092acb 1-23,28-33
+apps/dashboard/src/app/(dashboard)/products/components/products-toolbar.tsx
+  s_f2ff3ac4b59940::t_276a5f632f0143 339-342
+  s_f2ff3ac4b59940::t_f48f988b8980c8 23,27
+apps/server/src/modules/products/service.ts
+  s_f2ff3ac4b59940::t_6eb3d6c39a30ca 776
+  s_612452fb2904d2::t_e185f80f486962 46,268-271,274-281,290,509-558,829,862,918,1016-1018
+  s_f2ff3ac4b59940::t_62e615821e1fad 739
+  s_f2ff3ac4b59940::t_56c1110b94b7f5 804-806
+  s_f2ff3ac4b59940::t_482986b09aa50a 282-289
+  s_f2ff3ac4b59940::t_f4a830e88ef2a8 559-560
+apps/server/src/modules/products/model.ts
+  s_f2ff3ac4b59940::t_cf5008c076e2db 249
+  s_f2ff3ac4b59940::t_4673a606096b2e 8,14
+  s_e907676567b4bb::t_7990f0d1048bbf 12
+  s_f2ff3ac4b59940::t_b48b19c30663ab 4,9-11,13
+  s_612452fb2904d2::t_e185f80f486962 15,233,286,294,398
+apps/server/drizzle/relations.ts
+  s_612452fb2904d2::t_e185f80f486962 121,170-172
+  s_612452fb2904d2::t_9d8d778a9c03dd 173-174
+apps/dashboard/src/app/(dashboard)/products/components/product-editor.tsx
+  s_f2ff3ac4b59940::t_987278e9848797 177-182,184-187
+  s_f2ff3ac4b59940::t_b201a3a4f17c60 538-561
+  s_f2ff3ac4b59940::t_5228be5ef35416 675-683
+  s_f2ff3ac4b59940::t_69a59aeb515f44 809-816,819,823-834,839
+  s_f2ff3ac4b59940::t_9ff00c361b350a 112-124
+  s_f2ff3ac4b59940::t_6bc1e1fbd16c82 590
+  s_f2ff3ac4b59940::t_70535668a811b0 696,699-711,715-720
+  s_f2ff3ac4b59940::t_12dd24f27c4ed1 321-324
+  s_f2ff3ac4b59940::t_bb34cc9e760a9e 444-459
+  s_f2ff3ac4b59940::t_ebb14d214dd982 94,97
+  s_612452fb2904d2::t_af19149ea7796b 2,29,43,52,127-129,375,379,385,418,425-426,640-672,685-688
+  s_f2ff3ac4b59940::t_5bfab4b8a3923c 64-70
+  s_f2ff3ac4b59940::t_62465a10dc23d0 163-164,166-167,173-174,176
+  s_e907676567b4bb::t_1d6ca059ab08c5 165,168-172,175
+  s_f2ff3ac4b59940::t_ea18d3d033f9ab 183
+  s_f2ff3ac4b59940::t_d55a5d354d6605 397,402-408
+  s_f2ff3ac4b59940::t_14c16d4d437e06 281
+  s_f2ff3ac4b59940::t_00339b5bf05488 411
+  s_f2ff3ac4b59940::t_012931c44ceacf 417,419
+  s_f2ff3ac4b59940::t_17a9d4e59b529c 428
+  s_f2ff3ac4b59940::t_e16c8fad77c8e1 626
+  s_612452fb2904d2::t_87c02953b29083 673-674,684
+  s_f2ff3ac4b59940::t_c8f13454675a32 380
+  s_612452fb2904d2::t_e6fde7b9b227ee 130-162,420-424
+  s_612452fb2904d2::t_4017c21fdd4d8b 689-691
+  s_e907676567b4bb::t_11ad875a7e1b67 391,393
+packages/ui/src/components/dropdown-menu.tsx
+  s_e907676567b4bb::t_dfd1f7d2e1fd53 207
+apps/server/tests/collection.test.ts
+  s_f2ff3ac4b59940::t_482986b09aa50a 407-410,464-466,480-483,496-498
+  s_612452fb2904d2::t_e185f80f486962 400-406,411-463,467-479,484-495,499-527
+apps/dashboard/src/app/(dashboard)/products/components/product-variants.tsx
+  s_b6316f4583f2d7::t_5e49847a05fbe0 457-507
+  s_f2ff3ac4b59940::t_7154db4f52ce18 340,378,383,385,388-389,438,452,456
+apps/server/tests/products/post.test.ts
+  s_f2ff3ac4b59940::t_32702334eaab15 4
+  s_612452fb2904d2::t_e185f80f486962 145-160,163-165
+  s_f2ff3ac4b59940::t_4673a606096b2e 161-162
+  s_f2ff3ac4b59940::t_6c6b584767ecd0 20-22
+  s_f2ff3ac4b59940::t_d2cd70473f96ad 166-225
+apps/dashboard/src/app/(dashboard)/products/[slug]/page.tsx
+  s_612452fb2904d2::t_af19149ea7796b 12,15,26-33,38,45
+packages/ui/src/components/form.tsx
+  s_e907676567b4bb::t_a9aad59eb7da19 3-7,238-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a9a77316bfd0d3bd5fff48f441eeb358e84ba765",
+  "prompts": {},
+  "sessions": {
+    "s_612452fb2904d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "448cf308-6ab4-4fae-8578-9f99e623c605",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_b6316f4583f2d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6665f74-2d2b-42bf-b48c-3c5913bf64d2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_e907676567b4bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b22cd48-7952-435a-ae4c-389c1ba10149",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_f2ff3ac4b59940": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d41a37b4-baa0-4ffa-bbd4-fc4c26e6744c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
