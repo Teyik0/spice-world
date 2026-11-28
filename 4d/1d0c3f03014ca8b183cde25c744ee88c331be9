@@ -1,0 +1,40 @@
+apps/dashboard/src/components/theme.tsx
+  s_922c2a4ff4e9c1::t_d2cda83834d60a 26
+apps/dashboard/furin.config.ts
+  s_922c2a4ff4e9c1::t_d2cda83834d60a 7
+apps/dashboard/src/app/(dashboard)/products/components/product-quick-edit.tsx
+  s_922c2a4ff4e9c1::t_b77490a63cd9bf 150-155,268
+apps/dashboard/src/app/(dashboard)/layout.tsx
+  s_922c2a4ff4e9c1::t_d2cda83834d60a 23
+apps/dashboard/src/server.ts
+  s_922c2a4ff4e9c1::t_d2cda83834d60a 14
+apps/dashboard/src/app/(dashboard)/products/components/collection-dialog.tsx
+  s_922c2a4ff4e9c1::t_d2cda83834d60a 245
+apps/dashboard/src/app/(dashboard)/products/components/product-editor.tsx
+  s_922c2a4ff4e9c1::t_4532a3523fd902 48
+  s_922c2a4ff4e9c1::t_d2cda83834d60a 606-615
+apps/dashboard/src/lib/env.ts
+  s_922c2a4ff4e9c1::t_d2cda83834d60a 6
+apps/dashboard/src/app/(dashboard)/products/[slug]/page.tsx
+  s_922c2a4ff4e9c1::t_4532a3523fd902 29-38,40-42
+apps/dashboard/src/app/(dashboard)/products/components/products-query.tsx
+  s_922c2a4ff4e9c1::t_d2cda83834d60a 43-45,48,50
+apps/dashboard/src/app/(dashboard)/products/components/products-toolbar.tsx
+  s_922c2a4ff4e9c1::t_d2cda83834d60a 181-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4d1d0c3f03014ca8b183cde25c744ee88c331be9",
+  "prompts": {},
+  "sessions": {
+    "s_922c2a4ff4e9c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d840e5b-5ee7-46cc-ab06-5a152b191359",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
