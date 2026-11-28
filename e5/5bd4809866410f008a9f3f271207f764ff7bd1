@@ -1,0 +1,190 @@
+apps/server/src/modules/orders/stripe.ts
+  s_fff41adce72935::t_5035ddfaa88495 1-46
+apps/server/src/modules/products/validators/variants.ts
+  s_c5e2d26d5c1640::t_2dc050b5f4c8b2 5,59-60
+  s_c42563175c4430::t_5034be295b02af 1,40,67-70
+.github/workflows/ci.yaml
+  s_c42563175c4430::t_696a4f4a851069 40-42
+knip.json
+  s_c42563175c4430::t_32bc3c2622518a 7,11,15
+  s_c42563175c4430::t_2e955df4afe513 1-3,5-6,8-10,12-14,16,20-23
+  s_c42563175c4430::t_40d95ef6ec7d84 4,17-19
+apps/server/src/modules/collections/errors.ts
+  s_c42563175c4430::t_269dd6cd005024 1,3-29,31-33
+apps/server/src/lib/db.ts
+  s_c42563175c4430::t_bc542d9ddf4f45 21,23
+  s_c42563175c4430::t_269dd6cd005024 1-2,4,13-20,22,24-36
+apps/dashboard/src/app/(dashboard)/products/components/product-editor.tsx
+  s_c42563175c4430::t_7361fb21e388d3 355,658
+apps/server/src/modules/attributes/index.ts
+  s_c42563175c4430::t_40d95ef6ec7d84 78,91
+apps/server/src/modules/products/model.ts
+  s_c42563175c4430::t_de3f0c83ac00e3 154-169,172-175
+apps/dashboard/src/app/(dashboard)/products/components/category-dialog.tsx
+  s_c42563175c4430::t_7361fb21e388d3 83-84
+apps/server/tests/products/get.test.ts
+  s_c42563175c4430::t_7f2eb6f4369392 328
+lefthook.yml
+  s_c42563175c4430::t_696a4f4a851069 20-23
+apps/server/tests/products/image-positions.test.ts
+  s_c42563175c4430::t_de3f0c83ac00e3 366-370
+apps/server/tests/orders/checkout.test.ts
+  s_c42563175c4430::t_951afee1c6ea25 57-59,61,167,189,250,293,303,379,570,706,731,752,785
+apps/server/src/lib/images.ts
+  s_c42563175c4430::t_de3f0c83ac00e3 91-95
+  s_9faf6189bc29e4::t_240b7909662b72 96-103
+apps/server/tests/categories/delete.test.ts
+  s_c42563175c4430::t_7f2eb6f4369392 45
+apps/server/src/modules/products/validators/images.ts
+  s_c42563175c4430::t_5034be295b02af 1-5,33-36,40,55-57
+apps/server/src/modules/categories/index.ts
+  s_c42563175c4430::t_5483a555a1b683 7,67
+apps/server/src/plugins/auth.plugin.tsx
+  s_c42563175c4430::t_51ebac06db79ea 12
+  s_c42563175c4430::t_c07c5e4a3a6f74 131-132
+apps/server/src/modules/shared.ts
+  s_c42563175c4430::t_de3f0c83ac00e3 64
+  s_c42563175c4430::t_965f2d2d2f92a8 2,5
+  s_c42563175c4430::t_bcce6d7d1705ee 33-36
+apps/server/src/modules/collections/service.ts
+  s_c42563175c4430::t_965f2d2d2f92a8 81-84,105-124
+  s_c42563175c4430::t_bc542d9ddf4f45 80,104
+  s_c42563175c4430::t_f8384dc9153859 2,4,12-17,73,78-79,85-88,102-103,125,135
+apps/server/src/modules/products/validators/change.ts
+  s_c5e2d26d5c1640::t_2dc050b5f4c8b2 1-2,5-54
+  s_c42563175c4430::t_de3f0c83ac00e3 3-4
+apps/server/tests/utils/helper.ts
+  s_c42563175c4430::t_de3f0c83ac00e3 608-611
+apps/server/tests/attribute.test.ts
+  s_c42563175c4430::t_044b26f966a9f9 445-448,452-483
+  s_c42563175c4430::t_7f2eb6f4369392 667
+  s_c42563175c4430::t_83bc821f715cd7 484-485
+apps/server/tests/categories/post.test.ts
+  s_c42563175c4430::t_7f2eb6f4369392 188
+  s_c42563175c4430::t_7e57e6059aa35e 3,5,8-9,13-30
+apps/server/src/modules/errors.ts
+  s_c42563175c4430::t_965f2d2d2f92a8 1-9
+apps/server/src/modules/orders/service.ts
+  s_fff41adce72935::t_135cc9acf425cc 362,370
+  s_c42563175c4430::t_c07c5e4a3a6f74 5,16,19-28,30,70,79,100,108,132,158,228,238,246,261,266,320-322,327-329,407-408
+apps/server/src/modules/categories/errors.ts
+  s_c42563175c4430::t_269dd6cd005024 1,3-38
+apps/server/src/modules/attributes/value-model.ts
+  s_c42563175c4430::t_40d95ef6ec7d84 6,12
+patches/elysia@2.0.0-rc.1.patch
+  s_c42563175c4430::t_660d2bc64dd80f 1-13
+apps/dashboard/src/app/(dashboard)/products/components/bulk-actions.tsx
+  s_c42563175c4430::t_7361fb21e388d3 59
+apps/server/tests/orders/routes.test.ts
+  s_c42563175c4430::t_7f2eb6f4369392 128
+apps/dashboard/src/app/(dashboard)/products/components/product-quick-edit.tsx
+  s_c42563175c4430::t_7361fb21e388d3 197,289
+package.json
+  s_c42563175c4430::t_660d2bc64dd80f 44-45
+  s_fff41adce72935::t_4e675af2a242a3 13-14
+  s_c42563175c4430::t_833fd7653cffbd 38
+apps/server/src/modules/orders/errors.ts
+  s_c42563175c4430::t_269dd6cd005024 1-2,7-51
+  s_c42563175c4430::t_de3f0c83ac00e3 3-6
+apps/server/tests/orders/stripe-checkout.test.ts
+  s_fff41adce72935::t_135cc9acf425cc 1-4,6-194
+  s_c42563175c4430::t_f558b60258a325 5
+apps/server/src/lib/cdn.ts
+  s_c42563175c4430::t_f8384dc9153859 128
+apps/server/src/modules/products/validators/publish.ts
+  s_c42563175c4430::t_5034be295b02af 1,14-16,22-24,30-32
+apps/server/src/modules/attributes/errors.ts
+  s_c42563175c4430::t_269dd6cd005024 1-2,5-30,32-41,43-51,53-61,63-71,73-76
+apps/server/src/modules/attributes/service.ts
+  s_c42563175c4430::t_e80b18addcfdfd 2,4,8-17,61,65,83,110,116-117,122-126,133,139-140,149-153,163-164,172-176,178,229
+  s_c42563175c4430::t_965f2d2d2f92a8 68-82,95-108,119-121,142-148,166-171,191-211,213-227
+  s_c42563175c4430::t_40d95ef6ec7d84 138,162
+  s_c42563175c4430::t_a0bc5e8027927a 66
+  s_c42563175c4430::t_bc542d9ddf4f45 67,94,118,141,165,190
+  s_c42563175c4430::t_527fac0051aa83 92-93,188-189
+apps/server/src/plugins/drizzle.plugin.ts
+  s_c42563175c4430::t_7361fb21e388d3 24,29,33-34
+apps/server/src/modules/orders/index.ts
+  s_c42563175c4430::t_d8fa53afd90bd4 49
+apps/server/src/modules/products/service.ts
+  s_c42563175c4430::t_bc542d9ddf4f45 717,855,972,1051
+  s_c42563175c4430::t_6ff9cc1693f64b 6,25,43-56,433,437-439,609,613,617,672-680,682,693,696,698,710-716,744-747,768,771,808,846-854,951,966,1041,1097
+  s_9faf6189bc29e4::t_40be153d872f39 11
+  s_c42563175c4430::t_965f2d2d2f92a8 718-743,856-878,880-884,886-890,892-895,897-921,923,925-939,941,943-947,949-950,973-996,1000-1003,1006-1007,1009-1018,1022-1040,1052-1096
+  s_c42563175c4430::t_de3f0c83ac00e3 896,940,942,948,970-971,997,1008,1019,1049-1050
+  s_c5e2d26d5c1640::t_2dc050b5f4c8b2 58,62
+  s_c5e2d26d5c1640::t_d25ce9e9425055 686-692
+  s_c42563175c4430::t_77e9414782c55d 685
+apps/server/src/modules/products/errors.ts
+  s_c42563175c4430::t_965f2d2d2f92a8 61-62,112-116,131-132,134,144-145,148,156-157,159,167-172,176,184-189,193
+  s_c42563175c4430::t_62b1a7524943b9 1-50,52-60,63-111,117-130,133,135-143,146-147,149-155,158,160-166,173-175,177-183,190-192,194-195
+apps/server/tests/categories/get.test.ts
+  s_c42563175c4430::t_7f2eb6f4369392 90
+apps/server/src/modules/categories/service.ts
+  s_c42563175c4430::t_15564af8a4f2ad 6,15,23-28,31-37,84,89,105-106,132-135,156,181-187,223,233,240,247,270,304,308,337,365,387,409-410,438
+  s_c42563175c4430::t_bc542d9ddf4f45 107,188,411
+  s_c42563175c4430::t_965f2d2d2f92a8 108-113,115-122,125,128-131,189-197,199-211,213-215,217-222,226-232,234-239,241-246,248,251-266,268-269,271-274,276-280,282-283,285-289,291-295,297-303,305-307,309-320,322-328,330-336,338-352,354-364,366,368-386,388-395,412-415,417-419,421-437
+  s_9faf6189bc29e4::t_08705d801669a8 11,14,78-79,87,97-104,136-139
+  s_c42563175c4430::t_2dafdf5b90bb35 91
+apps/server/src/modules/products/validators/stock.ts
+  s_c42563175c4430::t_5034be295b02af 1,79
+apps/server/tests/products/consistency.test.ts
+  s_c42563175c4430::t_7f2eb6f4369392 701,754
+  s_c42563175c4430::t_ab4f54505acd2e 656-659
+  s_c42563175c4430::t_f558b60258a325 620,660
+  s_c42563175c4430::t_de3f0c83ac00e3 480-483,510-513,699-700,702,755-760
+  s_c42563175c4430::t_70213cc134d53e 10-11,598-619,621-655,661
+apps/server/tests/products/patch.test.ts
+  s_c42563175c4430::t_7f2eb6f4369392 149,272,342,578
+apps/server/tests/products/post.test.ts
+  s_c42563175c4430::t_7f2eb6f4369392 309,414,464,511,566,615,670,717,822,869,915,956
+apps/server/src/modules/products/index.ts
+  s_c42563175c4430::t_5483a555a1b683 9,12,123,145
+apps/server/tests/categories/patch.test.ts
+  s_c42563175c4430::t_6e990d9b66a011 436,468,539,549,602
+  s_c42563175c4430::t_d008db553259f5 609,616,675,690
+apps/server/biome.jsonc
+  s_c42563175c4430::t_7383be3255ece2 11-20
+bun.lock
+  s_c42563175c4430::t_f2489a9f392c1e 15,138,369-373,525-526,613-690,779-780,1143-1144,1161-1162,1179-1180,1247,1271-1272,1401-1404,1411-1412,1419-1420,1495-1496,1539-1540,1591-1592,1649-1650,1673-1674,1777-1778,1883-1884,1927-1928,1959-1960
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e55bd4809866410f008a9f3f271207f764ff7bd1",
+  "prompts": {},
+  "sessions": {
+    "s_9faf6189bc29e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0630daab-1549-4fac-8955-11aed47ad11b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_c42563175c4430": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1fb4f02-edc5-4130-a609-fc1ad4cd9434",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_c5e2d26d5c1640": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bd2a818-5fd9-482e-823b-75c893cc2076",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_fff41adce72935": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26753d16-801d-45a5-9cfd-462c57f1f463",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
