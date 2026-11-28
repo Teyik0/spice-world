@@ -1,0 +1,93 @@
+apps/server/src/modules/categories/model.ts
+  s_d896da36b53ec3::t_50fe6937b612af 10,89-90,92,131-132,137
+AGENTS.md
+  s_d896da36b53ec3::t_6eee650523c2db 96
+apps/server/src/modules/shared.ts
+  s_d896da36b53ec3::t_50fe6937b612af 32-42
+apps/server/tests/products/consistency.test.ts
+  s_d896da36b53ec3::t_ab900d30193429 341,478,505,627,680
+  s_b4b731b0e5a25b::t_660ba3b92bdb5b 89,92,114,117,166,453,460
+  s_b4b731b0e5a25b::t_cfcdc6eb0ed651 90-91,115-116,165,454-459
+  s_d896da36b53ec3::t_fc8e4989cf44a4 6
+  s_d896da36b53ec3::t_fc9a7b18bed152 287-296,301-303,309-312
+  s_d896da36b53ec3::t_d2a52ddee5fc5e 313-314
+apps/server/src/modules/products/validators/publish.ts
+  s_d896da36b53ec3::t_ab900d30193429 16,25,34
+apps/server/src/modules/products/validators/variants.ts
+  s_d896da36b53ec3::t_50fe6937b612af 4,41,45
+  s_d896da36b53ec3::t_ab900d30193429 99,108,132,152
+apps/server/tests/products/delete.test.ts
+  s_b4b731b0e5a25b::t_cfcdc6eb0ed651 39-45,47-49
+  s_b4b731b0e5a25b::t_660ba3b92bdb5b 38,46
+apps/server/tests/cdn.test.ts
+  s_b4b731b0e5a25b::t_cfcdc6eb0ed651 281-286
+  s_b4b731b0e5a25b::t_660ba3b92bdb5b 280,287
+apps/server/tests/products/patch.test.ts
+  s_d896da36b53ec3::t_ab900d30193429 153,276,346,395,582
+  s_b4b731b0e5a25b::t_660ba3b92bdb5b 59,67,79,87,236,244,305,313,373,378,428,435,489,497
+  s_b4b731b0e5a25b::t_cfcdc6eb0ed651 60-66,80-86,237-243,306-312,374-377,429-434,490-496
+apps/server/src/modules/products/model.ts
+  s_d896da36b53ec3::t_50fe6937b612af 4,152-153,175-177,210-220,229-240
+  s_d896da36b53ec3::t_75fd257c4dd814 35,61
+  s_d896da36b53ec3::t_602ce5e0ada138 181-187,190,248-254,263-269
+  s_d896da36b53ec3::t_7fbb9da61201b8 224-228,241-247,255-262,270-273
+  s_d896da36b53ec3::t_ab900d30193429 491,497-501
+  s_d896da36b53ec3::t_a2f9708225c688 6
+apps/server/tests/utils/helper.ts
+  s_d896da36b53ec3::t_1c9c948a6884cd 621
+  s_b4b731b0e5a25b::t_cfcdc6eb0ed651 667
+  s_b4b731b0e5a25b::t_660ba3b92bdb5b 668
+apps/server/tests/products/post.test.ts
+  s_b4b731b0e5a25b::t_660ba3b92bdb5b 42,50,76,84,108,116,129,137,154,162,183,203,235,246,276,299,363,399,407,448,457,493,504,559,594,608,649,663,696,710,770,815,848,862,894,908,941,949
+  s_d896da36b53ec3::t_ab900d30193429 284,291,313,316,381,418,425,468,475,515,522,570,577,619,626,674,681,721,779,826,833,873,880,919,926,960
+  s_d896da36b53ec3::t_1c9c948a6884cd 339-342,746-749
+  s_b4b731b0e5a25b::t_cfcdc6eb0ed651 43-49,77-83,109-115,130-136,155-161,184-202,204-206,236-245,277-283,285-290,292-298,300-302,362,364-367,400-406,449-456,494-503,558,595-607,650-662,697-709,769,814,849-861,895-907,942-948
+apps/server/src/modules/products/validators/images.ts
+  s_d896da36b53ec3::t_50fe6937b612af 4,38,42
+  s_d896da36b53ec3::t_ab900d30193429 24
+apps/dashboard/src/app/(dashboard)/products/components/stock.tsx
+  s_d896da36b53ec3::t_75fd257c4dd814 29-30,37-40
+apps/server/tests/products/bulk.test.ts
+  s_b4b731b0e5a25b::t_cfcdc6eb0ed651 65-71,119-125
+  s_b4b731b0e5a25b::t_660ba3b92bdb5b 64,72,118,126
+apps/server/tests/products/stock.test.ts
+  s_b4b731b0e5a25b::t_660ba3b92bdb5b 65,70
+  s_d896da36b53ec3::t_bd4764e735a09f 251,253-254
+  s_d896da36b53ec3::t_aa185a9596173b 12,53-57,64,71
+  s_b4b731b0e5a25b::t_cfcdc6eb0ed651 66-69
+apps/server/src/modules/products/service.ts
+  s_b4b731b0e5a25b::t_7f47b65866860f 771,773,800-801
+  s_d896da36b53ec3::t_ef62b98b447474 736-745,789-799
+  s_b4b731b0e5a25b::t_da77b60d822643 746
+apps/server/tests/products/image-positions.test.ts
+  s_b4b731b0e5a25b::t_cfcdc6eb0ed651 82-83,85-87,112-113
+  s_d896da36b53ec3::t_ab900d30193429 354,366
+  s_d896da36b53ec3::t_fc9a7b18bed152 91-92,287-290,337,349-350
+  s_b4b731b0e5a25b::t_660ba3b92bdb5b 81,84,111,114
+apps/server/src/modules/products/validators/operations.ts
+  s_d896da36b53ec3::t_50fe6937b612af 1,6,9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f4f759ff27847aef26a0efc16e6c5eee0f51131c",
+  "prompts": {},
+  "sessions": {
+    "s_b4b731b0e5a25b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0cca709f-692e-4537-87dd-3031eb2110c3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    },
+    "s_d896da36b53ec3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8eadf476-a56b-4f22-b486-d535e1c9f56c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
