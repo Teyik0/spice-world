@@ -655,6 +655,7 @@ describe.concurrent("PATCH /products/:id - Integration Tests", () => {
           subErrors: expect.arrayContaining([
             expect.objectContaining({
               code: "ATTRIBUTE_VALUED_TWICE",
+              message: expect.stringContaining(`variant ${variantId}:`),
             }),
           ]),
         },

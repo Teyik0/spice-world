@@ -8,6 +8,7 @@ import type * as ProductModel from "@spice-world/server/modules/products/model";
 import { refreshListing } from "@spice-world/server/modules/products/service";
 import { eq, inArray, sql } from "drizzle-orm";
 import type { UnwrapSchema } from "elysia";
+import type Stripe from "stripe";
 import type { UploadedFileData, UploadFileResult } from "uploadthing/types";
 
 import {
@@ -156,22 +157,33 @@ export const createSessionCookie = async (
 export const mockStripe = async () => {
   const { stripeClient } = await import("@spice-world/server/lib/stripe");
   const statuses = new Map<string, "open" | "complete" | "expired">();
+  const beforeCreate = new Map<string, () => Promise<unknown>>();
+  const beforeExpire = new Map<string, () => Promise<unknown>>();
   const { sessions } = stripeClient.checkout;
-  const create = spyOn(sessions, "create").mockImplementation((() => {
+  const create = spyOn(sessions, "create").mockImplementation((async ({
+    line_items = [],
+  }: Stripe.Checkout.SessionCreateParams) => {
+    await Promise.all(
+      line_items.map(({ price_data }) =>
+        beforeCreate.get(price_data?.product_data?.name ?? "")?.(),
+      ),
+    );
     const id = `cs_test_${crypto.randomUUID()}`;
     statuses.set(id, "open");
-    return Promise.resolve({
-      id,
-      url: "https://checkout.example.com",
-      status: "open",
-    });
+    return { id, url: "https://checkout.example.com", status: "open" };
   }) as never);
   const retrieve = spyOn(sessions, "retrieve").mockImplementation(((
     id: string,
   ) => Promise.resolve({ id, status: statuses.get(id) })) as never);
-  const expire = spyOn(sessions, "expire").mockImplementation(((id: string) => {
+  const expire = spyOn(sessions, "expire").mockImplementation((async (
+    id: string,
+  ) => {
+    await beforeExpire.get(id)?.();
+    if (statuses.get(id) !== "open") {
+      throw new Error("Only an open Checkout Session can be expired");
+    }
     statuses.set(id, "expired");
-    return Promise.resolve({ id, status: "expired" });
+    return { id, status: "expired" };
   }) as never);
   const search = spyOn(stripeClient.customers, "search").mockImplementation(
     (() => Promise.resolve({ data: [] })) as never,
@@ -187,6 +199,8 @@ export const mockStripe = async () => {
   ).mockImplementation(((id: string) =>
     Promise.resolve({ id, deleted: true })) as never);
   return {
+    beforeCreate,
+    beforeExpire,
     create,
     expire,
     statuses,

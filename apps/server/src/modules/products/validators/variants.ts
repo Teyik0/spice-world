@@ -55,9 +55,16 @@ export function validateVariants({
       values.map((value) => [value.id, id] as const),
     ),
   );
+  const kept = variants.filter(({ id }) => id).length;
   const subErrors = [
     ...variants.flatMap((variant, index) =>
-      validateAttributeValues(`variants[${index}]`, variant, attributeIds),
+      validateAttributeValues(
+        variant.id
+          ? `variant ${variant.id}`
+          : `new variant ${index - kept + 1}`,
+        variant,
+        attributeIds,
+      ),
     ),
     ...validateCount(variants.length, category),
     ...validateCombinations(variants),

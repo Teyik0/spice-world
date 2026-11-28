@@ -50,9 +50,19 @@ export async function createStripeCheckout({
 }
 
 export async function closeStripeCheckout(sessionId: string) {
-  const { status } = await stripeClient.checkout.sessions.retrieve(sessionId);
-  if (status === "open") {
-    await stripeClient.checkout.sessions.expire(sessionId);
+  const { sessions } = stripeClient.checkout;
+  const { status } = await sessions.retrieve(sessionId);
+  if (status !== "open") {
+    return status !== "complete";
   }
-  return status !== "complete";
+  try {
+    await sessions.expire(sessionId);
+    return true;
+  } catch (error) {
+    const { status: settled } = await sessions.retrieve(sessionId);
+    if (settled === "open") {
+      throw error;
+    }
+    return settled !== "complete";
+  }
 }

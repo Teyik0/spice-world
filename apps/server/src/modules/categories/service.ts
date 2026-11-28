@@ -165,16 +165,7 @@ export const categoryService = {
       newFile = images[0] as MultiSizeUploadData;
     }
 
-    const imageUpdate = newFile
-      ? {
-          keyThumb: newFile.thumb.key,
-          urlThumb: newFile.thumb.ufsUrl,
-          keyMedium: newFile.medium.key,
-          urlMedium: newFile.medium.ufsUrl,
-          keyLarge: newFile.large.key,
-          urlLarge: newFile.large.ufsUrl,
-        }
-      : null;
+    const imageUpdate = newFile && uploadColumns(newFile);
 
     const updates = attributes?.update ?? [];
     const deleteIds = attributes?.delete ?? [];

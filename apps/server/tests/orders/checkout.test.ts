@@ -171,6 +171,30 @@ describe.concurrent("Order checkout amounts and stock", () => {
     expect(await stockOf(variant.id)).toBe(7);
   });
 
+  test("admin cancel is refused when the session completes before it expires", async () => {
+    const variant = await createVariant(1000);
+    const { order } = await checkout([{ variantId: variant.id, quantity: 3 }]);
+    stripe.beforeExpire.set(order.stripeSessionId, async () =>
+      stripe.statuses.set(order.stripeSessionId, "complete"),
+    );
+    expect(
+      await orderService.updateStatus({ id: order.id, status: "CANCELLED" }),
+    ).toMatchObject({ status: 409, code: "ORDER_ALREADY_PAID" });
+    expect(await stockOf(variant.id)).toBe(7);
+  });
+
+  test("admin cancel succeeds when the session expires before it is expired", async () => {
+    const variant = await createVariant(1000);
+    const { order } = await checkout([{ variantId: variant.id, quantity: 3 }]);
+    stripe.beforeExpire.set(order.stripeSessionId, async () =>
+      stripe.statuses.set(order.stripeSessionId, "expired"),
+    );
+    expect(
+      await orderService.updateStatus({ id: order.id, status: "CANCELLED" }),
+    ).toMatchObject({ status: "CANCELLED" });
+    expect(await stockOf(variant.id)).toBe(10);
+  });
+
   test.each(["PAID", "FULFILLED"] as const)(
     "admin cancel of a %s order is refused and writes nothing",
     async (status) => {
@@ -308,12 +332,13 @@ describe.concurrent("Order checkout amounts and stock", () => {
 
   test("reserves nothing when Stripe is unavailable", async () => {
     const variant = await createVariant(1234);
-    const { create } = stripe;
-    const original = create.getMockImplementation();
-    create.mockImplementation(((params: Stripe.Checkout.SessionCreateParams) =>
-      params.line_items?.some((line) => line.price_data?.unit_amount === 1234)
-        ? Promise.reject(new Error("boom"))
-        : original?.(params)) as never);
+    const product = await testDb.db.query.product.findFirst({
+      where: { id: variant.productId },
+    });
+    expectDefined(product);
+    stripe.beforeCreate.set(product.name, () =>
+      Promise.reject(new Error("boom")),
+    );
     const result = await tryCheckout([{ variantId: variant.id, quantity: 1 }]);
     expect(result).toMatchObject({
       status: 502,
@@ -360,30 +385,22 @@ describe.concurrent("Order checkout amounts and stock", () => {
       where: { id: variant.productId },
     });
     expectDefined(product);
-    const original = stripe.create.getMockImplementation();
     let lockable: boolean | undefined;
-    stripe.create.mockImplementation((async (params: unknown) => {
-      if (JSON.stringify(params).includes(product.name)) {
-        try {
-          await testDb.db.transaction((tx) =>
-            tx
-              .select({ id: inventoryTable.id })
-              .from(inventoryTable)
-              .where(eq(inventoryTable.id, variant.inventoryId))
-              .for("update", { noWait: true }),
-          );
-          lockable = true;
-        } catch {
-          lockable = false;
-        }
+    stripe.beforeCreate.set(product.name, async () => {
+      try {
+        await testDb.db.transaction((tx) =>
+          tx
+            .select({ id: inventoryTable.id })
+            .from(inventoryTable)
+            .where(eq(inventoryTable.id, variant.inventoryId))
+            .for("update", { noWait: true }),
+        );
+        lockable = true;
+      } catch {
+        lockable = false;
       }
-      return await original?.(params as never);
-    }) as never);
-    try {
-      await checkout([{ variantId: variant.id, quantity: 1 }]);
-    } finally {
-      stripe.create.mockImplementation(original as never);
-    }
+    });
+    await checkout([{ variantId: variant.id, quantity: 1 }]);
     expect(lockable).toBe(true);
     expect(await stockOf(variant.id)).toBe(9);
   });
