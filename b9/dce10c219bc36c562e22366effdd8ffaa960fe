@@ -1,0 +1,19 @@
+.github/workflows/preview.yaml
+  s_922c2a4ff4e9c1::t_10b3ea302482b4 44-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b9dce10c219bc36c562e22366effdd8ffaa960fe",
+  "prompts": {},
+  "sessions": {
+    "s_922c2a4ff4e9c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d840e5b-5ee7-46cc-ab06-5a152b191359",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "teyik0 <teyik0.fr@icloud.com>"
+    }
+  }
+}
